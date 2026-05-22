@@ -2249,10 +2249,10 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
             {/* TP + Initiative row */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#C9772E", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.1em" }}>TURNING POINT</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#FFB627", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.1em" }}>TURNING POINT</div>
                 <div style={{ display: "flex", gap: 3 }}>
                   {Array.from({ length: gc.numTPs }, (_, i) => i + 1).map(t => (
-                    <div key={t} onClick={() => setTp(t)} style={{ width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", borderRadius: 4, background: tp === t ? "#C9772E20" : "#262A33", border: "2px solid " + (tp === t ? "#C9772E" : "#3A4150"), fontSize: 16, fontWeight: 700, color: tp === t ? "#C9772E" : "#9AA5B1", fontFamily: "'Rajdhani', sans-serif" }}>{t}</div>
+                    <div key={t} onClick={() => setTp(t)} style={{ width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", borderRadius: 4, background: tp === t ? "#FFB62720" : "#262A33", border: "2px solid " + (tp === t ? "#FFB627" : "#3A4150"), fontSize: 16, fontWeight: 700, color: tp === t ? "#FFB627" : "#9AA5B1", fontFamily: "'Rajdhani', sans-serif" }}>{t}</div>
                   ))}
                 </div>
               </div>
@@ -2265,11 +2265,11 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
             {/* CP + VP row — bigger, cleaner */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
               {/* CP */}
-              <div style={{ background: "#262A33", borderRadius: 4, padding: "10px 8px", border: "1px solid #262A33", textAlign: "center" }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: "#C9772E", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.12em", marginBottom: 4 }}>COMMAND POINTS</div>
+              <div style={{ background: "#262A33", borderRadius: 4, padding: "10px 8px", border: "1px solid #FFB62725", textAlign: "center" }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#FFB627", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.12em", marginBottom: 4 }}>COMMAND POINTS</div>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
                   <button onClick={() => setCp(Math.max(0, cp - 1))} style={{ width: 26, height: 26, border: "1px solid #3A4150", borderRadius: 4, background: "#1A1D24", color: "#B8341C", cursor: "pointer", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>{"\u2212"}</button>
-                  <div style={{ fontSize: 28, fontWeight: 700, color: cp > 0 ? "#C9772E" : "#B8341C", fontFamily: "'Rajdhani', sans-serif", minWidth: 32, textShadow: cp > 0 ? "0 0 12px rgba(255,215,0,0.3)" : "none" }}>{cp}</div>
+                  <div style={{ fontSize: 28, fontWeight: 700, color: cp > 0 ? "#FFB627" : "#B8341C", fontFamily: "'Rajdhani', sans-serif", minWidth: 32, textShadow: cp > 0 ? "0 0 12px rgba(255,182,39,0.4)" : "none" }}>{cp}</div>
                   <button onClick={() => setCp(cp + 1)} style={{ width: 26, height: 26, border: "1px solid #3A4150", borderRadius: 4, background: "#1A1D24", color: "#3D6B3F", cursor: "pointer", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>+</button>
                 </div>
                 <div style={{ fontSize: 9, color: "#9AA5B1", marginTop: 4 }}>{Object.values(usedPloys).filter(Boolean).length > 0 ? Object.values(usedPloys).filter(Boolean).length + " ploy(s) spent" : hasInitiative ? "+1CP next TP" : "+2CP next TP"}</div>
