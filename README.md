@@ -69,7 +69,7 @@ A full visual redesign was completed recently. The app moved from a gold-gilded,
 A proper logo package exists (targeting reticle mark + "KILLSHEET" wordmark, rust + white on dark). Variants: app icon, horizontal lockup, stacked lockup, mark-only SVG, favicon. **These are NOT yet wired into the app** — the header still uses an older embedded base64 logo. Wiring in the new logo package (header lockup + favicon + apple-touch-icon) is an open task.
 
 ### IMPORTANT design caveat
-The gold→rust bulk swap was done globally outside the (now-deleted) Sequence component. As a side effect, **CP/VP/TP indicators are currently rust like everything else** — but these are genuinely "look here" signal moments that should arguably be gold (`#FFB627`). Re-introducing selective gold for scoring/turn indicators is a known pending polish item.
+The gold→rust bulk swap was done globally, which flattened the "look here" signal moments to rust. Gold (`#FFB627`) has since been restored for the TURNING POINT label, active TP box, and COMMAND POINTS label/value. VP panels stay green (you) / red (opponent) on purpose.
 
 ---
 
@@ -157,10 +157,12 @@ Planned implementation:
 
 Estimated 2-3 hours. Should be its own focused session with its own QA pass (mixing infra + UI changes tends to combine bugs confusingly).
 
+### Done recently
+- Gold restored for CP/TP signal indicators.
+- All four tab icons replaced with a matching SVG line set (Rules: document, Builder: crossed swords, Tutorial: play, Community: reticle).
+
 ### Other open tasks (rough priority order)
 - **Wire in the new logo package** — header horizontal lockup (mark-only on mobile fallback), favicon, apple-touch-icon for installable PWA. Assets exist; not yet integrated.
-- **Re-introduce selective gold** (`#FFB627`) for CP/VP/TP/ready-state signal moments (the global rust sweep flattened these).
-- **Swap the Community tab icon** — currently reuses the old sequence (clock) icon; a reticle-mark version would fit the brand.
 - **Minimize unselected equipment when roster is locked** — locked Builder still shows full equipment lists; should collapse to only selected items with a "Locked — N selections" header. Touch points around the FACTION EQUIPMENT / UNIVERSAL EQUIPMENT render in Builder.
 - **Mobile check on the longer "Community Rosters" tab label** — may need to shorten to "Community" on mobile.
 - Add automated pre-ship checks for: hooks-after-early-return pattern, and "every tab id has a TAB_ICONS entry."
