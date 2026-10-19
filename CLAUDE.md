@@ -12,7 +12,7 @@ Read `README.md` first: it has the project context, design system, gotchas, and 
 The repo lives in iCloud Drive, which the sandboxed Python server can't read. To preview:
 1. Copy `killsheet.html` to `/tmp/killsheet-preview/index.html`.
 2. Serve that folder with `python3 -m http.server 3456` (via `.claude/launch.json`).
-3. Re-copy after every edit, then reload.
+3. Re-copy after every edit, then load a new URL (e.g. `?v=2`, `?v=3`). A plain reload can show a cached old copy.
 
 ## Deploying
 Deploys are manual: the owner renames `killsheet.html` to `index.html` and drags it into Cloudflare Pages (`killsheet.pages.dev`). Pushing to GitHub does not deploy.

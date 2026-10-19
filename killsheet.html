@@ -3786,7 +3786,7 @@ function App() {
   React.useEffect(() => { if (tab === "sequence") setTab("builder"); }, [tab]);
   const [tp, setTp] = useLocalStorage("tp", 1);
   const mobile = useIsMobile();
-  const tabs = [["rules", "Rules"], ["builder", "Builder"], ["tutorial", "Tutorial"], ["community", "Community Rosters"]];
+  const tabs = [["rules", "Rules"], ["builder", "Builder"], ["tutorial", "Tutorial"], ["community", mobile ? "Community" : "Community Rosters"]];
   // Multiplayer hosted at App level so banner is visible across tabs
   const mpHandlerRef = React.useRef(null);
   const mp = useMultiplayer((msg) => { if (mpHandlerRef.current) mpHandlerRef.current(msg); });
