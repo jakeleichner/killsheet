@@ -160,10 +160,10 @@ Estimated 2-3 hours. Should be its own focused session with its own QA pass (mix
 ### Done recently
 - Gold restored for CP/TP signal indicators.
 - All four tab icons replaced with a matching SVG line set (Rules: document, Builder: crossed swords, Tutorial: play, Community: reticle).
+- Locked roster now shows only the selected faction/universal equipment, with a "LOCKED — N SELECTED" header.
 
 ### Other open tasks (rough priority order)
 - **Wire in the new logo package** — header horizontal lockup (mark-only on mobile fallback), favicon, apple-touch-icon for installable PWA. Assets exist; not yet integrated.
-- **Minimize unselected equipment when roster is locked** — locked Builder still shows full equipment lists; should collapse to only selected items with a "Locked — N selections" header. Touch points around the FACTION EQUIPMENT / UNIVERSAL EQUIPMENT render in Builder.
 - **Mobile check on the longer "Community Rosters" tab label** — may need to shorten to "Community" on mobile.
 - Add automated pre-ship checks for: hooks-after-early-return pattern, and "every tab id has a TAB_ICONS entry."
 

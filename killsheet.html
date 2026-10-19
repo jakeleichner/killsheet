@@ -2561,12 +2561,16 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
 
             {/* Faction Equipment */}
             <div style={{ ...cd, padding: 10 }}>
-              <div style={{ ...h3, color: "#C9772E" }}>FACTION EQUIPMENT</div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ ...h3, color: "#C9772E", marginBottom: 0 }}>FACTION EQUIPMENT</div>
+                {rosterLocked && <div style={{ fontSize: 8, color: "#9AA5B1", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.08em" }}>{"\uD83D\uDD12"} LOCKED — {f.equipment.filter(q => eq[q.id]).length} SELECTED</div>}
+              </div>
               <div style={dv} />
-              {f.equipment.map(q => {
+              {rosterLocked && f.equipment.filter(q => eq[q.id]).length === 0 && <div style={{ ...mu, fontSize: 9 }}>No faction equipment selected.</div>}
+              {(rosterLocked ? f.equipment.filter(q => eq[q.id]) : f.equipment).map(q => {
                 const canUse = canAddEquip("faction", q.id);
                 return (
-                <div key={q.id} onClick={() => canUse && toggleEq(q.id)} style={{ display: "flex", gap: 6, alignItems: "flex-start", padding: "4px 0", cursor: canUse ? "pointer" : "not-allowed", borderBottom: "1px solid #1A2430", opacity: canUse ? 1 : 0.35 }}>
+                <div key={q.id} onClick={() => canUse && toggleEq(q.id)} style={{ display: "flex", gap: 6, alignItems: "flex-start", padding: "4px 0", cursor: rosterLocked ? "default" : canUse ? "pointer" : "not-allowed", borderBottom: "1px solid #1A2430", opacity: canUse ? 1 : 0.35 }}>
                   <div style={{ width: 14, height: 14, borderRadius: 2, border: "1.5px solid " + (eq[q.id] ? "#C9772E" : "#262A33"), background: eq[q.id] ? "#C9772E20" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: "#C9772E", flexShrink: 0, marginTop: 1 }}>{eq[q.id] ? "\u2720" : ""}</div>
                   <div>
                     <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
@@ -2584,14 +2588,17 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
             <div style={{ ...cd, padding: 10 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div style={{ ...h3, color: "#9AA5B1", marginBottom: 0 }}>UNIVERSAL EQUIPMENT</div>
-                {validate && f && f.composition && (
+                {rosterLocked ? (
+                  <div style={{ fontSize: 8, color: "#9AA5B1", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.08em" }}>{"\uD83D\uDD12"} LOCKED — {UNIV_EQUIP.filter(q => uEq[q.id]).length} SELECTED</div>
+                ) : validate && f && f.composition && (
                   <div style={{ fontSize: 8, color: v.equipCount > gc.equipSlots ? "#C9772E" : "#9AA5B1", fontFamily: "monospace" }}>{v.equipCount}/{gc.equipSlots} slots</div>
                 )}
               </div>
-              <div style={{ ...mu, fontSize: 9, marginBottom: 4, marginTop: 2 }}>Available to all kill teams. Grenades of same type share 1 slot. Each option once per game.</div>
+              {!rosterLocked && <div style={{ ...mu, fontSize: 9, marginBottom: 4, marginTop: 2 }}>Available to all kill teams. Grenades of same type share 1 slot. Each option once per game.</div>}
               <div style={dv} />
+              {rosterLocked && UNIV_EQUIP.filter(q => uEq[q.id]).length === 0 && <div style={{ ...mu, fontSize: 9 }}>No universal equipment selected.</div>}
               {["Explosive Grenades", "Utility Grenades", "Equipment", "Terrain"].map(cat => {
-                const items = UNIV_EQUIP.filter(q => q.category === cat);
+                const items = UNIV_EQUIP.filter(q => q.category === cat && (!rosterLocked || uEq[q.id]));
                 if (items.length === 0) return null;
                 return (
                   <div key={cat}>
@@ -2599,7 +2606,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
                     {items.map(q => {
                       const canUse = canAddEquip("universal", q.id);
                       return (
-                      <div key={q.id} onClick={() => canUse && toggleUEq(q.id)} style={{ display: "flex", gap: 6, alignItems: "flex-start", padding: "3px 0", cursor: canUse ? "pointer" : "not-allowed", borderBottom: "1px solid #1A2430", opacity: canUse ? 1 : 0.35 }}>
+                      <div key={q.id} onClick={() => canUse && toggleUEq(q.id)} style={{ display: "flex", gap: 6, alignItems: "flex-start", padding: "3px 0", cursor: rosterLocked ? "default" : canUse ? "pointer" : "not-allowed", borderBottom: "1px solid #1A2430", opacity: canUse ? 1 : 0.35 }}>
                         <div style={{ width: 14, height: 14, borderRadius: 2, border: "1.5px solid " + (uEq[q.id] ? "#9AA5B1" : "#262A33"), background: uEq[q.id] ? "#9AA5B120" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: "#9AA5B1", flexShrink: 0, marginTop: 1 }}>{uEq[q.id] ? "\u2720" : ""}</div>
                         <div style={{ flex: 1 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
