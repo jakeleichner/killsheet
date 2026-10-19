@@ -122,7 +122,7 @@ The gold→rust bulk swap was done globally, which flattened the "look here" sig
 
 These will bite you if you don't know them:
 
-1. **No build step. Validate by parsing.** Before shipping any change, extract the `<script type="text/babel">` content and parse it with `@babel/parser` (JSX plugin) to catch syntax errors. A clean parse does NOT guarantee runtime correctness — see #2.
+1. **No build step. Run `python3 tools/check.py` and validate by parsing.** Before shipping any change, extract the `<script type="text/babel">` content and parse it with `@babel/parser` (JSX plugin) to catch syntax errors. A clean parse does NOT guarantee runtime correctness — see #2.
 
 2. **Rules of Hooks violations don't show up at parse time.** They only crash at runtime (React error #310 = "rendered more hooks than previous render"). The classic trap here: the `Builder` component has an early `if (!gameConfig) return ...` for the setup screen. **ALL hooks (useState/useEffect/useLocalStorage/useRef) must be declared BEFORE that early return.** This already caused a production crash once. When adding hooks to Builder, put them up top.
 
@@ -162,10 +162,10 @@ Estimated 2-3 hours. Should be its own focused session with its own QA pass (mix
 - All four tab icons replaced with a matching SVG line set (Rules: document, Builder: crossed swords, Tutorial: play, Community: reticle).
 - Locked roster now shows only the selected faction/universal equipment, with a "LOCKED — N SELECTED" header.
 - Community tab label shortens to "Community" on phones (under 700px) so the nav stays on one line.
+- Pre-ship checker added: `python3 tools/check.py` (hooks before early returns, every tab has an icon and panel, unique localStorage keys, no direct localStorage use, print class, JSX script tag).
 
 ### Other open tasks (rough priority order)
 - **Wire in the new logo package** — header horizontal lockup (mark-only on mobile fallback), favicon, apple-touch-icon for installable PWA. Assets exist; not yet integrated.
-- Add automated pre-ship checks for: hooks-after-early-return pattern, and "every tab id has a TAB_ICONS entry."
 
 ### Lower-priority backlog
 - Roll history/log in the dice roller (last 5-10 rolls).

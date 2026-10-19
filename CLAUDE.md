@@ -8,6 +8,10 @@ Read `README.md` first: it has the project context, design system, gotchas, and 
 - Keep the README's "Work queue" current: remove items as they're finished.
 - `gh` is at `/opt/homebrew/bin/gh` (Homebrew isn't on Claude's shell PATH).
 
+## Before every push
+1. Run `python3 tools/check.py`. It must end with "All checks passed." It catches hooks after an early return (React #310 crash), tabs missing an icon or panel, duplicate/direct localStorage use, and a missing print class or JSX script tag.
+2. Load the change in the preview and check the console for errors. The checker doesn't parse JavaScript, so syntax errors only show up there.
+
 ## Previewing changes
 The repo lives in iCloud Drive, which the sandboxed Python server can't read. To preview:
 1. Copy `killsheet.html` to `/tmp/killsheet-preview/index.html`.
