@@ -1,0 +1,13 @@
+# Order of mission packs in the Missions tab.
+devlan
+typhon
+tombworld
+shadowhunt
+sniper
+ambull
+archivist
+volkus
+titus
+hivestorm
+bloodzeal
+kz_tombworld

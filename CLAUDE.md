@@ -15,13 +15,13 @@ Read `README.md` first: it has the project context, design system, gotchas, and 
 
 ## Previewing changes
 The repo lives in iCloud Drive, which the sandboxed Python server can't read. To preview:
-1. Copy `killsheet.html` to `/tmp/killsheet-preview/index.html`.
+1. Copy `killsheet.html` to `/tmp/killsheet-preview/index.html`. Also copy the `maps/` folder to `/tmp/killsheet-preview/maps/` (the Missions tab loads its map images from there).
 2. Serve that folder with `python3 -m http.server 3456` (via `.claude/launch.json`).
 3. Re-copy after every edit, then load a new URL (e.g. `?v=2`, `?v=3`). A plain reload can show a cached old copy.
 
 ## Deploying
 Deploys are manual: the owner drags the `deploy/` folder into Cloudflare Pages (`killsheet.pages.dev`). Pushing to GitHub does not deploy.
-After every push, refresh it: `cp killsheet.html deploy/index.html`. `deploy/` is git-ignored.
+After every push, refresh it: `cp killsheet.html deploy/index.html && rm -rf deploy/maps && cp -R maps deploy/maps`. `deploy/` is git-ignored. The `maps/` folder must go up with the page, or the Missions tab shows broken images.
 
 ## Bulk edits
 Long base64 strings (TAB_ICONS, logos) are easier to replace with a Python regex script than with Edit.

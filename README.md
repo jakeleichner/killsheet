@@ -83,6 +83,8 @@ The gold→rust bulk swap was done globally, which flattened the "look here" sig
 - Roster lock/unlock. Import/export via base64 codes (own roster vs opponent roster).
 - Datacards: v2 design, bold 4-up stat block, interactive wound counter (+/−), activation toggle, injured/incapacitated states, collapse/expand, equipment effects surfaced.
 
+**Missions** (Missions tab): Games Workshop's 12 free mission packs (40 missions): Terror on Devlan, Typhon, Tomb World, Shadowhunt, Deadly Sniper, Ambull, The Archivist, Volkus Compound, Lieutenant Titus, The Great Gun Fires, Blood and Zeal, and Killzone: Tomb World. Each pack page has its rules, enemy (NPO) datacards with behaviours, card decks with a Draw button, and map pages; each mission page has its map, rules, actions, victory conditions, an NPO activation table with Draw card / Reshuffle, and campaign next-mission links. The standard head-to-head Approved Ops missions aren't free, so they aren't included.
+
 **Rules reference** (Rules tab): five tabs (How to Play, Moving & Terrain, Combat, Equipment, Glossary) plus a search box across everything. Every rule is a `RuleItem` card: name, one-line summary, and an arrow if it opens for more detail. Data lives in `GAME_SEQUENCE`, `CORE_CONCEPTS`, `CORE_ACTIONS`, `MOVEMENT_RULES`, `VISIBILITY_RULES`, `SHOOTING_RULES`, `FIGHTING_RULES`, `TERRAIN_TYPES`, `WR`, `UNIV_EQUIPMENT` and `GLOSSARY`, all using `{ name, tag?, summary, detail?, steps? }` (or mapped into it in `RULE_SECTIONS`). Core rules come from GW's free Kill Team Lite Rules (Jul '25) and the core rules update log (Jun '26). Markers and objectives (Pick Up Marker, Place Marker, marker control) aren't in any free GW PDF (checked the Lite rules, Approved Ops Tournament Companion and Hivestorm); they were written from the Core Book text on Wahapedia (Jun '26 version).
 
 **Tutorial** — step-by-step interactive walkthrough of a turning point against a bot, with real dice rolls.
@@ -143,6 +145,7 @@ These will bite you if you don't know them:
 10. **Team-building rules live in `composition`** (see the comment above `baseOf` for the full shape): `groups` (required/optional pick groups, optionally gated by a faction equipment id), `repeatable`, `maxCount`, `caps` (combined limits like "max 2 Gunners"), `requires` ("X needs Y"), and `cost` (½ or ×2 selections). `compCheck()` / `compCanAdd()` enforce them.
 
 11. **Team data is generated.** Don't hand-edit the `FACTIONS` block. Each team lives in `tools/teams/<team>.py` (a `TEAM` dict); `tools/teams/ORDER.txt` sets the picker order (Deathwatch last). Run `python3 tools/teams/build.py killsheet.html` to rewrite `FACTIONS`. The build validates ids, groups, caps and stat formats, and checks every weapon's ranged/melee type against `tools/text/<source>.wtypes.json` (read from the PDF's weapon icons).
+12. **Mission data is generated too.** Don't hand-edit the `MISSION_PACKS` block (between the `MISSION_PACKS:BEGIN/END` markers). Each pack lives in `tools/missions/<pack>.py` (a `PACK` dict built with the helpers in `_lib.py`); `ORDER.txt` sets the order. Run `python3 tools/missions/build.py killsheet.html`. Map images are whole PDF pages in `maps/<pack>-pNN.jpg`, made by `tools/missions/render_maps.py` from GW's PDFs (needs pypdf and macOS `sips`). The `Missions` component itself is normal hand-written code.
 
 ---
 
@@ -164,6 +167,7 @@ Planned implementation:
 Estimated 2-3 hours. Should be its own focused session with its own QA pass (mixing infra + UI changes tends to combine bugs confusingly).
 
 ### Done recently
+- Missions tab added (step 1): all 12 free mission packs, 40 missions, 64 map pages, enemy datacards, Draw card buttons for activation and event decks. The nav now has five tabs; on phones the icons stack above the labels so they fit.
 - Rules tab redesigned: 5 tabs instead of 10, search, one card style with an arrow on cards that open. New How to Play section (setup, turning points, Strategy and Firefight phases, CP, orders, stats, dice, damage). Fixed: Fighting listed the old-edition Assists rule; Counteract now says once per operative per turning point; Visibility cards looked tappable but did nothing. Added markers and objectives (Pick Up Marker, Place Marker, marker control).
 - Team picker reorganized: Imperium / Chaos / Xenos tabs, A-Z, a search box, and it collapses to a "Change team" bar after you pick. Picking your current team again no longer wipes the roster.
 - Batch 2 done: 30 more teams (Blades of Khaine through XV26 Stealth Battlesuits), for 48 in total. Updated Angels of Death, Kommandos, Plague Marines; added Death Korps, Exaction Squad, Kasrkin; Inquisitorial Agents now has every requisition group. Murderwing fix: a plasma-pistol Chaos Lord counts toward the max-2 plasma/melta limit.
@@ -181,6 +185,7 @@ Estimated 2-3 hours. Should be its own focused session with its own QA pass (mix
 - Pre-ship checker added: `python3 tools/check.py` (hooks before early returns, every tab has an icon and panel, unique localStorage keys, no direct localStorage use, print class, JSX script tag).
 
 ### Other open tasks (rough priority order)
+- **Missions step 2: play a mission from the Builder.** Replace the Mission Setup text box with a pack/mission picker that fills in turning points and killzone, show the mission's scoring next to the VP counter during a game, and for co-op missions show the enemy NPOs with wound trackers in place of the opponent's roster.
 - **Builder opens on the team picker**: right now the Builder reopens the last team you used (saved in `ks_fid`), with the picker collapsed. Instead, open with the picker showing and no team chosen. Decide what happens to a saved roster or game in progress: probably keep it, and offer "Continue with <team>" at the top of the picker.
 - **Legion of the Damned**: previewed in the Big Autumn Preview; add once its rules are published.
 - **Campaign tracking (Ctesiphus Expedition)**: track a map-based campaign across games. Needs the campaign PDF from the owner first, to see what it tracks (map territory, requisition points, operative experience, injuries and so on). Likely a new tab with its own saved state, and it may later need the same backend as Community Rosters if players want to share one campaign.

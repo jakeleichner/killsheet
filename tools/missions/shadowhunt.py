@@ -1,0 +1,173 @@
+from _lib import R, A, W, NPO, M, BEHAVIOUR, COOP_TEAM
+from tombworld import PACK as TOMB
+
+BRAWL_PRI = [
+    "Fight.",
+    "Charge the closest player operative by the shortest route.",
+    "Reposition towards the closest player operative, to cover if possible (a Dash can finish this).",
+    "Dash towards the closest player operative, to cover if possible.",
+]
+MARKS_PRI = [
+    "Fall Back, ideally where it has a valid target that isn't obscured.",
+    "Shoot.",
+    "Reposition, ideally where it has a valid target that isn't obscured (a Dash can finish this).",
+    "Dash, ideally where it has a valid target that isn't obscured.",
+    "Fight.",
+]
+BRAWL = "Moves in to fight, using cover on the way. Engage if it will Fight or Charge, otherwise Conceal."
+MARKS = "Moves to a good spot to shoot, and fights if it can't do anything else. Engage if it will Shoot or Fight, otherwise Conceal."
+JO_NPOS = "NPOs with a combined Wounds of up to {w}, set up with Conceal wholly within the NPO territories, in cover, split evenly between the two killzones."
+REINF = "From the second turning point on, as an NPO gambit, set up D3+1 NPOs, ready with Conceal, in the lower killzone, each at a random hatchway's access point ({n})."
+
+PACK = dict(
+    id="shadowhunt",
+    name="Shadowhunt",
+    kind="Joint Ops + Adversary Ops",
+    modes=["Co-op / solo", "Head-to-head"],
+    killzone="Descent (Volkus above, Tomb World below)",
+    summary="Fight across two boards stacked as one: a Volkus surface and a Necron tomb below, linked by entryways. Three co-op missions and three head-to-head ones, ending with a C'tan Shard waking up.",
+    source="Joint Ops: Shadowhunt Mission Pack",
+    keyMaps=["shadowhunt-p04", "shadowhunt-p05"],
+    rules=[
+        R("Descent killzone", "Two half-size boards: the upper one is Volkus, the lower one is Tomb World. Entryway markers link them.",
+          "Use a 607mm x 414mm board for the close quarters one and 559mm x 381mm for the other. Any Tomb World or Gallowdark board works if you use a 6 x 4 square area. You can fold a 30\" x 22\" board in half for the upper one."),
+        R("Climbing entryways", "An operative with an Entryway marker in its control range can climb it for 3\" of movement: set it up next to the same-numbered marker on the other board.",
+          "It can't end within enemy control range unless the action allows it (like Charge). It can keep moving if it has distance left. For distance rules, climbing counts as 3\"."),
+        R("Shooting through entryways", "Instead of a normal target, an operative with an Entryway marker in its control range can shoot an enemy that has the matching marker on the other board in its control range.",
+          "Ignore Range. That target can't be in cover or obscured. You still can't target an enemy with your own operatives in its control range. If the target is in a close quarters killzone, Condensed Environment applies."),
+        R("Teleporting and deep strike", "Rules that remove and set up an operative again (FLY, Shadow Passage, etc.) can't move it to the other board. Drop and Tunnel markers must go on one board.",
+          "Canoptek Circle obelisk nodes only link with nodes on the same board. An operative on guard that teleports to the other board is no longer on guard."),
+        R("NPO groups", "Gather NPO models and sort them into three groups by strength. To set up an NPO, roll 2D6 to pick the group (if it's empty, use the next one).", [
+            "2-5: Scarab Swarm, or any Trooper.",
+            "6-8: Macrocyte or Necron Warrior, or any Tough or Warrior.",
+            "9-12: Tomb Crawler, or any Heavy.",
+            "No more than 10 NPOs on the table at once.",
+        ]),
+        BEHAVIOUR,
+        R("NPOs on two boards", "NPOs open hatches when they need to, can use entryways and teleport pads, and move to cover when they can (often not possible below if they want to Charge or Shoot)."),
+        COOP_TEAM,
+        R("Co-op game sequence", "Pick the mission, set up both boards, sort your NPO groups, pick operatives, then set up.", steps=[
+            "Pick the mission (roll a D3, choose, or play 1-3 in order; mission 3 is hard). 'The killzone' means both boards.",
+            "Sort your NPO models into three groups. Pick your operatives. Take up to four equipment options between you and start with 2CP between you.",
+            "Set up your equipment, then the NPOs as the mission says, then your operatives wholly within your drop zone with Conceal orders.",
+            "You have initiative in the first turning point. After that, roll one die for the NPOs and one for you. If the NPOs win, they always take initiative. NPOs get no CP.",
+        ]),
+        R("Co-op threat principle", "When you make a choice for an NPO, pick the option that's worst for you. If you still can't decide, pick at random.", [
+            "Which NPO activates: the one that can Shoot or Fight and is most dangerous doing so, then one not in cover, then the closest to your operatives.",
+            "Where to set it up: where it's most likely to stop you winning, then where it can best Charge, Shoot or Fight, then where it isn't a valid target.",
+            "Who it fights: the operative it's most likely to incapacitate, then a ready one.",
+            "Who it shoots: the operative it's most likely to incapacitate, then one not obscured, not in cover, closest, then ready.",
+        ]),
+        R("Head-to-head game sequence", "Normal setup, with NPO groups and the mission's deployment rules.", steps=[
+            "Each player picks a kill team. Pick the mission and set up both boards. Roll off for initiative, set up objectives, then pick drop zones starting with the player with initiative.",
+            "Sort NPO models into three groups. Pick operatives and up to four equipment options in secret, then reveal. Each player gains 2CP.",
+            "Take turns setting up equipment item by item (in the lower board, only wholly within a room with your drop zone). Then take turns setting up a third of your team at a time, with Conceal.",
+            "Roll off for initiative in the first turning point (on a tie, the player who didn't have it at setup decides).",
+            "Most VP wins, except in mission 3. If one player has no operatives left, the other plays out the remaining turning points.",
+        ]),
+        R("Head-to-head NPOs", "When a mission sets up NPOs, roll off and take turns, starting with the winner, rolling 2D6 for each one's group.", [
+            "After both players have activated, one NPO activates. If several ready NPOs could go, roll off and the winner picks.",
+            "The NPO targets the closest visible player operative it could fight, shoot or move towards (closest of all if none are visible; climbing an entryway counts as 3\"). Roll off if tied.",
+            "The other player runs the NPO for that activation and must use it against that target. It can use entryways to get there.",
+            "NPOs don't counteract.",
+        ]),
+        R("Difficulty", "Set up one more (or one fewer) NPO each time, or change how many strong NPOs are in each group."),
+    ],
+    npos=list(TOMB["npos"]) + [
+        NPO("Trooper (Brawler)", 2, "6\"", "5+", 7, [W("Blades", "melee", 4, "4+", "3/4", "Ceaseless")], BRAWL, BRAWL_PRI, note="Generic NPO for any models (group 2-5)."),
+        NPO("Trooper (Marksman)", 2, "6\"", "5+", 7, [
+            W("Firearm", "ranged", 4, "4+", "2/3"),
+            W("Special weapon", "ranged", 4, "4+", "4/5", "Piercing 1"),
+            W("Knife", "melee", 3, "4+", "2/3"),
+        ], MARKS, MARKS_PRI, note="Generic NPO (group 2-5). Only 1 in 3 can have the special weapon."),
+        NPO("Tough (Brawler)", 2, "6\"", "4+", 10, [W("Blades", "melee", 4, "4+", "4/5", "Ceaseless")], BRAWL, BRAWL_PRI, note="Generic NPO (group 6-8)."),
+        NPO("Warrior (Marksman)", 2, "6\"", "4+", 8, [
+            W("Firearm", "ranged", 4, "3+", "3/4"),
+            W("Knife", "melee", 3, "4+", "2/3"),
+        ], MARKS, MARKS_PRI, note="Generic NPO (group 6-8)."),
+        NPO("Heavy (Marksman)", 3, "6\"", "3+", 14, [
+            W("Firearm", "ranged", 4, "3+", "3/4"),
+            W("Knife", "melee", 4, "3+", "3/4"),
+        ], MARKS, MARKS_PRI, rules=[("Double tap", "Can Shoot twice in one activation.")], note="Generic NPO (group 9-12)."),
+        NPO("Heavy (Brawler)", 3, "6\"", "3+", 14, [W("Blades", "melee", 5, "3+", "4/5", "Ceaseless")], BRAWL, BRAWL_PRI,
+            rules=[("Brawler", "Can Fight twice in one activation.")], note="Generic NPO (group 9-12)."),
+        NPO("C'tan Shard of the Nightbringer", 2, "5\"", "4+", 25, [
+            W("Gaze of death", "ranged", 4, "3+", "5/0", "Range 6\", Devastating 5, Severe"),
+            W("Scythe of the Nightbringer", "melee", 5, "3+", "5/6", "Lethal 5+, Rending"),
+        ], "Goes after your operatives to fight, and shoots if it can't.", [
+            "Fight.",
+            "Charge the closest player operative by the shortest route.",
+            "Shoot.",
+            "Reposition towards the closest player operative.",
+        ], rules=[
+            ("Mighty Foe", "Never has a Conceal order, is never in cover or obscured, and is never readied or expended. When it's the NPOs' turn, roll a D6: on 4+ it activates (skip if it's not on the table), on 1-3 another ready NPO does. It can Fight twice per activation but can't move more than 12\" per turning point."),
+            ("Necrodermis", "It can't be injured and its stats can't change. Piercing against it is 1 lower (so Piercing 1 does nothing)."),
+            ("Indomitable Reanimation", "When incapacitated, mark its spot with a Reanimation marker and remove it (clearing tokens). In the next Ready step, roll D3+1. After that many activations it returns there with Engage and full wounds, pushing other operatives aside."),
+            ("Domineering Presence", "It moves through terrain (even walls) and operatives, but must end where it can be placed. Light terrain it moves through is removed unless attached to Heavy terrain. Operatives under it are moved next to it. An operative on Vantage within 2\" horizontally is in its control range."),
+        ], note="Only in co-op mission 3 and head-to-head mission 3."),
+    ],
+    missions=[
+        M(1, "Find the Source", "Co-op", "Trace an energy signal down into the tomb and scan the sarcophagus that holds it.",
+          maps=["shadowhunt-p15"],
+          rules=[
+              R("NPOs", JO_NPOS.format(w=110)),
+              R("Locate Signature", "Until the sarcophagus (C1) appears, the first time one of your operatives enters each lower room with an objective marker, roll a D3 (+1 for each room already searched). On 4+, set up the sarcophagus on that marker, facing as the map shows. The last such room always finds it."),
+              R("NPO reinforcements", REINF.format(n="three hatchways: roll a D3")),
+          ],
+          victory=["When one of your operatives ends an activation with the sarcophagus in its control range, it's scanned. You win after three scans.", "You lose if all your operatives are incapacitated."]),
+        M(2, "The Sarcophagus", "Co-op", "Bring extraction gear down from the surface and crack the sarcophagus open.",
+          maps=["shadowhunt-p17"],
+          rules=[
+              R("NPOs", JO_NPOS.format(w=110)),
+              R("Split Mission", "Set up half your operatives in your drop zone on the lower board, and the rest on the Vantage terrain of Stronghold B on the upper board."),
+              R("Extraction", "Pick one operative on the upper board to carry your Extraction marker. Your operatives can pick it up.",
+                "The carrier can't Charge or Dash, and can't be removed and set up more than 6\" away."),
+              R("NPO reinforcements", REINF.format(n="four hatchways: roll a D6, re-roll 5-6")),
+              R("Core Extraction", "The sarcophagus (C1) counts as an objective marker and starts with 2 Integrity points."),
+          ],
+          actions=[A("Extract Core", 1, "If this operative carries the Extraction marker, controls the sarcophagus and no NPO contests it, remove one Integrity point.",
+                     "Not in the first turning point, not within an enemy's control range, and only once per turning point for your whole team.")],
+          victory=["You win when the sarcophagus has no Integrity points left.", "You lose if all your operatives are incapacitated."]),
+        M(3, "Rising Doom", "Co-op", "You freed a C'tan Shard. Now run for the surface before it kills you all.",
+          maps=["shadowhunt-p19"],
+          rules=[
+              R("NPOs", JO_NPOS.format(w=90) + " At the end of the first turning point, remove the sarcophagus and place the C'tan Shard of the Nightbringer in the centre of that room."),
+              R("Escape", "When one of your operatives ends its activation on the Vantage terrain of Stronghold B and not within an enemy's control range, you can remove it: it has escaped."),
+          ],
+          victory=["When all your operatives have left the killzone, the battle ends.", "You win if at least a third of them (round up) escaped."]),
+        M(4, "Into the Depths", "Head-to-head", "Two teams fight over a dig site and break into a Necron tomb below.",
+          maps=["shadowhunt-p23"],
+          rules=[
+              R("Restricted Deployment", "Nothing can be set up on the lower board before the battle: no operatives, equipment or markers."),
+              R("NPOs", "The first time a player's operative opens or enters each lower room, their opponent sets up one NPO wholly within it, more than 2\" from other operatives if possible."),
+          ],
+          actions=[A("Secure", 1, "Secure an objective marker you control. It stays yours until your opponent secures it.",
+                     "Not in the first turning point, or within an enemy's control range.")],
+          victory=["Score 1VP for each objective your team has secured.", "Score 1VP for each objective your operatives control.",
+                   "At the end of any turning point from the fourth on, a player who has scored VP can end the battle. It also ends if every player operative is incapacitated."]),
+        M(5, "Unlock the Vault", "Head-to-head", "Break into the vault at the heart of the tomb while holding the routes down to it.",
+          maps=["shadowhunt-p25"],
+          rules=[
+              R("Restricted Deployment", "A third of each team must start on the lower board, the rest on the upper board."),
+              R("NPOs", "After equipment, before operatives, players take turns setting up two NPOs each on the lower board (starting with initiative), more than 8\" from drop zones and 4\" from each other if possible.",
+                "In each Ready step, if there are no NPOs on the lower board, the player without initiative sets one up, ready with Conceal, within 3\" of the right-hand top or bottom corner of the lower board."),
+              R("Locked Vault", "The objective marker starts locked. At the end of any turning point from the fourth on, if it's unlocked and a player's operatives control it, that player can end the battle."),
+          ],
+          actions=[A("Unlock Vault", 1, "Roll a D3 and add the turning point number. 6+: a locked objective you control is unlocked. 5 or less, with fewer than 4 NPOs below: your opponent sets up one ready NPO with Conceal within 3\" of the right-hand top or bottom corner of the lower board.",
+                     "Not in the first turning point, or within an enemy's control range.")],
+          victory=["Score 1VP if your operative unlocks the objective.", "At the end, score 1VP if your operatives control the unlocked objective.",
+                   "At the end, score 1VP for each Entryway pair you control (your total APL contesting both matching markers is higher)."]),
+        M(6, "Awakening", "Head-to-head", "Grab the relic from the open vault and escape before the C'tan Shard catches you.",
+          maps=["shadowhunt-p27"],
+          rules=[
+              R("Restricted Deployment", "At least a third of each team must start on each board. No equipment or markers in the lower board's central room."),
+              R("NPOs", "No NPOs, apart from the C'tan Shard when it wakes."),
+              R("Breach the Vault", "Entryway markers start unclimbable. Your operatives can Breach an Entryway marker in their control range to make it climbable on both boards."),
+              R("Find the Relic", "Operatives can pick up the objective marker. The carrier's weapons get -1 to Hit (worse), it can't be removed and set up more than 6\" away, and it can escape over either player's killzone edge on the upper board."),
+              R("Awoken Nightmare", "The first time someone picks up the objective, roll 2D3. After that many more activations, set up the C'tan Shard, ready with Engage, on a random teleport pad (T). Any player operatives on that pad are incapacitated and removed."),
+          ],
+          victory=["If your operative escapes carrying the relic, you win.", "If every player operative is incapacitated, it's a draw."]),
+        M("MAPS", "Descent maps for other missions", "Head-to-head", "Six Descent killzone maps with three objective markers each, for playing Preliminary Ops or Approved Ops on two boards. Follow that mission pack's game sequence and set up the killzone from one of these maps.",
+          maps=["shadowhunt-p29", "shadowhunt-p30", "shadowhunt-p31", "shadowhunt-p32", "shadowhunt-p33", "shadowhunt-p34"]),
+    ],
+)
