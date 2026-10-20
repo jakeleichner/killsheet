@@ -5689,25 +5689,6 @@ function compCheck(f, roster, eq) {
   return { errors, warnings, complete, selections: compSelections(c, roster) };
 }
 
-/* ═══ TUTORIAL ═══ */
-const TUT = [
-  { id: 0, ph: "Setup", t: "Welcome", b: "A game consists of 4 TPs on a 30x22\" board. Each TP has a Strategy phase and Firefight phase. Deploy in drop zones within 3\" of edge. All operatives start with a Conceal order.", c: [{ l: "Begin", n: 1 }] },
-  { id: 1, ph: "Strategy", t: "Initiative", b: "Both D6. Highest decides. Tie: non-initiative decides. Start 2CP. TP1: +1 each. After: initiative +1, other +2.", c: [{ l: "Take initiative", n: 2 }, { l: "Give to opponent", n: 3 }] },
-  { id: 2, ph: "Strategy", t: "You Have Initiative", b: "Activate first. Ready all. Spend CP on Strategic Gambits.", c: [{ l: "Continue", n: 4 }] },
-  { id: 3, ph: "Strategy", t: "Opponent Initiative", b: "They act first but you get more CP.", c: [{ l: "Continue", n: 4 }] },
-  { id: 4, ph: "Firefight", t: "First Activation", b: "Select ready operative. Choose Engage or Conceal. Spend APL on actions.", c: [{ l: "Reposition + Shoot", n: 5 }, { l: "Charge", n: 6 }, { l: "Dash + objective", n: 7 }, { l: "Conceal", n: 8 }] },
-  { id: 5, ph: "Firefight", t: "Shoot", b: "Reposition (1AP) then Shoot (1AP). ATK >= Hit. 3D6 >= Save. Cover: +1 auto.", c: [{ l: "Open", n: 9 }, { l: "Cover", n: 10 }] },
-  { id: 6, ph: "Firefight", t: "Charge!", b: "Charge (1AP): Move+2\" into CR. Fight (1AP): both roll, alternate.", c: [{ l: "Melee", n: 11 }] },
-  { id: 7, ph: "Firefight", t: "Dash", b: "Dash (1AP): 3\" max. Mission actions with remaining AP.", c: [{ l: "Continue", n: 12 }] },
-  { id: 8, ph: "Firefight", t: "Conceal", b: "Untargetable in cover. Kommandos: Throat Slittas allows Charge!", c: [{ l: "Continue", n: 12 }] },
-  { id: 9, ph: "Combat", t: "Open Target", b: "No cover. ATK >= Hit (6=crit). 3D6 >= Save. Block: norm-norm, crit-any, 2 norms-crit.", c: [{ l: "Damage", n: 13 }, { l: "Saved", n: 12 }] },
-  { id: 10, ph: "Combat", t: "In Cover", b: "+1 auto normal defence success. Use Saturate to deny!", c: [{ l: "Damage", n: 13 }, { l: "Saved", n: 12 }] },
-  { id: 11, ph: "Combat", t: "Melee", b: "Both roll ATK. Alternate: Strike (deal dmg) or Block (cancel). Crits = Critical Dmg.", c: [{ l: "Resolve", n: 13 }] },
-  { id: 12, ph: "Firefight", t: "Alternate", b: "Opponent activates. Alternate until all expended. Counteract: free 1AP for Engaged.", c: [{ l: "End TP", n: 14 }] },
-  { id: 13, ph: "Combat", t: "Damage", b: "Normal/Crit Dmg vs Wounds. <half = Injured. 0 = removed.", c: [{ l: "Eliminated", n: 12 }, { l: "Survives", n: 12 }] },
-  { id: 14, ph: "End Phase", t: "Scoring", b: "Score VP. Check markers. Remove casualties. 4 TPs total.", c: [{ l: "Next TP", n: 1 }, { l: "End", n: 0 }] },
-];
-
 /* ═══ UNIVERSAL EQUIPMENT (Builder) ═══ */
 const UNIV_EQUIP = [
   { id: "frag_gren", name: "Frag Grenades", category: "Explosive Grenades", desc: "Select 2 explosive grenades total (2 frag, 2 krak, or 1 each). Uses shared across kill team.",
@@ -6468,8 +6449,8 @@ function WeaponBox({ w, tag, wtype, cp, setCp, requestDamageApply, applySelfDama
         <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
           {[["ATK", w.atk], ["HIT", w.hit], ["DMG", w.dmg]].map(([label, val]) => (
             <span key={label} style={{ display: "inline-flex", alignItems: "baseline", gap: 4 }}>
-              <span style={{ fontSize: 11, color: "#9AA5B1", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.08em", fontWeight: 600 }}>{label}</span>
-              <span style={{ fontSize: 17, fontWeight: 700, color: "#F1F2F5", fontFamily: "'Rajdhani', sans-serif" }}>{val}</span>
+              <span style={{ fontSize: 13, color: "#9AA5B1", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.06em", fontWeight: 600 }}>{label}</span>
+              <span style={{ fontSize: 19, fontWeight: 700, color: "#F1F2F5", fontFamily: "'Rajdhani', sans-serif" }}>{val}</span>
             </span>
           ))}
           <button onClick={(e) => { e.stopPropagation(); setRolling(!rolling); }} aria-label={rolling ? "Close dice roller" : "Roll dice for " + w.name}
@@ -6579,10 +6560,10 @@ function Datacard({ op, fc, equipWeapons, equipEffects, curWounds, onWound, coll
               </div>
               {collapsed && (
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, fontFamily: DS.fontDisplay }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: DS.textPrimary }}>{op.apl}</span>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: injured ? DS.threat : DS.textPrimary }}>{moveDisplay}</span>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: DS.textPrimary }}>{op.save}</span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: woundColorTone }}>{cw}/{maxW}</span>
+                  <span style={{ fontSize: 16, fontWeight: 600, color: DS.textPrimary }}>{op.apl}</span>
+                  <span style={{ fontSize: 16, fontWeight: 600, color: injured ? DS.threat : DS.textPrimary }}>{moveDisplay}</span>
+                  <span style={{ fontSize: 16, fontWeight: 600, color: DS.textPrimary }}>{op.save}</span>
+                  <span style={{ fontSize: 16, fontWeight: 700, color: woundColorTone }}>{cw}/{maxW}</span>
                   {incapacitated && <Icon name="skull" size={14} color={DS.threat} />}
                 </div>
               )}
@@ -6608,20 +6589,20 @@ function Datacard({ op, fc, equipWeapons, equipEffects, curWounds, onWound, coll
                 { label: "SAVE", val: op.save, color: DS.textPrimary },
               ].map(s => (
                 <div key={s.label} style={{ textAlign: "center", padding: "14px 4px", borderRight: "1px solid " + DS.divider }}>
-                  <div style={{ fontFamily: DS.fontDisplay, fontSize: 26, fontWeight: 700, color: s.color, lineHeight: 1, letterSpacing: "-0.01em" }}>{s.val}</div>
-                  <div style={{ fontFamily: DS.fontDisplay, fontSize: 11, fontWeight: 500, color: DS.textSecondary, marginTop: 6, letterSpacing: "0.14em", textTransform: "uppercase" }}>{s.label}</div>
+                  <div style={{ fontFamily: DS.fontDisplay, fontSize: 30, fontWeight: 700, color: s.color, lineHeight: 1, letterSpacing: "-0.01em" }}>{s.val}</div>
+                  <div style={{ fontFamily: DS.fontDisplay, fontSize: 14, fontWeight: 600, color: DS.textSecondary, marginTop: 6, letterSpacing: "0.1em", textTransform: "uppercase" }}>{s.label}</div>
                 </div>
               ))}
               {/* Interactive wounds cell */}
               <div style={{ textAlign: "center", padding: "10px 4px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
                   <button className="compact-btn" onClick={(e) => { e.stopPropagation(); onWound(-1); }} style={{ width: 32, height: 32, border: "1px solid " + DS.divider, borderRadius: 4, background: DS.bgElevated, color: DS.threat, cursor: "pointer", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, lineHeight: 1 }}>{"\u2212"}</button>
-                  <div style={{ fontFamily: DS.fontDisplay, fontSize: 22, fontWeight: 700, color: woundColorTone, lineHeight: 1, minWidth: 50 }}>
+                  <div style={{ fontFamily: DS.fontDisplay, fontSize: 28, fontWeight: 700, color: woundColorTone, lineHeight: 1, minWidth: 50 }}>
                     {cw}<span style={{ fontSize: 13, color: DS.textSecondary, fontWeight: 500 }}>/{maxW}</span>
                   </div>
                   <button className="compact-btn" onClick={(e) => { e.stopPropagation(); onWound(1); }} style={{ width: 32, height: 32, border: "1px solid " + DS.divider, borderRadius: 4, background: DS.bgElevated, color: DS.success, cursor: "pointer", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, lineHeight: 1 }}>+</button>
                 </div>
-                <div style={{ fontFamily: DS.fontDisplay, fontSize: 11, fontWeight: 500, color: injured ? DS.threat : (rawInjured && ignoreInjured) ? DS.success : DS.textSecondary, marginTop: 6, letterSpacing: "0.14em", textTransform: "uppercase" }}>{injured ? "Injured" : incapacitated ? "Down" : rawInjured ? "Low" : "Wounds"}</div>
+                <div style={{ fontFamily: DS.fontDisplay, fontSize: 14, fontWeight: 600, color: injured ? DS.threat : (rawInjured && ignoreInjured) ? DS.success : DS.textSecondary, marginTop: 6, letterSpacing: "0.1em", textTransform: "uppercase" }}>{injured ? "Injured" : incapacitated ? "Down" : rawInjured ? "Low" : "Wounds"}</div>
               </div>
             </div>
 
@@ -13993,623 +13974,419 @@ function Missions() {
 }
 
 /* ═══ TUTORIAL ═══ */
+// One turning point against a bot, with the real datacards (Angels of Death Intercessors vs Kommandos).
+const TUT_UNITS = {
+  sgt: { name: "Intercessor Sergeant", side: "you", apl: 3, move: "6\"", save: "3+", wounds: 15, weapon: "Bolt rifle 4 · 3+ · 3/4" },
+  war: { name: "Intercessor Warrior", side: "you", apl: 3, move: "6\"", save: "3+", wounds: 14, weapon: "Fists 4 · 3+ · 3/4" },
+  nob: { name: "Boss Nob", side: "opp", apl: 3, move: "6\"", save: "5+", wounds: 14, weapon: "Big choppa 5 · 3+ · 5/6" },
+  boy: { name: "Kommando Boy", side: "opp", apl: 2, move: "6\"", save: "5+", wounds: 10, weapon: "Choppa 4 · 3+ · 4/5" },
+};
+const TUT_STEPS = [
+  ["Setup", "Welcome"], ["Strategy", "Initiative"], ["Strategy", "Strategy phase"], ["Firefight", "Your activation"],
+  ["Firefight", "Shoot: attack dice"], ["Firefight", "Shoot: defence dice"], ["Firefight", "Enemy activation"],
+  ["Firefight", "Fight: roll"], ["Firefight", "Fight: strike or block"], ["Firefight", "Finishing the turning point"], ["Setup", "Done"],
+];
+const TUT_PHASE_COLOR = { Setup: "#9AA5B1", Strategy: "#C9772E", Firefight: "#D0573A" };
+
+// Defender's best use of saves against attack successes (normal dmg n, crit dmg c).
+function tutBlock(crits, normals, critSaves, normSaves, n, c) {
+  const use1 = Math.min(critSaves, crits); crits -= use1; critSaves -= use1;            // crit saves on crits
+  const use2 = Math.min(normSaves, normals); normals -= use2; normSaves -= use2;        // normal saves on normals
+  const use3 = Math.min(critSaves, normals); normals -= use3; critSaves -= use3;        // spare crit saves on normals
+  const pairs = Math.min(Math.floor(normSaves / 2), crits); crits -= pairs;             // two normal saves block a crit
+  return { crits, normals, damage: crits * c + normals * n };
+}
+
 function Tutorial() {
   const mobile = useIsMobile();
   const [step, setStep] = useState(0);
-  const [diceResults, setDiceResults] = useState(null);
-  const [playerInit, setPlayerInit] = useState(null);
-  const [botInit, setBotInit] = useState(null);
-  const [atkDice, setAtkDice] = useState(null);
-  const [defDice, setDefDice] = useState(null);
-  const [meleePlayerDice, setMeleePlayerDice] = useState(null);
-  const [meleeBotDice, setMeleeBotDice] = useState(null);
-  const [meleeStep, setMeleeStep] = useState(0);
-  const [meleePlayerSuccesses, setMeleePlayerSuccesses] = useState([]);
-  const [meleeBotSuccesses, setMeleeBotSuccesses] = useState([]);
-  const [playerHP, setPlayerHP] = useState({ marine1: 12, marine2: 12 });
-  const [botHP, setBotHP] = useState({ boy1: 10, boy2: 10 });
-  const [choice, setChoice] = useState(null);
-  const [shootDmg, setShootDmg] = useState(0);
+  const [init, setInit] = useState(null);           // { you, opp, youHave }
+  const [order, setOrder] = useState(null);
+  const [atk, setAtk] = useState(null);
+  const [def, setDef] = useState(null);
+  const [hp, setHp] = useState({ sgt: 15, war: 14, nob: 14, boy: 10 });
+  const [fight, setFight] = useState(null);         // { youDice, oppDice, you: [..], opp: [..], turn, log: [] }
 
-  const rollD6 = () => Math.floor(Math.random() * 6) + 1;
-  const rollMultiple = (n) => Array.from({ length: n }, rollD6);
+  const d6 = () => Math.floor(Math.random() * 6) + 1;
+  const roll = (n) => Array.from({ length: n }, d6);
+  const go = (n) => { setStep(n); window.scrollTo(0, 0); };
+  const restart = () => { setStep(0); setInit(null); setOrder(null); setAtk(null); setDef(null); setFight(null); setHp({ sgt: 15, war: 14, nob: 14, boy: 10 }); window.scrollTo(0, 0); };
 
-  const DieBox = ({ val, color, size }) => (
-    <div style={{ width: size || 36, height: size || 36, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 4, background: "#0E0F13", border: "2px solid " + (color || "#C9772E"), fontSize: size ? size * 0.5 : 18, fontWeight: 700, color: color || "#C9772E", fontFamily: "'Courier New', monospace", boxShadow: "0 2px 8px rgba(0,0,0,0.5)" }}>{val}</div>
+  // ── Pieces ──
+  const Say = ({ children }) => <p style={{ fontSize: 15, color: "#E4E7EB", lineHeight: 1.65, marginBottom: 12 }}>{children}</p>;
+  const B = ({ children, color }) => <strong style={{ color: color || "#C9772E", fontWeight: 700 }}>{children}</strong>;
+  const Next = ({ to, label }) => (
+    <button onClick={() => go(to)} style={{ ...bs("#C9772E"), background: "#C9772E18", padding: "12px 18px", fontSize: 14, marginTop: 6, display: "inline-flex", alignItems: "center", gap: 6 }}>{label || "Continue"} {"›"}</button>
   );
-
-  const Narrator = ({ children }) => (
-    <div style={{ fontSize: 13, color: "#F1F2F5", lineHeight: 1.7, marginBottom: 12 }}>{children}</div>
+  const Act = ({ children, onClick, color, disabled }) => (
+    <button onClick={onClick} disabled={disabled} style={{ ...bs(color || "#C9772E"), background: (color || "#C9772E") + "18", padding: "12px 16px", fontSize: 14, width: "100%", marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: disabled ? 0.4 : 1, cursor: disabled ? "default" : "pointer" }}>{children}</button>
   );
-
-  const Highlight = ({ children, color }) => (
-    <span style={{ color: color || "#C9772E", fontWeight: 700 }}>{children}</span>
+  const Box = ({ title, children, color }) => (
+    <div style={{ background: "#0E0F13", border: "1px solid " + (color || "#3A4150"), borderRadius: 6, padding: "10px 12px", marginBottom: 12 }}>
+      {title && <div style={{ ...h3, color: color || "#9AA5B1", marginBottom: 6 }}>{title}</div>}
+      <div style={{ fontSize: 14, color: "#C8CDD3", lineHeight: 1.6 }}>{children}</div>
+    </div>
   );
-
-  const UnitCard = ({ name, hp, maxHp, color, stats }) => {
-    const pct = (hp / maxHp) * 100;
-    const barColor = pct > 50 ? "#3D6B3F" : pct > 25 ? "#C9772E" : "#B8341C";
+  const Die = ({ v, kind }) => {
+    const col = kind === "crit" ? "#FFB627" : kind === "hit" ? "#5A9C3A" : "#B8341C";
+    return <div style={{ width: 40, height: 40, borderRadius: 6, border: "2px solid " + col, background: col + "18", color: col, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif" }}>{v}</div>;
+  };
+  const DiceRow = ({ dice, hit }) => (
+    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+      {dice.map((v, i) => <Die key={i} v={v} kind={v === 6 ? "crit" : v >= hit ? "hit" : "miss"} />)}
+    </div>
+  );
+  const count = (dice, hit) => ({ crits: dice.filter(v => v === 6).length, normals: dice.filter(v => v >= hit && v < 6).length, fails: dice.filter(v => v < hit || v === 1).length });
+  const Unit = ({ id }) => {
+    const u = TUT_UNITS[id];
+    const w = hp[id];
+    const col = u.side === "you" ? "#5A9C3A" : "#D0573A";
+    const pct = Math.max(0, w) / u.wounds * 100;
     return (
-      <div style={{ background: "#262A33", border: "1px solid " + color + "40", borderRadius: 4, padding: "8px 12px", flex: 1, minWidth: 120 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color, fontFamily: "'Rajdhani', sans-serif" }}>{name}</div>
-        <div style={{ fontSize: 11, color: "#9AA5B1", marginTop: 2 }}>{stats}</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
-          <div style={{ flex: 1, height: 4, background: "#262A33", borderRadius: 2, overflow: "hidden" }}>
-            <div style={{ height: "100%", width: pct + "%", background: barColor, transition: "width 0.5s" }} />
-          </div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: barColor }}>{hp}/{maxHp}</div>
+      <div style={{ ...cd, padding: "10px 12px", marginBottom: 8, borderLeft: "3px solid " + col, opacity: w <= 0 ? 0.5 : 1 }}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+          <span style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 700, color: "#F1F2F5", fontFamily: "'Rajdhani', sans-serif", textDecoration: w <= 0 ? "line-through" : "none" }}>{u.name}</span>
+          <span style={{ fontSize: 15, fontWeight: 700, color: w <= 0 ? "#B8341C" : w < u.wounds / 2 ? "#FFB627" : col, fontFamily: "'Rajdhani', sans-serif" }}>{Math.max(0, w)}/{u.wounds}W</span>
         </div>
+        <div style={{ fontSize: 13, color: "#9AA5B1", marginTop: 2 }}>APL {u.apl} {"·"} Move {u.move} {"·"} Save {u.save} {"·"} {u.weapon}</div>
+        <div style={{ height: 4, background: "#0E0F13", borderRadius: 2, marginTop: 6 }}><div style={{ height: 4, width: pct + "%", background: col, borderRadius: 2, transition: "width 0.4s" }} /></div>
       </div>
     );
   };
-
-  const ActionBtn = ({ children, onClick, color, disabled }) => (
-    <button onClick={onClick} disabled={disabled} style={{ ...bs(color || "#C9772E"), padding: "10px 16px", fontSize: 12, fontWeight: 700, width: "100%", marginBottom: 6, background: (color || "#C9772E") + "10", opacity: disabled ? 0.4 : 1, cursor: disabled ? "not-allowed" : "pointer", letterSpacing: "0.04em" }}>{children}</button>
-  );
-
-  const NextBtn = ({ onClick, label }) => (
-    <button onClick={onClick} style={{ ...bs("#C9772E"), padding: "10px 20px", fontSize: 12, fontWeight: 700, marginTop: 8, background: "#C9772E10" }}>{label || "Continue \u25B6"}</button>
-  );
-
-  const Section = ({ title, phase, children }) => {
-    const pc = { Setup: "#9AA5B1", Strategy: "#C9772E", Firefight: "#B8341C", Combat: "#B8341C", Shooting: "#C9772E", Fighting: "#B8341C", Scoring: "#9B59B6" };
-    const c = pc[phase] || "#C9772E";
-    return (
-      <div style={{ ...cd, padding: mobile ? 14 : 20, borderColor: c + "40", marginBottom: 10 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-          <span style={bg(c)}>{phase}</span>
-          <span style={{ fontSize: 11, color: "#9AA5B1" }}>Step {step + 1} / 12</span>
-        </div>
-        <div style={{ fontSize: 18, fontWeight: 700, color: c, fontFamily: "'Rajdhani', sans-serif", marginBottom: 10, letterSpacing: "0.04em", textShadow: "0 1px 8px " + c + "30" }}>{title}</div>
-        {children}
-      </div>
-    );
-  };
-
-  const Battlefield = () => (
-    <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
-      <div style={{ flex: 1, minWidth: 140 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: "#3D6B3F", letterSpacing: "0.1em", marginBottom: 4 }}>YOUR TEAM</div>
-        <UnitCard name="Intercessor Sgt" hp={playerHP.marine1} maxHp={12} color="#3D6B3F" stats={"APL 3 \u2022 3+ Save \u2022 Bolt rifle 4/5"} />
-        <div style={{ height: 4 }} />
-        <UnitCard name="Intercessor" hp={playerHP.marine2} maxHp={12} color="#3D6B3F" stats={"APL 3 \u2022 3+ Save \u2022 Bolt rifle 4/5"} />
-      </div>
-      <div style={{ flex: 1, minWidth: 140 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: "#B8341C", letterSpacing: "0.1em", marginBottom: 4 }}>ENEMY TEAM</div>
-        <UnitCard name="Ork Boy Nob" hp={botHP.boy1} maxHp={10} color="#B8341C" stats={"APL 2 \u2022 5+ Save \u2022 Choppa 4/5"} />
-        <div style={{ height: 4 }} />
-        <UnitCard name="Ork Boy" hp={botHP.boy2} maxHp={10} color="#B8341C" stats={"APL 2 \u2022 5+ Save \u2022 Slugga 3/4"} />
-      </div>
+  const Teams = () => (
+    <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "1fr 1fr", gap: mobile ? 0 : 12, marginBottom: 6 }}>
+      <div><div style={{ ...h3, color: "#5A9C3A" }}>Your team</div><Unit id="sgt" /><Unit id="war" /></div>
+      <div><div style={{ ...h3, color: "#D0573A" }}>Enemy team</div><Unit id="nob" /><Unit id="boy" /></div>
     </div>
   );
 
-  const restart = () => {
-    setStep(0); setDiceResults(null); setPlayerInit(null); setBotInit(null);
-    setAtkDice(null); setDefDice(null); setChoice(null); setShootDmg(0);
-    setMeleePlayerDice(null); setMeleeBotDice(null); setMeleeStep(0);
-    setMeleePlayerSuccesses([]); setMeleeBotSuccesses([]);
-    setPlayerHP({ marine1: 12, marine2: 12 }); setBotHP({ boy1: 10, boy2: 10 });
+  // ── Shooting maths ──
+  const a = atk ? count(atk, 3) : null;
+  const pierced = a && a.crits > 0;                  // Piercing Crits 1: one fewer defence die
+  const defDice = pierced ? 2 : 3;
+  const d = def ? count(def, 5) : null;
+  const shot = a && d ? tutBlock(a.crits, a.normals, d.crits, d.normals, 3, 4) : null;
+
+  // ── Fight: alternate resolving successes, attacker (Nob) first ──
+  const startFight = () => {
+    const nob = roll(5), war = roll(4);
+    const succ = (dice) => dice.filter(v => v >= 3 || v === 6).map(v => v === 6 ? "crit" : "norm").sort((x, y) => (x === "crit" ? -1 : 1));
+    setFight({ youDice: war, oppDice: nob, you: succ(war), opp: succ(nob), turn: "opp", log: [] });
   };
+  const DMG = { opp: { norm: 5, crit: 6 }, you: { norm: 3, crit: 4 } };
+  const fightOver = fight && (hp.war <= 0 || hp.nob <= 0 || (fight.you.length === 0 && fight.opp.length === 0));
+  const nextTurn = (f) => (f.turn === "opp" ? (f.you.length ? "you" : "opp") : (f.opp.length ? "opp" : "you"));
+  const oppResolves = () => {
+    // The Nob always strikes, crits first.
+    const f = { ...fight, opp: [...fight.opp], you: [...fight.you], log: [...fight.log] };
+    const s = f.opp.shift();
+    const dmg = DMG.opp[s];
+    setHp(h => ({ ...h, war: h.war - dmg }));
+    f.log.push("Nob strikes with a " + (s === "crit" ? "crit" : "normal success") + ": " + dmg + " damage.");
+    f.turn = nextTurn(f);
+    setFight(f);
+  };
+  const youResolve = (mode) => {
+    const f = { ...fight, opp: [...fight.opp], you: [...fight.you], log: [...fight.log] };
+    // Use a normal success if it can do the job, so crits are kept for later.
+    let s;
+    if (mode === "block") {
+      const canNormBlock = f.opp.includes("norm") && f.you.includes("norm");
+      s = canNormBlock ? "norm" : "crit";
+      f.you.splice(f.you.indexOf(s), 1);
+      const target = s === "crit" && f.opp.includes("crit") ? "crit" : "norm";
+      f.opp.splice(f.opp.indexOf(target), 1);
+      f.log.push("You block one of the Nob's " + (target === "crit" ? "crits" : "normal successes") + ".");
+    } else {
+      s = f.you.includes("crit") ? "crit" : "norm";
+      f.you.splice(f.you.indexOf(s), 1);
+      const dmg = DMG.you[s];
+      setHp(h => ({ ...h, nob: h.nob - dmg }));
+      f.log.push("You strike with a " + (s === "crit" ? "crit" : "normal success") + ": " + dmg + " damage.");
+    }
+    f.turn = nextTurn(f);
+    setFight(f);
+  };
+  const canBlock = fight && fight.you.length > 0 && fight.opp.length > 0 && (fight.you.includes("crit") || fight.opp.includes("norm"));
 
-  // Progress bar
-  const Progress = () => (
-    <div style={{ display: "flex", gap: 2, marginBottom: 12 }}>
-      {Array.from({ length: 12 }, (_, i) => (
-        <div key={i} style={{ flex: 1, height: 4, borderRadius: 2, background: i <= step ? (i < 3 ? "#C9772E" : i < 9 ? "#B8341C" : "#9B59B6") : "#262A33", transition: "background 0.3s" }} />
-      ))}
-    </div>
-  );
+  const phase = TUT_STEPS[step][0];
+  const pc = TUT_PHASE_COLOR[phase];
 
-  const steps = [
-    // 0: Welcome
+  const body = [
+    // 0 Welcome
     () => (
-      <Section title="Welcome, Commander" phase="Setup">
-        <Narrator>
-          This tutorial takes you through <Highlight>one full Turning Point</Highlight>: you roll for initiative, activate operatives, shoot, and fight in melee.
-        </Narrator>
-        <Narrator>
-          You command <Highlight color="#3D6B3F">two Space Marine Intercessors</Highlight>. The enemy has <Highlight color="#B8341C">two Ork Boyz</Highlight>. Your Marines are tougher and shoot better. The Orks are scrappy in melee.
-        </Narrator>
-        <Battlefield />
-        <Narrator>
-          A game lasts <Highlight>4 Turning Points</Highlight>. Each TP has two phases: <Highlight>Strategy</Highlight> (planning) and <Highlight color="#B8341C">Firefight</Highlight> (action).
-        </Narrator>
-        <NextBtn onClick={() => setStep(1)} label={"Start Turning Point 1 \u25B6"} />
-      </Section>
+      <div>
+        <Say>This walkthrough plays <B>one full turning point</B> of Kill Team: roll for initiative, activate an operative, shoot, then survive an Ork charge in a fight. The dice are real; the enemy plays itself.</Say>
+        <Teams />
+        <Say>A battle lasts <B>four turning points</B>. Each one has a <B>Strategy phase</B> (initiative, command points, ploys) and a <B color="#D0573A">Firefight phase</B> (taking turns activating operatives).</Say>
+        <Next to={1} label="Start turning point 1" />
+      </div>
     ),
-
-    // 1: Initiative
+    // 1 Initiative
     () => (
-      <Section title="Roll for Initiative" phase="Strategy">
-        <Narrator>
-          Both players roll <Highlight>1D6</Highlight>. Highest chooses who has initiative. The player with initiative <Highlight>activates first</Highlight> but gains <Highlight color="#B8341C">fewer Command Points</Highlight> next turn (+1 vs +2).
-        </Narrator>
-        {!playerInit ? (
-          <ActionBtn onClick={() => {
-            const p = rollD6(); const b = rollD6();
-            setPlayerInit(p); setBotInit(b);
-          }}>
-            {"\u2684"} Roll for Initiative
-          </ActionBtn>
+      <div>
+        <Say>Both players roll a D6. The higher roll <B>decides who has initiative</B>. Whoever has it activates first in the Firefight phase. On a tie, the player who doesn't have initiative decides (in the first turning point, follow the mission).</Say>
+        {!init ? (
+          <Act onClick={() => { let y = d6(), o = d6(); setInit({ you: y, opp: o, youHave: y >= o }); }}><Icon name="dice" size={16} /> Roll for initiative</Act>
         ) : (
           <div>
-            <div style={{ display: "flex", gap: 12, justifyContent: "center", marginBottom: 12 }}>
-              <div style={{ textAlign: "center" }}>
-                <div style={{ fontSize: 11, color: "#3D6B3F", fontWeight: 700, marginBottom: 4 }}>YOU</div>
-                <DieBox val={playerInit} color={playerInit >= botInit ? "#3D6B3F" : "#B8341C"} />
-              </div>
-              <div style={{ textAlign: "center" }}>
-                <div style={{ fontSize: 11, color: "#B8341C", fontWeight: 700, marginBottom: 4 }}>ENEMY</div>
-                <DieBox val={botInit} color={botInit > playerInit ? "#B8341C" : "#9AA5B1"} />
-              </div>
+            <div style={{ display: "flex", gap: 24, marginBottom: 12 }}>
+              <div><div style={{ ...h3, color: "#5A9C3A" }}>You</div><Die v={init.you} kind={init.youHave ? "hit" : "miss"} /></div>
+              <div><div style={{ ...h3, color: "#D0573A" }}>Enemy</div><Die v={init.opp} kind={!init.youHave ? "hit" : "miss"} /></div>
             </div>
-            <Narrator>
-              {playerInit > botInit
-                ? <span>You rolled higher! You choose to <Highlight>take initiative</Highlight>. You'll activate first this TP but gain fewer CP next turn.</span>
-                : playerInit < botInit
-                ? <span>The enemy rolled higher. They take initiative and will act first. But you'll gain <Highlight>+2CP</Highlight> next TP instead of +1.</span>
-                : <span>It's a tie! In TP1, the player without initiative chooses. You <Highlight>take initiative</Highlight>.</span>
-              }
-            </Narrator>
-            <NextBtn onClick={() => setStep(2)} />
+            <Say>{init.you > init.opp ? <>You rolled higher and take initiative, so <B>you activate first</B>.</> : init.you < init.opp ? <>The enemy rolled higher and takes initiative. For this walkthrough you'll still go first, but in a real game they would.</> : <>A tie. For this walkthrough, you take initiative and <B>activate first</B>.</>}</Say>
+            <Next to={2} />
           </div>
         )}
-      </Section>
+      </div>
     ),
-
-    // 2: Strategy Phase
+    // 2 Strategy phase
     () => (
-      <Section title="Strategy Phase" phase="Strategy">
-        <Narrator>
-          In the Strategy phase you: gain <Highlight>Command Points</Highlight> (start with 2, +1 per TP for initiative holder), <Highlight>ready all operatives</Highlight>, choose <Highlight>orders</Highlight> (Engage or Conceal) for each operative, and optionally spend CP on <Highlight>Strategic Ploys</Highlight>.
-        </Narrator>
-        <div style={{ background: "#262A33", borderRadius: 4, padding: 12, border: "1px solid #262A33", marginBottom: 12 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#C9772E", marginBottom: 6 }}>KEY CONCEPTS:</div>
-          <div style={{ fontSize: 11, color: "#F1F2F5", lineHeight: 1.6 }}>
-            <Highlight>Engage Order</Highlight>: the operative can be targeted and can Shoot.{"\n"}
-          </div>
-          <div style={{ fontSize: 11, color: "#F1F2F5", lineHeight: 1.6, marginTop: 4 }}>
-            <Highlight>Conceal Order</Highlight>: the operative hides. It can't be targeted while in cover behind terrain, but it can't Shoot.
-          </div>
-        </div>
-        <Narrator>
-          You give your <Highlight color="#3D6B3F">Intercessor Sergeant</Highlight> an <Highlight>Engage</Highlight> order (he'll shoot). Your second Marine gets <Highlight>Conceal</Highlight> (he'll stay safe near an objective).
-        </Narrator>
-        <NextBtn onClick={() => setStep(3)} label={"Begin Firefight Phase \u25B6"} />
-      </Section>
+      <div>
+        <Say>The rest of the Strategy phase is quick:</Say>
+        <Box title="Strategy phase steps" color="#C9772E">
+          <div><B>Gain CP.</B> Everyone starts with 2CP and gains 1CP in the first Strategy phase, so you have <B>3CP</B>. Later, the player with initiative gains 1CP and the other gains 2CP.</div>
+          <div style={{ marginTop: 6 }}><B>Ready.</B> Turn every operative's order token to its ready side.</div>
+          <div style={{ marginTop: 6 }}><B>Gambits.</B> Take turns using strategy ploys (1CP each) or passing, until both players pass.</div>
+        </Box>
+        <Say>You pass on ploys this time to save CP. Orders aren't picked here: you choose each operative's order when it activates.</Say>
+        <Next to={3} label="Begin the Firefight phase" />
+      </div>
     ),
-
-    // 3: Firefight - First Activation
+    // 3 Your activation
     () => (
-      <Section title="Firefight Phase: Your Activation" phase="Firefight">
-        <Battlefield />
-        <Narrator>
-          Players alternate activating one operative each. Since you have initiative, <Highlight>you go first</Highlight>. Each operative has <Highlight>Action Points (APL)</Highlight>. Your Marines have APL 3, so 3 actions each.
-        </Narrator>
-        <div style={{ background: "#262A33", borderRadius: 4, padding: 12, border: "1px solid #3D6B3F30", marginBottom: 12 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#3D6B3F", marginBottom: 4 }}>INTERCESSOR SGT: 3 APL</div>
-          <div style={{ fontSize: 11, color: "#9AA5B1", lineHeight: 1.5 }}>
-            Available actions: <Highlight>Move</Highlight> (1AP), <Highlight>Shoot</Highlight> (1AP), <Highlight>Fight</Highlight> (1AP), <Highlight>Dash</Highlight> (1AP), <Highlight>Charge</Highlight> (1AP)
-          </div>
+      <div>
+        <Say>You activate your <B color="#5A9C3A">Intercessor Sergeant</B>. First, pick his order:</Say>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
+          {[["engage", "Engage", "#C9772E", "Can Shoot and Charge. Can be shot if visible."], ["conceal", "Conceal", "#6B9BF7", "Can't be shot while in cover, but can't Shoot or Charge."]].map(([id, label, col, txt]) => (
+            <button key={id} onClick={() => setOrder(id)} style={{ textAlign: "left", padding: 12, borderRadius: 6, cursor: "pointer", border: "2px solid " + (order === id ? col : "#3A4150"), background: order === id ? col + "18" : "#1A1D24" }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: col, fontFamily: "'Rajdhani', sans-serif" }}>{label}</div>
+              <div style={{ fontSize: 13, color: "#C8CDD3", lineHeight: 1.5, marginTop: 2 }}>{txt}</div>
+            </button>
+          ))}
         </div>
-        <Narrator>
-          Spend the Sergeant's 3 APL: <Highlight>Move</Highlight> (1AP) into firing position, then <Highlight>Shoot</Highlight> (1AP) at the Ork Boy, then <Highlight>Dash</Highlight> (1AP) behind cover.
-        </Narrator>
-        <NextBtn onClick={() => setStep(4)} label={"Move into Position \u25B6"} />
-      </Section>
+        {order === "conceal" && <Box color="#6B9BF7">Good instinct for staying alive, but a Concealed operative can't Shoot. Pick <B>Engage</B> to take the shot.</Box>}
+        {order === "engage" && (
+          <div>
+            <Say>He has <B>APL 3</B>, so he can spend 3 action points. Each action costs AP, and he can't do the same action twice in one activation.</Say>
+            <Box title="His plan" color="#C9772E">
+              <div><B>Reposition (1AP):</B> move up to 6" to see the Kommando Boy.</div>
+              <div style={{ marginTop: 4 }}><B>Shoot (1AP):</B> fire the bolt rifle.</div>
+              <div style={{ marginTop: 4 }}><B>Dash (1AP):</B> move up to 3" back behind cover.</div>
+            </Box>
+            <Next to={4} label="Take the shot" />
+          </div>
+        )}
+      </div>
     ),
-
-    // 4: Shooting - Select Target
+    // 4 Attack dice
     () => (
-      <Section title="Shooting Attack" phase="Shooting">
-        <Narrator>
-          Your Intercessor Sgt fires his <Highlight>Bolt Rifle</Highlight> at the <Highlight color="#B8341C">Ork Boy</Highlight>. Here are the weapon stats:
-        </Narrator>
-        <div style={{ background: "#262A33", borderRadius: 4, padding: 12, border: "1px solid #C9772E30", marginBottom: 12 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#C9772E", fontFamily: "'Rajdhani', sans-serif" }}>Bolt Rifle</div>
-          <div style={{ display: "flex", gap: 20, marginTop: 6 }}>
-            <div style={{ textAlign: "center" }}><div style={{ fontSize: 20, fontWeight: 700, color: "#F1F2F5" }}>4</div><div style={{ fontSize: 11, color: "#9AA5B1" }}>ATK DICE</div></div>
-            <div style={{ textAlign: "center" }}><div style={{ fontSize: 20, fontWeight: 700, color: "#F1F2F5" }}>3+</div><div style={{ fontSize: 11, color: "#9AA5B1" }}>HIT</div></div>
-            <div style={{ textAlign: "center" }}><div style={{ fontSize: 20, fontWeight: 700, color: "#F1F2F5" }}>4/5</div><div style={{ fontSize: 11, color: "#9AA5B1" }}>DMG N/C</div></div>
+      <div>
+        <Box title="Bolt rifle" color="#C9772E">ATK <B>4</B> {"·"} HIT <B>3+</B> {"·"} DMG <B>3/4</B> {"·"} <B>Piercing Crits 1</B></Box>
+        <Say>Roll <B>4 dice</B> (ATK). Each <B>3 or more</B> hits (HIT 3+). A <B color="#FFB627">6 is a critical success</B>, and a 1 always misses. Normal hits deal 3 damage, crits deal 4. Piercing Crits 1: if you keep any crits, the defender rolls one fewer defence die.</Say>
+        {!atk ? <Act onClick={() => setAtk(roll(4))}><Icon name="dice" size={16} /> Roll 4 attack dice</Act> : (
+          <div>
+            <DiceRow dice={atk} hit={3} />
+            <Say><B color="#FFB627">{a.crits} crit{a.crits === 1 ? "" : "s"}</B>, <B color="#5A9C3A">{a.normals} normal hit{a.normals === 1 ? "" : "s"}</B>, <B color="#B8341C">{a.fails} miss{a.fails === 1 ? "" : "es"}</B>.{pierced ? " You kept a crit, so Piercing Crits 1 kicks in: the Ork rolls only 2 defence dice." : ""}</Say>
+            {a.crits + a.normals === 0 ? <><Say>All misses. That happens. Roll again for the walkthrough.</Say><Act onClick={() => setAtk(roll(4))} color="#9AA5B1"><Icon name="reset" size={16} /> Roll again</Act></> : <Next to={5} label="The Ork rolls defence" />}
           </div>
-          <div style={{ fontSize: 11, color: "#9AA5B1", marginTop: 6 }}>Accurate 1 {"\u2022"} Balanced {"\u2022"} Heavy</div>
-        </div>
-        <Narrator>
-          <Highlight>ATK 4</Highlight> = roll 4 dice. <Highlight>HIT 3+</Highlight> = 3, 4, 5 are normal hits, 6 is always a critical hit. <Highlight>DMG 4/5</Highlight> = normals deal 4 damage, crits deal 5.
-        </Narrator>
-        <ActionBtn onClick={() => {
-          const rolls = rollMultiple(4);
-          setAtkDice(rolls);
-        }}>
-          {"\u2684"} Roll 4 Attack Dice!
-        </ActionBtn>
-        {atkDice && (() => {
-          const crits = atkDice.filter(d => d >= 6).length;
-          const hits = atkDice.filter(d => d >= 3 && d < 6).length;
-          const misses = atkDice.filter(d => d < 3).length;
-          return (
-            <div>
-              <div style={{ display: "flex", gap: 6, justifyContent: "center", marginBottom: 8 }}>
-                {atkDice.map((d, i) => <DieBox key={i} val={d} color={d >= 6 ? "#C9772E" : d >= 3 ? "#3D6B3F" : "#B8341C"} />)}
-              </div>
-              <div style={{ display: "flex", gap: 12, justifyContent: "center", fontSize: 12, fontWeight: 700, marginBottom: 8 }}>
-                <span style={{ color: "#C9772E" }}>{crits} Crit{crits !== 1 ? "s" : ""}</span>
-                <span style={{ color: "#3D6B3F" }}>{hits} Hit{hits !== 1 ? "s" : ""}</span>
-                <span style={{ color: "#B8341C" }}>{misses} Miss{misses !== 1 ? "es" : ""}</span>
-              </div>
-              <Narrator>
-                {crits + hits > 0
-                  ? <span>You scored <Highlight>{crits + hits} success{crits + hits !== 1 ? "es" : ""}</Highlight>! Now the defender rolls. The Ork has a <Highlight color="#B8341C">5+ Save</Highlight> (only 5 and 6 succeed) and rolls <Highlight>3 defence dice</Highlight>.</span>
-                  : <span>All misses. In a real game you'd move on; here the tutorial carries on as if you hit.</span>
-                }
-              </Narrator>
-              <NextBtn onClick={() => setStep(5)} label={"Roll Defence Dice \u25B6"} />
-            </div>
-          );
-        })()}
-      </Section>
+        )}
+      </div>
     ),
-
-    // 5: Defence Roll
+    // 5 Defence dice
+    () => (
+      <div>
+        <Say>The <B color="#D0573A">Kommando Boy</B> isn't in cover, so he rolls <B>{defDice} defence dice</B> needing <B>5+</B> (his Save). Each save can block a hit: <B>one normal save blocks a normal hit</B>, <B>two normal saves block a crit</B>, and <B>a crit save blocks either</B>.</Say>
+        {!def ? <Act onClick={() => setDef(roll(defDice))} color="#D0573A"><Icon name="dice" size={16} /> Roll {defDice} defence dice for the Ork</Act> : (
+          <div>
+            <DiceRow dice={def} hit={5} />
+            <Box title="Result" color="#D0573A">
+              The Ork saves {d.crits + d.normals} and blocks as well as he can. <B>{shot.crits} crit{shot.crits === 1 ? "" : "s"}</B> and <B>{shot.normals} normal hit{shot.normals === 1 ? "" : "s"}</B> get through: <B color="#D0573A">{shot.damage} damage</B>.
+            </Box>
+            <Say>{shot.damage >= 10 ? <>That's 10 or more: the Kommando Boy is <B color="#D0573A">incapacitated</B> and removed.</> : shot.damage >= 5 ? <>He drops below half his wounds, so he's <B color="#FFB627">injured</B>: -2" Move and his weapons hit 1 worse.</> : shot.damage > 0 ? <>He's hurt but still fighting.</> : <>All blocked. He shrugs it off.</>}</Say>
+            <button onClick={() => { setHp(h => ({ ...h, boy: 10 - shot.damage })); go(6); }} style={{ ...bs("#C9772E"), background: "#C9772E18", padding: "12px 18px", fontSize: 14 }}>Continue {"›"}</button>
+          </div>
+        )}
+      </div>
+    ),
+    // 6 Enemy activation
+    () => (
+      <div>
+        <Teams />
+        <Say>Your Sergeant Dashes back to cover and is <B>expended</B>. Now the enemy activates. Players keep taking turns, one operative at a time.</Say>
+        <Say>The <B color="#D0573A">Boss Nob</B> takes an Engage order and <B>Charges (1AP)</B>: he moves up to his Move plus 2" and must finish within <B>control range</B> (visible and within 1") of your <B color="#5A9C3A">Intercessor Warrior</B>. Then he <B>Fights (1AP)</B>.</Say>
+        <Next to={7} label="Fight" />
+      </div>
+    ),
+    // 7 Fight: roll
+    () => (
+      <div>
+        <Say>In a fight, <B>both operatives roll at the same time</B> with a melee weapon. The one who started it (the Nob) is the attacker; your Warrior retaliates.</Say>
+        <Box color="#3A4150">
+          <div><B color="#D0573A">Nob, big choppa:</B> 5 dice, hits on 3+, 5 damage (6 on a crit).</div>
+          <div style={{ marginTop: 4 }}><B color="#5A9C3A">Your Warrior, fists:</B> 4 dice, hits on 3+, 3 damage (4 on a crit).</div>
+        </Box>
+        {!fight ? <Act onClick={startFight} color="#D0573A"><Icon name="melee" size={16} /> Both roll</Act> : (
+          <div>
+            <div style={{ ...h3, color: "#D0573A" }}>Nob</div><DiceRow dice={fight.oppDice} hit={3} />
+            <div style={{ ...h3, color: "#5A9C3A" }}>Your Warrior</div><DiceRow dice={fight.youDice} hit={3} />
+            <Say>The Nob has <B>{fight.opp.length}</B> success{fight.opp.length === 1 ? "" : "es"} and you have <B>{fight.you.length}</B>.</Say>
+            <Next to={8} label="Resolve the fight" />
+          </div>
+        )}
+      </div>
+    ),
+    // 8 Fight: strike or block
     () => {
-      const atkCrits = atkDice ? atkDice.filter(d => d >= 6).length : 1;
-      const atkHits = atkDice ? atkDice.filter(d => d >= 3 && d < 6).length : 2;
-      const totalAtk = atkCrits + atkHits;
+      const chips = (list, col) => list.length ? list.map((s, i) => <span key={i} style={{ display: "inline-block", padding: "4px 10px", borderRadius: 6, marginRight: 6, marginBottom: 6, border: "1px solid " + (s === "crit" ? "#FFB627" : col), color: s === "crit" ? "#FFB627" : col, fontSize: 13, fontWeight: 700 }}>{s === "crit" ? "Crit" : "Normal"}</span>) : <span style={{ fontSize: 13, color: "#5A6470" }}>none left</span>;
       return (
-      <Section title="Defence Roll" phase="Shooting">
-        <Narrator>
-          The Ork rolls <Highlight>3 defence dice</Highlight> needing <Highlight color="#B8341C">5+</Highlight> to save. Each save blocks one of your hits. <Highlight>Normal saves block normal hits</Highlight>. <Highlight>Crit saves (6) can block crits or normals</Highlight>.
-        </Narrator>
-        <ActionBtn onClick={() => {
-          const rolls = rollMultiple(3);
-          setDefDice(rolls);
-        }} disabled={!!defDice}>
-          {"\u2684"} Roll 3 Defence Dice (Ork, 5+ Save)
-        </ActionBtn>
-        {defDice && (() => {
-          const critSaves = defDice.filter(d => d >= 6).length;
-          const normSaves = defDice.filter(d => d >= 5 && d < 6).length;
-          const fails = defDice.filter(d => d < 5).length;
-          const totalSaves = critSaves + normSaves;
-          // Resolve: block normals first, then crits with crit saves
-          let unblockedCrits = atkCrits;
-          let unblockedHits = atkHits;
-          let remainCritSaves = critSaves;
-          let remainNormSaves = normSaves;
-          // Normal saves block normal hits
-          const normBlocked = Math.min(remainNormSaves, unblockedHits);
-          unblockedHits -= normBlocked;
-          remainNormSaves -= normBlocked;
-          // Crit saves block crits first, then normals
-          const critBlocked = Math.min(remainCritSaves, unblockedCrits);
-          unblockedCrits -= critBlocked;
-          remainCritSaves -= critBlocked;
-          const extraBlocked = Math.min(remainCritSaves, unblockedHits);
-          unblockedHits -= extraBlocked;
-          const dmg = unblockedCrits * 5 + unblockedHits * 4;
-          return (
-            <div>
-              <div style={{ display: "flex", gap: 6, justifyContent: "center", marginBottom: 8 }}>
-                {defDice.map((d, i) => <DieBox key={i} val={d} color={d >= 6 ? "#C9772E" : d >= 5 ? "#3D6B3F" : "#B8341C"} />)}
-              </div>
-              <div style={{ display: "flex", gap: 12, justifyContent: "center", fontSize: 12, fontWeight: 700, marginBottom: 8 }}>
-                <span style={{ color: "#C9772E" }}>{critSaves} Crit Save{critSaves !== 1 ? "s" : ""}</span>
-                <span style={{ color: "#3D6B3F" }}>{normSaves} Save{normSaves !== 1 ? "s" : ""}</span>
-                <span style={{ color: "#B8341C" }}>{fails} Fail{fails !== 1 ? "s" : ""}</span>
-              </div>
-              <div style={{ background: "#262A33", borderRadius: 4, padding: 10, border: "1px solid #262A33", marginBottom: 10 }}>
-                <div style={{ fontSize: 11, color: "#F1F2F5", lineHeight: 1.6 }}>
-                  Your {totalAtk} attack success{totalAtk !== 1 ? "es" : ""} vs {totalSaves} save{totalSaves !== 1 ? "s" : ""} = <Highlight color="#B8341C">{unblockedCrits + unblockedHits} unblocked</Highlight>
-                  {unblockedCrits > 0 && <span> ({unblockedCrits} crit{unblockedCrits !== 1 ? "s" : ""} \u00D7 5dmg)</span>}
-                  {unblockedHits > 0 && <span> ({unblockedHits} normal{unblockedHits !== 1 ? "s" : ""} \u00D7 4dmg)</span>}
-                  {" "}= <Highlight color="#B8341C">{dmg} total damage</Highlight> to the Ork Boy ({botHP.boy2}W).
-                </div>
-              </div>
-              <Narrator>
-                {dmg >= botHP.boy2
-                  ? <span>The Ork Boy is <Highlight color="#B8341C">incapacitated</Highlight>! Removed from play. Below half wounds = <Highlight>Injured</Highlight> (-2" Move, -1 Hit).</span>
-                  : dmg > 0
-                  ? <span>The Ork takes {dmg} damage, dropping to <Highlight color="#B8341C">{botHP.boy2 - dmg}W</Highlight>.{botHP.boy2 - dmg <= 5 ? " He's now Injured! (-2\" Move, -1 Hit)" : ""}</span>
-                  : <span>All blocked! The Ork shrugs it off. Tough luck.</span>
-                }
-              </Narrator>
-              <NextBtn onClick={() => {
-                const newHp = Math.max(0, botHP.boy2 - dmg);
-                setBotHP(prev => ({ ...prev, boy2: newHp }));
-                setShootDmg(dmg);
-                setStep(6);
-              }} />
+        <div>
+          <Say>Starting with the attacker, take turns resolving <B>one success at a time</B>. Each one either <B>strikes</B> (deals damage right away) or <B>blocks</B> (cancels one of the opponent's successes: a normal blocks a normal, a crit blocks anything).</Say>
+          <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "1fr 1fr", gap: mobile ? 0 : 8, marginBottom: 10 }}>
+            <Unit id="nob" /><Unit id="war" />
+          </div>
+          <Box>
+            <div style={{ marginBottom: 4 }}><B color="#D0573A">Nob left:</B> {chips(fight.opp, "#D0573A")}</div>
+            <div><B color="#5A9C3A">You left:</B> {chips(fight.you, "#5A9C3A")}</div>
+          </Box>
+          {!fightOver && fight.turn === "opp" && <Act onClick={oppResolves} color="#D0573A">Nob's turn: see what he does {"›"}</Act>}
+          {!fightOver && fight.turn === "you" && (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
+              <button onClick={() => youResolve("strike")} style={{ ...bs("#5A9C3A"), background: "#5A9C3A18", padding: "12px", fontSize: 14 }}>Strike</button>
+              <button onClick={() => youResolve("block")} disabled={!canBlock} style={{ ...bs("#6B9BF7"), background: "#6B9BF718", padding: "12px", fontSize: 14, opacity: canBlock ? 1 : 0.4 }}>Block</button>
             </div>
-          );
-        })()}
-      </Section>
+          )}
+          {fight.log.length > 0 && <Box title="What happened">{fight.log.map((l, i) => <div key={i}>{i + 1}. {l}</div>)}</Box>}
+          {fightOver && (
+            <div>
+              <Say>{hp.war <= 0 ? <>Your Warrior is <B color="#D0573A">incapacitated</B>. Blocking more might have saved him: against a big hitter, block early.</> : hp.nob <= 0 ? <>You took the Nob down. A good mix of strikes and blocks.</> : <>Both survive. Krumpin' Time lets the Nob Fight a second time in the same activation, so he may swing again.</>}</Say>
+              <Next to={9} />
+            </div>
+          )}
+        </div>
       );
     },
-
-    // 6: Enemy Activation
+    // 9 Finishing the turning point
     () => (
-      <Section title="Enemy Activation" phase="Firefight">
-        <Battlefield />
-        <Narrator>
-          After your operative finishes, the <Highlight color="#B8341C">enemy activates one of theirs</Highlight>. Players alternate: you activate one, they activate one, until all operatives are expended.
-        </Narrator>
-        <Narrator>
-          The <Highlight color="#B8341C">Ork Boy Nob</Highlight> uses <Highlight>Charge</Highlight> (1AP): a move with 2" extra that ends in melee range. He reaches your <Highlight color="#3D6B3F">Intercessor</Highlight> and will now <Highlight color="#B8341C">Fight</Highlight> (1AP).
-        </Narrator>
-        <div style={{ background: "#B8341C10", borderRadius: 4, padding: 12, border: "1px solid #B8341C30", marginBottom: 12 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#B8341C", marginBottom: 4 }}>CHARGE + FIGHT</div>
-          <div style={{ fontSize: 11, color: "#F1F2F5", lineHeight: 1.6 }}>
-            Charge (1AP): Move + 2" extra. Must end within 1" of enemy (Control Range). Fight (1AP): Both operatives roll their melee weapons and alternate strikes.
-          </div>
-        </div>
-        <NextBtn onClick={() => setStep(7)} label={"Enter Melee Combat \u25B6"} />
-      </Section>
+      <div>
+        <Teams />
+        <Say>Players keep alternating until every operative is <B>expended</B>. Two more rules finish the turning point:</Say>
+        <Box title="Counteract" color="#C9772E">If all your operatives are expended but your opponent still has ready ones, one of your expended operatives with an <B>Engage</B> order can make a free 1AP action (moving no more than 2"). Each operative once per turning point.</Box>
+        <Box title="End of the turning point" color="#C9772E">When everyone is expended, the turning point ends. <B>Score victory points</B> as your mission says (for example, holding objective markers), then start the next turning point with a new Strategy phase.</Box>
+        <Next to={10} />
+      </div>
     ),
-
-    // 7: Melee - Roll
+    // 10 Done
     () => (
-      <Section title="Fight: Roll Attack Dice" phase="Fighting">
-        <Narrator>
-          In melee, <Highlight>both operatives roll simultaneously</Highlight> using their melee weapon. Then they <Highlight>alternate: Strike or Block</Highlight>. The attacker (who initiated) goes first.
-        </Narrator>
-        <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
-          <div style={{ flex: 1, background: "#B8341C10", borderRadius: 4, padding: 10, border: "1px solid #B8341C30", minWidth: 140 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#B8341C" }}>Ork Nob: Choppa</div>
-            <div style={{ fontSize: 11, color: "#9AA5B1" }}>ATK 4 \u2022 HIT 3+ \u2022 DMG 4/5</div>
-          </div>
-          <div style={{ flex: 1, background: "#3D6B3F10", borderRadius: 4, padding: 10, border: "1px solid #3D6B3F30", minWidth: 140 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#3D6B3F" }}>Intercessor: Fists</div>
-            <div style={{ fontSize: 11, color: "#9AA5B1" }}>ATK 3 \u2022 HIT 3+ \u2022 DMG 3/4</div>
-          </div>
-        </div>
-        <ActionBtn onClick={() => {
-          const pRolls = rollMultiple(3);
-          const bRolls = rollMultiple(4);
-          setMeleePlayerDice(pRolls);
-          setMeleeBotDice(bRolls);
-          const ps = []; const bs2 = [];
-          pRolls.forEach(d => { if (d >= 6) ps.push("crit"); else if (d >= 3) ps.push("hit"); });
-          bRolls.forEach(d => { if (d >= 6) bs2.push("crit"); else if (d >= 3) bs2.push("hit"); });
-          setMeleePlayerSuccesses(ps);
-          setMeleeBotSuccesses(bs2);
-        }} disabled={!!meleePlayerDice}>
-          {"\u2694"} Both Roll Melee Dice!
-        </ActionBtn>
-        {meleePlayerDice && meleeBotDice && (() => {
-          return (
-            <div>
-              <div style={{ display: "flex", gap: 20, justifyContent: "center", marginBottom: 12 }}>
-                <div style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: 11, color: "#B8341C", fontWeight: 700, marginBottom: 4 }}>ORK NOB (4 dice)</div>
-                  <div style={{ display: "flex", gap: 4 }}>{meleeBotDice.map((d, i) => <DieBox key={i} val={d} color={d >= 6 ? "#C9772E" : d >= 3 ? "#B8341C" : "#9AA5B1"} size={30} />)}</div>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "#B8341C", marginTop: 4 }}>{meleeBotSuccesses.length} success{meleeBotSuccesses.length !== 1 ? "es" : ""}</div>
-                </div>
-                <div style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: 11, color: "#3D6B3F", fontWeight: 700, marginBottom: 4 }}>YOUR MARINE (3 dice)</div>
-                  <div style={{ display: "flex", gap: 4 }}>{meleePlayerDice.map((d, i) => <DieBox key={i} val={d} color={d >= 6 ? "#C9772E" : d >= 3 ? "#3D6B3F" : "#9AA5B1"} size={30} />)}</div>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "#3D6B3F", marginTop: 4 }}>{meleePlayerSuccesses.length} success{meleePlayerSuccesses.length !== 1 ? "es" : ""}</div>
-                </div>
-              </div>
-              <NextBtn onClick={() => setStep(8)} label={"Resolve Strikes \u25B6"} />
-            </div>
-          );
-        })()}
-      </Section>
-    ),
-
-    // 8: Melee - Resolution
-    () => {
-      const bSucc = meleeBotSuccesses.length || 2;
-      const pSucc = meleePlayerSuccesses.length || 1;
-      const bCrits = (meleeBotSuccesses || []).filter(s => s === "crit").length;
-      const bNorms = bSucc - bCrits;
-      const pCrits = (meleePlayerSuccesses || []).filter(s => s === "crit").length;
-      const pNorms = pSucc - pCrits;
-      // Simplified: Ork strikes first (attacker), then alternate
-      const orkDmg = bCrits * 5 + bNorms * 4;
-      const marineDmg = pCrits * 4 + pNorms * 3;
-      return (
-      <Section title="Resolving Melee" phase="Fighting">
-        <Narrator>
-          Now both players <Highlight>alternate</Highlight>. The attacker (Ork, who Charged) picks first each time. Each success can either <Highlight>Strike</Highlight> (deal damage immediately) or <Highlight>Block</Highlight> (cancel one opponent success). A <Highlight>crit block cancels any success</Highlight>. A <Highlight>normal block only cancels a normal</Highlight>.
-        </Narrator>
-        <div style={{ background: "#262A33", borderRadius: 4, padding: 12, border: "1px solid #262A33", marginBottom: 12 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#C9772E", marginBottom: 6 }}>RESOLUTION EXAMPLE:</div>
-          <div style={{ fontSize: 11, color: "#F1F2F5", lineHeight: 1.7 }}>
-            The Ork has {bSucc} success{bSucc !== 1 ? "es" : ""} ({bCrits} crit, {bNorms} normal). Your Marine has {pSucc} ({pCrits} crit, {pNorms} normal).
-          </div>
-          <div style={{ fontSize: 11, color: "#F1F2F5", lineHeight: 1.7, marginTop: 6 }}>
-            Typically the attacker <Highlight color="#B8341C">strikes aggressively</Highlight> to maximize damage, while the defender <Highlight color="#3D6B3F">blocks first</Highlight> to survive. In our example:
-          </div>
-          <div style={{ fontSize: 11, color: "#F1F2F5", lineHeight: 1.7, marginTop: 6 }}>
-            \u2022 Ork takes <Highlight color="#B8341C">{orkDmg} total potential damage</Highlight> (crits \u00D7 5 + normals \u00D7 4){"\n"}
-            \u2022 Marine retaliates with <Highlight color="#3D6B3F">{marineDmg} potential damage</Highlight> (crits \u00D7 4 + normals \u00D7 3){"\n"}
-            \u2022 Blocked strikes are cancelled. Unblocked ones deal damage.
-          </div>
-        </div>
-        <Narrator>
-          After resolving all strikes, the Ork deals damage to your Marine and your Marine deals damage back. {orkDmg > 0 ? "Your Marine takes a beating!" : "The Ork whiffed!"} Melee is <Highlight color="#B8341C">dangerous</Highlight> because both fighters can get hurt.
-        </Narrator>
-        <NextBtn onClick={() => {
-          setPlayerHP(prev => ({ ...prev, marine2: Math.max(0, prev.marine2 - Math.max(0, orkDmg - marineDmg)) }));
-          setBotHP(prev => ({ ...prev, boy1: Math.max(0, prev.boy1 - Math.min(marineDmg, prev.boy1)) }));
-          setStep(9);
-        }} />
-      </Section>
-      );
-    },
-
-    // 9: Remaining Activations
-    () => (
-      <Section title="Remaining Activations" phase="Firefight">
-        <Battlefield />
-        <Narrator>
-          Players keep alternating activations until all operatives are <Highlight>expended</Highlight> (used all their APL). With 2 operatives each, that's 4 total activations this TP.
-        </Narrator>
-        <Narrator>
-          If one player runs out of operatives first, the other activates all remaining operatives in a row. If you had <Highlight>3 operatives</Highlight> vs their 2, you'd get a bonus activation at the end.
-        </Narrator>
-        <div style={{ background: "#262A33", borderRadius: 4, padding: 12, border: "1px solid #262A33", marginBottom: 12 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#C9772E", marginBottom: 6 }}>COMMON ACTIONS (1 APL EACH):</div>
-          <div style={{ fontSize: 11, color: "#F1F2F5", lineHeight: 1.8 }}>
-            <Highlight>Move</Highlight>: Move up to Movement stat{"\n"}
-            <Highlight>Shoot</Highlight>: Fire a ranged weapon at a valid target{"\n"}
-            <Highlight>Fight</Highlight>: Melee attack an enemy in Control Range{"\n"}
-            <Highlight>Charge</Highlight>: Move + 2" and engage enemy{"\n"}
-            <Highlight>Dash</Highlight>: Move up to 3"{"\n"}
-            <Highlight>Pick Up</Highlight>: Interact with objectives
-          </div>
-        </div>
-        <NextBtn onClick={() => setStep(10)} label={"End of Firefight Phase \u25B6"} />
-      </Section>
-    ),
-
-    // 10: End of TP
-    () => (
-      <Section title="End of Turning Point" phase="Scoring">
-        <Battlefield />
-        <Narrator>
-          After all operatives are expended, the Turning Point ends. Now you <Highlight color="#9B59B6">score Victory Points</Highlight>:
-        </Narrator>
-        <div style={{ background: "#262A33", borderRadius: 4, padding: 12, border: "1px solid #9B59B630", marginBottom: 12 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#9B59B6", marginBottom: 6 }}>SCORING:</div>
-          <div style={{ fontSize: 11, color: "#F1F2F5", lineHeight: 1.8 }}>
-            <Highlight color="#9B59B6">Primary Mission</Highlight>: Control objectives. More = 2VP, equal = 1VP, fewer = 0VP.{"\n"}
-            <Highlight color="#9B59B6">Tac Ops</Highlight>: Secret objectives you chose pre-game. Each has 2 scoring conditions worth 1VP each.{"\n"}
-            <Highlight color="#9B59B6">Total</Highlight>: Max ~18VP across 4 TPs. Highest VP wins.
-          </div>
-        </div>
-        <Narrator>
-          Then <Highlight>remove incapacitated operatives</Highlight>, check for injured models (below half wounds), and prepare for the next Turning Point. CP carries over and you gain more next TP.
-        </Narrator>
-        <NextBtn onClick={() => setStep(11)} label={"Summary \u25B6"} />
-      </Section>
-    ),
-
-    // 11: Summary
-    () => (
-      <Section title="You've Completed a Turning Point!" phase="Setup">
-        <Battlefield />
-        <Narrator>
-          You've now played every core step:
-        </Narrator>
-        <div style={{ background: "#262A33", borderRadius: 4, padding: 12, border: "1px solid #C9772E30", marginBottom: 12 }}>
-          <div style={{ fontSize: 12, color: "#F1F2F5", lineHeight: 2 }}>
-            {"\u2714"} <Highlight>Initiative</Highlight>: Roll D6, highest chooses{"\n"}
-            {"\u2714"} <Highlight>Strategy Phase</Highlight>: Orders, CP, ploys{"\n"}
-            {"\u2714"} <Highlight>Firefight Phase</Highlight>: Alternate activations{"\n"}
-            {"\u2714"} <Highlight color="#C9772E">Shooting</Highlight>: ATK dice vs Defence dice{"\n"}
-            {"\u2714"} <Highlight color="#B8341C">Melee</Highlight>: Both roll, alternate Strike/Block{"\n"}
-            {"\u2714"} <Highlight color="#9B59B6">Scoring</Highlight>: Primary + Tac Ops = VP
-          </div>
-        </div>
-        <Narrator>
-          A full game repeats this for <Highlight>4 Turning Points</Highlight>. Use the <Highlight>Builder</Highlight> tab to build your real army, and the <Highlight>Rules</Highlight> tab to look things up during play.
-        </Narrator>
-        <div style={{ display: "flex", gap: 8 }}>
-          <ActionBtn onClick={restart} color="#9AA5B1">{"\u21BA"} Play Again</ActionBtn>
-        </div>
-      </Section>
+      <div>
+        <Say>That's a full turning point. A battle is four of them, and the player with the most VP at the end wins.</Say>
+        <Box title="You've learned" color="#5A9C3A">
+          {["Initiative decides who activates first", "Strategy phase: gain CP, ready, ploys", "Choose an order when an operative activates", "Shooting: attack dice, then defence dice, then damage", "Fighting: both roll, then strike or block in turns", "Counteract and scoring"].map((t, i) => (
+            <div key={i} style={{ display: "flex", gap: 8, alignItems: "baseline" }}><span style={{ color: "#5A9C3A" }}><Icon name="check" size={14} /></span>{t}</div>
+          ))}
+        </Box>
+        <Say>Next, build a real team in the <B>Builder</B>, look things up in <B>Rules</B>, or try a co-op mission from <B>Missions</B>.</Say>
+        <button onClick={restart} style={{ ...bs("#9AA5B1"), padding: "12px 18px", fontSize: 14, display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="reset" size={14} /> Play again</button>
+      </div>
     ),
   ];
 
   return (
-    <div style={{ maxWidth: 700, margin: "0 auto", padding: "20px 16px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-        <div style={{ fontSize: 22, fontWeight: 700, color: "#C9772E", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.04em", textShadow: "0 1px 8px rgba(255,215,0,0.2)" }}>Tutorial</div>
-        {step > 0 && <button onClick={restart} style={{ ...bs("#9AA5B1"), fontSize: 11, padding: "4px 10px" }}>{"\u21BA"} Restart</button>}
+    <div style={{ maxWidth: 760, margin: "0 auto", padding: "20px 16px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ flex: 1, fontSize: 22, fontWeight: 700, color: "#C9772E", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.04em" }}>Tutorial</div>
+        {step > 0 && <button onClick={restart} style={{ ...bs("#9AA5B1"), padding: "8px 12px", fontSize: 12, display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="reset" size={13} /> Restart</button>}
       </div>
-      <p style={{ ...mu, marginBottom: 10 }}>Play through a full Turning Point against a bot.</p>
-      <Progress />
-      {steps[Math.min(step, steps.length - 1)]()}
+      <p style={{ ...mu, marginBottom: 12 }}>Play one turning point against a bot, with real dice and real datacards.</p>
+      <div style={{ display: "flex", gap: 3, marginBottom: 14 }}>
+        {TUT_STEPS.map(([ph], i) => <div key={i} style={{ flex: 1, height: 5, borderRadius: 3, background: i <= step ? TUT_PHASE_COLOR[ph] : "#262A33", transition: "background 0.3s" }} />)}
+      </div>
+      <div style={{ ...cd, padding: mobile ? 16 : 22, borderTop: "3px solid " + pc }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
+          <span style={bg(pc)}>{phase} phase</span>
+          <span style={{ fontSize: 13, color: "#9AA5B1" }}>Step {step + 1} of {TUT_STEPS.length}</span>
+        </div>
+        <div style={{ fontSize: 24, fontWeight: 700, color: "#F1F2F5", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.02em", marginBottom: 12 }}>{TUT_STEPS[step][1]}</div>
+        {body[step]()}
+      </div>
+      {step > 0 && step < TUT_STEPS.length - 1 && <button onClick={() => go(step - 1)} className="link-btn" style={{ background: "none", border: "none", color: "#9AA5B1", cursor: "pointer", fontSize: 13, marginTop: 10, padding: 0 }}>{"‹"} Back a step</button>}
     </div>
   );
 }
 
-/* ═══ COMMUNITY ROSTERS (placeholder: backend coming next session) ═══ */
+/* ═══ COMMUNITY ROSTERS (preview until the backend is built) ═══ */
+const COMMUNITY_EXAMPLES = [
+  { name: "Stalker Overwatch", faction: "angels", votes: 24, ops: 6, note: "Two stalker bolt rifles on Vantage, the rest hold the middle." },
+  { name: "Choppa Rush", faction: "kommandos", votes: 17, ops: 10, note: "Smoke, then charge everything. Bomb Squig opens the door." },
+  { name: "Poison Wall", faction: "plaguemarines", votes: 9, ops: 6, note: "Slow and tough. Stack Poison and sit on objectives." },
+];
+
 function CommunityRosters() {
-  const factions = Object.values(FACTIONS).map(f => ({ id: f.id, name: f.name, color: f.color }));
-  const exampleBuilds = [
-    { name: "Mortis Spam", faction: "angels", votes: 0, author: "KillSheet" },
-    { name: "Choppa Heavy Aggression", faction: "kommandos", votes: 0, author: "KillSheet" },
-    { name: "Bilesword Plague", faction: "plaguemarines", votes: 0, author: "KillSheet" },
+  const mobile = useIsMobile();
+  const steps = [
+    ["Save your roster", "In the Builder, tap Save on your datacards bar and give it a name."],
+    ["Copy its code", "In the team list under My saved rosters, tap ⋯ then Copy code."],
+    ["Send the code", "Paste it into a message to your friend."],
+    ["They import it", "In their Builder: Import a roster, choose My roster or Opponent, and paste."],
   ];
-
   return (
-    <div style={{ maxWidth: 1100, margin: "0 auto", padding: "24px 16px" }}>
-      {/* Hero */}
-      <div style={{ marginBottom: 28 }}>
-        <div style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 28, fontWeight: 700, color: "#F1F2F5", letterSpacing: "0.02em", marginBottom: 6 }}>Community Rosters</div>
-        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 14, color: "#9AA5B1", lineHeight: 1.5, maxWidth: 720 }}>
-          Browse, share and vote on other players' rosters. Filter by faction, or post your own and see how it ranks.
+    <div style={{ maxWidth: 900, margin: "0 auto", padding: "20px 16px" }}>
+      <div style={{ fontSize: 22, fontWeight: 700, color: "#C9772E", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.04em", marginBottom: 4 }}>Community Rosters</div>
+      <p style={mu}>A shared board where players post rosters, browse by team, and vote for the ones that work.</p>
+
+      <div style={{ ...cd, padding: 14, marginTop: 14, borderLeft: "3px solid #FFB627" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+          <span style={bg("#FFB627")}>Coming soon</span>
         </div>
+        <div style={{ fontSize: 14, color: "#C8CDD3", lineHeight: 1.6 }}>The board isn't live yet. Below is a preview of how it will look. Posting and voting arrive with the next big update, along with sign-in so your saved rosters follow you between devices.</div>
       </div>
 
-      {/* Coming soon banner */}
-      <div style={{ background: "#262A33", borderRadius: 6, padding: "16px 20px", marginBottom: 28, borderLeft: "3px solid #C9772E", display: "flex", alignItems: "center", gap: 14 }}>
-        <div style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 12, fontWeight: 600, color: "#C9772E", letterSpacing: "0.16em", textTransform: "uppercase", flexShrink: 0 }}>Coming Soon</div>
-        <div style={{ width: 1, height: 24, background: "#3A4150" }} />
-        <div style={{ fontSize: 13, color: "#F1F2F5", lineHeight: 1.5 }}>
-          The community board isn't live yet. Below is a preview of the layout; posting and voting come in a later update.
-        </div>
-      </div>
-
-      {/* Faction filter row */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-        <div style={{ ...bs("#9AA5B1"), padding: "8px 14px", opacity: 0.5, cursor: "not-allowed" }}>All Factions</div>
-        {factions.map(f => (
-          <div key={f.id} style={{ ...bs(f.color), padding: "8px 14px", opacity: 0.5, cursor: "not-allowed" }}>{f.name}</div>
+      <div style={{ ...h3, color: "#C9772E", margin: "22px 0 8px" }}>Share a roster today</div>
+      <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "repeat(4, minmax(0, 1fr))", gap: 8 }}>
+        {steps.map(([title, text], i) => (
+          <div key={i} style={{ ...cd, padding: 12, marginBottom: 0, display: "flex", gap: 10, alignItems: "flex-start" }}>
+            <div style={{ width: 26, height: 26, borderRadius: "50%", background: "#C9772E20", color: "#C9772E", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontFamily: "'Rajdhani', sans-serif" }}>{i + 1}</div>
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "#F1F2F5", fontFamily: "'Rajdhani', sans-serif" }}>{title}</div>
+              <div style={{ fontSize: 13, color: "#9AA5B1", lineHeight: 1.5, marginTop: 2 }}>{text}</div>
+            </div>
+          </div>
         ))}
-        <div style={{ flex: 1 }} />
-        <div style={{ ...bs("#9AA5B1"), padding: "8px 14px", opacity: 0.5, cursor: "not-allowed" }}>+ Post Roster</div>
       </div>
 
-      {/* Sort row */}
-      <div style={{ display: "flex", gap: 16, marginBottom: 14, alignItems: "center", fontSize: 11, color: "#9AA5B1", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: 500 }}>
-        <span>Sort by</span>
-        <span style={{ color: "#C9772E", fontWeight: 600 }}>Top</span>
-        <span style={{ opacity: 0.5 }}>New</span>
-        <span style={{ opacity: 0.5 }}>Trending</span>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "26px 0 8px" }}>
+        <div style={{ ...h3, color: "#C9772E", marginBottom: 0 }}>Preview</div>
+        <span style={{ fontSize: 12, color: "#5A6470" }}>example posts, not real yet</span>
       </div>
-
-      {/* Example roster cards */}
-      <div style={{ display: "grid", gap: 10 }}>
-        {exampleBuilds.map((b, i) => {
-          const f = factions.find(ff => ff.id === b.faction);
+      <div aria-hidden="true" style={{ opacity: 0.75, pointerEvents: "none" }}>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+          {["All teams", "Imperium", "Chaos", "Xenos"].map((t, i) => <span key={t} style={{ ...bs(i === 0 ? "#C9772E" : "#9AA5B1"), background: i === 0 ? "#C9772E20" : "transparent", padding: "7px 12px", fontSize: 12 }}>{t}</span>)}
+          <div style={{ flex: "1 1 160px", minWidth: 0, background: "#1A1D24", border: "1px solid #3A4150", borderRadius: 6, color: "#5A6470", padding: "7px 10px", fontSize: 13 }}>Search rosters</div>
+        </div>
+        <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 12 }}>
+          <span style={{ fontSize: 13, color: "#9AA5B1" }}>Sort:</span>
+          {["Top", "New", "Trending"].map((t, i) => <span key={t} style={{ fontSize: 13, padding: "4px 10px", borderRadius: 6, color: i === 0 ? "#F1F2F5" : "#9AA5B1", background: i === 0 ? "#262A33" : "transparent" }}>{t}</span>)}
+        </div>
+        {COMMUNITY_EXAMPLES.map((r, i) => {
+          const f = FACTIONS[r.faction];
           return (
-            <div key={i} style={{ background: "#1A1D24", borderRadius: 6, display: "flex", overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,0.35)", opacity: 0.7 }}>
-              {/* Faction stripe */}
-              <div style={{ width: 4, background: f.color, flexShrink: 0 }} />
-              {/* Vote column */}
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "14px 16px", borderRight: "1px solid #3A4150", minWidth: 64 }}>
-                <div style={{ fontSize: 14, color: "#5A6470", lineHeight: 1, marginBottom: 2 }}>{"\u25B2"}</div>
-                <div style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 18, fontWeight: 700, color: "#9AA5B1", lineHeight: 1 }}>{b.votes}</div>
-                <div style={{ fontSize: 14, color: "#5A6470", lineHeight: 1, marginTop: 2 }}>{"\u25BC"}</div>
+            <div key={i} style={{ ...cd, padding: 0, marginBottom: 8, display: "flex", overflow: "hidden", borderLeft: "3px solid " + f.color }}>
+              <div style={{ width: 52, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "#0E0F13", color: "#9AA5B1", padding: "10px 0" }}>
+                <Icon name="chevronUp" size={18} />
+                <span style={{ fontSize: 17, fontWeight: 700, color: "#F1F2F5", fontFamily: "'Rajdhani', sans-serif" }}>{r.votes}</span>
+                <Icon name="chevronDown" size={18} />
               </div>
-              {/* Body */}
-              <div style={{ flex: 1, padding: "14px 18px", minWidth: 0 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 17, fontWeight: 600, color: "#F1F2F5", marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.name}</div>
-                    <div style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 11, color: f.color, letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: 500 }}>{f.name}</div>
-                  </div>
-                  <div style={{ ...bs("#9AA5B1"), padding: "6px 12px", fontSize: 11, opacity: 0.5, cursor: "not-allowed", flexShrink: 0 }}>View</div>
+              <div style={{ flex: 1, minWidth: 0, padding: "10px 12px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 16, fontWeight: 700, color: "#F1F2F5", fontFamily: "'Rajdhani', sans-serif" }}>{r.name}</span>
+                  <span style={bg(f.color)}>{f.name}</span>
                 </div>
-                <div style={{ display: "flex", gap: 12, marginTop: 10, fontSize: 11, color: "#5A6470" }}>
-                  <span>by {b.author}</span>
-                  <span>{"\u2022"}</span>
-                  <span>example placeholder</span>
-                </div>
+                <div style={{ fontSize: 13, color: "#C8CDD3", lineHeight: 1.5, marginTop: 4 }}>{r.note}</div>
+                <div style={{ fontSize: 12, color: "#5A6470", marginTop: 4 }}>{r.ops} operatives {"·"} example post</div>
               </div>
             </div>
           );
         })}
-      </div>
-
-      {/* Footer note */}
-      <div style={{ marginTop: 32, padding: "16px 20px", background: "#1A1D24", borderRadius: 6, fontSize: 12, color: "#9AA5B1", lineHeight: 1.6 }}>
-        <div style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 11, fontWeight: 600, color: "#9AA5B1", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 8 }}>What's coming</div>
-        Post a roster from your Builder with a name and short description. Anyone can browse, filter by faction, sort by votes, and upvote builds they like. You don't need an account: your browser keeps track of your posts.
       </div>
     </div>
   );
