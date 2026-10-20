@@ -180,6 +180,7 @@ Estimated 2-3 hours. Should be its own focused session with its own QA pass (mix
 - Pre-ship checker added: `python3 tools/check.py` (hooks before early returns, every tab has an icon and panel, unique localStorage keys, no direct localStorage use, print class, JSX script tag).
 
 ### Other open tasks (rough priority order)
+- **Builder opens on the team picker**: right now the Builder reopens the last team you used (saved in `ks_fid`), with the picker collapsed. Instead, open with the picker showing and no team chosen. Decide what happens to a saved roster or game in progress: probably keep it, and offer "Continue with <team>" at the top of the picker.
 - **Legion of the Damned**: previewed in the Big Autumn Preview; add once its rules are published.
 - **Campaign tracking (Ctesiphus Expedition)**: track a map-based campaign across games. Needs the campaign PDF from the owner first, to see what it tracks (map territory, requisition points, operative experience, injuries and so on). Likely a new tab with its own saved state, and it may later need the same backend as Community Rosters if players want to share one campaign.
 - **Wire in the new logo package** — header horizontal lockup (mark-only on mobile fallback), favicon, apple-touch-icon for installable PWA. Assets exist; not yet integrated.
