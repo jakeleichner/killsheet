@@ -6632,7 +6632,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
   const [importCode, setImportCode] = useState("");
   const [importError, setImportError] = useState("");
   const [setupRef, setSetupRef] = useState({ pack: "", idx: "" });
-  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(true);
   const [pickerGroup, setPickerGroup] = useState(null);
   const [pickerSearch, setPickerSearch] = useState("");
   const [importMode, setImportMode] = useState("opponent");
@@ -7585,10 +7585,22 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
         const pick = (fc) => {
           if (fid === fc.id) { setPickerOpen(false); return; }
           if (rosterLocked && !confirm("Roster is locked. Change faction? This will reset everything.")) return;
+          if (!rosterLocked && roster.length > 0 && !confirm("Switch to " + fc.name + "? This clears your current roster and game.")) return;
           selectFaction(fc.id); setPickerOpen(false); setPickerSearch("");
         };
         return (
           <div style={{ marginBottom: 14 }}>
+            {f && (
+              <button onClick={() => { setPickerOpen(false); setPickerSearch(""); }} style={{ ...cd, width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", marginBottom: 10, cursor: "pointer", textAlign: "left", borderTop: "2px solid " + f.color }}>
+                <div style={bg(f.color)}>{f.badge}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", color: f.color, letterSpacing: "0.04em" }}>Continue with {f.name}</div>
+                  <div style={{ fontSize: 12, color: "#9AA5B1", fontFamily: "'Inter', sans-serif" }}>{roster.length > 0 ? roster.length + " operative" + (roster.length === 1 ? "" : "s") + " picked" + (rosterLocked ? ", roster locked" : "") : "No operatives picked yet"}</div>
+                </div>
+                <span style={{ color: f.color, fontSize: 18 }}>{"\u203A"}</span>
+              </button>
+            )}
+            <div style={{ ...h3, marginBottom: 6 }}>{f ? "Or pick another team" : "Pick a team"}</div>
             <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 8, flexWrap: "wrap" }}>
               {FACTION_GROUPS.map(g => {
                 const on = !q && g === group;
@@ -7599,7 +7611,6 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
                 );
               })}
               <input value={pickerSearch} onChange={e => setPickerSearch(e.target.value)} placeholder="Search teams or factions" style={{ flex: "1 1 140px", minWidth: 0, background: "#1A1D24", border: "1px solid #3A4150", borderRadius: 6, color: "#F1F2F5", padding: "7px 10px", fontSize: 13, fontFamily: "'Inter', sans-serif" }} />
-              {f && <button onClick={() => { setPickerOpen(false); setPickerSearch(""); }} style={{ ...bs("#9AA5B1"), fontSize: 11, padding: "6px 10px" }}>Cancel</button>}
             </div>
             {shown.length === 0 && <p style={{ ...mu, margin: "8px 0" }}>No team matches "{pickerSearch}".</p>}
             <div style={{ display: "grid", gridTemplateColumns: mobile ? "repeat(2, minmax(0, 1fr))" : "repeat(auto-fill, minmax(150px, 1fr))", gap: 8 }}>
@@ -7614,7 +7625,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
         );
       })()}
 
-      {f && (
+      {f && !pickerOpen && (
         <div>
           {/* Game Tracker Bar */}
           <div style={{ ...cd, padding: mobile ? 10 : 14, marginBottom: 10 }}>
@@ -13686,15 +13697,15 @@ function Tutorial() {
     <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
       <div style={{ flex: 1, minWidth: 140 }}>
         <div style={{ fontSize: 9, fontWeight: 700, color: "#3D6B3F", letterSpacing: "0.1em", marginBottom: 4 }}>YOUR TEAM</div>
-        <UnitCard name="Intercessor Sgt" hp={playerHP.marine1} maxHp={12} color="#3D6B3F" stats="APL 3 \u2022 3+ Save \u2022 Bolt rifle 4/5" />
+        <UnitCard name="Intercessor Sgt" hp={playerHP.marine1} maxHp={12} color="#3D6B3F" stats={"APL 3 \u2022 3+ Save \u2022 Bolt rifle 4/5"} />
         <div style={{ height: 4 }} />
-        <UnitCard name="Intercessor" hp={playerHP.marine2} maxHp={12} color="#3D6B3F" stats="APL 3 \u2022 3+ Save \u2022 Bolt rifle 4/5" />
+        <UnitCard name="Intercessor" hp={playerHP.marine2} maxHp={12} color="#3D6B3F" stats={"APL 3 \u2022 3+ Save \u2022 Bolt rifle 4/5"} />
       </div>
       <div style={{ flex: 1, minWidth: 140 }}>
         <div style={{ fontSize: 9, fontWeight: 700, color: "#B8341C", letterSpacing: "0.1em", marginBottom: 4 }}>ENEMY TEAM</div>
-        <UnitCard name="Ork Boy Nob" hp={botHP.boy1} maxHp={10} color="#B8341C" stats="APL 2 \u2022 5+ Save \u2022 Choppa 4/5" />
+        <UnitCard name="Ork Boy Nob" hp={botHP.boy1} maxHp={10} color="#B8341C" stats={"APL 2 \u2022 5+ Save \u2022 Choppa 4/5"} />
         <div style={{ height: 4 }} />
-        <UnitCard name="Ork Boy" hp={botHP.boy2} maxHp={10} color="#B8341C" stats="APL 2 \u2022 5+ Save \u2022 Slugga 3/4" />
+        <UnitCard name="Ork Boy" hp={botHP.boy2} maxHp={10} color="#B8341C" stats={"APL 2 \u2022 5+ Save \u2022 Slugga 3/4"} />
       </div>
     </div>
   );
@@ -13730,7 +13741,7 @@ function Tutorial() {
         <Narrator>
           A game lasts <Highlight>4 Turning Points</Highlight>. Each TP has two phases: <Highlight>Strategy</Highlight> (planning) and <Highlight color="#B8341C">Firefight</Highlight> (action).
         </Narrator>
-        <NextBtn onClick={() => setStep(1)} label="Start Turning Point 1 \u25B6" />
+        <NextBtn onClick={() => setStep(1)} label={"Start Turning Point 1 \u25B6"} />
       </Section>
     ),
 
@@ -13791,7 +13802,7 @@ function Tutorial() {
         <Narrator>
           You give your <Highlight color="#3D6B3F">Intercessor Sergeant</Highlight> an <Highlight>Engage</Highlight> order (he'll shoot). Your second Marine gets <Highlight>Conceal</Highlight> (he'll stay safe near an objective).
         </Narrator>
-        <NextBtn onClick={() => setStep(3)} label="Begin Firefight Phase \u25B6" />
+        <NextBtn onClick={() => setStep(3)} label={"Begin Firefight Phase \u25B6"} />
       </Section>
     ),
 
@@ -13811,7 +13822,7 @@ function Tutorial() {
         <Narrator>
           Spend the Sergeant's 3 APL: <Highlight>Move</Highlight> (1AP) into firing position, then <Highlight>Shoot</Highlight> (1AP) at the Ork Boy, then <Highlight>Dash</Highlight> (1AP) behind cover.
         </Narrator>
-        <NextBtn onClick={() => setStep(4)} label="Move into Position \u25B6" />
+        <NextBtn onClick={() => setStep(4)} label={"Move into Position \u25B6"} />
       </Section>
     ),
 
@@ -13828,7 +13839,7 @@ function Tutorial() {
             <div style={{ textAlign: "center" }}><div style={{ fontSize: 20, fontWeight: 700, color: "#F1F2F5" }}>3+</div><div style={{ fontSize: 9, color: "#9AA5B1" }}>HIT</div></div>
             <div style={{ textAlign: "center" }}><div style={{ fontSize: 20, fontWeight: 700, color: "#F1F2F5" }}>4/5</div><div style={{ fontSize: 9, color: "#9AA5B1" }}>DMG N/C</div></div>
           </div>
-          <div style={{ fontSize: 10, color: "#9AA5B1", marginTop: 6 }}>Accurate 1 \u2022 Balanced \u2022 Heavy</div>
+          <div style={{ fontSize: 10, color: "#9AA5B1", marginTop: 6 }}>Accurate 1 {"\u2022"} Balanced {"\u2022"} Heavy</div>
         </div>
         <Narrator>
           <Highlight>ATK 4</Highlight> = roll 4 dice. <Highlight>HIT 3+</Highlight> = 3, 4, 5 are normal hits, 6 is always a critical hit. <Highlight>DMG 4/5</Highlight> = normals deal 4 damage, crits deal 5.
@@ -13859,7 +13870,7 @@ function Tutorial() {
                   : <span>All misses. In a real game you'd move on; here the tutorial carries on as if you hit.</span>
                 }
               </Narrator>
-              <NextBtn onClick={() => setStep(5)} label="Roll Defence Dice \u25B6" />
+              <NextBtn onClick={() => setStep(5)} label={"Roll Defence Dice \u25B6"} />
             </div>
           );
         })()}
@@ -13958,7 +13969,7 @@ function Tutorial() {
             Charge (1AP): Move + 2" extra. Must end within 1" of enemy (Control Range). Fight (1AP): Both operatives roll their melee weapons and alternate strikes.
           </div>
         </div>
-        <NextBtn onClick={() => setStep(7)} label="Enter Melee Combat \u25B6" />
+        <NextBtn onClick={() => setStep(7)} label={"Enter Melee Combat \u25B6"} />
       </Section>
     ),
 
@@ -14006,7 +14017,7 @@ function Tutorial() {
                   <div style={{ fontSize: 10, fontWeight: 700, color: "#3D6B3F", marginTop: 4 }}>{meleePlayerSuccesses.length} success{meleePlayerSuccesses.length !== 1 ? "es" : ""}</div>
                 </div>
               </div>
-              <NextBtn onClick={() => setStep(8)} label="Resolve Strikes \u25B6" />
+              <NextBtn onClick={() => setStep(8)} label={"Resolve Strikes \u25B6"} />
             </div>
           );
         })()}
@@ -14076,7 +14087,7 @@ function Tutorial() {
             <Highlight>Pick Up</Highlight>: Interact with objectives
           </div>
         </div>
-        <NextBtn onClick={() => setStep(10)} label="End of Firefight Phase \u25B6" />
+        <NextBtn onClick={() => setStep(10)} label={"End of Firefight Phase \u25B6"} />
       </Section>
     ),
 
@@ -14098,7 +14109,7 @@ function Tutorial() {
         <Narrator>
           Then <Highlight>remove incapacitated operatives</Highlight>, check for injured models (below half wounds), and prepare for the next Turning Point. CP carries over and you gain more next TP.
         </Narrator>
-        <NextBtn onClick={() => setStep(11)} label="Summary \u25B6" />
+        <NextBtn onClick={() => setStep(11)} label={"Summary \u25B6"} />
       </Section>
     ),
 

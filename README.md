@@ -169,6 +169,8 @@ Planned implementation:
 Estimated 2-3 hours. Should be its own focused session with its own QA pass (mixing infra + UI changes tends to combine bugs confusingly).
 
 ### Done recently
+- Builder now opens on the team list every time (`pickerOpen` starts true). If a team is saved, a "Continue with <team>" button at the top resumes the game; picking a different team while a roster exists asks before clearing it.
+- Fixed: Tutorial buttons and unit cards showed raw `\u25B6` / `\u2022` text (escape codes in JSX attribute strings aren't converted; wrap them in `{"..."}`).
 - Missions step 2: Mission Setup has a pack/mission picker that fills in turning points, killzone, equipment and tac ops (`gameConfig.mission` = `{pack, idx}`; per-mission overrides are `kz`, `tps`, `equip`, `tacOps` in the pack data). In a game, `MissionPanel` shows how to win, with the map, rules, actions, activation deck and event cards one tap away, and `NpoTracker` tracks enemy NPOs with wound counters (saved in `ks_npoUnits`, cleared by Reset, new setup and team change). Map pages open in a pop-out viewer (tap to zoom, arrows to flip, Esc or X to close) instead of a new tab.
 - Missions tab added (step 1): all 12 free mission packs, 40 missions, 64 map pages, enemy datacards, Draw card buttons for activation and event decks. The nav now has five tabs; on phones the icons stack above the labels so they fit.
 - Rules tab redesigned: 5 tabs instead of 10, search, one card style with an arrow on cards that open. New How to Play section (setup, turning points, Strategy and Firefight phases, CP, orders, stats, dice, damage). Fixed: Fighting listed the old-edition Assists rule; Counteract now says once per operative per turning point; Visibility cards looked tappable but did nothing. Added markers and objectives (Pick Up Marker, Place Marker, marker control).
@@ -188,7 +190,6 @@ Estimated 2-3 hours. Should be its own focused session with its own QA pass (mix
 - Pre-ship checker added: `python3 tools/check.py` (hooks before early returns, every tab has an icon and panel, unique localStorage keys, no direct localStorage use, print class, JSX script tag).
 
 ### Other open tasks (rough priority order)
-- **Builder opens on the team picker**: right now the Builder reopens the last team you used (saved in `ks_fid`), with the picker collapsed. Instead, open with the picker showing and no team chosen. Decide what happens to a saved roster or game in progress: probably keep it, and offer "Continue with <team>" at the top of the picker.
 - **Legion of the Damned**: previewed in the Big Autumn Preview; add once its rules are published.
 - **Campaign tracking (Ctesiphus Expedition)**: track a map-based campaign across games. Needs the campaign PDF from the owner first, to see what it tracks (map territory, requisition points, operative experience, injuries and so on). Likely a new tab with its own saved state, and it may later need the same backend as Community Rosters if players want to share one campaign.
 - **Wire in the new logo package** — header horizontal lockup (mark-only on mobile fallback), favicon, apple-touch-icon for installable PWA. Assets exist; not yet integrated.
