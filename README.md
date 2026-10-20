@@ -10,7 +10,7 @@ A single-file web app that acts as a companion for **Kill Team** (Games Workshop
 
 The name and branding were deliberately kept generic ("KillSheet," not "Kill Team Companion") to avoid Games Workshop trademark issues. The app references GW game mechanics and stats (which are rules, not protected expression) but uses no GW logos, names-as-branding, artwork, or lore text.
 
-**Current factions implemented:** 48 teams, every team rules download on Warhammer Community except Ctesiphus Expedition. See `FACTIONS` in `killsheet.html` (Deathwatch is listed last on purpose). All teams were entered from the official online rules PDFs (Aug '26 errata); Angels of Death, Kommandos and Plague Marines were re-entered from their newer PDFs. Inquisitorial Agents has all six requisition groups. Abilities, ploys and equipment are condensed summaries, not GW's full text. Operatives with a weapon choice ("with one of the following options") are separate entries, e.g. "Navis Gunner (meltagun)", so caps like "max 2 Gunners" can be enforced.
+**Current factions implemented:** 48 teams, every kill team on Warhammer Community's downloads page (Ctesiphus Expedition, filed alongside them, is a map-based campaign system, not a team). See `FACTIONS` in `killsheet.html` (Deathwatch is listed last on purpose). All teams were entered from the official online rules PDFs (Aug '26 errata); Angels of Death, Kommandos and Plague Marines were re-entered from their newer PDFs. Inquisitorial Agents has all six requisition groups. Abilities, ploys and equipment are condensed summaries, not GW's full text. Operatives with a weapon choice ("with one of the following options") are separate entries, e.g. "Navis Gunner (meltagun)", so caps like "max 2 Gunners" can be enforced.
 
 ---
 
@@ -179,7 +179,6 @@ Estimated 2-3 hours. Should be its own focused session with its own QA pass (mix
 - Pre-ship checker added: `python3 tools/check.py` (hooks before early returns, every tab has an icon and panel, unique localStorage keys, no direct localStorage use, print class, JSX script tag).
 
 ### Other open tasks (rough priority order)
-- **Ctesiphus Expedition** team: the one team rules download not yet in the app. Needs its PDF.
 - **Legion of the Damned**: previewed in the Big Autumn Preview; add once its rules are published.
 - **Wire in the new logo package** — header horizontal lockup (mark-only on mobile fallback), favicon, apple-touch-icon for installable PWA. Assets exist; not yet integrated.
 
