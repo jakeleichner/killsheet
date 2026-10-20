@@ -180,6 +180,7 @@ Estimated 2-3 hours. Should be its own focused session with its own QA pass (mix
 
 ### Other open tasks (rough priority order)
 - **Legion of the Damned**: previewed in the Big Autumn Preview; add once its rules are published.
+- **Campaign tracking (Ctesiphus Expedition)**: track a map-based campaign across games. Needs the campaign PDF from the owner first, to see what it tracks (map territory, requisition points, operative experience, injuries and so on). Likely a new tab with its own saved state, and it may later need the same backend as Community Rosters if players want to share one campaign.
 - **Wire in the new logo package** — header horizontal lockup (mark-only on mobile fallback), favicon, apple-touch-icon for installable PWA. Assets exist; not yet integrated.
 
 ### Lower-priority backlog
