@@ -76,24 +76,85 @@ const WR = {
 };
 
 /* ═══ CORE RULES ═══ */
-const CORE_ACTIONS = [
-  { name: "Reposition", ap: 1, desc: "Move up to Move stat. Can't enter enemy control range.", restrict: "Not in enemy control range. Not with Charge/Fall Back." },
-  { name: "Dash", ap: 1, desc: "Move max 3\", no climbing.", restrict: "Not in enemy control range. Not with Charge." },
-  { name: "Fall Back", ap: 2, desc: "Can enter enemy control range but can't finish there.", restrict: "Only if enemy in control range. Not with Reposition/Charge." },
-  { name: "Charge", ap: 1, desc: "Move+2\". Must finish in enemy control range.", restrict: "Not Concealed, not already in CR, not with Reposition/Dash/Fall Back." },
-  { name: "Shoot", ap: 1, desc: "Ranged weapon at valid target. ATK dice >= Hit. Defender: 3D6 >= Save.", restrict: "Not Concealed, not in enemy control range." },
-  { name: "Fight", ap: 1, desc: "Enemy in CR. Both roll melee ATK. Alternate strike/block.", restrict: "Only if enemy in control range." },
+// Sourced from the Kill Team Lite Rules (Jul '25) and the core rules update log (Jun '26).
+// Rules tab item shape: { name, tag?, summary, detail?: string | string[], steps?: string[] }.
+// Items with detail get an arrow and expand on tap; steps always show.
+const GAME_SEQUENCE = [
+  { name: "What you need", summary: "Two kill teams and their datacards, a 30\" x 22\" killzone with terrain (unless the mission says otherwise), a tape measure in inches, 10 six-sided dice, and tokens and markers." },
+  { name: "Setting up", summary: "Set up the killzone, decide initiative, pick drop zones, then deploy.", steps: [
+    "Set up the killzone and its terrain.",
+    "Randomly pick a player to have initiative.",
+    "The player with initiative picks a drop zone from the mission map. Without a mission, they pick a killzone edge and their opponent gets the opposite one. Each drop zone is the area within 3\" of that player's edge.",
+    "Starting with the player with initiative, take turns setting up one third of your kill team (round up). Each operative must be wholly within your drop zone and starts with a Conceal order.",
+  ] },
+  { name: "Turning points", summary: "A battle lasts four turning points unless the mission says otherwise. Each turning point has a Strategy phase, then a Firefight phase." },
+  { name: "Strategy phase", summary: "Decide initiative, gain CP, ready your operatives, then use strategy ploys.", steps: [
+    "Initiative: each player rolls one D6. The highest roller decides who has initiative. On a tie, the player who doesn't have initiative decides.",
+    "Gain CP: each player starts the battle with 2CP. In the first Strategy phase, both players gain 1CP. After that, the player with initiative gains 1CP and the other player gains 2CP.",
+    "Ready: turn all your operatives' order tokens to the ready side.",
+    "Gambits: starting with the player with initiative, take turns using a strategy ploy or passing. The step ends when both players pass one after the other. Each strategy ploy can be used once per turning point.",
+  ] },
+  { name: "Firefight phase", summary: "Players take turns activating one ready operative at a time, starting with the player with initiative. The turning point ends when every operative is expended.", steps: [
+    "Pick one of your ready operatives and choose its order: Engage or Conceal.",
+    "Perform actions. Each action costs AP, and the operative can't spend more AP than its APL. It can't perform the same action twice in one activation unless a rule says it can.",
+    "When it's done, the operative is expended: flip its order token to the expended side.",
+    "You can use firefight ploys during this phase. Each ploy can be used once per turning point, except Command Re-roll.",
+  ] },
+  { name: "Counteract", summary: "If all your operatives are expended but your opponent still has ready ones, you can counteract when it would be your turn to activate.", detail: [
+    "Pick one expended operative with an Engage order. It performs one 1AP action for free (not Guard).",
+    "It can't move more than 2\", or be removed and set up more than 2\" away.",
+    "Each operative can counteract once per turning point.",
+  ] },
+  { name: "Winning", summary: "Missions set the objectives that score victory points (VP). The player with the most VP at the end of the battle wins." },
 ];
 
 const CORE_CONCEPTS = [
-  { name: "Control Range", desc: "Visible to and within 1\". Mutual." },
-  { name: "Valid Target", desc: "Engage: visible. Conceal: visible AND not in cover." },
-  { name: "Cover", desc: "Intervening terrain within target's control range. Not within 2\"." },
-  { name: "Injured", desc: "Below half wounds: -2\" Move, -1 Hit." },
-  { name: "Incapacitated", desc: "0 wounds: removed." },
-  { name: "Counteract", desc: "All yours expended? One Engaged: free 1AP (max 2\" move). Once/TP." },
-  { name: "Orders", desc: "Engage: normal + counteract. Conceal: untargetable in cover, no Shoot/Charge." },
-  { name: "Command Re-roll", desc: "1CP. Re-roll one attack or defence die." },
+  { name: "Datacard stats", summary: "Each operative has four stats: APL, Move, Save and Wounds.", detail: [
+    "APL (Action Point Limit): the most AP it can spend in one activation.",
+    "Move: how far it moves with a Reposition, in inches.",
+    "Save: the score each defence die needs to succeed. Lower is better.",
+    "Wounds: how much damage it can take.",
+  ] },
+  { name: "Weapon stats", summary: "Each weapon has Atk, Hit and Dmg, plus any weapon rules.", detail: [
+    "Atk: how many attack dice you roll.",
+    "Hit: the score each attack die needs to succeed. Lower is better.",
+    "Dmg: two numbers, normal/critical. 3/4 means 3 damage for each normal success and 4 for each critical success.",
+    "Weapon rules change how the attack works. See Combat, Weapon rules.",
+  ] },
+  { name: "Orders", summary: "Every operative has an Engage or Conceal order. You choose it each time the operative activates.", detail: [
+    "Engage: acts normally and can counteract.",
+    "Conceal: can't be targeted while in cover, but can't Shoot or Charge.",
+    "The order token has a ready side and an expended side, so it also shows whether the operative has activated this turning point.",
+  ] },
+  { name: "Dice", summary: "Kill Team uses six-sided dice (D6). A 6 is always a critical success. A 1 always fails.", detail: [
+    "Any other result that equals or beats the stat is a normal success.",
+    "A die can only be re-rolled once, whatever rules you have.",
+    "Dice you keep without rolling them (cover saves, Accurate) can't be re-rolled.",
+  ] },
+  { name: "Command Points and ploys", summary: "Spend CP on ploys. Each ploy costs 1CP.", detail: [
+    "Strategy ploys are used in the Gambits step of the Strategy phase. Firefight ploys are used in the Firefight phase.",
+    "Each ploy can be used once per turning point, except Command Re-roll.",
+  ] },
+  { name: "Command Re-roll", tag: "1CP", summary: "Firefight ploy. After rolling your attack or defence dice, re-roll one of them." },
+  { name: "Control range", summary: "Something within 1\" of an operative and visible to it is within its control range.", detail: "Control range is mutual. If it's true for either operative, they're both within each other's control range." },
+  { name: "Valid target", summary: "An Engage operative is a valid target if it's visible. A Conceal operative is a valid target only if it's visible and not in cover." },
+  { name: "Damage", summary: "Damage reduces an operative's wounds.", detail: [
+    "Wounded: fewer wounds than it started with.",
+    "Injured: fewer than half its starting wounds. Subtract 2\" from its Move and worsen its weapons' Hit by 1.",
+    "Incapacitated: 0 wounds or fewer. Remove it from the killzone.",
+  ] },
+];
+
+const CORE_ACTIONS = [
+  { name: "Reposition", tag: "1AP", summary: "Move up to the operative's Move stat. It can't move within control range of an enemy.", detail: "Not allowed while within an enemy's control range, or in the same activation as Charge or Fall Back." },
+  { name: "Dash", tag: "1AP", summary: "Move up to 3\". No climbing.", detail: "Not allowed while within an enemy's control range, or in the same activation as Charge." },
+  { name: "Fall Back", tag: "2AP", summary: "Move away from an enemy. You can pass through enemy control range but can't finish there.", detail: "Only allowed while an enemy is within control range. Not in the same activation as Reposition or Charge." },
+  { name: "Charge", tag: "1AP", summary: "Move up to your Move stat plus 2\" and finish within an enemy's control range.", detail: [
+    "Once you reach an enemy that no other friendly operative is within control range of, you can't leave its control range during the move.",
+    "Not allowed with a Conceal order, while already within an enemy's control range, or in the same activation as Reposition, Dash or Fall Back.",
+  ] },
+  { name: "Shoot", tag: "1AP", summary: "Shoot a ranged weapon at a valid target. See Combat, Shooting.", detail: "Not allowed with a Conceal order, or while within an enemy's control range." },
+  { name: "Fight", tag: "1AP", summary: "Fight an enemy within control range with a melee weapon. See Combat, Fighting.", detail: "Only allowed while an enemy is within control range." },
 ];
 
 /* ═══ FACTIONS ═══ */
@@ -8155,21 +8216,72 @@ const TERRAIN_TYPES = [
 
 /* ═══ MOVEMENT RULES ═══ */
 const MOVEMENT_RULES = [
-  { name: "Increments", desc: "All movement is done in straight-line increments, not curves. Each increment is rounded up to the nearest inch. For example, a 0.5\" increment counts as 1\"." },
-  { name: "Climbing", desc: "Must be within 1\" horizontally and 3\" vertically of visible terrain to climb it. Each climb is treated as a minimum of 2\" vertically (a 1\" climb costs 2\"). Must finish in a placeable location, so it can't stop midway." },
-  { name: "Dropping", desc: "When moving off terrain or after jumping. Ignore 2\" of vertical drop distance per action (total, not per drop). A drop of 2\" or less is free. Multiple drops in one action share the 2\" allowance." },
-  { name: "Jumping", desc: "From Vantage terrain higher than 2\": move up to 4\" horizontally from the edge in one straight-line increment, then drop or climb from there. Can cross gaps up to 4\" wide. If there's a rampart at the edge, climb over it first, then jump from the highest point. When landing, ignore 1\" or less height difference including ramparts." },
-  { name: "Through Friendlies", desc: "Friendly operatives can move through other friendly operatives (base and miniature), but not through enemy operatives." },
-  { name: "Terrain Blocking", desc: "Bases can't move through terrain. Operatives must move around, climb over, or drop/jump off. Bases cannot extend over the killzone edge." },
+  { name: "Straight lines", summary: "Move in straight-line increments, not curves. Round each increment up to the nearest inch.", detail: "A ½\" increment counts as 1\"." },
+  { name: "Climbing", summary: "Climb terrain within 1\" horizontally and 3\" vertically. Each climb counts as at least 2\".", detail: [
+    "A 1\" climb costs 2\" of movement.",
+    "The operative must finish where it can be placed, so it can't stop partway up.",
+    "Add up all the vertical distance in one action before rounding. You can keep climbing onto the next terrain if it's within 1\" horizontally and 3\" vertically.",
+  ] },
+  { name: "Dropping", summary: "Moving down off terrain. Ignore the first 2\" of dropping in each action.", detail: [
+    "The 2\" is for the whole action, not each drop.",
+    "A drop of 2\" or less is free.",
+  ] },
+  { name: "Jumping", summary: "From Vantage terrain more than 2\" high, move up to 4\" out from the edge in one straight line, then drop or climb.", detail: [
+    "This lets you cross gaps up to 4\" wide.",
+    "If there's a rampart at the edge you jump from, climb it first and jump from its top.",
+    "When jumping onto terrain, ignore a height difference of 1\" or less, including its rampart.",
+  ] },
+  { name: "Friendly operatives", summary: "Operatives can move through friendly operatives, but not enemies." },
+  { name: "Terrain blocks movement", summary: "Bases can't move through terrain. Go around it, climb over it, or drop or jump off it. Bases can't hang over the killzone edge." },
 ];
 
 /* ═══ VISIBILITY & OBSCURED ═══ */
 const VISIBILITY_RULES = [
-  { name: "Visible", desc: "Look from behind the operative. Draw an unobstructed straight line (1mm diameter) from its head to any part of the target (ignore bases). If you can, the target is visible. An operative is always visible to itself." },
-  { name: "Intervening", desc: "If terrain is between the operative and target, it's intervening. When unclear, use targeting lines: imaginary 1mm lines from any point of the operative's base to every facing part of the target's base. Anything at least one line crosses is intervening. Anything all lines cross is wholly intervening." },
-  { name: "Cover", desc: "An operative is in cover if there's intervening terrain within its control range (visible and within 1\"). Cannot be in cover while within 2\" of the other operative. An operative cannot be in cover from and obscured by the same terrain feature; the defender chooses one. Cover with Conceal = not a valid target. Cover with Engage = cover save (auto normal defence success)." },
-  { name: "Obscured", desc: "An operative is obscured if there's intervening Heavy terrain between it and the shooter. Cannot be obscured by Heavy terrain within 1\" of either operative. When shooting an obscured target: (1) discard one success of your choice, (2) all crits become normal successes and can't be changed back. This takes precedence over all other rules." },
-  { name: "Cover vs Obscured", desc: "Cover protects Concealed operatives from being targeted and grants a free defence die for Engaged ones. Obscured makes attacks less effective by removing a success and downgrading crits. Cover depends on terrain near the target; obscured depends on Heavy terrain between shooter and target." },
+  { name: "Visible", summary: "Look from behind the operative. If you can draw a clear straight line from its head to any part of the target (not the base), the target is visible.", detail: [
+    "The line is 1mm wide.",
+    "An operative is always visible to itself.",
+  ] },
+  { name: "Intervening", summary: "Terrain between two operatives is intervening.", detail: "When it's unclear, use targeting lines: imaginary 1mm lines from any point of the operative's base to every facing part of the target's base. Terrain that any line crosses is intervening. Terrain that every line crosses is wholly intervening." },
+  { name: "Cover", summary: "An operative is in cover if there's intervening terrain within its control range. It can't be in cover while within 2\" of the other operative.", detail: [
+    "Conceal order: an operative in cover isn't a valid target.",
+    "Cover save: when shot while in cover, the defender keeps one defence die as a normal success without rolling it.",
+    "An operative can't be in cover from and obscured by the same terrain feature. The defender picks one.",
+  ] },
+  { name: "Obscured", summary: "An operative is obscured if there's intervening Heavy terrain more than 1\" from both operatives.", detail: [
+    "Shooting an obscured target: discard one of your successes, and all your critical successes become normal successes.",
+    "This takes precedence over all other rules.",
+  ] },
+  { name: "Cover vs obscured", summary: "Cover comes from terrain near the target. Obscured comes from Heavy terrain in between.", detail: "Cover keeps Concealed operatives from being targeted and gives a free defence die. Obscured weakens the attack by removing a success and turning crits into normal successes." },
+];
+
+/* ═══ SHOOTING & FIGHTING ═══ */
+const SHOOTING_RULES = [
+  { name: "Shooting sequence", summary: "The player shooting is the attacker. The target's player is the defender.", steps: [
+    "Select weapon: pick one of the operative's ranged weapons.",
+    "Select target: pick an enemy that's a valid target and has no friendly operatives within its control range.",
+    "Roll attack dice: roll D6 equal to the weapon's Atk. Each die that equals or beats Hit is a success, and 6s are critical. If the target is obscured, discard one success and your crits become normal successes.",
+    "Roll defence dice: the defender rolls three D6. Each die that equals or beats Save is a success, and 6s are critical. If the target is in cover, the defender can keep one die as a normal success without rolling it.",
+    "Block: the defender uses their successes to block. One normal blocks one normal. Two normals block one crit. One crit blocks a normal or a crit.",
+    "Damage: each unblocked normal success deals the weapon's normal Dmg (first number). Each unblocked crit deals its critical Dmg (second number).",
+  ] },
+  { name: "Shooting limits", summary: "You can't Shoot with a Conceal order or while an enemy is within control range.", detail: [
+    "Operatives incapacitated during a Blast or Torrent attack stay on the killzone until the whole action is done.",
+    "If your attack hits your own operative (for example with Blast), you roll both the attack and defence dice.",
+  ] },
+];
+
+const FIGHTING_RULES = [
+  { name: "Fighting sequence", summary: "The operative fighting is the attacker. The enemy it picks fights back.", steps: [
+    "Select enemy: pick an enemy within control range. It will retaliate.",
+    "Select weapons: both players pick one of their operative's melee weapons.",
+    "Roll attack dice: both players roll D6 equal to their weapon's Atk. Each die that equals or beats Hit is a success, 6s are critical, and 1s fail.",
+    "Resolve: starting with the attacker, take turns resolving one success at a time. Once one player has none left, the other resolves all of theirs.",
+  ] },
+  { name: "Strike or block", summary: "Each success you resolve either strikes or blocks.", detail: [
+    "Strike: deal the weapon's normal Dmg (normal success) or critical Dmg (critical success) right away.",
+    "Block: cancel one of your opponent's unresolved successes. A normal blocks a normal. A crit blocks a normal or a crit.",
+    "Strike to finish an enemy before it hits back. Block to survive.",
+  ] },
 ];
 
 /* ═══ UNIVERSAL EQUIPMENT ═══ */
@@ -8211,7 +8323,7 @@ const GLOSSARY = [
   { term: "Ready", def: "An operative that hasn't been activated yet this TP." },
   { term: "Engage", def: "Order allowing Shoot/Charge and counteracting. Can be targeted if visible." },
   { term: "Conceal", def: "Order preventing Shoot/Charge. Not a valid target while in cover." },
-  { term: "Counteract", def: "When all yours are expended, one Engaged operative gets free 1AP (max 2\" move). Once/TP." },
+  { term: "Counteract", def: "When all yours are expended, one expended Engage operative performs a free 1AP action (max 2\" move). Each operative once per TP." },
   { term: "Ploy", def: "Spend CP for bonus rules. Strategy ploys in Strategy phase, Firefight ploys in Firefight phase. 1CP each." },
   { term: "Strategic Gambit", def: "Used in Gambit step of Strategy phase. All strategy ploys are Strategic Gambits. Each used once/TP max." },
   { term: "Cover Save", def: "When in cover, defender retains one defence die as auto normal success without rolling." },
@@ -8219,202 +8331,138 @@ const GLOSSARY = [
 ];
 
 /* ═══ RULES ═══ */
-function Rules() {
-  const [sec, setSec] = useState("core");
-  const [exp, setExp] = useState(null);
-  const tabs = [["core", "Core"], ["actions", "Actions"], ["terrain", "Terrain"], ["movement", "Movement"], ["visibility", "Visibility"], ["weapons", "Weapon Rules"], ["shooting", "Shooting"], ["fighting", "Fighting"], ["equipment", "Equipment"], ["glossary", "Glossary"]];
+// Weapon rules: first sentence is the summary, the rest expands.
+const splitRule = (text) => {
+  const m = text.match(/^(.+?[.!?])\s+(.+)$/s);
+  return m ? { summary: m[1], detail: m[2] } : { summary: text };
+};
+const EQUIP_TYPE_COLOR = { weapon: "#B8341C", action: "#C9772E", terrain: "#9AA5B1", upgrade: "#6B9BF7" };
+const RULE_SECTIONS = [
+  { id: "play", label: "How to Play", groups: [
+    { title: "Game sequence", items: GAME_SEQUENCE },
+    { title: "Operatives and dice", items: CORE_CONCEPTS },
+    { title: "Actions", items: CORE_ACTIONS },
+  ] },
+  { id: "terrain", label: "Moving & Terrain", groups: [
+    { title: "Movement", items: MOVEMENT_RULES },
+    { title: "Seeing and cover", items: VISIBILITY_RULES },
+    { title: "Terrain types", intro: "Terrain features are made of parts, and each part has one or more types. If a rule says to ignore Light terrain, ignore only the Light parts.", items: TERRAIN_TYPES.map(t => ({ name: t.name, swatch: t.color, summary: t.desc, detail: t.rules })) },
+  ] },
+  { id: "combat", label: "Combat", groups: [
+    { title: "Shooting", items: SHOOTING_RULES },
+    { title: "Fighting", items: FIGHTING_RULES },
+    { title: "Weapon rules", items: Object.entries(WR).map(([k, v]) => ({ name: k, ...splitRule(v) })) },
+  ] },
+  { id: "equipment", label: "Equipment", groups: [
+    { title: "Universal equipment", intro: "Any kill team can take these. Each option can be selected once per game. Your team's own equipment is listed in the Builder.", items: UNIV_EQUIPMENT.map(e => ({ name: e.name, tag: e.type, tagColor: EQUIP_TYPE_COLOR[e.type], summary: e.desc, stats: e.stats, detail: e.note })) },
+  ] },
+  { id: "glossary", label: "Glossary", glossary: true },
+];
+const ruleText = (it) => [it.name, it.summary, ...(it.steps || []), ...[].concat(it.detail || []), it.stats ? it.stats.wr : ""].join(" ").toLowerCase();
 
-  const RuleCard = ({ title, color, children }) => (
-    <div style={{ ...cd, padding: 12 }}>
-      <div style={{ fontSize: 13, fontWeight: 600, color: color || "#C9772E", marginBottom: 4 }}>{title}</div>
-      {children}
-    </div>
-  );
-
-  const StepList = ({ items, color }) => items.map((s, i) => (
-    <div key={i} style={{ display: "flex", gap: 6, marginBottom: 6 }}>
-      <div style={{ width: 18, height: 18, borderRadius: "50%", background: (color || "#B8341C") + "20", color: color || "#B8341C", fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{i + 1}</div>
+function StepList({ items }) {
+  return items.map((s, i) => (
+    <div key={i} style={{ display: "flex", gap: 8, marginTop: 6 }}>
+      <div style={{ width: 20, height: 20, borderRadius: "50%", background: "#C9772E20", color: "#C9772E", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontFamily: "'Rajdhani', sans-serif" }}>{i + 1}</div>
       <div style={mu}>{s}</div>
     </div>
   ));
+}
 
+function RuleItem({ item, open, onToggle }) {
+  const more = !!(item.detail || item.stats);
+  const lines = [].concat(item.detail || []);
   return (
-    <div style={{ maxWidth: 900, margin: "0 auto", padding: "20px 16px" }}>
-      <div style={{ fontSize: 22, fontWeight: 700, color: "#C9772E", fontFamily: "'Rajdhani', sans-serif", marginBottom: 4, letterSpacing: "0.04em", textShadow: "0 1px 8px rgba(201,168,76,0.2)" }}>Rules Reference</div>
-      <p style={mu}>Core rules reference. Tap any section to explore.</p>
-      <div style={{ display: "flex", gap: 4, flexWrap: "wrap", margin: "10px 0" }}>
-        {tabs.map(([id, label]) => (
-          <button key={id} onClick={() => { setSec(id); setExp(null); }} style={{ ...bs(sec === id ? "#C9772E" : "#9AA5B1"), background: sec === id ? "#C9772E15" : "transparent", padding: "4px 8px", fontSize: 10 }}>{label}</button>
-        ))}
+    <div onClick={more ? onToggle : undefined} style={{ ...cd, padding: 12, marginBottom: 8, cursor: more ? "pointer" : "default", borderLeft: "3px solid " + (open ? "#C9772E" : "#3A4150") }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        {item.swatch && <div style={{ width: 10, height: 10, borderRadius: 2, background: item.swatch, flexShrink: 0 }} />}
+        <span style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.03em", color: open ? "#C9772E" : "#F1F2F5" }}>{item.name}</span>
+        {item.tag && <span style={bg(item.tagColor || "#B8341C")}>{item.tag}</span>}
+        {more && <span aria-hidden="true" style={{ color: open ? "#C9772E" : "#9AA5B1", fontSize: 12, width: 14, textAlign: "center", transform: open ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>{"▸"}</span>}
       </div>
-
-      {/* CORE */}
-      {sec === "core" && CORE_CONCEPTS.map((c, i) => (
-        <RuleCard key={i} title={c.name}><div style={mu}>{c.desc}</div></RuleCard>
-      ))}
-
-      {/* ACTIONS */}
-      {sec === "actions" && CORE_ACTIONS.map((a, i) => (
-        <div key={i} onClick={() => setExp(exp === i ? null : i)} style={{ ...cd, padding: 10, cursor: "pointer" }}>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={{ fontSize: 12, fontWeight: 600, color: exp === i ? "#B8341C" : "#F1F2F5" }}>{a.name}</span>
-            <span style={bg("#B8341C")}>{a.ap}AP</span>
-          </div>
-          {exp === i && (
-            <div>
-              <div style={{ ...mu, marginTop: 4 }}>{a.desc}</div>
-              <div style={{ ...mu, marginTop: 3, paddingLeft: 8, borderLeft: "2px solid #B8341C40", color: "#B8341C" }}>{a.restrict}</div>
+      {item.summary && <div style={{ ...mu, marginTop: 4 }}>{item.summary}</div>}
+      {item.steps && <StepList items={item.steps} />}
+      {more && open && (
+        <div style={{ marginTop: 8, paddingLeft: 10, borderLeft: "2px solid #C9772E40" }}>
+          {lines.map((l, i) => <div key={i} style={{ ...mu, color: "#C8CDD3", marginBottom: 4 }}>{lines.length > 1 ? "• " : ""}{l}</div>)}
+          {item.stats && (
+            <div onClick={e => e.stopPropagation()} style={{ background: "#0E0F13", borderRadius: 5, padding: "8px 10px", marginTop: 6, border: "1px solid #262A33", cursor: "default" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 4 }}>
+                {[["ATK", item.stats.atk], ["HIT", item.stats.hit], ["DMG", item.stats.dmg]].map(([label, val]) => (
+                  <div key={label}>
+                    <div style={{ fontSize: 11, color: "#9AA5B1", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.1em" }}>{label}</div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: "#C9772E", fontFamily: "'Rajdhani', sans-serif" }}>{val}</div>
+                  </div>
+                ))}
+              </div>
+              {item.stats.wr && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 2, marginTop: 6 }}>
+                  {item.stats.wr.split(", ").map((r, j) => <Tip key={j} k={r}><span style={pl}>{r}</span></Tip>)}
+                </div>
+              )}
             </div>
           )}
         </div>
-      ))}
-
-      {/* TERRAIN */}
-      {sec === "terrain" && (
-        <div>
-          <div style={{ ...mu, marginBottom: 10 }}>Terrain features are composed of parts, each with a type. One part can be multiple types. Always view terrain in parts, not as one feature. If a rule says ignore Light terrain, only ignore the Light parts.</div>
-          {TERRAIN_TYPES.map((t, i) => (
-            <div key={i} onClick={() => setExp(exp === i ? null : i)} style={{ ...cd, padding: 12, cursor: "pointer", borderColor: exp === i ? t.color + "60" : "#262A33" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <div style={{ width: 10, height: 10, borderRadius: 2, background: t.color, flexShrink: 0 }} />
-                <span style={{ fontSize: 13, fontWeight: 600, color: exp === i ? t.color : "#F1F2F5" }}>{t.name}</span>
-              </div>
-              <div style={{ ...mu, marginTop: 4 }}>{t.desc}</div>
-              {exp === i && (
-                <div style={{ marginTop: 6 }}>
-                  {t.rules.map((r, j) => (
-                    <div key={j} style={{ ...mu, paddingLeft: 8, borderLeft: "2px solid " + t.color + "40", marginBottom: 3, fontSize: 10 }}>{r}</div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
       )}
+    </div>
+  );
+}
 
-      {/* MOVEMENT */}
-      {sec === "movement" && (
-        <div>
-          <div style={{ ...mu, marginBottom: 10 }}>Operatives cannot move through terrain. They must move around, climb over, or drop/jump off it.</div>
-          {MOVEMENT_RULES.map((m, i) => (
-            <RuleCard key={i} title={m.name} color="#C9772E">
-              <div style={mu}>{m.desc}</div>
-            </RuleCard>
-          ))}
-        </div>
-      )}
+function Rules() {
+  const [sec, setSec] = useState("play");
+  const [open, setOpen] = useState({});
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
+  const toggle = (key) => setOpen(o => ({ ...o, [key]: !o[key] }));
+  const groupHead = (text) => <div style={{ ...h3, color: "#C9772E", margin: "18px 0 8px" }}>{text}</div>;
 
-      {/* VISIBILITY */}
-      {sec === "visibility" && (
-        <div>
-          <div style={{ ...mu, marginBottom: 10 }}>Visibility, cover, and obscured are the three key concepts for determining what operatives can see and target.</div>
-          {VISIBILITY_RULES.map((v, i) => (
-            <div key={i} onClick={() => setExp(exp === i ? null : i)} style={{ ...cd, padding: 12, cursor: "pointer", borderColor: exp === i ? "#6B9BF760" : "#262A33" }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: exp === i ? "#6B9BF7" : "#F1F2F5" }}>{v.name}</div>
-              <div style={{ ...mu, marginTop: 4 }}>{v.desc}</div>
-            </div>
-          ))}
-        </div>
-      )}
+  const renderGroups = (section, groups, searching) => groups.map(g => (
+    <div key={section.id + g.title}>
+      {groupHead(searching ? section.label + " · " + g.title : g.title)}
+      {g.intro && !searching && <div style={{ ...mu, marginBottom: 10 }}>{g.intro}</div>}
+      {g.items.map(it => {
+        const key = section.id + "/" + g.title + "/" + it.name;
+        return <RuleItem key={key} item={it} open={searching || !!open[key]} onToggle={() => toggle(key)} />;
+      })}
+    </div>
+  ));
 
-      {/* WEAPON RULES */}
-      {sec === "weapons" && Object.entries(WR).map(([k, v], i) => (
-        <div key={i} onClick={() => setExp(exp === i ? null : i)} style={{ ...cd, padding: 8, cursor: "pointer" }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: exp === i ? "#C9772E" : "#F1F2F5" }}>{k}</div>
-          {exp === i && (<div style={{ ...mu, marginTop: 3 }}>{v}</div>)}
+  const glossaryTable = (rows) => (
+    <div style={{ ...cd, padding: "4px 12px" }}>
+      {rows.map((g, i) => (
+        <div key={g.term} style={{ display: "flex", gap: 10, padding: "8px 0", borderBottom: i < rows.length - 1 ? "1px solid #262A33" : "none" }}>
+          <div style={{ width: 96, flexShrink: 0, fontSize: 14, fontWeight: 700, color: "#C9772E", fontFamily: "'Rajdhani', sans-serif" }}>{g.term}</div>
+          <div style={{ ...mu, flex: 1 }}>{g.def}</div>
         </div>
       ))}
+    </div>
+  );
 
-      {/* SHOOTING */}
-      {sec === "shooting" && (
-        <div>
-          <div style={cd}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "#B8341C", fontFamily: "'Rajdhani', sans-serif", marginBottom: 6, letterSpacing: "0.04em" }}>Shooting Sequence</div>
-            <StepList color="#B8341C" items={[
-              "Select Weapon: Choose one ranged weapon and collect ATK dice (D6s equal to weapon's ATK stat).",
-              "Select Valid Target: Enemy that's a valid target with no friendly operatives in its control range. Engage = visible. Conceal = visible AND not in cover.",
-              "Roll Attack Dice: Each result >= Hit stat is a success (retained). 6 = critical success. 1 = always fail. If target is obscured: discard one success, all crits become normals.",
-              "Roll Defence Dice: Defender collects 3D6. If target in cover: retain one as auto normal success (cover save). Roll remainder. >= Save stat = success. 6 = crit.",
-              "Resolve Defence Dice: Allocate to block attack successes. Normal blocks normal. Two normals block a crit. Crit blocks normal or crit.",
-              "Resolve Attack Dice: Unblocked normal = Normal Dmg. Unblocked crit = Critical Dmg. Incapacitated operatives removed after entire action resolves.",
-            ]} />
-          </div>
-          <RuleCard title="Key Shooting Rules" color="#B8341C">
-            <div style={mu}>Cannot Shoot while Concealed or in enemy control range. Cannot target friendlies in target's control range. Operatives incapacitated during Blast/Torrent aren't removed until the full action resolves. When you are both attacker and defender (e.g. Blast hitting friendly), you roll both sets of dice.</div>
-          </RuleCard>
-        </div>
-      )}
+  const results = q ? RULE_SECTIONS.filter(sc => !sc.glossary).map(sc => ({ sc, groups: sc.groups.map(g => ({ ...g, items: g.items.filter(it => ruleText(it).includes(q)) })).filter(g => g.items.length) })).filter(r => r.groups.length) : [];
+  const glossHits = q ? GLOSSARY.filter(g => (g.term + " " + g.def).toLowerCase().includes(q)) : [];
+  const current = RULE_SECTIONS.find(sc => sc.id === sec);
 
-      {/* FIGHTING */}
-      {sec === "fighting" && (
-        <div>
-          <div style={cd}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "#B8341C", fontFamily: "'Rajdhani', sans-serif", marginBottom: 6, letterSpacing: "0.04em" }}>Fighting Sequence</div>
-            <StepList color="#B8341C" items={[
-              "Select Enemy Operative: Choose enemy within control range. That enemy retaliates. (Fighting = active operative. Retaliating = selected enemy.)",
-              "Select Weapons: Both players select one melee weapon and collect ATK dice.",
-              "Roll Attack Dice: Both roll simultaneously. >= Hit = success. 6 = crit. 1 = fail. Assists: each friendly within CR of the enemy (not in CR of another enemy) improves Hit by 1.",
-              "Resolve Attack Dice: Starting with attacker, alternate resolving one success each. Strike: inflict Normal/Critical Dmg (immediate). Block: cancel one opponent unresolved success (normal blocks normal, crit blocks normal or crit). You can block even with no opponent successes remaining.",
-            ]} />
-          </div>
-          <RuleCard title="Key Fighting Rules" color="#B8341C">
-            <div style={mu}>Must have enemy in control range. Striking deals damage right away, so use it to finish an enemy before it strikes back. Blocking cancels one of its strikes, so use it to survive. If one operative is incapacitated, the other resolves all remaining dice. You can block with no opponent dice left (useful to avoid killing an enemy you want alive).</div>
-          </RuleCard>
-        </div>
-      )}
+  return (
+    <div style={{ maxWidth: 900, margin: "0 auto", padding: "20px 16px" }}>
+      <div style={{ fontSize: 22, fontWeight: 700, color: "#C9772E", fontFamily: "'Rajdhani', sans-serif", marginBottom: 4, letterSpacing: "0.04em" }}>Rules Reference</div>
+      <p style={mu}>Cards with an arrow ({"▸"}) open for more detail.</p>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "12px 0 8px" }}>
+        {RULE_SECTIONS.map(sc => {
+          const on = !q && sec === sc.id;
+          return <button key={sc.id} onClick={() => { setSec(sc.id); setQuery(""); }} style={{ ...bs(on ? "#C9772E" : "#9AA5B1"), background: on ? "#C9772E20" : "transparent", padding: "7px 12px", fontSize: 12 }}>{sc.label}</button>;
+        })}
+      </div>
+      <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search all rules" style={{ width: "100%", boxSizing: "border-box", background: "#1A1D24", border: "1px solid #3A4150", borderRadius: 6, color: "#F1F2F5", padding: "9px 12px", fontSize: 14, fontFamily: "'Inter', sans-serif", marginBottom: 4 }} />
 
-      {/* UNIVERSAL EQUIPMENT */}
-      {sec === "equipment" && (
+      {q ? (
         <div>
-          <div style={{ ...mu, marginBottom: 10 }}>Universal equipment available to all kill teams. Select before battle per game sequence. Each option selected once per game. Faction equipment is separate.</div>
-          {UNIV_EQUIPMENT.map((e, i) => (
-            <div key={i} onClick={() => setExp(exp === i ? null : i)} style={{ ...cd, padding: 12, cursor: "pointer", borderColor: exp === i ? "#C9772E60" : "#262A33" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: 13, fontWeight: 600, color: exp === i ? "#C9772E" : "#F1F2F5" }}>{e.name}</span>
-                <span style={bg(e.type === "weapon" ? "#B8341C" : e.type === "action" ? "#C9772E" : "#9AA5B1")}>{e.type}</span>
-              </div>
-              <div style={{ ...mu, marginTop: 4 }}>{e.desc}</div>
-              {exp === i && e.stats && (
-                <div style={{ background: "#1A1D24", borderRadius: 5, padding: "6px 8px", marginTop: 6, border: "1px solid #262A33" }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 2 }}>
-                    {[["ATK", e.stats.atk], ["HIT", e.stats.hit], ["DMG", e.stats.dmg]].map(([label, val]) => (
-                      <div key={label}>
-                        <div style={{ fontSize: 8, color: "#9AA5B1" }}>{label}</div>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: "#C9772E", fontFamily: "monospace" }}>{val}</div>
-                      </div>
-                    ))}
-                  </div>
-                  {e.stats.wr && (
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 2, marginTop: 3 }}>
-                      {e.stats.wr.split(", ").map((r, j) => (
-                        <Tip key={j} k={r}><span style={{ ...pl, fontSize: 8 }}>{r}</span></Tip>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-              {exp === i && e.note && (
-                <div style={{ fontSize: 10, color: "#C9772E", marginTop: 4, fontStyle: "italic" }}>{e.note}</div>
-              )}
-            </div>
-          ))}
+          {results.length === 0 && glossHits.length === 0 && <p style={{ ...mu, marginTop: 12 }}>Nothing matches "{query}".</p>}
+          {results.map(r => renderGroups(r.sc, r.groups, true))}
+          {glossHits.length > 0 && <div>{groupHead("Glossary")}{glossaryTable(glossHits)}</div>}
         </div>
-      )}
-
-      {/* GLOSSARY */}
-      {sec === "glossary" && (
-        <div>
-          <div style={{ ...mu, marginBottom: 10 }}>Quick reference for common terms and abbreviations.</div>
-          <div style={cd}>
-            {GLOSSARY.map((g, i) => (
-              <div key={i} style={{ display: "flex", gap: 8, padding: "6px 0", borderBottom: i < GLOSSARY.length - 1 ? "1px solid #1A2430" : "none" }}>
-                <div style={{ width: 80, flexShrink: 0, fontSize: 12, fontWeight: 700, color: "#C9772E", fontFamily: "monospace" }}>{g.term}</div>
-                <div style={{ ...mu, flex: 1 }}>{g.def}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      ) : current.glossary ? (
+        <div>{groupHead("Terms and abbreviations")}{glossaryTable(GLOSSARY)}</div>
+      ) : renderGroups(current, current.groups, false)}
     </div>
   );
 }
