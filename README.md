@@ -169,6 +169,7 @@ Planned implementation:
 Estimated 2-3 hours. Should be its own focused session with its own QA pass (mixing infra + UI changes tends to combine bugs confusingly).
 
 ### Done recently
+- Design round 2: slim header (desktop: logo inside the tab bar, `LOGO_SRC`; phones: small logo above the tabs), taglines and decorative crosses removed, plain two-line footer. Ready/Expended chip replaces the unlabeled activation box (on phones the chips sit on a second row under the name). Dice roller, import panel, opponent column and Play online window restyled (13px text, bigger buttons and dice, Cover/Obscured toggle buttons). Undo toast for Reset game, switching team, loading and deleting saved rosters (`withUndo` snapshots `ks_` storage via `snapshotKillSheetStorage`; Undo restores and reloads); those actions no longer ask for confirmation. Dim text colours brightened (#5A6470/#4A5563 to #8B95A1, red text #E0664A, green text #5A9C3A). Keyboard: focus ring, clickable divs have `role="button"` + `tabIndex`, and Enter/Space activates them (App-level listener).
 - Tutorial rebuilt in the new style with current rules and real datacards (Intercessor Sergeant/Warrior vs Kommando Boss Nob/Boy): order chosen on activation, bolt rifle 4/3+/3/4 Piercing Crits 1 (one fewer defence die on a crit), optimal blocking including two normal saves on a crit (`tutBlock`), and an interactive fight where you pick Strike or Block each turn against the Nob. Removed the old-edition content (Accurate/Balanced/Heavy bolt rifle, orders in the Strategy phase, primary-objective scoring) and the unused `TUT` data.
 - Community tab redesigned: clear Coming soon note, a 4-step "Share a roster today" guide using saved rosters and codes, and a non-interactive preview of the board.
 - Datacard stat labels (APL, Move, Save, Wounds) 14px with 30px values; weapon ATK/HIT/DMG labels 13px; collapsed-card stats 16px.
@@ -204,7 +205,7 @@ Estimated 2-3 hours. Should be its own focused session with its own QA pass (mix
 - **Game history**: at the end of a game, save team, opponent team, mission, VP and result; a simple stats page per team.
 - **Legion of the Damned**: previewed in the Big Autumn Preview; add once its rules are published.
 - **Campaign tracking (Ctesiphus Expedition)**: track a map-based campaign across games. Needs the campaign PDF from the owner first, to see what it tracks (map territory, requisition points, operative experience, injuries and so on). Likely a new tab with its own saved state, and it may later need the same backend as Community Rosters if players want to share one campaign.
-- **Wire in the new logo package** — header horizontal lockup (mark-only on mobile fallback), favicon, apple-touch-icon for installable PWA. Assets exist; not yet integrated.
+- **Wire in the new logo package**: swap `LOGO_SRC` for the new wordmark (reticle mark + KILLSHEET, rust and white), and add favicon and apple-touch-icon. Needs the files from the owner.
 
 ### Lower-priority backlog
 - More factions: see convention 11. Add `tools/teams/<team>.py`, list it in `ORDER.txt`, run the build, then `python3 tools/check.py` and build a full roster in the preview.

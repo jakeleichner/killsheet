@@ -16,6 +16,8 @@
     ::-webkit-scrollbar-thumb { background: #3A4150; border-radius: 3px; }
     * { scrollbar-width: thin; scrollbar-color: #3A4150 #0E0F13; }
     button:hover { opacity: 0.85; }
+    :focus-visible { outline: 2px solid #FFB627; outline-offset: 2px; border-radius: 4px; }
+    [role="button"] { cursor: pointer; }
     @media (max-width: 600px) {
       #root { font-size: 13px; }
     }
@@ -5730,7 +5732,7 @@ const SEQ_PHASES = [
     ],
     reminders: ["Initiative decides activation order AND simultaneous effect resolution.", "CP from previous TPs carry over, so count any you didn't spend.", "You must pass when you have no more gambits to use or want to save CP.", "Strategy ploy effects last until end of TP (unless stated otherwise)."],
   },
-  { id: "firefight", name: "Firefight Phase", color: "#B8341C", icon: "\uD83D\uDD25",
+  { id: "firefight", name: "Firefight Phase", color: "#E0664A", icon: "\uD83D\uDD25",
     checks: [
       { text: "Initiative player activates a Ready operative first", detail: "Select one Ready friendly operative to activate." },
       { text: "Determine order: Engage or Conceal", detail: "Engage: can Shoot, Charge, counteract, but targetable. Conceal: not a valid target in cover, but can't Shoot, Charge, or counteract." },
@@ -5751,7 +5753,7 @@ const SEQ_PHASES = [
       { name: "Place Marker", ap: 1, summary: "Place carried marker within CR." },
     ],
   },
-  { id: "shooting", name: "Shooting (reference)", color: "#B8341C", icon: "\uD83C\uDFAF", isRef: true,
+  { id: "shooting", name: "Shooting (reference)", color: "#E0664A", icon: "\uD83C\uDFAF", isRef: true,
     steps: [
       "SELECT WEAPON: Choose one ranged weapon, collect ATK dice.",
       "SELECT TARGET: Valid target, no friendlies in its CR. Engage = visible. Conceal = visible + not in cover.",
@@ -5761,7 +5763,7 @@ const SEQ_PHASES = [
       "RESOLVE ATTACK: Unblocked normal = Normal Dmg. Unblocked crit = Critical Dmg.",
     ],
   },
-  { id: "fighting", name: "Fighting (reference)", color: "#B8341C", icon: "\u2620", isRef: true,
+  { id: "fighting", name: "Fighting (reference)", color: "#E0664A", icon: "\u2620", isRef: true,
     steps: [
       "SELECT ENEMY: Choose enemy in CR. They retaliate.",
       "SELECT WEAPONS: Both players pick melee weapon, collect ATK dice.",
@@ -5851,6 +5853,28 @@ function useLocalStorage(key, initialValue) {
     } catch (e) { /* quota or serialization errors ignored */ }
   }, [fullKey, value]);
   return [value, setValue];
+}
+// Undo support: copy all KillSheet keys, and put a copy back.
+function snapshotKillSheetStorage() {
+  const snap = {};
+  try {
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const k = window.localStorage.key(i);
+      if (k && k.indexOf(LS_PREFIX) === 0) snap[k] = window.localStorage.getItem(k);
+    }
+  } catch (e) { /* storage unavailable */ }
+  return snap;
+}
+function restoreKillSheetStorage(snap) {
+  try {
+    const keys = [];
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const k = window.localStorage.key(i);
+      if (k && k.indexOf(LS_PREFIX) === 0) keys.push(k);
+    }
+    keys.forEach(k => window.localStorage.removeItem(k));
+    Object.keys(snap).forEach(k => window.localStorage.setItem(k, snap[k]));
+  } catch (e) { /* storage unavailable */ }
 }
 function clearKillSheetStorage() {
   try {
@@ -6193,24 +6217,25 @@ function DiceRoller({ w, wtype, onClose, cp, setCp, requestDamageApply, applySel
   };
 
   const DieBox = ({ val, classify, size }) => (
-    <div style={{ width: size || 32, height: size || 32, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 3, background: "#0E0F13", border: "2px solid " + dieColor(val, classify), fontSize: size ? size * 0.5 : 16, fontWeight: 700, color: dieColor(val, classify), fontFamily: "'Courier New', monospace", boxShadow: "0 2px 6px rgba(0,0,0,0.5), inset 0 1px 0 " + dieColor(val, classify) + "20" }}>{val}</div>
+    <div style={{ width: size || 40, height: size || 40, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 3, background: "#0E0F13", border: "2px solid " + dieColor(val, classify), fontSize: size ? size * 0.5 : 16, fontWeight: 700, color: dieColor(val, classify), fontFamily: "'Courier New', monospace", boxShadow: "0 2px 6px rgba(0,0,0,0.5), inset 0 1px 0 " + dieColor(val, classify) + "20" }}>{val}</div>
   );
 
+  const toggleChip = (on, col) => ({ display: "inline-flex", alignItems: "center", gap: 5, padding: "8px 12px", borderRadius: 6, cursor: "pointer", fontSize: 13, fontWeight: 600, border: "1px solid " + (on ? col : "#3A4150"), background: on ? col + "20" : "transparent", color: on ? col : "#C8CDD3" });
   const atkResults = getAttackResults();
   const defResults = getDefenceResults();
 
   return (
-    <div style={{ background: "#1A1D24", borderRadius: 2, padding: "10px 10px 12px", marginTop: 6, border: "1px solid #C9772E30", boxShadow: "inset 0 2px 8px rgba(0,0,0,0.4)" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: "#C9772E", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.08em" }}>DICE ROLLER</div>
-        <button onClick={onClose} style={{ ...bs("#9AA5B1"), fontSize: 11, padding: "2px 6px" }}><Icon name="x" size={12} /> Close</button>
+    <div style={{ background: "#14161B", borderRadius: 8, padding: 14, marginTop: 8, border: "1px solid #C9772E40" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <div style={{ fontSize: 16, fontWeight: 700, color: "#C9772E", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.04em" }}>Dice roller</div>
+        <button onClick={onClose} style={{ ...bs("#9AA5B1"), fontSize: 13, padding: "8px 12px" }}><Icon name="x" size={12} /> Close</button>
       </div>
 
       {/* Attack Roll */}
       <div style={{ marginBottom: 8 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-          <button onClick={doAttackRoll} style={{ ...bs("#C9772E"), fontSize: 11, padding: "4px 12px" }}><Icon name="dice" size={13} /> Roll {w.atk} attack dice</button>
-          <div style={{ fontSize: 11, color: "#9AA5B1" }}>Hit: {w.hit}{hasLethal5 ? " (Lethal 5+)" : ""}</div>
+          <button onClick={doAttackRoll} style={{ ...bs("#C9772E"), fontSize: 13, padding: "8px 12px" }}><Icon name="dice" size={13} /> Roll {w.atk} attack dice</button>
+          <div style={{ fontSize: 13, color: "#9AA5B1" }}>Hit: {w.hit}{hasLethal5 ? " (Lethal 5+)" : ""}</div>
         </div>
 
         {attackDice && (
@@ -6223,16 +6248,16 @@ function DiceRoller({ w, wtype, onClose, cp, setCp, requestDamageApply, applySel
             {/* Weapon re-roll buttons (free, from weapon rules) */}
             {!rerolledAttack && (hasBalanced || hasCeaseless || hasRelentless) && (
               <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 4 }}>
-                <span style={{ fontSize: 11, color: "#9AA5B1", alignSelf: "center" }}>FREE:</span>
-                {hasBalanced && <button onClick={rerollBalanced} style={{ ...bs("#3D6B3F"), fontSize: 11, padding: "2px 8px" }}>Balanced (re-roll 1)</button>}
-                {hasCeaseless && <button onClick={rerollCeaseless} style={{ ...bs("#3D6B3F"), fontSize: 11, padding: "2px 8px" }}>Ceaseless (re-roll same)</button>}
-                {hasRelentless && <button onClick={rerollRelentless} style={{ ...bs("#3D6B3F"), fontSize: 11, padding: "2px 8px" }}>Relentless (re-roll all fails)</button>}
+                <span style={{ fontSize: 13, color: "#9AA5B1", alignSelf: "center" }}>Free re-roll:</span>
+                {hasBalanced && <button onClick={rerollBalanced} style={{ ...bs("#3D6B3F"), fontSize: 13, padding: "8px 12px" }}>Balanced (re-roll 1)</button>}
+                {hasCeaseless && <button onClick={rerollCeaseless} style={{ ...bs("#3D6B3F"), fontSize: 13, padding: "8px 12px" }}>Ceaseless (re-roll same)</button>}
+                {hasRelentless && <button onClick={rerollRelentless} style={{ ...bs("#3D6B3F"), fontSize: 13, padding: "8px 12px" }}>Relentless (re-roll all fails)</button>}
               </div>
             )}
             {/* Command Re-roll (1CP, separate from weapon re-rolls) */}
             {!cmdRerolled && (
               <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 6 }}>
-                <span style={{ fontSize: 11, color: "#9AA5B1", alignSelf: "center" }}>1CP:</span>
+                <span style={{ fontSize: 13, color: "#9AA5B1", alignSelf: "center" }}>For 1CP:</span>
                 <button onClick={() => {
                   if (cp <= 0) return;
                   const fails = attackDice.map((d, i) => classifyAttack(d) === "fail" ? i : -1).filter(i => i >= 0);
@@ -6242,31 +6267,31 @@ function DiceRoller({ w, wtype, onClose, cp, setCp, requestDamageApply, applySel
                   setAttackDice(newDice);
                   setCmdRerolled(true);
                   setCp(cp - 1);
-                }} style={{ ...bs(cp > 0 ? "#C9772E" : "#3A4150"), fontSize: 11, padding: "2px 8px", opacity: cp > 0 ? 1 : 0.35, cursor: cp > 0 ? "pointer" : "not-allowed" }}>Cmd Re-roll ({cp}CP left)</button>
+                }} style={{ ...bs(cp > 0 ? "#C9772E" : "#3A4150"), fontSize: 13, padding: "8px 12px", opacity: cp > 0 ? 1 : 0.35, cursor: cp > 0 ? "pointer" : "not-allowed" }}>Command Re-roll ({cp}CP left)</button>
               </div>
             )}
 
             {/* Results summary */}
             {atkResults && (
-              <div style={{ background: "#1A1D24", borderRadius: 2, padding: "6px 8px", border: "1px solid #262A33" }}>
-                <div style={{ display: "flex", gap: 10, fontSize: 11, fontWeight: 700 }}>
+              <div style={{ background: "#1A1D24", borderRadius: 6, padding: "8px 12px", border: "1px solid #262A33" }}>
+                <div style={{ display: "flex", gap: 10, fontSize: 13, fontWeight: 700 }}>
                   <span style={{ color: "#C9772E" }}>{atkResults.crits} Crit{atkResults.crits !== 1 ? "s" : ""}</span>
-                  <span style={{ color: "#3D6B3F" }}>{atkResults.hits} Hit{atkResults.hits !== 1 ? "s" : ""}</span>
-                  <span style={{ color: "#B8341C" }}>{atkResults.fails} Miss{atkResults.fails !== 1 ? "es" : ""}</span>
+                  <span style={{ color: "#5A9C3A" }}>{atkResults.hits} Hit{atkResults.hits !== 1 ? "s" : ""}</span>
+                  <span style={{ color: "#E0664A" }}>{atkResults.fails} Miss{atkResults.fails !== 1 ? "es" : ""}</span>
                 </div>
-                <div style={{ fontSize: 11, color: "#9AA5B1", marginTop: 2 }}>
-                  Dmg potential: {atkResults.crits}×{w.dmg.split("/")[1]} + {atkResults.hits}×{w.dmg.split("/")[0]}{atkResults.devastatingDmg > 0 ? " + " + atkResults.devastatingDmg + " (Dev)" : ""} = {atkResults.crits * parseInt(w.dmg.split("/")[1]) + atkResults.hits * parseInt(w.dmg.split("/")[0]) + atkResults.devastatingDmg} total
+                <div style={{ fontSize: 13, color: "#9AA5B1", marginTop: 2 }}>
+                  Damage if nothing is blocked: {atkResults.crits}×{w.dmg.split("/")[1]} + {atkResults.hits}×{w.dmg.split("/")[0]}{atkResults.devastatingDmg > 0 ? " + " + atkResults.devastatingDmg + " (Dev)" : ""} = {atkResults.crits * parseInt(w.dmg.split("/")[1]) + atkResults.hits * parseInt(w.dmg.split("/")[0]) + atkResults.devastatingDmg} total
                 </div>
-                {atkResults.accurateBonus > 0 && <div style={{ fontSize: 11, color: "#3D6B3F" }}>+{atkResults.accurateBonus} auto hit(s) from Accurate</div>}
-                {atkResults.severeApplied && <div style={{ fontSize: 11, color: "#C9772E" }}>Severe: upgraded 1 hit → crit (no natural crits)</div>}
-                {atkResults.rendingApplied && <div style={{ fontSize: 11, color: "#C9772E" }}>Rending: upgraded 1 hit → crit</div>}
-                {atkResults.punishingApplied && <div style={{ fontSize: 11, color: "#C9772E" }}>Punishing: upgraded 1 miss → hit</div>}
-                {atkResults.devastatingDmg > 0 && <div style={{ fontSize: 11, color: "#B8341C" }}>Devastating {atkResults.devastating}: {atkResults.crits} crit(s) × {atkResults.devastating} = {atkResults.devastatingDmg} bonus damage (bypasses defence)</div>}
-                {hasBrutal && <div style={{ fontSize: 11, color: "#B8341C" }}>Brutal: opponent can only block with crits</div>}
-                {hasStun && atkResults.crits > 0 && <div style={{ fontSize: 11, color: "#9B59B6" }}>Stun: target's APL −1 until end of next activation</div>}
-                {hasPoison && (atkResults.crits + atkResults.hits) > 0 && <div style={{ fontSize: 11, color: "#7BC242" }}>Poison: if any dmg is dealt, target gains a Poison token (1 dmg at start of each activation)</div>}
-                {hasToxic && <div style={{ fontSize: 11, color: "#7BC242" }}>Toxic: +1 / +1 dmg if target already has your Poison token</div>}
-                {hasLimited && <div style={{ fontSize: 11, color: "#C9772E" }}>Limited 1: this weapon can only be used once per battle</div>}
+                {atkResults.accurateBonus > 0 && <div style={{ fontSize: 13, color: "#5A9C3A" }}>+{atkResults.accurateBonus} auto hit(s) from Accurate</div>}
+                {atkResults.severeApplied && <div style={{ fontSize: 13, color: "#C9772E" }}>Severe: upgraded 1 hit → crit (no natural crits)</div>}
+                {atkResults.rendingApplied && <div style={{ fontSize: 13, color: "#C9772E" }}>Rending: upgraded 1 hit → crit</div>}
+                {atkResults.punishingApplied && <div style={{ fontSize: 13, color: "#C9772E" }}>Punishing: upgraded 1 miss → hit</div>}
+                {atkResults.devastatingDmg > 0 && <div style={{ fontSize: 13, color: "#E0664A" }}>Devastating {atkResults.devastating}: {atkResults.crits} crit(s) × {atkResults.devastating} = {atkResults.devastatingDmg} bonus damage (bypasses defence)</div>}
+                {hasBrutal && <div style={{ fontSize: 13, color: "#E0664A" }}>Brutal: opponent can only block with crits</div>}
+                {hasStun && atkResults.crits > 0 && <div style={{ fontSize: 13, color: "#9B59B6" }}>Stun: target's APL −1 until end of next activation</div>}
+                {hasPoison && (atkResults.crits + atkResults.hits) > 0 && <div style={{ fontSize: 13, color: "#7BC242" }}>Poison: if any dmg is dealt, target gains a Poison token (1 dmg at start of each activation)</div>}
+                {hasToxic && <div style={{ fontSize: 13, color: "#7BC242" }}>Toxic: +1 / +1 dmg if target already has your Poison token</div>}
+                {hasLimited && <div style={{ fontSize: 13, color: "#C9772E" }}>Limited 1: this weapon can only be used once per battle</div>}
               </div>
             )}
 
@@ -6276,15 +6301,15 @@ function DiceRoller({ w, wtype, onClose, cp, setCp, requestDamageApply, applySel
               const triggered = hotRoll < hitInt;
               const selfDmg = triggered ? hotRoll * 2 : 0;
               return (
-                <div style={{ marginTop: 6, padding: "6px 8px", background: triggered ? "#B8341C10" : "#3D6B3F10", border: "1px solid " + (triggered ? "#B8341C" : "#3D6B3F") + "40", borderRadius: 2 }}>
+                <div style={{ marginTop: 6, padding: "8px 12px", background: triggered ? "#B8341C10" : "#3D6B3F10", border: "1px solid " + (triggered ? "#B8341C" : "#3D6B3F") + "40", borderRadius: 6 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <span style={{ fontSize: 11, color: "#9AA5B1", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.06em" }}>HOT D6:</span>
-                      <div style={{ width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 3, background: "#0E0F13", border: "2px solid " + (triggered ? "#B8341C" : "#3D6B3F"), fontSize: 11, fontWeight: 700, color: triggered ? "#B8341C" : "#3D6B3F", fontFamily: "'Courier New', monospace" }}>{hotRoll}</div>
-                      <span style={{ fontSize: 11, color: triggered ? "#B8341C" : "#3D6B3F" }}>{triggered ? hotRoll + " < " + w.hit + " → " + selfDmg + " self-damage" : hotRoll + " ≥ " + w.hit + " → safe"}</span>
+                      <span style={{ fontSize: 13, color: "#9AA5B1", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.06em" }}>HOT D6:</span>
+                      <div style={{ width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 3, background: "#0E0F13", border: "2px solid " + (triggered ? "#B8341C" : "#3D6B3F"), fontSize: 13, fontWeight: 700, color: triggered ? "#B8341C" : "#3D6B3F", fontFamily: "'Courier New', monospace" }}>{hotRoll}</div>
+                      <span style={{ fontSize: 13, color: triggered ? "#B8341C" : "#3D6B3F" }}>{triggered ? hotRoll + " < " + w.hit + " → " + selfDmg + " self-damage" : hotRoll + " ≥ " + w.hit + " → safe"}</span>
                     </div>
                     {triggered && (
-                      <button disabled={!applySelfDamage} onClick={() => { if (applySelfDamage) applySelfDamage(selfDmg); }} style={{ ...bs("#B8341C"), fontSize: 11, padding: "3px 8px", opacity: applySelfDamage ? 1 : 0.4 }}><Icon name="skull" size={12} /> Apply {selfDmg} self-damage</button>
+                      <button disabled={!applySelfDamage} onClick={() => { if (applySelfDamage) applySelfDamage(selfDmg); }} style={{ ...bs("#B8341C"), fontSize: 13, padding: "8px 12px", opacity: applySelfDamage ? 1 : 0.4 }}><Icon name="skull" size={12} /> Apply {selfDmg} self-damage</button>
                     )}
                   </div>
                 </div>
@@ -6298,26 +6323,20 @@ function DiceRoller({ w, wtype, onClose, cp, setCp, requestDamageApply, applySel
       {attackDice && atkResults && (atkResults.crits + atkResults.hits > 0) && (
         <div style={{ borderTop: "1px solid #262A33", paddingTop: 8 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, flexWrap: "wrap" }}>
-            <div style={{ fontSize: 11, color: "#9AA5B1", fontFamily: "'Rajdhani', sans-serif" }}>DEFENCE</div>
+            <div style={{ ...h3, color: "#6B9BF7", marginBottom: 0 }}>Defence</div>
             <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
-              <span style={{ fontSize: 11, color: "#9AA5B1" }}>Save:</span>
-              <select value={defSave} onChange={(e) => setDefSave(parseInt(e.target.value))} style={{ background: "#262A33", border: "1px solid #3A4150", borderRadius: 2, color: "#F1F2F5", fontSize: 11, padding: "2px 4px" }}>
+              <span style={{ fontSize: 13, color: "#9AA5B1" }}>Save:</span>
+              <select value={defSave} onChange={(e) => setDefSave(parseInt(e.target.value))} style={{ background: "#262A33", border: "1px solid #3A4150", borderRadius: 6, color: "#F1F2F5", fontSize: 13, padding: "8px 12px" }}>
                 {[2,3,4,5,6].map(v => <option key={v} value={v}>{v}+</option>)}
               </select>
             </div>
-            <div onClick={() => setHasCover(!hasCover)} style={{ display: "flex", alignItems: "center", gap: 3, cursor: "pointer", fontSize: 11, color: hasCover ? "#3D6B3F" : "#9AA5B1" }}>
-              <div style={{ width: 10, height: 10, borderRadius: 2, border: "1px solid " + (hasCover ? "#3D6B3F" : "#3A4150"), background: hasCover ? "#3D6B3F20" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#3D6B3F" }}>{hasCover ? <Icon name="check" size={10} /> : ""}</div>
-              Cover{hasSaturate ? " (Saturated)" : ""}
-            </div>
-            <div onClick={() => setIsObscured(!isObscured)} style={{ display: "flex", alignItems: "center", gap: 3, cursor: "pointer", fontSize: 11, color: isObscured ? "#6B9BF7" : "#9AA5B1" }}>
-              <div style={{ width: 10, height: 10, borderRadius: 2, border: "1px solid " + (isObscured ? "#6B9BF7" : "#3A4150"), background: isObscured ? "#6B9BF720" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#6B9BF7" }}>{isObscured ? <Icon name="check" size={10} /> : ""}</div>
-              Obscured
-            </div>
-            <button onClick={doDefenceRoll} style={{ ...bs("#6B9BF7"), fontSize: 11, padding: "4px 10px" }}><Icon name="dice" size={13} /> Roll defence</button>
+            <button onClick={() => setHasCover(!hasCover)} style={toggleChip(hasCover, "#5A9C3A")}>{hasCover && <Icon name="check" size={13} />}Cover{hasSaturate ? " (Saturated)" : ""}</button>
+            <button onClick={() => setIsObscured(!isObscured)} style={toggleChip(isObscured, "#6B9BF7")}>{isObscured && <Icon name="check" size={13} />}Obscured</button>
+            <button onClick={doDefenceRoll} style={{ ...bs("#6B9BF7"), fontSize: 13, padding: "8px 12px" }}><Icon name="dice" size={13} /> Roll defence</button>
           </div>
 
           {isObscured && atkResults && (
-            <div style={{ fontSize: 11, color: "#6B9BF7", background: "#6B9BF708", padding: "3px 6px", borderRadius: 2, marginBottom: 4, border: "1px solid #6B9BF715" }}>
+            <div style={{ fontSize: 13, color: "#6B9BF7", background: "#6B9BF708", padding: "3px 6px", borderRadius: 6, marginBottom: 4, border: "1px solid #6B9BF715" }}>
               Obscured: discard 1 attacker success, all crits become normals → {Math.max(0, atkResults.crits + atkResults.hits - 1)} normal hit(s)
             </div>
           )}
@@ -6325,14 +6344,14 @@ function DiceRoller({ w, wtype, onClose, cp, setCp, requestDamageApply, applySel
           {defenceDice && defResults && (
             <div>
               <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 6 }}>
-                {defenceDice.map((d, i) => (<DieBox key={i} val={d} classify={classifyDefence} size={28} />))}
-                {defResults.coverSave && <div style={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 3, background: "#3D6B3F15", border: "2px dashed #3D6B3F40", fontSize: 11, color: "#3D6B3F", fontWeight: 700 }}>CVR</div>}
+                {defenceDice.map((d, i) => (<DieBox key={i} val={d} classify={classifyDefence} size={36} />))}
+                {defResults.coverSave && <div style={{ width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 6, background: "#3D6B3F15", border: "2px dashed #5A9C3A80", fontSize: 13, color: "#5A9C3A", fontWeight: 700 }}>CVR</div>}
               </div>
-              <div style={{ background: "#1A1D24", borderRadius: 2, padding: "6px 8px", border: "1px solid #262A33" }}>
-                <div style={{ display: "flex", gap: 10, fontSize: 11, fontWeight: 700 }}>
+              <div style={{ background: "#1A1D24", borderRadius: 6, padding: "8px 12px", border: "1px solid #262A33" }}>
+                <div style={{ display: "flex", gap: 10, fontSize: 13, fontWeight: 700 }}>
                   <span style={{ color: "#C9772E" }}>{defResults.crits} Crit Save{defResults.crits !== 1 ? "s" : ""}</span>
-                  <span style={{ color: "#3D6B3F" }}>{defResults.saves} Save{defResults.saves !== 1 ? "s" : ""}</span>
-                  <span style={{ color: "#B8341C" }}>{defResults.fails} Fail{defResults.fails !== 1 ? "s" : ""}</span>
+                  <span style={{ color: "#5A9C3A" }}>{defResults.saves} Save{defResults.saves !== 1 ? "s" : ""}</span>
+                  <span style={{ color: "#E0664A" }}>{defResults.fails} Fail{defResults.fails !== 1 ? "s" : ""}</span>
                 </div>
               </div>
 
@@ -6360,20 +6379,20 @@ function DiceRoller({ w, wtype, onClose, cp, setCp, requestDamageApply, applySel
                 const estimate = aCrits * critDmg + aHits * normalDmg + atkResults.devastatingDmg;
                 const finalDamage = editedDamage !== null ? editedDamage : estimate;
                 return (
-                  <div style={{ marginTop: 6, padding: "6px 8px", background: "#262A33", borderRadius: 2, border: "1px solid #C9772E30" }}>
+                  <div style={{ marginTop: 6, padding: "8px 12px", background: "#262A33", borderRadius: 6, border: "1px solid #C9772E30" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                      <div style={{ fontSize: 11, color: "#9AA5B1", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.06em" }}>FINAL DMG</div>
+                      <div style={{ ...h3, color: "#C9772E", marginBottom: 0 }}>Final damage</div>
                       <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                        <button onClick={() => setEditedDamage(Math.max(0, finalDamage - 1))} style={{ width: 22, height: 22, border: "1px solid #3A4150", borderRadius: 2, background: "#0E0F13", color: "#B8341C", cursor: "pointer", fontSize: 12, fontWeight: 700, padding: 0 }}>{"\u2212"}</button>
-                        <input type="number" value={finalDamage} onChange={(e) => { const v = parseInt(e.target.value); setEditedDamage(isNaN(v) ? 0 : Math.max(0, v)); }} style={{ width: 44, textAlign: "center", background: "#0E0F13", border: "1px solid #3A4150", borderRadius: 2, color: "#C9772E", fontSize: 14, fontWeight: 700, fontFamily: "'Courier New', monospace", padding: "2px 4px", outline: "none" }} />
-                        <button onClick={() => setEditedDamage(finalDamage + 1)} style={{ width: 22, height: 22, border: "1px solid #3A4150", borderRadius: 2, background: "#0E0F13", color: "#3D6B3F", cursor: "pointer", fontSize: 12, fontWeight: 700, padding: 0 }}>+</button>
+                        <button onClick={() => setEditedDamage(Math.max(0, finalDamage - 1))} style={{ width: 34, height: 34, border: "1px solid #3A4150", borderRadius: 6, background: "#0E0F13", color: "#E0664A", cursor: "pointer", fontSize: 14, fontWeight: 700, padding: 0 }}>{"\u2212"}</button>
+                        <input type="number" value={finalDamage} onChange={(e) => { const v = parseInt(e.target.value); setEditedDamage(isNaN(v) ? 0 : Math.max(0, v)); }} style={{ width: 44, textAlign: "center", background: "#0E0F13", border: "1px solid #3A4150", borderRadius: 6, color: "#C9772E", fontSize: 14, fontWeight: 700, fontFamily: "'Courier New', monospace", padding: "8px 12px", outline: "none" }} />
+                        <button onClick={() => setEditedDamage(finalDamage + 1)} style={{ width: 34, height: 34, border: "1px solid #3A4150", borderRadius: 6, background: "#0E0F13", color: "#5A9C3A", cursor: "pointer", fontSize: 14, fontWeight: 700, padding: 0 }}>+</button>
                         {editedDamage !== null && editedDamage !== estimate && (
-                          <button onClick={() => setEditedDamage(null)} style={{ ...bs("#9AA5B1"), fontSize: 11, padding: "2px 4px" }} title={"Reset to estimate (" + estimate + ")"}><Icon name="reset" size={12} /></button>
+                          <button onClick={() => setEditedDamage(null)} style={{ ...bs("#9AA5B1"), fontSize: 13, padding: "8px 12px" }} title={"Reset to estimate (" + estimate + ")"}><Icon name="reset" size={12} /></button>
                         )}
                       </div>
-                      <button disabled={!requestDamageApply || finalDamage <= 0} onClick={() => { if (requestDamageApply) requestDamageApply(finalDamage); }} style={{ ...bs(finalDamage > 0 ? "#B8341C" : "#3A4150"), fontSize: 11, padding: "4px 10px", opacity: (requestDamageApply && finalDamage > 0) ? 1 : 0.4, cursor: (requestDamageApply && finalDamage > 0) ? "pointer" : "not-allowed" }}><Icon name="skull" size={12} /> Apply {finalDamage} to target</button>
+                      <button disabled={!requestDamageApply || finalDamage <= 0} onClick={() => { if (requestDamageApply) requestDamageApply(finalDamage); }} style={{ ...bs(finalDamage > 0 ? "#B8341C" : "#3A4150"), fontSize: 13, padding: "8px 12px", opacity: (requestDamageApply && finalDamage > 0) ? 1 : 0.4, cursor: (requestDamageApply && finalDamage > 0) ? "pointer" : "not-allowed" }}><Icon name="skull" size={12} /> Apply {finalDamage} to target</button>
                     </div>
-                    <div style={{ fontSize: 11, color: "#9AA5B1", marginTop: 3 }}>
+                    <div style={{ fontSize: 13, color: "#9AA5B1", marginTop: 3 }}>
                       Estimate assumes optimal block. Adjust if obscured, normals-block-crits, or other rules change the math.
                     </div>
                   </div>
@@ -6535,6 +6554,22 @@ function Datacard({ op, fc, equipWeapons, equipEffects, curWounds, onWound, coll
   const woundColorTone = incapacitated ? DS.textTertiary : (rawInjured && !ignoreInjured) ? DS.threat : wcStrong ? DS.success : wcMid ? DS.goldSignal : DS.threat;
   const cardOpacity = incapacitated ? 0.45 : 1;
   const moveDisplay = injured ? (parseInt(op.move) - 2) + "\"" : op.move;
+  const mobile = useIsMobile();
+  const readyChip = onActivate ? (
+    <button onClick={(e) => { e.stopPropagation(); onActivate(); }} title={isActivated ? "Expended: tap to mark ready" : "Ready: tap once it has activated"}
+                style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 4, padding: "4px 8px", borderRadius: 4, cursor: "pointer", fontFamily: DS.fontDisplay, fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", border: "1px solid " + (isActivated ? "#5A9C3A" : "#9AA5B170"), background: isActivated ? "#5A9C3A25" : "transparent", color: isActivated ? "#7CC05C" : "#C8CDD3" }}>
+                {isActivated && <Icon name="check" size={12} />}{isActivated ? "Expended" : "Ready"}
+              </button>
+  ) : null;
+  const statsInline = (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, fontFamily: DS.fontDisplay }}>
+                  <span style={{ fontSize: 16, fontWeight: 600, color: DS.textPrimary }}>{op.apl}</span>
+                  <span style={{ fontSize: 16, fontWeight: 600, color: injured ? DS.threat : DS.textPrimary }}>{moveDisplay}</span>
+                  <span style={{ fontSize: 16, fontWeight: 600, color: DS.textPrimary }}>{op.save}</span>
+                  <span style={{ fontSize: 16, fontWeight: 700, color: woundColorTone }}>{cw}/{maxW}</span>
+                  {incapacitated && <Icon name="skull" size={14} color={DS.threat} />}
+                </div>
+  );
 
   return (
     <div className="datacard-print" style={{ background: DS.bgCard, borderRadius: 6, marginBottom: 12, boxShadow: "0 4px 16px rgba(0,0,0,0.35)", overflow: "hidden", opacity: cardOpacity, position: "relative", display: "flex", fontFamily: DS.fontBody }}>
@@ -6548,29 +6583,26 @@ function Datacard({ op, fc, equipWeapons, equipEffects, curWounds, onWound, coll
         )}
 
         {/* Header: clickable */}
-        <div onClick={onToggle} style={{ padding: "14px 16px 12px", cursor: "pointer", userSelect: "none", opacity: isActivated ? 0.55 : 1 }}>
+        <div role="button" tabIndex={0} onClick={onToggle} style={{ padding: "14px 16px 12px", cursor: "pointer", userSelect: "none", opacity: isActivated ? 0.55 : 1 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
-              {onActivate && (
-                <div onClick={(e) => { e.stopPropagation(); onActivate(); }} style={{ width: 22, height: 22, borderRadius: 4, border: "1.5px solid " + (isActivated ? DS.success : fc + "70"), background: isActivated ? DS.success + "25" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: DS.success, cursor: "pointer", flexShrink: 0 }}>{isActivated ? "\u2714" : ""}</div>
-              )}
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div style={{ fontFamily: DS.fontDisplay, fontSize: 18, fontWeight: 600, color: DS.textPrimary, lineHeight: 1.15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: isActivated ? "line-through" : "none" }}>{op.name}</div>
                 <div style={{ fontFamily: DS.fontDisplay, fontSize: 11, fontWeight: 500, color: fc, marginTop: 3, letterSpacing: "0.14em", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{op.kw || "OPERATIVE"}</div>
               </div>
-              {collapsed && (
-                <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, fontFamily: DS.fontDisplay }}>
-                  <span style={{ fontSize: 16, fontWeight: 600, color: DS.textPrimary }}>{op.apl}</span>
-                  <span style={{ fontSize: 16, fontWeight: 600, color: injured ? DS.threat : DS.textPrimary }}>{moveDisplay}</span>
-                  <span style={{ fontSize: 16, fontWeight: 600, color: DS.textPrimary }}>{op.save}</span>
-                  <span style={{ fontSize: 16, fontWeight: 700, color: woundColorTone }}>{cw}/{maxW}</span>
-                  {incapacitated && <Icon name="skull" size={14} color={DS.threat} />}
-                </div>
-              )}
+              {collapsed && !mobile && statsInline}
             </div>
-            {onOrder && <OrderChip order={order} onToggle={onOrder} />}
+            {!mobile && readyChip}
+            {!mobile && onOrder && <OrderChip order={order} onToggle={onOrder} />}
             <span style={{ color: DS.textSecondary, marginTop: 3 }}><Icon name={collapsed ? "chevronDown" : "chevronUp"} size={16} /></span>
           </div>
+          {mobile && (readyChip || onOrder || collapsed) && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+              {readyChip}
+              {onOrder && <OrderChip order={order} onToggle={onOrder} />}
+              {collapsed && <div style={{ marginLeft: "auto" }}>{statsInline}</div>}
+            </div>
+          )}
         </div>
 
         {/* Wound bar: always visible */}
@@ -6723,7 +6755,7 @@ function Stepper({ label, value, color, onMinus, onPlus, compact }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: compact ? 4 : 6, flexShrink: 0 }}>
       {label && <span style={{ fontSize: 11, fontWeight: 700, color, fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.1em", textTransform: "uppercase" }}>{label}</span>}
-      <button className="compact-btn" onClick={onMinus} aria-label={"Lower " + (label || "")} style={{ ...btn, color: "#B8341C" }}>{"−"}</button>
+      <button className="compact-btn" onClick={onMinus} aria-label={"Lower " + (label || "")} style={{ ...btn, color: "#E0664A" }}>{"−"}</button>
       <span style={{ fontSize: 24, fontWeight: 700, color, fontFamily: "'Rajdhani', sans-serif", minWidth: 22, textAlign: "center" }}>{value}</span>
       <button className="compact-btn" onClick={onPlus} aria-label={"Raise " + (label || "")} style={{ ...btn, color: "#5A9C3A" }}>+</button>
     </div>
@@ -6776,7 +6808,7 @@ function TurnGuide({ tp, numTPs, setTp, hasInitiative, onInitiative, cp, f, rost
           <Step id="s2" title="Gain CP">
             {tp === 1 ? "Both players gain 1CP." : "The player with initiative gains 1CP; the other gains 2CP."} KillSheet adds yours when the turning point starts. You have {cp}CP.
           </Step>
-          <Step id="s3" title="Ready">Ready all operatives. KillSheet clears your expended marks when the turning point changes.</Step>
+          <Step id="s3" title="Ready">Ready all operatives. KillSheet sets every card back to Ready when the turning point changes.</Step>
           <Step id="s4" title="Gambits">
             Starting with initiative, take turns using a strategy ploy or passing until both players pass in a row. Each strategy ploy once per turning point.
             <div>{(f.ploys.strategy || []).map(p => chip(p.name, "#C9772E"))}</div>
@@ -6784,7 +6816,7 @@ function TurnGuide({ tp, numTPs, setTp, hasInitiative, onInitiative, cp, f, rost
           </Step>
           {phaseHead("Firefight phase", "#B8341C")}
           <Step id="f1" title="Activate">
-            Take turns activating one ready operative, starting with initiative. Pick its order, do actions up to its APL, then tick it as expended.
+            Take turns activating one ready operative, starting with initiative. Pick its order, do actions up to its APL, then tap Ready to mark it Expended.
             <div style={{ marginTop: 4, color: "#C8CDD3" }}>{expended.length} of {alive.length} expended {"\u00b7"} {engaged.length} Engage, {alive.length - engaged.length} Conceal</div>
           </Step>
           <Step id="f2" title="Counteract">
@@ -6868,6 +6900,16 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
   const [setupRef, setSetupRef] = useState({ pack: "", idx: "" });
   const [savedMenu, setSavedMenu] = useState(null);
   const [showSetup, setShowSetup] = useState(false);
+  const [undo, setUndo] = useState(null);
+  const undoTimer = React.useRef(null);
+  // Run a big change (reset, switch team, load or delete a roster) and offer Undo for a few seconds.
+  const withUndo = (label, run) => {
+    const snap = snapshotKillSheetStorage();
+    run();
+    setUndo({ label, snap });
+    clearTimeout(undoTimer.current);
+    undoTimer.current = setTimeout(() => setUndo(null), 8000);
+  };
   const [gameMenu, setGameMenu] = useState(false);
   // First visit: start a standard game straight away; settings live in the game menu.
   React.useEffect(() => {
@@ -7025,9 +7067,9 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
 
     const NumPicker = ({ value, onChange, min, max }) => (
       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <button onClick={() => onChange(Math.max(min, value - 1))} style={{ width: 24, height: 24, border: "1px solid #3A4150", borderRadius: 2, background: "#262A33", color: "#B8341C", cursor: "pointer", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>{"\u2212"}</button>
+        <button onClick={() => onChange(Math.max(min, value - 1))} style={{ width: 24, height: 24, border: "1px solid #3A4150", borderRadius: 2, background: "#262A33", color: "#E0664A", cursor: "pointer", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>{"\u2212"}</button>
         <div style={{ fontSize: 16, fontWeight: 700, color: "#C9772E", fontFamily: "'Rajdhani', sans-serif", minWidth: 24, textAlign: "center" }}>{value}</div>
-        <button onClick={() => onChange(Math.min(max, value + 1))} style={{ width: 24, height: 24, border: "1px solid #3A4150", borderRadius: 2, background: "#262A33", color: "#3D6B3F", cursor: "pointer", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>+</button>
+        <button onClick={() => onChange(Math.min(max, value + 1))} style={{ width: 24, height: 24, border: "1px solid #3A4150", borderRadius: 2, background: "#262A33", color: "#5A9C3A", cursor: "pointer", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>+</button>
       </div>
     );
 
@@ -7308,14 +7350,14 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
   const loadSaved = (entry) => {
     const faction = FACTIONS[entry.f];
     if (!faction) { showToast("That team is no longer in the app."); return; }
-    if (roster.length > 0 && !confirm('Load "' + entry.name + '"? This replaces your current roster and game.')) return;
+    withUndo("Loaded " + entry.name, () => {
     selectFaction(entry.f);
     setRoster(makeInstances(faction, entry.o));
     const e = {}; (entry.fe || []).forEach(id => { e[id] = true; }); setEq(e);
     const u = {}; (entry.ue || []).forEach(id => { u[id] = true; }); setUEq(u);
     setChapterPrimary(entry.cp || ""); setChapterSecondary(entry.cs || ""); setChapterVeteran(entry.cv || {}); setCarried(entry.cw || {});
+    });
     setPickerOpen(false); setPickerSearch(""); setSavedMenu(null);
-    showToast("Loaded: " + entry.name);
   };
   const renameSaved = (entry) => {
     const typed = prompt("Rename roster:", entry.name);
@@ -7323,8 +7365,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
     setSavedRosters(savedRosters.map(r => r.id === entry.id ? { ...r, name: typed.trim() } : r));
   };
   const deleteSaved = (entry) => {
-    if (!confirm('Delete your saved roster "' + entry.name + '"?')) return;
-    setSavedRosters(savedRosters.filter(r => r.id !== entry.id));
+    withUndo("Deleted " + entry.name, () => setSavedRosters(savedRosters.filter(r => r.id !== entry.id)));
     setSavedMenu(null);
   };
   const copySavedCode = (entry) => {
@@ -7707,6 +7748,14 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
 
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto", padding: "20px 16px", position: "relative" }}>
+      {/* Undo toast */}
+      {undo && (
+        <div role="status" style={{ position: "fixed", bottom: 20, left: "50%", transform: "translateX(-50%)", zIndex: 9999, display: "flex", alignItems: "center", gap: 14, padding: "10px 12px 10px 16px", borderRadius: 8, background: "#262A33", border: "1px solid #3A4150", boxShadow: "0 8px 24px rgba(0,0,0,0.6)", maxWidth: "calc(100vw - 32px)" }}>
+          <span style={{ fontSize: 14, color: "#F1F2F5" }}>{undo.label}</span>
+          <button onClick={() => { restoreKillSheetStorage(undo.snap); window.location.reload(); }} style={{ ...bs("#FFB627"), padding: "8px 14px", fontSize: 13 }}>Undo</button>
+          <button onClick={() => setUndo(null)} aria-label="Dismiss" style={{ background: "none", border: "none", color: "#9AA5B1", cursor: "pointer", padding: 4 }}><Icon name="x" size={14} /></button>
+        </div>
+      )}
       {/* Toast notification */}
       {toast && (
         <div style={{ position: "fixed", top: 80, left: "50%", transform: "translateX(-50%)", zIndex: 9999, background: "#3D6B3F", color: "white", padding: "10px 20px", borderRadius: 4, fontSize: 12, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.06em", boxShadow: "0 4px 20px rgba(0,0,0,0.6)", animation: "fadeIn 0.2s ease" }}>{toast}</div>
@@ -7741,7 +7790,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
             {/* Opponent operatives */}
             {oppRoster && oppRoster.operatives && oppRoster.operatives.length > 0 && (
               <div>
-                <div style={{ fontSize: 11, color: "#B8341C", marginBottom: 4, fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.1em" }}>OPPONENT</div>
+                <div style={{ fontSize: 11, color: "#E0664A", marginBottom: 4, fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.1em" }}>OPPONENT</div>
                 {oppRoster.operatives.map(op => {
                   const cw = getOppWounds(op.id, op.wounds);
                   const isDown = cw <= 0;
@@ -7774,14 +7823,14 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
       {/* Multiplayer modal */}
       {showMP && (
         <div onClick={() => setShowMP(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 10000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ background: "#1A1D24", border: "1px solid #6B9BF780", borderRadius: 4, padding: 16, maxWidth: 440, width: "100%", boxShadow: "0 8px 40px rgba(0,0,0,0.7)" }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: "#1A1D24", border: "1px solid #6B9BF780", borderRadius: 10, padding: 20, maxWidth: 460, width: "100%", boxShadow: "0 8px 40px rgba(0,0,0,0.7)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "#6B9BF7", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.06em", display: "flex", alignItems: "center", gap: 6 }}><MPIcon name="players" size={16} /> Play online</div>
-              <button onClick={() => setShowMP(false)} style={{ ...bs("#9AA5B1"), fontSize: 11, padding: "3px 8px" }}><Icon name="x" size={12} /> Close</button>
+              <div style={{ fontSize: 20, fontWeight: 700, color: "#6B9BF7", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.04em", display: "flex", alignItems: "center", gap: 8 }}><MPIcon name="players" size={20} /> Play online</div>
+              <button onClick={() => setShowMP(false)} style={{ ...bs("#9AA5B1"), fontSize: 13, padding: "8px 12px" }}><Icon name="x" size={12} /> Close</button>
             </div>
 
             {/* Status row */}
-            <div style={{ marginBottom: 12, padding: "8px 10px", background: "#262A33", borderRadius: 2, border: "1px solid #3A4150", fontSize: 11, color: "#F1F2F5", fontFamily: "'Rajdhani', sans-serif" }}>
+            <div style={{ marginBottom: 12, padding: "8px 10px", background: "#262A33", borderRadius: 6, border: "1px solid #3A4150", fontSize: 13, color: "#F1F2F5", fontFamily: "'Rajdhani', sans-serif" }}>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
                 <span style={{ color: "#9AA5B1", letterSpacing: "0.08em" }}>STATUS</span>
                 <span style={{ color: mp.status === "connected" ? "#3D6B3F" : mp.status === "error" ? "#B8341C" : mp.status === "idle" ? "#9AA5B1" : "#C9772E", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 4 }}>
@@ -7799,66 +7848,66 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
                   <span style={{ color: "#C9772E", fontWeight: 700, fontFamily: "monospace", letterSpacing: "0.15em" }}>{mp.roomCode}</span>
                 </div>
               )}
-              {mp.peerError && <div style={{ marginTop: 4, color: "#B8341C", fontSize: 11 }}>{mp.peerError}</div>}
+              {mp.peerError && <div style={{ marginTop: 4, color: "#E0664A", fontSize: 13 }}>{mp.peerError}</div>}
             </div>
 
             {mp.status === "idle" || mp.status === "error" ? (
               <div>
-                <button onClick={mp.host} style={{ ...bs("#C9772E"), width: "100%", padding: "10px 0", fontSize: 12, fontWeight: 700, background: "#C9772E12", letterSpacing: "0.06em", marginBottom: 10 }}>
+                <button onClick={mp.host} style={{ ...bs("#C9772E"), width: "100%", padding: "10px 0", fontSize: 14, fontWeight: 700, background: "#C9772E12", letterSpacing: "0.06em", marginBottom: 10 }}>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><MPIcon name="host" size={15} /> Host a new game</span>
                 </button>
-                <div style={{ fontSize: 11, color: "#9AA5B1", textAlign: "center", margin: "8px 0", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.1em" }}>OR</div>
+                <div style={{ fontSize: 13, color: "#9AA5B1", textAlign: "center", margin: "8px 0", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.1em" }}>OR</div>
                 <div style={{ display: "flex", gap: 4 }}>
-                  <input type="text" value={joinCodeInput} onChange={(e) => setJoinCodeInput(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6))} placeholder="ROOM CODE" maxLength={6} style={{ flex: 1, background: "#0E0F13", border: "1px solid #6B9BF7", borderRadius: 2, color: "#C9772E", fontSize: 14, fontWeight: 700, fontFamily: "monospace", letterSpacing: "0.2em", padding: "8px 10px", outline: "none", textAlign: "center" }} />
-                  <button onClick={() => { mp.join(joinCodeInput); setJoinCodeInput(""); }} disabled={joinCodeInput.length < 4} style={{ ...bs(joinCodeInput.length >= 4 ? "#6B9BF7" : "#3A4150"), padding: "8px 14px", fontSize: 11, fontWeight: 700, background: joinCodeInput.length >= 4 ? "#6B9BF720" : "transparent", opacity: joinCodeInput.length >= 4 ? 1 : 0.5, cursor: joinCodeInput.length >= 4 ? "pointer" : "not-allowed", display: "inline-flex", alignItems: "center", gap: 5 }}><MPIcon name="join" size={13} />Join</button>
+                  <input type="text" value={joinCodeInput} onChange={(e) => setJoinCodeInput(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6))} placeholder="ROOM CODE" maxLength={6} style={{ flex: 1, background: "#0E0F13", border: "1px solid #6B9BF7", borderRadius: 6, color: "#C9772E", fontSize: 14, fontWeight: 700, fontFamily: "monospace", letterSpacing: "0.2em", padding: "8px 10px", outline: "none", textAlign: "center" }} />
+                  <button onClick={() => { mp.join(joinCodeInput); setJoinCodeInput(""); }} disabled={joinCodeInput.length < 4} style={{ ...bs(joinCodeInput.length >= 4 ? "#6B9BF7" : "#3A4150"), padding: "8px 12px", fontSize: 13, fontWeight: 700, background: joinCodeInput.length >= 4 ? "#6B9BF720" : "transparent", opacity: joinCodeInput.length >= 4 ? 1 : 0.5, cursor: joinCodeInput.length >= 4 ? "pointer" : "not-allowed", display: "inline-flex", alignItems: "center", gap: 5 }}><MPIcon name="join" size={13} />Join</button>
                 </div>
-                <div style={{ fontSize: 11, color: "#9AA5B1", marginTop: 12, lineHeight: 1.5 }}>
+                <div style={{ fontSize: 13, color: "#9AA5B1", marginTop: 12, lineHeight: 1.5 }}>
                   <strong style={{ color: "#C9772E" }}>How it works:</strong> One player hosts and gets a room code; the other enters it to connect. The two browsers connect directly, and nobody needs an account. Keep this page open on both devices, because closing either tab ends the connection.
                 </div>
               </div>
             ) : mp.status === "hosting" ? (
               <div>
-                <div style={{ textAlign: "center", padding: "12px 0", marginBottom: 10, background: "#0E0F13", borderRadius: 2, border: "1px dashed #C9772E60" }}>
-                  <div style={{ fontSize: 11, color: "#9AA5B1", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.1em", marginBottom: 4 }}>SHARE THIS CODE</div>
-                  <div style={{ fontSize: 28, fontWeight: 700, color: "#C9772E", fontFamily: "monospace", letterSpacing: "0.3em" }}>{mp.roomCode}</div>
-                  <button onClick={() => { try { navigator.clipboard.writeText(mp.roomCode); showToast("Code copied"); } catch (e) {} }} style={{ ...bs("#9AA5B1"), fontSize: 11, padding: "3px 8px", marginTop: 6 }}>{"\u29C9"} Copy</button>
+                <div style={{ textAlign: "center", padding: "12px 0", marginBottom: 10, background: "#0E0F13", borderRadius: 6, border: "1px dashed #C9772E60" }}>
+                  <div style={{ fontSize: 13, color: "#9AA5B1", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.1em", marginBottom: 4 }}>SHARE THIS CODE</div>
+                  <div style={{ fontSize: 36, fontWeight: 700, color: "#C9772E", fontFamily: "monospace", letterSpacing: "0.3em" }}>{mp.roomCode}</div>
+                  <button onClick={() => { try { navigator.clipboard.writeText(mp.roomCode); showToast("Code copied"); } catch (e) {} }} style={{ ...bs("#9AA5B1"), fontSize: 13, padding: "8px 12px", marginTop: 6 }}>Copy code</button>
                 </div>
-                <div style={{ fontSize: 11, color: "#C9772E", textAlign: "center", marginBottom: 10, fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.06em", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}><MPIcon name="waiting" size={12} /> Waiting for your opponent to join...</div>
-                <button onClick={mp.disconnect} style={{ ...bs("#B8341C"), width: "100%", padding: "8px 0", fontSize: 11 }}>Cancel</button>
+                <div style={{ fontSize: 13, color: "#C9772E", textAlign: "center", marginBottom: 10, fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.06em", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}><MPIcon name="waiting" size={12} /> Waiting for your opponent to join...</div>
+                <button onClick={mp.disconnect} style={{ ...bs("#B8341C"), width: "100%", padding: "8px 0", fontSize: 13 }}>Cancel</button>
               </div>
             ) : mp.status === "joining" ? (
               <div>
                 <div style={{ textAlign: "center", padding: "12px 0", color: "#C9772E", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.06em", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}><MPIcon name="waiting" size={12} /> Connecting to {mp.roomCode}...</div>
-                <button onClick={mp.disconnect} style={{ ...bs("#B8341C"), width: "100%", padding: "8px 0", fontSize: 11 }}>Cancel</button>
+                <button onClick={mp.disconnect} style={{ ...bs("#B8341C"), width: "100%", padding: "8px 0", fontSize: 13 }}>Cancel</button>
               </div>
             ) : mp.status === "connected" ? (
               <div>
-                <div style={{ padding: "10px", background: "#3D6B3F15", border: "1px solid #3D6B3F40", borderRadius: 2, marginBottom: 10, fontSize: 11, color: "#F1F2F5", lineHeight: 1.5 }}>
-                  <div style={{ color: "#3D6B3F", fontWeight: 700, marginBottom: 4, display: "flex", alignItems: "center", gap: 5 }}><MPIcon name="connected" size={13} /> Connected as {mp.role}</div>
+                <div style={{ padding: "10px", background: "#3D6B3F15", border: "1px solid #3D6B3F40", borderRadius: 6, marginBottom: 10, fontSize: 13, color: "#F1F2F5", lineHeight: 1.5 }}>
+                  <div style={{ color: "#5A9C3A", fontWeight: 700, marginBottom: 4, display: "flex", alignItems: "center", gap: 5 }}><MPIcon name="connected" size={13} /> Connected as {mp.role}</div>
                   Roster, wounds, TP, and initiative sync automatically.
                 </div>
 
                 {/* Chat */}
                 <div style={{ marginBottom: 10 }}>
-                  <div style={{ fontSize: 11, color: "#9AA5B1", marginBottom: 4, fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.1em" }}>CHAT</div>
-                  <div style={{ background: "#0E0F13", border: "1px solid #3A4150", borderRadius: 2, height: 140, overflowY: "auto", padding: 6, marginBottom: 4, display: "flex", flexDirection: "column", gap: 3 }}>
+                  <div style={{ fontSize: 13, color: "#9AA5B1", marginBottom: 4, fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.1em" }}>CHAT</div>
+                  <div style={{ background: "#0E0F13", border: "1px solid #3A4150", borderRadius: 6, height: 140, overflowY: "auto", padding: 6, marginBottom: 4, display: "flex", flexDirection: "column", gap: 3 }}>
                     {chatHistory.length === 0 ? (
-                      <div style={{ fontSize: 11, color: "#4A5563", fontStyle: "italic", textAlign: "center", marginTop: 50 }}>No messages yet.</div>
+                      <div style={{ fontSize: 13, color: "#8B95A1", fontStyle: "italic", textAlign: "center", marginTop: 50 }}>No messages yet.</div>
                     ) : chatHistory.map((m, i) => (
                       <div key={i} style={{ display: "flex", justifyContent: m.from === "me" ? "flex-end" : "flex-start" }}>
-                        <div style={{ maxWidth: "80%", padding: "4px 8px", borderRadius: 6, background: m.from === "me" ? "#3B6FD420" : "#B8341C20", border: "1px solid " + (m.from === "me" ? "#3B6FD440" : "#B8341C40"), fontSize: 11, color: "#F1F2F5", wordBreak: "break-word" }}>
+                        <div style={{ maxWidth: "80%", padding: "4px 8px", borderRadius: 6, background: m.from === "me" ? "#3B6FD420" : "#B8341C20", border: "1px solid " + (m.from === "me" ? "#3B6FD440" : "#B8341C40"), fontSize: 13, color: "#F1F2F5", wordBreak: "break-word" }}>
                           {m.text}
                         </div>
                       </div>
                     ))}
                   </div>
                   <div style={{ display: "flex", gap: 4 }}>
-                    <input type="text" value={chatDraft} onChange={(e) => setChatDraft(e.target.value.slice(0, 500))} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); sendChat(); } }} placeholder="Type a message..." style={{ flex: 1, background: "#0E0F13", border: "1px solid #3A4150", borderRadius: 2, color: "#F1F2F5", fontSize: 11, padding: "6px 8px", outline: "none" }} />
-                    <button onClick={sendChat} disabled={!chatDraft.trim()} style={{ ...bs(chatDraft.trim() ? "#6B9BF7" : "#3A4150"), padding: "6px 12px", fontSize: 11, background: chatDraft.trim() ? "#6B9BF720" : "transparent", opacity: chatDraft.trim() ? 1 : 0.5, cursor: chatDraft.trim() ? "pointer" : "not-allowed" }}>Send</button>
+                    <input type="text" value={chatDraft} onChange={(e) => setChatDraft(e.target.value.slice(0, 500))} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); sendChat(); } }} placeholder="Type a message..." style={{ flex: 1, background: "#0E0F13", border: "1px solid #3A4150", borderRadius: 6, color: "#F1F2F5", fontSize: 13, padding: "8px 12px", outline: "none" }} />
+                    <button onClick={sendChat} disabled={!chatDraft.trim()} style={{ ...bs(chatDraft.trim() ? "#6B9BF7" : "#3A4150"), padding: "8px 12px", fontSize: 13, background: chatDraft.trim() ? "#6B9BF720" : "transparent", opacity: chatDraft.trim() ? 1 : 0.5, cursor: chatDraft.trim() ? "pointer" : "not-allowed" }}>Send</button>
                   </div>
                 </div>
 
-                <button onClick={mp.disconnect} style={{ ...bs("#B8341C"), width: "100%", padding: "8px 0", fontSize: 11 }}><span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><MPIcon name="leave" size={11} />Disconnect</span></button>
+                <button onClick={mp.disconnect} style={{ ...bs("#B8341C"), width: "100%", padding: "8px 0", fontSize: 13 }}><span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><MPIcon name="leave" size={11} />Disconnect</span></button>
               </div>
             ) : null}
           </div>
@@ -7881,7 +7930,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
                 {[
                   ["Game settings", "Mission, equipment, turning points", () => setShowSetup(true), "#F1F2F5"],
                   [validate ? "Turn validation off" : "Turn validation on", "Checks your roster against the team's rules", () => setValidate(!validate), "#F1F2F5"],
-                  f ? ["Reset game", "Clears wounds, CP, VP, orders and tracking", () => { if (confirm("Reset all game state? Wounds, CP, VP, ploys, and activated will be cleared.")) { setWounds({}); setCp(3); setVpYou(0); setVpOpp(0); setUsedPloys({}); setActivated({}); setHasInitiative(true); setLastCpTp(1); setTp(1); setPrimaryYou(Array(gc.numTPs).fill(0)); setPrimaryOpp(Array(gc.numTPs).fill(0)); setTacOps(Array.from({ length: gc.numTacOps }, () => ({ name: "", checks: [false, false] }))); setOppWounds({}); setNpoUnits([]); setOrders({}); setBattleUses({}); setCounteracted({}); setGuideChecks({}); } }, "#B8341C"] : null,
+                  f ? ["Reset game", "Clears wounds, CP, VP, orders and tracking", () => withUndo("Game reset", () => { setWounds({}); setCp(3); setVpYou(0); setVpOpp(0); setUsedPloys({}); setActivated({}); setHasInitiative(true); setLastCpTp(1); setTp(1); setPrimaryYou(Array(gc.numTPs).fill(0)); setPrimaryOpp(Array(gc.numTPs).fill(0)); setTacOps(Array.from({ length: gc.numTacOps }, () => ({ name: "", checks: [false, false] }))); setOppWounds({}); setNpoUnits([]); setOrders({}); setBattleUses({}); setCounteracted({}); setGuideChecks({}); }), "#B8341C"] : null,
                 ].filter(Boolean).map(([label, hint, run, color]) => (
                   <button key={label} onClick={() => { setGameMenu(false); run(); }} style={{ display: "block", width: "100%", textAlign: "left", background: "none", border: "none", borderRadius: 4, padding: "10px 10px", cursor: "pointer" }}>
                     <div style={{ fontSize: 14, fontWeight: 600, color, fontFamily: "'Inter', sans-serif" }}>{label}</div>
@@ -7908,9 +7957,8 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
         const shown = q ? all.filter(fc => factionSearchText(fc).includes(q)) : all.filter(fc => factionGroup(fc) === group);
         const pick = (fc) => {
           if (fid === fc.id) { setPickerOpen(false); return; }
-          if (rosterLocked && !confirm("Roster is locked. Change faction? This will reset everything.")) return;
-          if (!rosterLocked && roster.length > 0 && !confirm("Switch to " + fc.name + "? This clears your current roster and game.")) return;
-          selectFaction(fc.id); setPickerOpen(false); setPickerSearch("");
+          if (roster.length > 0) withUndo("Switched to " + fc.name, () => selectFaction(fc.id)); else selectFaction(fc.id);
+          setPickerOpen(false); setPickerSearch("");
         };
         return (
           <div style={{ marginBottom: 14 }}>
@@ -7945,7 +7993,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
                         <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
                           <button onClick={() => renameSaved(r)} style={small}>Rename</button>
                           <button onClick={() => copySavedCode(r)} style={small}>Copy code</button>
-                          <button onClick={() => deleteSaved(r)} style={{ ...small, color: "#B8341C", borderColor: "#B8341C60" }}>Delete</button>
+                          <button onClick={() => deleteSaved(r)} style={{ ...small, color: "#E0664A", borderColor: "#B8341C60" }}>Delete</button>
                         </div>
                       )}
                     </div>
@@ -7968,7 +8016,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
             {shown.length === 0 && <p style={{ ...mu, margin: "8px 0" }}>No team matches "{pickerSearch}".</p>}
             <div style={{ display: "grid", gridTemplateColumns: mobile ? "repeat(2, minmax(0, 1fr))" : "repeat(auto-fill, minmax(150px, 1fr))", gap: 8 }}>
               {shown.map(fc => (
-                <div key={fc.id} onClick={() => pick(fc)} style={{ ...cd, cursor: "pointer", borderColor: fid === fc.id ? fc.color : "#3A4150", textAlign: "center", padding: 10, minWidth: 0, overflowWrap: "anywhere", borderTop: "2px solid " + (fid === fc.id ? fc.color : fc.color + "60"), boxShadow: fid === fc.id ? "0 0 16px " + fc.color + "20, 0 2px 8px rgba(0,0,0,0.4)" : cd.boxShadow }}>
+                <div key={fc.id} role="button" tabIndex={0} onClick={() => pick(fc)} style={{ ...cd, cursor: "pointer", borderColor: fid === fc.id ? fc.color : "#3A4150", textAlign: "center", padding: 10, minWidth: 0, overflowWrap: "anywhere", borderTop: "2px solid " + (fid === fc.id ? fc.color : fc.color + "60"), boxShadow: fid === fc.id ? "0 0 16px " + fc.color + "20, 0 2px 8px rgba(0,0,0,0.4)" : cd.boxShadow }}>
                   <div style={bg(fc.color)}>{fc.badge}</div>
                   <div style={{ fontSize: 13, fontWeight: 700, marginTop: 6, fontFamily: "'Rajdhani', sans-serif", color: fid === fc.id ? fc.color : "#F1F2F5", letterSpacing: "0.04em" }}>{fc.name}</div>
                 </div>
@@ -8007,7 +8055,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
               {!mobile && <Stepper label="You" value={vpYou + computedVpYou} color="#5A9C3A" onMinus={() => setVpYou(Math.max(0, vpYou - 1))} onPlus={() => setVpYou(vpYou + 1)} />}
               {!mobile && <Stepper label="Opp" value={vpOpp + computedVpOpp} color="#B8341C" onMinus={() => setVpOpp(Math.max(0, vpOpp - 1))} onPlus={() => setVpOpp(vpOpp + 1)} />}
               <button className="compact-btn" onClick={() => setShowScoring(!showScoring)} aria-label={showScoring ? "Hide scoring" : "Show scoring"} style={{ display: "flex", alignItems: "center", gap: 6, height: 38, padding: "0 10px", borderRadius: 6, border: "1px solid " + (showScoring ? "#C9772E60" : "#3A4150"), background: showScoring ? "#C9772E14" : "transparent", cursor: "pointer", flexShrink: 0 }}>
-                {mobile && <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 20 }}><span style={{ color: "#5A9C3A" }}>{vpYou + computedVpYou}</span><span style={{ color: "#5A6470" }}>{"–"}</span><span style={{ color: "#B8341C" }}>{vpOpp + computedVpOpp}</span></span>}
+                {mobile && <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 20 }}><span style={{ color: "#5A9C3A" }}>{vpYou + computedVpYou}</span><span style={{ color: "#8B95A1" }}>{"–"}</span><span style={{ color: "#E0664A" }}>{vpOpp + computedVpOpp}</span></span>}
                 <span style={{ fontSize: 11, color: "#9AA5B1", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.08em", fontWeight: 700 }}>{mobile ? "VP" : "SCORING"}</span>
                 <Arrow open={showScoring} />
               </button>
@@ -8031,34 +8079,34 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
               <div style={{ marginTop: 6, paddingTop: 4 }}>
                 {/* Primary: You */}
                 <div style={{ marginBottom: 8 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "#3D6B3F", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.1em", marginBottom: 4 }}>YOUR PRIMARY (tap to cycle: 0 → 1 → 2VP)</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#5A9C3A", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.1em", marginBottom: 4 }}>YOUR PRIMARY (tap to cycle: 0 → 1 → 2VP)</div>
                   <div style={{ display: "flex", gap: 4 }}>
                     {Array.from({ length: gc.numTPs }, (_, i) => i).map(tpIdx => (
-                      <div key={tpIdx} onClick={() => { const delta = cyclePrimary(primaryYou, setPrimaryYou, tpIdx); }} style={{ flex: 1, background: "#1A1D24", borderRadius: 2, padding: "4px 2px", border: "1px solid " + (primaryYou[tpIdx] > 0 ? "#3D6B3F30" : "#262A33"), textAlign: "center", cursor: "pointer" }}>
+                      <div key={tpIdx} role="button" tabIndex={0} onClick={() => { const delta = cyclePrimary(primaryYou, setPrimaryYou, tpIdx); }} style={{ flex: 1, background: "#1A1D24", borderRadius: 2, padding: "4px 2px", border: "1px solid " + (primaryYou[tpIdx] > 0 ? "#3D6B3F30" : "#262A33"), textAlign: "center", cursor: "pointer" }}>
                         <div style={{ fontSize: 11, color: "#9AA5B1", fontFamily: "'Rajdhani', sans-serif" }}>TP{tpIdx + 1}</div>
                         <div style={{ fontSize: 14, fontWeight: 700, color: primaryYou[tpIdx] > 0 ? "#3D6B3F" : "#3A4150", fontFamily: "monospace" }}>{primaryYou[tpIdx]}</div>
                       </div>
                     ))}
                     <div style={{ width: 36, background: "#3D6B3F10", borderRadius: 2, padding: "4px 2px", border: "1px solid #3D6B3F20", textAlign: "center" }}>
-                      <div style={{ fontSize: 11, color: "#3D6B3F", fontFamily: "'Rajdhani', sans-serif" }}>TOTAL</div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: "#3D6B3F", fontFamily: "monospace" }}>{primaryYou.reduce((s, v) => s + v, 0)}</div>
+                      <div style={{ fontSize: 11, color: "#5A9C3A", fontFamily: "'Rajdhani', sans-serif" }}>TOTAL</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "#5A9C3A", fontFamily: "monospace" }}>{primaryYou.reduce((s, v) => s + v, 0)}</div>
                     </div>
                   </div>
                 </div>
 
                 {/* Primary: Opponent */}
                 <div style={{ marginBottom: 8 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "#B8341C", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.1em", marginBottom: 4 }}>OPPONENT PRIMARY</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#E0664A", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.1em", marginBottom: 4 }}>OPPONENT PRIMARY</div>
                   <div style={{ display: "flex", gap: 4 }}>
                     {Array.from({ length: gc.numTPs }, (_, i) => i).map(tpIdx => (
-                      <div key={tpIdx} onClick={() => cyclePrimary(primaryOpp, setPrimaryOpp, tpIdx)} style={{ flex: 1, background: "#1A1D24", borderRadius: 2, padding: "4px 2px", border: "1px solid " + (primaryOpp[tpIdx] > 0 ? "#B8341C30" : "#262A33"), textAlign: "center", cursor: "pointer" }}>
+                      <div key={tpIdx} role="button" tabIndex={0} onClick={() => cyclePrimary(primaryOpp, setPrimaryOpp, tpIdx)} style={{ flex: 1, background: "#1A1D24", borderRadius: 2, padding: "4px 2px", border: "1px solid " + (primaryOpp[tpIdx] > 0 ? "#B8341C30" : "#262A33"), textAlign: "center", cursor: "pointer" }}>
                         <div style={{ fontSize: 11, color: "#9AA5B1", fontFamily: "'Rajdhani', sans-serif" }}>TP{tpIdx + 1}</div>
                         <div style={{ fontSize: 14, fontWeight: 700, color: primaryOpp[tpIdx] > 0 ? "#B8341C" : "#3A4150", fontFamily: "monospace" }}>{primaryOpp[tpIdx]}</div>
                       </div>
                     ))}
                     <div style={{ width: 36, background: "#B8341C10", borderRadius: 2, padding: "4px 2px", border: "1px solid #B8341C20", textAlign: "center" }}>
-                      <div style={{ fontSize: 11, color: "#B8341C", fontFamily: "'Rajdhani', sans-serif" }}>TOTAL</div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: "#B8341C", fontFamily: "monospace" }}>{primaryOpp.reduce((s, v) => s + v, 0)}</div>
+                      <div style={{ fontSize: 11, color: "#E0664A", fontFamily: "'Rajdhani', sans-serif" }}>TOTAL</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "#E0664A", fontFamily: "monospace" }}>{primaryOpp.reduce((s, v) => s + v, 0)}</div>
                     </div>
                   </div>
                 </div>
@@ -8073,7 +8121,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
                       {[0, 1].map(checkIdx => {
                         const checked = t.checks[checkIdx];
                         return (
-                          <div key={checkIdx} onClick={() => toggleTacOp(opIdx, checkIdx)} style={{ width: 18, height: 18, borderRadius: 2, border: "1.5px solid " + (checked ? "#C9772E" : "#262A33"), background: checked ? "#C9772E20" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#C9772E", cursor: "pointer", flexShrink: 0 }}>{checked ? <Icon name="check" size={10} /> : ""}</div>
+                          <div key={checkIdx} role="button" tabIndex={0} onClick={() => toggleTacOp(opIdx, checkIdx)} style={{ width: 18, height: 18, borderRadius: 2, border: "1.5px solid " + (checked ? "#C9772E" : "#262A33"), background: checked ? "#C9772E20" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#C9772E", cursor: "pointer", flexShrink: 0 }}>{checked ? <Icon name="check" size={10} /> : ""}</div>
                         );
                       })}
                       <div style={{ fontSize: 11, fontWeight: 700, color: t.checks.filter(Boolean).length > 0 ? "#C9772E" : "#3A4150", fontFamily: "monospace", width: 16, textAlign: "center", flexShrink: 0 }}>{t.checks.filter(Boolean).length}</div>
@@ -8084,10 +8132,10 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
                 {/* Summary */}
                 <div style={{ marginTop: 8, padding: "6px 8px", background: "#262A33", borderRadius: 2, border: "1px solid #262A33", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div style={{ fontSize: 11, color: "#9AA5B1" }}>
-                    You: {primaryYou.reduce((s,v)=>s+v,0)} primary + {tacOps.reduce((s,t)=>s+t.checks.filter(Boolean).length,0)} tac ops{vpYou > 0 ? " + " + vpYou + " manual" : ""} = <span style={{ color: "#3D6B3F", fontWeight: 700 }}>{vpYou + computedVpYou}VP</span>
+                    You: {primaryYou.reduce((s,v)=>s+v,0)} primary + {tacOps.reduce((s,t)=>s+t.checks.filter(Boolean).length,0)} tac ops{vpYou > 0 ? " + " + vpYou + " manual" : ""} = <span style={{ color: "#5A9C3A", fontWeight: 700 }}>{vpYou + computedVpYou}VP</span>
                   </div>
                   <div style={{ fontSize: 11, color: "#9AA5B1" }}>
-                    Opp: {primaryOpp.reduce((s,v)=>s+v,0)} primary{vpOpp > 0 ? " + " + vpOpp + " manual" : ""} = <span style={{ color: "#B8341C", fontWeight: 700 }}>{vpOpp + computedVpOpp}VP</span>
+                    Opp: {primaryOpp.reduce((s,v)=>s+v,0)} primary{vpOpp > 0 ? " + " + vpOpp + " manual" : ""} = <span style={{ color: "#E0664A", fontWeight: 700 }}>{vpOpp + computedVpOpp}VP</span>
                   </div>
                 </div>
               </div>
@@ -8134,7 +8182,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
             {/* Composition Rules */}
             {f.composition && (
               <div style={{ ...cd, padding: 10, borderColor: showRules ? f.color + "40" : "#3A4150" }}>
-                <div onClick={() => setShowRules(!showRules)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
+                <div role="button" tabIndex={0} onClick={() => setShowRules(!showRules)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
                   <div style={{ ...h3, color: "#C9772E", marginBottom: 0 }}>TEAM COMPOSITION</div>
                   <span style={{ color: "#9AA5B1" }}><Icon name={showRules ? "chevronUp" : "chevronDown"} size={16} /></span>
                 </div>
@@ -8168,7 +8216,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
                   </div>
                 </div>
                 {v.errors.map((e, i) => (
-                  <div key={"e" + i} style={{ fontSize: 11, color: "#B8341C", paddingLeft: 8, borderLeft: "2px solid #B8341C40", marginBottom: 3, lineHeight: 1.4 }}><Icon name="x" size={12} /> {e}</div>
+                  <div key={"e" + i} style={{ fontSize: 11, color: "#E0664A", paddingLeft: 8, borderLeft: "2px solid #B8341C40", marginBottom: 3, lineHeight: 1.4 }}><Icon name="x" size={12} /> {e}</div>
                 ))}
                 {v.warnings.map((w, i) => (
                   <div key={"w" + i} style={{ fontSize: 11, color: "#C9772E", paddingLeft: 8, borderLeft: "2px solid #C9772E40", marginBottom: 3, lineHeight: 1.4 }}><Icon name="warning" size={12} /> {w}</div>
@@ -8213,15 +8261,15 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
                       return (
                         <div key={op.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 2px", borderBottom: "1px solid #1A2430", opacity: !n && blocked ? 0.3 : 1 }}>
                           {nameEl}
-                          <button onClick={() => n && removeOp(op.id)} disabled={!n} aria-label={"Remove " + op.name} style={{ ...btn(!!n), color: "#B8341C" }}>{"\u2212"}</button>
+                          <button onClick={() => n && removeOp(op.id)} disabled={!n} aria-label={"Remove " + op.name} style={{ ...btn(!!n), color: "#E0664A" }}>{"\u2212"}</button>
                           <div style={{ minWidth: 18, textAlign: "center", fontSize: 13, fontWeight: 700, color: n ? f.color : "#5A6470", fontFamily: "'Rajdhani', sans-serif" }}>{n}</div>
-                          <button onClick={() => !blocked && addOp(op.id)} disabled={blocked} aria-label={"Add " + op.name} style={{ ...btn(!blocked), color: "#3D6B3F" }}>+</button>
+                          <button onClick={() => !blocked && addOp(op.id)} disabled={blocked} aria-label={"Add " + op.name} style={{ ...btn(!blocked), color: "#5A9C3A" }}>+</button>
                         </div>
                       );
                     }
                     const off = !n && blocked;
                     return (
-                      <div key={op.id} onClick={() => !off && toggleOp(op.id)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 2px", cursor: off ? "not-allowed" : "pointer", borderBottom: "1px solid #1A2430", opacity: off ? 0.3 : 1 }}>
+                      <div key={op.id} role="button" tabIndex={off ? -1 : 0} aria-disabled={off} onClick={() => !off && toggleOp(op.id)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 2px", cursor: off ? "not-allowed" : "pointer", borderBottom: "1px solid #1A2430", opacity: off ? 0.3 : 1 }}>
                         <div style={{ width: 14, height: 14, borderRadius: 2, border: "1.5px solid " + (n ? f.color : "#262A33"), background: n ? f.color + "20" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: f.color, flexShrink: 0 }}>{n ? <Icon name="check" size={10} /> : ""}</div>
                         {nameEl}
                       </div>
@@ -8242,7 +8290,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
                   )}
                 </div>
                 {isComplete && (
-                  <div style={{ textAlign: "center", fontSize: 11, color: "#3D6B3F", marginTop: 2, letterSpacing: "0.1em" }}><Icon name="check" size={12} /> Roster complete</div>
+                  <div style={{ textAlign: "center", fontSize: 11, color: "#5A9C3A", marginTop: 2, letterSpacing: "0.1em" }}><Icon name="check" size={12} /> Roster complete</div>
                 )}
               </div>
             </div>
@@ -8261,7 +8309,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
                 const used = isPloyUsed("strategy", i);
                 const canUse = used || cp > 0;
                 return (
-                  <div key={i} onClick={() => togglePloy("strategy", i)} style={{ marginBottom: 4, padding: "4px 6px", borderRadius: 2, cursor: canUse ? "pointer" : "not-allowed", background: used ? "#C9772E08" : "transparent", border: "1px solid " + (used ? "#C9772E25" : "transparent"), opacity: used ? 0.5 : canUse ? 1 : 0.35 }}>
+                  <div key={i} role="button" tabIndex={0} onClick={() => togglePloy("strategy", i)} style={{ marginBottom: 4, padding: "4px 6px", borderRadius: 2, cursor: canUse ? "pointer" : "not-allowed", background: used ? "#C9772E08" : "transparent", border: "1px solid " + (used ? "#C9772E25" : "transparent"), opacity: used ? 0.5 : canUse ? 1 : 0.35 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                       <div style={{ width: 12, height: 12, borderRadius: 2, border: "1.5px solid " + (used ? "#C9772E" : "#262A33"), background: used ? "#C9772E20" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#C9772E", flexShrink: 0 }}>{used ? <Icon name="check" size={10} /> : ""}</div>
                       <div style={{ flex: 1 }}>
@@ -8274,14 +8322,14 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
                 );
               })}
               <div style={dv} />
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#B8341C", marginBottom: 4, letterSpacing: "0.1em", fontFamily: "'Rajdhani', sans-serif" }}>FIREFIGHT (1CP)</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#E0664A", marginBottom: 4, letterSpacing: "0.1em", fontFamily: "'Rajdhani', sans-serif" }}>FIREFIGHT (1CP)</div>
               {f.ploys.firefight.map((p, i) => {
                 const used = isPloyUsed("firefight", i);
                 const canUse = used || cp > 0;
                 return (
-                  <div key={i} onClick={() => togglePloy("firefight", i)} style={{ marginBottom: 4, padding: "4px 6px", borderRadius: 2, cursor: canUse ? "pointer" : "not-allowed", background: used ? "#B8341C08" : "transparent", border: "1px solid " + (used ? "#B8341C25" : "transparent"), opacity: used ? 0.5 : canUse ? 1 : 0.35 }}>
+                  <div key={i} role="button" tabIndex={0} onClick={() => togglePloy("firefight", i)} style={{ marginBottom: 4, padding: "4px 6px", borderRadius: 2, cursor: canUse ? "pointer" : "not-allowed", background: used ? "#B8341C08" : "transparent", border: "1px solid " + (used ? "#B8341C25" : "transparent"), opacity: used ? 0.5 : canUse ? 1 : 0.35 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <div style={{ width: 12, height: 12, borderRadius: 2, border: "1.5px solid " + (used ? "#B8341C" : "#262A33"), background: used ? "#B8341C20" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#B8341C", flexShrink: 0 }}>{used ? <Icon name="check" size={10} /> : ""}</div>
+                      <div style={{ width: 12, height: 12, borderRadius: 2, border: "1.5px solid " + (used ? "#B8341C" : "#262A33"), background: used ? "#B8341C20" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#E0664A", flexShrink: 0 }}>{used ? <Icon name="check" size={10} /> : ""}</div>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 15, fontWeight: 700, color: used ? "#9AA5B1" : "#F1F2F5", fontFamily: "'Rajdhani', sans-serif", textDecoration: used ? "line-through" : "none" }}>{p.name}</div>
                         <div style={{ fontSize: 13, color: "#9AA5B1", lineHeight: 1.45 }}>{p.desc}</div>
@@ -8299,7 +8347,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
                 <button onClick={() => { if (cp > 0) setCp(cp - 1); }} style={{ ...bs(cp > 0 ? "#C9772E" : "#3A4150"), fontSize: 11, padding: "2px 6px", opacity: cp > 0 ? 1 : 0.3, cursor: cp > 0 ? "pointer" : "not-allowed" }}>Use (-1CP)</button>
               </div>
               {cp === 0 && (
-                <div style={{ marginTop: 4, fontSize: 11, color: "#B8341C", textAlign: "center", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.06em" }}><Icon name="warning" size={12} /> No command points left</div>
+                <div style={{ marginTop: 4, fontSize: 11, color: "#E0664A", textAlign: "center", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.06em" }}><Icon name="warning" size={12} /> No command points left</div>
               )}
             </div>
 
@@ -8315,14 +8363,14 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
               {(rosterLocked ? f.equipment.filter(q => eq[q.id]) : f.equipment).map(q => {
                 const canUse = canAddEquip("faction", q.id);
                 return (
-                <div key={q.id} onClick={() => canUse && toggleEq(q.id)} style={{ display: "flex", gap: 6, alignItems: "flex-start", padding: "4px 0", cursor: rosterLocked ? "default" : canUse ? "pointer" : "not-allowed", borderBottom: "1px solid #1A2430", opacity: canUse ? 1 : 0.35 }}>
+                <div key={q.id} role="button" tabIndex={0} onClick={() => canUse && toggleEq(q.id)} style={{ display: "flex", gap: 6, alignItems: "flex-start", padding: "4px 0", cursor: rosterLocked ? "default" : canUse ? "pointer" : "not-allowed", borderBottom: "1px solid #1A2430", opacity: canUse ? 1 : 0.35 }}>
                   <div style={{ width: 14, height: 14, borderRadius: 2, border: "1.5px solid " + (eq[q.id] ? "#C9772E" : "#262A33"), background: eq[q.id] ? "#C9772E20" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#C9772E", flexShrink: 0, marginTop: 1 }}>{eq[q.id] ? <Icon name="check" size={10} /> : ""}</div>
                   <div>
                     <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                       <span style={{ fontSize: 11, fontWeight: 600, color: eq[q.id] ? "#C9772E" : "#9AA5B1", fontFamily: "'Rajdhani', sans-serif" }}>{q.name}</span>
-                      {q.gw && (<span style={{ fontSize: 11, color: "#B8341C", background: "#B8341C10", padding: "0 4px", borderRadius: 2, border: "1px solid #B8341C20" }}>weapon</span>)}
+                      {q.gw && (<span style={{ fontSize: 11, color: "#E0664A", background: "#B8341C10", padding: "0 4px", borderRadius: 2, border: "1px solid #B8341C20" }}>weapon</span>)}
                     </div>
-                    <div style={{ fontSize: 11, color: "#8494A4", lineHeight: 1.3 }}>{q.desc}</div>
+                    <div style={{ fontSize: 11, color: "#9AA5B1", lineHeight: 1.3 }}>{q.desc}</div>
                   </div>
                 </div>
                 );
@@ -8351,14 +8399,14 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
                     {items.map(q => {
                       const canUse = canAddEquip("universal", q.id);
                       return (
-                      <div key={q.id} onClick={() => canUse && toggleUEq(q.id)} style={{ display: "flex", gap: 6, alignItems: "flex-start", padding: "3px 0", cursor: rosterLocked ? "default" : canUse ? "pointer" : "not-allowed", borderBottom: "1px solid #1A2430", opacity: canUse ? 1 : 0.35 }}>
+                      <div key={q.id} role="button" tabIndex={0} onClick={() => canUse && toggleUEq(q.id)} style={{ display: "flex", gap: 6, alignItems: "flex-start", padding: "3px 0", cursor: rosterLocked ? "default" : canUse ? "pointer" : "not-allowed", borderBottom: "1px solid #1A2430", opacity: canUse ? 1 : 0.35 }}>
                         <div style={{ width: 14, height: 14, borderRadius: 2, border: "1.5px solid " + (uEq[q.id] ? "#9AA5B1" : "#262A33"), background: uEq[q.id] ? "#9AA5B120" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#9AA5B1", flexShrink: 0, marginTop: 1 }}>{uEq[q.id] ? <Icon name="check" size={10} /> : ""}</div>
                         <div style={{ flex: 1 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                             <span style={{ fontSize: 11, fontWeight: 600, color: uEq[q.id] ? "#F1F2F5" : "#9AA5B1", fontFamily: "'Rajdhani', sans-serif" }}>{q.name}</span>
-                            {q.gw && (<span style={{ fontSize: 11, color: "#B8341C", background: "#B8341C10", padding: "0 4px", borderRadius: 2, border: "1px solid #B8341C20" }}>weapon</span>)}
+                            {q.gw && (<span style={{ fontSize: 11, color: "#E0664A", background: "#B8341C10", padding: "0 4px", borderRadius: 2, border: "1px solid #B8341C20" }}>weapon</span>)}
                           </div>
-                          <div style={{ fontSize: 11, color: "#8494A4", lineHeight: 1.3 }}>{q.desc}</div>
+                          <div style={{ fontSize: 11, color: "#9AA5B1", lineHeight: 1.3 }}>{q.desc}</div>
                         </div>
                       </div>
                       );
@@ -8375,7 +8423,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
               {f.factionRules.map((r, i) => (
                 <div key={i} style={{ marginBottom: 6 }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: "#C9772E", fontFamily: "'Rajdhani', sans-serif" }}>{r.name}</div>
-                  <div style={{ fontSize: 11, color: "#8494A4", lineHeight: 1.4 }}>{r.desc}</div>
+                  <div style={{ fontSize: 11, color: "#9AA5B1", lineHeight: 1.4 }}>{r.desc}</div>
                 </div>
               ))}
               {/* Chapter Tactics selector (Angels of Death only) */}
@@ -8482,14 +8530,14 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                       <div style={{ display: "flex", gap: 4 }}>
                         {[["opponent", "Opponent"], ["mine", "My roster"]].map(([mode, label]) => (
-                          <button key={mode} onClick={() => setImportMode(mode)} style={{ ...bs(importMode === mode ? (mode === "opponent" ? "#B8341C" : "#C9772E") : "#9AA5B1"), fontSize: 11, padding: "3px 8px", background: importMode === mode ? (mode === "opponent" ? "#B8341C15" : "#C9772E15") : "transparent" }}>{label}</button>
+                          <button key={mode} onClick={() => setImportMode(mode)} style={{ ...bs(importMode === mode ? (mode === "opponent" ? "#B8341C" : "#C9772E") : "#9AA5B1"), fontSize: 13, padding: "8px 12px", background: importMode === mode ? (mode === "opponent" ? "#B8341C15" : "#C9772E15") : "transparent" }}>{label}</button>
                         ))}
                       </div>
-                      <button onClick={() => setShowImport(false)} style={{ ...bs("#9AA5B1"), fontSize: 11, padding: "2px 5px" }} title="Close"><Icon name="x" size={13} /></button>
+                      <button onClick={() => setShowImport(false)} style={{ ...bs("#9AA5B1"), fontSize: 13, padding: "8px 12px" }} title="Close"><Icon name="x" size={13} /></button>
                     </div>
-                    <div style={{ fontSize: 11, color: "#9AA5B1", marginBottom: 6 }}>{importMode === "opponent" ? "Paste opponent's roster code:" : "Paste a roster code to load as your team:"}</div>
+                    <div style={{ fontSize: 13, color: "#9AA5B1", marginBottom: 6 }}>{importMode === "opponent" ? "Paste opponent's roster code:" : "Paste a roster code to load as your team:"}</div>
                     <div style={{ display: "flex", gap: 6 }}>
-                      <input type="text" value={importCode} onChange={(e) => setImportCode(e.target.value)} placeholder="Paste roster code here..." style={{ flex: 1, background: "#262A33", border: "1px solid #3A4150", borderRadius: 2, color: "#F1F2F5", fontSize: 11, padding: "6px 8px", fontFamily: "'Segoe UI', sans-serif", outline: "none" }} />
+                      <input type="text" value={importCode} onChange={(e) => setImportCode(e.target.value)} placeholder="Paste roster code here..." style={{ flex: 1, background: "#262A33", border: "1px solid #3A4150", borderRadius: 6, color: "#F1F2F5", fontSize: 13, padding: "8px 12px", fontFamily: "'Segoe UI', sans-serif", outline: "none" }} />
                       <button onClick={() => {
                         if (importMode === "mine") {
                           const err = importMyRoster(importCode);
@@ -8498,9 +8546,9 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
                         } else {
                           importOpponent();
                         }
-                      }} style={{ ...bs(importMode === "opponent" ? "#B8341C" : "#C9772E"), fontSize: 11, padding: "6px 12px" }}>Import</button>
+                      }} style={{ ...bs(importMode === "opponent" ? "#B8341C" : "#C9772E"), fontSize: 13, padding: "8px 12px" }}>Import</button>
                     </div>
-                    {importError && <div style={{ fontSize: 11, color: "#B8341C", marginTop: 4 }}><Icon name="x" size={12} /> {importError}</div>}
+                    {importError && <div style={{ fontSize: 13, color: "#E0664A", marginTop: 4 }}><Icon name="x" size={12} /> {importError}</div>}
                   </div>
                 )}
                 {[...roster].sort((a, b) => {
@@ -8524,16 +8572,16 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
                   <div style={{ position: "sticky", top: navH + BAR_H, maxHeight: "calc(100vh - " + (navH + BAR_H + 10) + "px)", overflowY: "auto", overflowX: "hidden" }}>
                     <div style={{ background: "linear-gradient(135deg, " + "#B8341C" + "18, #1A1D24)", border: "1px solid " + "#B8341C" + "35", borderRadius: 4, padding: "8px 12px", marginBottom: 6, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <div>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: "#B8341C", fontFamily: "'Rajdhani', sans-serif" }}>{oppRoster.faction.name}</div>
-                        <div style={{ fontSize: 11, color: "#9AA5B1" }}>{oppRoster.operatives.reduce((s, o) => s + getOppWounds(o.id, o.wounds), 0)}W alive {"\u2022"} {oppRoster.operatives.filter(o => getOppWounds(o.id, o.wounds) <= 0).length} dead</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: "#E0664A", fontFamily: "'Rajdhani', sans-serif" }}>{oppRoster.faction.name}</div>
+                        <div style={{ fontSize: 13, color: "#9AA5B1" }}>{oppRoster.operatives.reduce((s, o) => s + getOppWounds(o.id, o.wounds), 0)}W alive {"\u2022"} {oppRoster.operatives.filter(o => getOppWounds(o.id, o.wounds) <= 0).length} dead</div>
                       </div>
                       <div style={{ display: "flex", gap: 4 }}>
                         {(() => {
                           const allOppCollapsed = oppRoster.operatives.every(op => oppCollapsed[op.id]);
-                          return <button onClick={() => { if (allOppCollapsed) setOppCollapsed({}); else { const c = {}; oppRoster.operatives.forEach(op => { c[op.id] = true; }); setOppCollapsed(c); } }} style={{ ...bs("#9AA5B1"), fontSize: 11, padding: "2px 5px" }}><Icon name={allOppCollapsed ? "chevronDown" : "chevronUp"} size={14} /></button>;
+                          return <button onClick={() => { if (allOppCollapsed) setOppCollapsed({}); else { const c = {}; oppRoster.operatives.forEach(op => { c[op.id] = true; }); setOppCollapsed(c); } }} style={{ ...bs("#9AA5B1"), fontSize: 13, padding: "8px 12px" }}><Icon name={allOppCollapsed ? "chevronDown" : "chevronUp"} size={14} /></button>;
                         })()}
-                        <button onClick={() => setOppWounds({})} style={{ ...bs("#9AA5B1"), fontSize: 11, padding: "2px 5px" }} title="Heal all"><Icon name="heart" size={13} /></button>
-                        <button onClick={() => { setOppRoster(null); setShowImport(false); }} style={{ ...bs("#B8341C"), fontSize: 11, padding: "2px 5px" }} title="Remove opponent"><Icon name="x" size={13} /></button>
+                        <button onClick={() => setOppWounds({})} style={{ ...bs("#9AA5B1"), fontSize: 13, padding: "8px 12px" }} title="Heal all"><Icon name="heart" size={13} /></button>
+                        <button onClick={() => { setOppRoster(null); setShowImport(false); }} style={{ ...bs("#B8341C"), fontSize: 13, padding: "8px 12px" }} title="Remove opponent"><Icon name="x" size={13} /></button>
                       </div>
                     </div>
                     {oppRoster.operatives.map(op => {
@@ -8552,8 +8600,8 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
             <div style={{ width: "100%" }}>
                 {/* Import Opponent */}
                 <div style={{ marginTop: 12 }}>
-                  <div onClick={() => setShowImport(!showImport)} style={{ ...cd, padding: "8px 12px", cursor: "pointer", borderColor: oppRoster ? "#B8341C40" : showImport ? "#6B9BF740" : "#3A4150", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: oppRoster ? "#B8341C" : "#6B9BF7", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.08em" }}>
+                  <div role="button" tabIndex={0} onClick={() => setShowImport(!showImport)} style={{ ...cd, padding: "8px 12px", cursor: "pointer", borderColor: oppRoster ? "#B8341C40" : showImport ? "#6B9BF740" : "#3A4150", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: oppRoster ? "#B8341C" : "#6B9BF7", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.08em" }}>
                       {oppRoster ? "Opponent: " + oppRoster.faction.name + " (" + oppRoster.operatives.length + ")" : "Import a roster"}
                     </div>
                     <span style={{ color: "#9AA5B1" }}><Icon name={showImport ? "chevronUp" : "chevronDown"} size={16} /></span>
@@ -8563,12 +8611,12 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
                     <div style={{ ...cd, padding: 12, borderColor: "#6B9BF730" }}>
                       <div style={{ display: "flex", gap: 4, marginBottom: 6 }}>
                         {[["opponent", "Opponent"], ["mine", "My roster"]].map(([mode, label]) => (
-                          <button key={mode} onClick={() => setImportMode(mode)} style={{ ...bs(importMode === mode ? (mode === "opponent" ? "#B8341C" : "#C9772E") : "#9AA5B1"), fontSize: 11, padding: "4px 10px", flex: 1, background: importMode === mode ? (mode === "opponent" ? "#B8341C15" : "#C9772E15") : "transparent" }}>{label}</button>
+                          <button key={mode} onClick={() => setImportMode(mode)} style={{ ...bs(importMode === mode ? (mode === "opponent" ? "#B8341C" : "#C9772E") : "#9AA5B1"), fontSize: 13, padding: "8px 12px", flex: 1, background: importMode === mode ? (mode === "opponent" ? "#B8341C15" : "#C9772E15") : "transparent" }}>{label}</button>
                         ))}
                       </div>
-                      <div style={{ fontSize: 11, color: "#9AA5B1", marginBottom: 6 }}>{importMode === "opponent" ? "Paste opponent's roster code:" : "Paste a roster code to load as your team:"}</div>
+                      <div style={{ fontSize: 13, color: "#9AA5B1", marginBottom: 6 }}>{importMode === "opponent" ? "Paste opponent's roster code:" : "Paste a roster code to load as your team:"}</div>
                       <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
-                        <input type="text" value={importCode} onChange={(e) => setImportCode(e.target.value)} placeholder="Paste roster code here..." style={{ flex: 1, background: "#262A33", border: "1px solid #3A4150", borderRadius: 2, color: "#F1F2F5", fontSize: 11, padding: "6px 8px", fontFamily: "'Segoe UI', sans-serif", outline: "none" }} />
+                        <input type="text" value={importCode} onChange={(e) => setImportCode(e.target.value)} placeholder="Paste roster code here..." style={{ flex: 1, background: "#262A33", border: "1px solid #3A4150", borderRadius: 6, color: "#F1F2F5", fontSize: 13, padding: "8px 12px", fontFamily: "'Segoe UI', sans-serif", outline: "none" }} />
                         <button onClick={() => {
                           if (importMode === "mine") {
                             const err = importMyRoster(importCode);
@@ -8577,25 +8625,25 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
                           } else {
                             importOpponent();
                           }
-                        }} style={{ ...bs(importMode === "opponent" ? "#B8341C" : "#C9772E"), fontSize: 11, padding: "6px 12px" }}>Import</button>
+                        }} style={{ ...bs(importMode === "opponent" ? "#B8341C" : "#C9772E"), fontSize: 13, padding: "8px 12px" }}>Import</button>
                       </div>
-                      {importError && <div style={{ fontSize: 11, color: "#B8341C" }}><Icon name="x" size={12} /> {importError}</div>}
+                      {importError && <div style={{ fontSize: 13, color: "#E0664A" }}><Icon name="x" size={12} /> {importError}</div>}
                     </div>
                   )}
 
                   {oppRoster && showImport && (
                     <div style={{ marginTop: 6 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                        <div style={{ fontSize: 11, color: "#9AA5B1" }}>
+                        <div style={{ fontSize: 13, color: "#9AA5B1" }}>
                           {oppRoster.operatives.reduce((s, o) => s + getOppWounds(o.id, o.wounds), 0)}W alive {"\u2022"} {oppRoster.operatives.filter(o => getOppWounds(o.id, o.wounds) <= 0).length} dead
                         </div>
                         <div style={{ display: "flex", gap: 6 }}>
                           {(() => {
                             const allOppCollapsed = oppRoster.operatives.length > 0 && oppRoster.operatives.every(op => oppCollapsed[op.id]);
-                            return <button onClick={() => { if (allOppCollapsed) setOppCollapsed({}); else { const c = {}; oppRoster.operatives.forEach(op => { c[op.id] = true; }); setOppCollapsed(c); } }} style={{ ...bs("#9AA5B1"), fontSize: 11, padding: "6px 8px" }}><Icon name={allOppCollapsed ? "chevronDown" : "chevronUp"} size={14} /></button>;
+                            return <button onClick={() => { if (allOppCollapsed) setOppCollapsed({}); else { const c = {}; oppRoster.operatives.forEach(op => { c[op.id] = true; }); setOppCollapsed(c); } }} style={{ ...bs("#9AA5B1"), fontSize: 13, padding: "8px 12px" }}><Icon name={allOppCollapsed ? "chevronDown" : "chevronUp"} size={14} /></button>;
                           })()}
-                          <button onClick={() => setOppWounds({})} style={{ ...bs("#9AA5B1"), fontSize: 11, padding: "6px 8px" }} title="Heal all"><Icon name="heart" size={13} /></button>
-                          <button onClick={() => { setOppRoster(null); setShowImport(false); }} style={{ ...bs("#B8341C"), fontSize: 11, padding: "6px 8px" }} title="Remove opponent"><Icon name="x" size={13} /></button>
+                          <button onClick={() => setOppWounds({})} style={{ ...bs("#9AA5B1"), fontSize: 13, padding: "8px 12px" }} title="Heal all"><Icon name="heart" size={13} /></button>
+                          <button onClick={() => { setOppRoster(null); setShowImport(false); }} style={{ ...bs("#B8341C"), fontSize: 13, padding: "8px 12px" }} title="Remove opponent"><Icon name="x" size={13} /></button>
                         </div>
                       </div>
                       {oppRoster.operatives.map(op => {
@@ -8617,13 +8665,13 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
 
 /* ═══ TERRAIN TYPES ═══ */
 const TERRAIN_TYPES = [
-  { name: "Heavy", color: "#B8341C", desc: "Larger terrain features. Can obscure operatives: if Heavy terrain is intervening between shooter and target (and more than 1\" from both), the target is obscured.", rules: ["Attacker must discard one success when target is obscured.", "All attacker crits become normal successes when target is obscured.", "Cannot obscure if within 1\" of either operative."] },
+  { name: "Heavy", color: "#E0664A", desc: "Larger terrain features. Can obscure operatives: if Heavy terrain is intervening between shooter and target (and more than 1\" from both), the target is obscured.", rules: ["Attacker must discard one success when target is obscured.", "All attacker crits become normal successes when target is obscured.", "Cannot obscure if within 1\" of either operative."] },
   { name: "Light", color: "#C9772E", desc: "Smaller terrain features. No additional rules on its own, but other rules interact with it differently. Vantage terrain is also Light terrain.", rules: ["Provides cover but does not obscure.", "Operatives on Vantage can ignore Light terrain for targeting Concealed enemies below them."] },
   { name: "Blocking", color: "#9AA5B1", desc: "Usually gaps between or underneath terrain. Visibility cannot be drawn through Blocking terrain. For cover and obscured purposes, gaps count as intervening like the terrain around them.", rules: ["Visibility cannot pass through.", "Treated as intervening for cover/obscured.", "Rare. Used to block specific gaps."] },
   { name: "Vantage", color: "#6B9BF7", desc: "Upper levels operatives can stand on. Also counts as Light terrain. Provides shooting bonuses and targeting advantages against lower operatives.", rules: ["Shooting target 2\"+ lower with Engage: weapon gains Accurate 1. 4\"+ lower: Accurate 2.", "Targeting Concealed operatives 2\"+ lower: they can't use Light terrain for cover (but keep cover save as crit or get +1 save).", "For obscured, ignore Heavy terrain connected to Vantage the shooter or target is on.", "Operatives can jump from Vantage terrain higher than 2\"."] },
-  { name: "Accessible", color: "#3D6B3F", desc: "Operatives can move through this terrain (e.g. doors, open hatches), but it costs an additional 1\" to do so. Only the centre of the base needs to pass through.", rules: ["Move through costs +1\" extra.", "Base centre determines passage, not full base.", "Takes precedence over normal terrain blocking."] },
+  { name: "Accessible", color: "#5A9C3A", desc: "Operatives can move through this terrain (e.g. doors, open hatches), but it costs an additional 1\" to do so. Only the centre of the base needs to pass through.", rules: ["Move through costs +1\" extra.", "Base centre determines passage, not full base.", "Takes precedence over normal terrain blocking."] },
   { name: "Insignificant", color: "#D5D6D7", desc: "Very small terrain. Ignored for climbing and dropping purposes. Operatives can move over it without going up and down.", rules: ["Ignore for climbing/dropping.", "Move over freely."] },
-  { name: "Exposed", color: "#B8341C", desc: "Terrain with large gaps or too small to hide behind. Never counts as intervening for cover or obscured purposes.", rules: ["Never provides cover.", "Never obscures.", "Common on fire steps, barricade feet, open hatchways."] },
+  { name: "Exposed", color: "#E0664A", desc: "Terrain with large gaps or too small to hide behind. Never counts as intervening for cover or obscured purposes.", rules: ["Never provides cover.", "Never obscures.", "Common on fire steps, barricade feet, open hatchways."] },
   { name: "Ceiling", color: "#9B59B6", desc: "Operatives with 50mm round bases or 60x35mm oval bases can move underneath regardless of model height. Must finish in a placeable location.", rules: ["Allows movement underneath for smaller-based operatives.", "Must still end action in valid position."] },
 ];
 
@@ -13470,7 +13518,7 @@ function RuleItem({ item, open, onToggle }) {
   const more = !!(item.detail || item.stats);
   const lines = [].concat(item.detail || []);
   return (
-    <div onClick={more ? onToggle : undefined} style={{ ...cd, padding: 12, marginBottom: 8, cursor: more ? "pointer" : "default", borderLeft: "3px solid " + (open ? "#C9772E" : "#3A4150") }}>
+    <div role={more ? "button" : undefined} tabIndex={more ? 0 : undefined} aria-expanded={more ? open : undefined} onClick={more ? onToggle : undefined} style={{ ...cd, padding: 12, marginBottom: 8, cursor: more ? "pointer" : "default", borderLeft: "3px solid " + (open ? "#C9772E" : "#3A4150") }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         {item.swatch && <div style={{ width: 10, height: 10, borderRadius: 2, background: item.swatch, flexShrink: 0 }} />}
         <span style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.03em", color: open ? "#C9772E" : "#F1F2F5" }}>{item.name}</span>
@@ -13618,7 +13666,7 @@ function MapImages({ ids }) {
 function NpoCard({ npo, open, onToggle }) {
   const stats = [["APL", npo.apl], ["MOVE", npo.move], ["SAVE", npo.save], ["WOUNDS", npo.wounds]];
   return (
-    <div onClick={onToggle} style={{ ...cd, padding: 12, marginBottom: 8, cursor: "pointer", borderLeft: "3px solid " + (open ? "#C9772E" : "#3A4150") }}>
+    <div role="button" tabIndex={0} onClick={onToggle} style={{ ...cd, padding: 12, marginBottom: 8, cursor: "pointer", borderLeft: "3px solid " + (open ? "#C9772E" : "#3A4150") }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <span style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.03em", color: open ? "#C9772E" : "#F1F2F5" }}>{npo.name}</span>
         {npo.base && <span style={{ fontSize: 11, color: "#9AA5B1", fontFamily: "'Rajdhani', sans-serif" }}>{npo.base}</span>}
@@ -13858,7 +13906,7 @@ function NpoTracker({ pack, units, setUnits }) {
                     <span style={{ fontSize: 14, fontWeight: 700, color: dead ? "#9AA5B1" : "#F1F2F5", fontFamily: "'Rajdhani', sans-serif", textDecoration: dead ? "line-through" : "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.label}</span>
                     {injured && <span style={{ fontSize: 11, color: "#FFB627" }}>injured</span>}
                   </button>
-                  <button onClick={() => setW(u.uid, u.wounds - 1)} aria-label="Lose a wound" style={{ width: 32, height: 32, border: "1px solid #B8341C60", borderRadius: 4, background: "transparent", color: "#B8341C", cursor: "pointer", fontSize: 16 }}>{"−"}</button>
+                  <button onClick={() => setW(u.uid, u.wounds - 1)} aria-label="Lose a wound" style={{ width: 32, height: 32, border: "1px solid #B8341C60", borderRadius: 4, background: "transparent", color: "#E0664A", cursor: "pointer", fontSize: 16 }}>{"−"}</button>
                   <span style={{ minWidth: 48, textAlign: "center", fontSize: 15, fontWeight: 700, color: dead ? "#B8341C" : injured ? "#FFB627" : "#F1F2F5", fontFamily: "'Rajdhani', sans-serif" }}>{u.wounds}/{u.max}</span>
                   <button onClick={() => setW(u.uid, u.wounds + 1)} aria-label="Regain a wound" style={{ width: 32, height: 32, border: "1px solid #3D6B3F80", borderRadius: 4, background: "transparent", color: "#5A9C3A", cursor: "pointer", fontSize: 16 }}>+</button>
                   <button onClick={() => remove(u.uid)} aria-label="Remove" style={{ width: 32, height: 32, border: "1px solid #3A4150", borderRadius: 4, background: "transparent", color: "#9AA5B1", cursor: "pointer", fontSize: 13 }}>{"✕"}</button>
@@ -13901,7 +13949,7 @@ function Missions() {
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 10 }}>
             {shown.map(p => (
-              <div key={p.id} onClick={() => go(p.id, null)} style={{ ...cd, padding: 14, marginBottom: 0, cursor: "pointer", minWidth: 0 }}>
+              <div key={p.id} role="button" tabIndex={0} onClick={() => go(p.id, null)} style={{ ...cd, padding: 14, marginBottom: 0, cursor: "pointer", minWidth: 0 }}>
                 <div style={{ fontSize: 17, fontWeight: 700, color: "#F1F2F5", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.03em" }}>{p.name}</div>
                 <div style={{ display: "flex", gap: 4, flexWrap: "wrap", margin: "6px 0" }}>
                   {p.modes.map(m => <span key={m} style={bg(modeColor(m))}>{m}</span>)}
@@ -13928,7 +13976,7 @@ function Missions() {
 
           {pack.missions.length > 0 && sectionHead("Missions")}
           {pack.missions.map((m, i) => (
-            <div key={i} onClick={() => go(pack.id, i)} style={{ ...cd, padding: 12, marginBottom: 8, cursor: "pointer", display: "flex", alignItems: "center", gap: 10 }}>
+            <div key={i} role="button" tabIndex={0} onClick={() => go(pack.id, i)} style={{ ...cd, padding: 12, marginBottom: 8, cursor: "pointer", display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 11, color: "#9AA5B1", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.12em", textTransform: "uppercase" }}>{missionLabel(m)}</div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: "#F1F2F5", fontFamily: "'Rajdhani', sans-serif" }}>{m.name}</div>
@@ -14238,7 +14286,7 @@ function Tutorial() {
     ),
     // 8 Fight: strike or block
     () => {
-      const chips = (list, col) => list.length ? list.map((s, i) => <span key={i} style={{ display: "inline-block", padding: "4px 10px", borderRadius: 6, marginRight: 6, marginBottom: 6, border: "1px solid " + (s === "crit" ? "#FFB627" : col), color: s === "crit" ? "#FFB627" : col, fontSize: 13, fontWeight: 700 }}>{s === "crit" ? "Crit" : "Normal"}</span>) : <span style={{ fontSize: 13, color: "#5A6470" }}>none left</span>;
+      const chips = (list, col) => list.length ? list.map((s, i) => <span key={i} style={{ display: "inline-block", padding: "4px 10px", borderRadius: 6, marginRight: 6, marginBottom: 6, border: "1px solid " + (s === "crit" ? "#FFB627" : col), color: s === "crit" ? "#FFB627" : col, fontSize: 13, fontWeight: 700 }}>{s === "crit" ? "Crit" : "Normal"}</span>) : <span style={{ fontSize: 13, color: "#8B95A1" }}>none left</span>;
       return (
         <div>
           <Say>Starting with the attacker, take turns resolving <B>one success at a time</B>. Each one either <B>strikes</B> (deals damage right away) or <B>blocks</B> (cancels one of the opponent's successes: a normal blocks a normal, a crit blocks anything).</Say>
@@ -14356,12 +14404,12 @@ function CommunityRosters() {
 
       <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "26px 0 8px" }}>
         <div style={{ ...h3, color: "#C9772E", marginBottom: 0 }}>Preview</div>
-        <span style={{ fontSize: 12, color: "#5A6470" }}>example posts, not real yet</span>
+        <span style={{ fontSize: 12, color: "#8B95A1" }}>example posts, not real yet</span>
       </div>
       <div aria-hidden="true" style={{ opacity: 0.75, pointerEvents: "none" }}>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
           {["All teams", "Imperium", "Chaos", "Xenos"].map((t, i) => <span key={t} style={{ ...bs(i === 0 ? "#C9772E" : "#9AA5B1"), background: i === 0 ? "#C9772E20" : "transparent", padding: "7px 12px", fontSize: 12 }}>{t}</span>)}
-          <div style={{ flex: "1 1 160px", minWidth: 0, background: "#1A1D24", border: "1px solid #3A4150", borderRadius: 6, color: "#5A6470", padding: "7px 10px", fontSize: 13 }}>Search rosters</div>
+          <div style={{ flex: "1 1 160px", minWidth: 0, background: "#1A1D24", border: "1px solid #3A4150", borderRadius: 6, color: "#8B95A1", padding: "7px 10px", fontSize: 13 }}>Search rosters</div>
         </div>
         <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 12 }}>
           <span style={{ fontSize: 13, color: "#9AA5B1" }}>Sort:</span>
@@ -14382,7 +14430,7 @@ function CommunityRosters() {
                   <span style={bg(f.color)}>{f.name}</span>
                 </div>
                 <div style={{ fontSize: 13, color: "#C8CDD3", lineHeight: 1.5, marginTop: 4 }}>{r.note}</div>
-                <div style={{ fontSize: 12, color: "#5A6470", marginTop: 4 }}>{r.ops} operatives {"·"} example post</div>
+                <div style={{ fontSize: 12, color: "#8B95A1", marginTop: 4 }}>{r.ops} operatives {"·"} example post</div>
               </div>
             </div>
           );
@@ -14391,6 +14439,8 @@ function CommunityRosters() {
     </div>
   );
 }
+
+const LOGO_SRC = "data:image/webp;base64,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";
 
 const TAB_ICONS = {
   missions: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAyNCAyNCcgd2lkdGg9JzI0JyBoZWlnaHQ9JzI0Jz48cG9seWdvbiBwb2ludHM9JzMsNiA5LDMgMTUsNiAyMSwzIDIxLDE4IDE1LDIxIDksMTggMywyMScgZmlsbD0nbm9uZScgc3Ryb2tlPSd3aGl0ZScgc3Ryb2tlLXdpZHRoPScxLjUnIHN0cm9rZS1saW5lam9pbj0ncm91bmQnLz48bGluZSB4MT0nOScgeTE9JzMnIHgyPSc5JyB5Mj0nMTgnIHN0cm9rZT0nd2hpdGUnIHN0cm9rZS13aWR0aD0nMS41Jy8+PGxpbmUgeDE9JzE1JyB5MT0nNicgeDI9JzE1JyB5Mj0nMjEnIHN0cm9rZT0nd2hpdGUnIHN0cm9rZS13aWR0aD0nMS41Jy8+PC9zdmc+",
@@ -14407,6 +14457,15 @@ function App() {
   React.useEffect(() => { if (tab === "sequence") setTab("builder"); }, [tab]);
   const [tp, setTp] = useLocalStorage("tp", 1);
   const mobile = useIsMobile();
+  // Enter or Space on a focused role="button" element acts like a click (buttons do this already).
+  React.useEffect(() => {
+    const onKey = (e) => {
+      const t = e.target;
+      if ((e.key === "Enter" || e.key === " ") && t && t.getAttribute && t.getAttribute("role") === "button" && t.tagName !== "BUTTON") { e.preventDefault(); t.click(); }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
   const tabs = [["rules", "Rules"], ["missions", "Missions"], ["builder", "Builder"], ["tutorial", "Tutorial"], ["community", mobile ? "Community" : "Community Rosters"]];
   // Multiplayer hosted at App level so banner is visible across tabs
   const mpHandlerRef = React.useRef(null);
@@ -14445,15 +14504,20 @@ function App() {
         </div>
       )}
 
-      {/* HEADER */}
-      <div style={{ padding: mobile ? "10px 12px" : "28px 16px 20px", textAlign: "center", background: "#1A1D24", borderBottom: "1px solid #3A4150" }}>
-        {!mobile && <div style={{ fontSize: 11, fontWeight: 500, letterSpacing: "0.32em", color: "#9AA5B1", fontFamily: "'Rajdhani', sans-serif", textTransform: "uppercase", marginBottom: 8 }}>Tactical Skirmish Companion</div>}
-        <img src="data:image/webp;base64,UklGRtIzAABXRUJQVlA4WAoAAAAQAAAAZgEATwAAQUxQSEoRAAAB8Ebtn2qp8f+93lV1Goi7kWRm4u7uvjIri4bYZ+Lu2hCy3AUa4u7JDDYucXd3h0g3cYXMB0gHuk/J68E5p6r27t2seRgREyDIKojWwIEf1P+8vAgiBdjvwj2g0VIhoyCnQkaFUmpg1cuf+CV8dc+B62hAK8QqZFTIL0hWyCxIVMgtUCipwsrD29v3P+3A9uHD2/c/58xRp3ccv4dAYgwWu4Z0fBAqQskiz5A8E7qZYNOTjjpu5Dnnnn3WWWeedd7551x0yIKQDIKtDjjxuDPOOPegfUefd86oCzuvvnA3SBkM2i7/mc173uncANCqlWCtEaPOv/DiSy4ZM/7Ka26+4bpxZ68PaSGQ3189ccLEiff+ceLECRMu2hCSIAqbnDFhwsTkG3YBJMpgwf3unJg+4fLtofDbEyZMTL/9jtvGjx/XOWb8uM4rrxx/xdhRK2On2cz43GCRFqKx4Rv0gc6uCtXKyETWnecx0A0KHUz/bDmRJI2RzHgxVGFKsO27pPNkcJ6kn7ABYJppDO9l8txtoZtp3MvEU0VHKYPxzHyvqBiDDT9l5mNkoxks5ex9H2Cvc9Za55yzzescBt1MAYfNpSUZuGmEQSf7SO/telCAYKnZrDsb38tzYFJEFpkV6s7G192cJSAFGaizA21g8+AtaSf8DqIAiGqbyj5n43v5hihp0NiSdRvbx08QrYDxdDYvt4VuITUMm8G6zdkXPsAD7LUlrPO/b3rPZOtvgWmiMeRaBs8mG7ZSMnSOCyQd3zYKUNiAnqnOPwOdhKV6QmCqDztCF2Ow8osMnvGOnHk6YADBAl8Gz0QfvlJoYrB/cIwN4cclIK0MFruTNjCr9QfANFOCDtIxq+fbS84KgWUMvIEuA29vZrDqq3SBzTZqZXAjLRsdd4cGxLwbfBKfToNWzwWXxm2LURr7TKdluiWf3QgaMJhAm8TpEcOZwLmrQrUwWOZNWuYN7Fka0kSjbTyDZ65HdqVnSZf53vsMtzXRGD6Lls1jBCv2hNDEhn+JBjTaWQqDvWgzbFeIBm4kHXMGy1+OgBaF9es+JH0eMSLBs1uhpcGuX9Ays+WjSqPRYPmH6QIzW3acE2wpPN/C4bS5NC4jHTMYnE7LpoF2JShA4wG6EkDjr3Sl0vjtQ/SemR15KTQMxtOW6FM0F40De+mY7xiYBoMNv6Vl9sANn6EvhePtGvfT5dG4nDYwhzIvBdeMjh0wgJJVekMogVJL/+h9iTTW7Gad+UOdl0KLWug778vzWTOlcBWDZ+4QZi8HAcTgiBm0zO751tAehpIcoNRSP3mfQ2H5PheYQ7BiH0PEc6IAGNxBWwIYHENXHo3ffMM6C61zJLTBKXRl0zDXsh6Y3fIhaEAJRpKe+W04d1t6ljFw7sYwOJ4uh8E5wTKLwYF0jJy3IhSgZNVfQiiB6LaX6Mqi8JtuOhbr/c/LitLmZbpy1bDUy7Qs0PI4GGjULqPzLDBwg0uCLcnMhQGtXqDLcj8zafwlyvP/oAEovEhXAhhcTlsSJUO76Vi0434wBn8omcK279OywBDsGlAaKz1JxyI9vxn8Kn0pPN8dDBjcSpvln5kEC/3IEGF5MUyDvFwSmVIaLfexzljnM+0CY+Tkcikc30fHIl14v6Y0Nv6GloXacBu+KIkNk9BwT6Z/ZVLYxntGOj4H1YCyYFJZNE6iZWJwaY4PiYLBqbQlUhjL4JnoE3t5KQZho5m0TPSpdW4zeJZzvnVIC75lL8c1ubtUBkfRxr1STSKLzfAhwnHMEa+TwScE17MaGk6gK4/CisF5Ftyzrhj1HOss+o0aHmFJ62v1A42b6WICZywHqSCNfegYaXkPsPujpI2zHA0NGJxcJoMTg2V84K9Tp8VO/eiJbaGxwKwQkr6a9vG0yKlT//47yLJ3TP1oWtOPp33LEBc4c9rH06ZNmzZ16ks7Q/rDU3Ek14KqIIX7QsJ9xgB7fEYfIhyfVVoaTqMtj8Ze9EnfLY5UBVV7jT7BcVcIEgWxCgfSxlleBoWWgtKJmHfo48L6VSRY6Ev6GM+vFxStsdDNZGgR3OxVRKHh9DJB4QW6lF9XhopSCjA4ljZpd+g4pQDRrQwOSrscpplolE9huXkMUZYjYapHYUMGRnu3sShoYO+ffGhmeRIMmpxRKo3d6VPm/iahUbDk/4dQUGoxzfP9M9cKfUnnVNNmKZZnwgDShr1Yb+L4FLQ0G10qyELf00eRXDsDNP5ON0Dcl7RJttFVZHASXZwPnwzRAqAN99KSDK53FVHoFxqP0JXA4BbagaBNLT6TIa53zWw3Q1fRZbRxdOxEDYDoBV6lIy0vgUaLkWV7rCR3DgxDcC4tY314H4Isjs9CquicJDqOhgGgsF5fqPexa4iSVqdW0x0DA9aY40OU43kwuZ6EqqJRacFxNGoCaIxyZN/O0Gh1Et182h1Se5GOscH3DIU0WT7FcqyY6lHYnj6FwXI0RAEa61537QZQiDhxvu1GPETHaMfrodFkxbRO6CpavS8kMTjePBgGUAAgiDmFdr7M8c67aRnt/Y/LKGkw6KBltOePi0AqByLv0yeRjq9uCiVQxihEnZbWZmrGGDPY7FuS9UybiVa59jSDTLTuf6SnZ3SwbIdGo1Iv0cXR8Wjo6tG4LdgMtJzbAWgkGnQkdaP1bmUInL0QUiXTVkhVFUDPeMcLoNGoMLSXIcGG82GqaA/6HHTkw4tDFxTYM2Vy0ymTn2Mojpw3pnPcmEsvuOjSMeOvuura2w8YCskR+NTkKZNbT5p09k6QCkis8wJotFi5nsaboKtHZFB38DkYPL/eFaISRiYUmS39h1VFZch5MnS1ON6MGlqtlOb4IFT1QOMEuiykIy8Q6LhRaba1K4mz8fM4BiaLs/F1P3spkSrxHCNGIoameb4IqSAo8xpdnsZHh8JEdaRlz5dq/UOZMq4PVSGW16KG1gqr2QxvV5PGFtaFPHPmOP6wFUzM6VXDa0oR+OMSkAoJ/oPhMK00htMz6a1qgsbFrOeZO5eW80ZCS6uRFePCjtAlsGECNCqEgTwMOmIHhoECBg/QZmn05Dkw0mJUtXh+PkSkBJ77SLXQe46CabX1ACJ6yXdoczHUOQammizvhUFxgXOWgVQLg+NJME0UtmRyhUFhjR66XAyW58A0O7NiwkGlcHwQGhXDYHkYdIPGtgwDBzR2+pQ2F4PlQTAVFELPclAlsDwRpnIYAjeCarLrgAKNJd+gzcXg/rspVPU4vlFTKAHdmlDVQ8e3TCs/kMBg0X/Qhkx0fLdNCwxGV4oNN8KUwPm3lEL/CyGJjodDN2zFMKBAAeNIl4mWHTAwOCPNh9YlcTaau0Fncra1c308H6YCyJAWXoZq2Il+YIFoHNpDG/J4//NyogwOTcueL/HRmkKmxPeWFel3gd/00qcw9K4CgcZeAw6gseYLDD4LLc+G0fg9XVTgjB0223yzzTbbbKvNRtMXFzj3oouv6Lxw5KjTR17Wed52NUgezwljxnV2do7tvGzkiUfvuiAE/c7yqh1mM6Q4HgEDjeEDEAxqnZYuiw9fDxaDvRI8u9F6T7oy9C6JjBkct0S8oAruxLY9PiRY3iUaBgfSDSiilRYowY6f0Oag8zuhDUcmfV7TRmutB+l9ykByPdNmWmvJt6cZZFprQSXcprAPfYLn+wAMTqIdSASNAmgs8Rx9DssbMRinpikIABiMKENgz0pQSM6yOzQK7C8YjL/TxgV+sQjE4JgBRWHh8U9fPkgE0NDX0WZwfMHUMIq2f80ZOoANkg29j2PgptAGxw8kIgu9QPJ+bQRQCn9kX1rg7EWBjvk4o9WzdClbNpw0gIhue4F9ro/HogZAmUVfpcswa/EKmPfbgczgb7RxlhfAGBwzgNQwnnXS2+9WFgVAYdHX6FPowl7Amf2tvurA9u+0zobjBg6DYbQk6fiorgkAg9V6fEix/ANwSv8iuc7A9q+0KxoOoBsgNLaZ5UID67wdNQAwOI0ubV/gBLr+5VafzxjTsP9AobDMD/RsbnkEagCg8Qpd0kHAcf0rcNYK8x8a+5XnGdNmknWeHU2bSdRGQfTCL9CxZXA8AloAI4enhNC7MXB8v1vR1Ey8NjrLnqbNpGqZH3gcWWs5NkJOqeE2WkYGz5MBA4VVfgkhjnMWBE6l7V8/L4CMtRzbIKdU1z5l8Xy/fUR74rBhuwBpgWe1j2hPHNa+NnAi64wOjpOHwAjwMX2UZ9eCCh397f8Pbk8dNmxr4M4UzwvbR7THDxu2s0IljW0YTl+O3C+sgCkpme0uq/3iQxzpOG0XoM3cQxdlw+0Y3N9yT5KkzB+uJaqCLhOjMaI8wWXs4434S5rL2Me3n6djsiOvWxW4hDaO+2MQzuh3Lid3HJ/mXXqdf4WuoJtQrqzWPZQjayADM/rAX/+53210MT58tZjU0NHvctbdvp1pOb3vQssK8eErhSEyvH/xbyUhA/M6JlueCmNwegVZDiuFC89DKoeOlwD4A10/chyOv5bBhxd/9XkYnIvznL6gEoOR1RM4b+GbSsGjYaqHnk+fao6lTXuzQcrg+JqWu8sQuOZY2jzJde4GDYMzq8fxr7i7BIE/LQ6pIHpywqE53mtAGWw4HphcAheel7YPaUtQ5xUwgMHo6rHhILmnBC5MhkYV0VkeOIchwfFhKI1t5nkWHcKcpWWpmSEUx0OgV/yYtrA672vT0jCqXMDr9EUF9q6Cu8rAg8RUEx33/Add0tEwWr1JV5jlnxQupmXRgd8vKhpDP6ANxfTxPi2Cho6yvV2c5UMadxQXOGMJSDX5MHvNs2kTArdCG9rpWLjnFrLUzBAKs+F2aGgsNokhFBAs79Oi0GRUyeSd4hz3RhlcmAKNSgqWR+NZugTLC9Cm3gzFOb7WhrG0LDxwC9GAAm4MtNk8OU5DodnokqE4zy+H6DJ4jpCog/vDrQ3/zFBnB+TxDOcBx9CxcBuOw9q9IRTmwutGAYBo7Dub3uWxnH0sRNDinAKG51B4iq4gy+sxBLcX5vn9wpBWGnsGX1xICXc13BeS6pyINjztk/y5wNvBFxbC7GVxCC0LtzwRpgEwWP1BMriQ5D2710NN0Gp0SJkesW9I+QTQeLQw7zbFINwTirLhdmi0VtiQJWCvj+7lBQ13sdfH9/G+mq7hLPaGECK85WbAK77ui+7zEwUHs9cXbd0Pi4o0gwZ2fZiksz7GW/L2xWDQWmM/9vlY675tobEL6z7W2q8aHnd9vtC6+7imDE5hry+2zh2joIa8wb5iFLZnas/voLRs2svU+42IqKWnkmTwLcmJqoYjWMbNIWv1soQXQaO1UsC2U2aQ9NY67721gXxpR0AhUmTpmUy8HhpNpfYBE++BNjiehZ8Oo2SVWSz6nZpCFFadTlcIFIa/2dU9vWVX15PbQgCFXV/4rGt6y+6udzoMFCBYZuL0HsfWX98sIqIPe6ure3qR3V0vnyiisMuDn3VNL7K7q+sSrSQC0ApY5oA/fc3IV4810IJohW2f6eqa3rKr+6rBIi2w8r3dXdObd3d/evVgESh9wrtd3dOzd3e91wEFKGz5767u6fm7u/+5OuKgsPRk+lAEBFCiWooCBAAUoERFAhAAEMCsss5mOzTffgG0VKKKFIVGAZSoYgXpSgFYcLsLbrj/i8+/mHTDjgA0UgVQoiIRK4CKFbRWhaK5AEpUflGAIFEBnQy+CGjEi0JTLYg3gqaiEK+aaBQuBgC0QuE6DRCt0ai1BiBakK4E0VoioDSitTQxKNg0gVIoVikkK4Nh82iLACQakRKNWFFKtxa0lKLRUgpHZtHGKADaaGSWaCRKNFpLoYiUYpHVYJev6AqZPxYRzPcaLP1n2jCfN3+sgbEMvuGy/2lBGRw4j442jP/fFqCxVRe946HQ/9uCwTIPBz7eJhIDVlA4IGIiAABQawCdASpnAVAAPlEgjEQjoiEVuieMOAUEozq3citlSI8w8gQubyRNJWIAFuVgKxvL3+Z/ePR3tn+5/te+Kmw7tc7/+m/Yz3lf23/Oewv/buit5yPNZ9RHlAesX6y/9X/6nsAfsB1sX9y/83pR5iN5/vBD8V+OPmr5NvhP7z+2fr9f4Xek6z80vrG+8/M74s/zne/8ytQ72l/u96VtX/2/UI9qvsv+7/t/7wf5n1D/9f0M+xn/R9wD+Yf0j/YetX+6/6/kn/h/919QH2FfzX+xf8z/IflL8tn/D/sPy79z37J/qv+7/n/ye+wv+T/0T/S/3H/E/+z/I//////er7C/2y//HuTfq999A3xs3QaMy7zWC485iCBTQmBGbM66vRd9tnYYuedc0Qe3dDY7LUkzFvFFxOlcve4qgGV16+9GDml4v6Ovz5I/z0QxZDTWJwvSehQadnh86BjVZRwgPZL6nHT5dIlG6YsSHwvpWr66sjrsiWc1akK5CXntf1YAcU1NP41/dQbjwFX4a0JuPqorihA4xQrLfTz2H0CI5HAW6qqeQ+ID19jKqdi089758ehaW7aPaZVpMOvobMwiRFUGd/GBmZU0s3KZcc8WmrAAsQ//uIz48ym66j8VFqV3u0ca2kFEPD9ZaivoBdKzca6RHeNRRbiSt4Q4rdaCdjgyqwSwr9c4lxQ9jhwIYCCeJ+bJSERXMR/ZFXnAWHT+950YmOLQnrXkKRrOuo8RnoegnOpxMF6c0CKqaARZmxqEfXW2OcTRqMd2cXGc+bGvMjgEhMyf4OqHn6ozpeezYGD6z/762DbsR11qXjePupn7751iR4ZKungV1VrwE/mU8P0s8MbQPTP9YszJHdI+9a1T1Da9VIqsl5w6WiscGdaBuS95witkBefkAsHH25efetQO5YTY/ScuE2FKgdnazAgl6GMqzspjvfO1mcnmy5k67ed+lhdEXXKN/7uKZCDJUE9BrtOZUZWjZ+7xavPzVft+GR+DFI8THTXLc6ATJYw64FxNoSlxE2IAy6MZFvnt6DPfjzRlbXW0pYsZKDt5YZZP+Y+yyucVL3JXDL6xian+TSO/LlqgjQLHUeJZzSTcYU8MLEqBufzDZ1vj6kn3nJ02EG6lOmxoAO5kQ21y5JZ/NJXJU0AA/vKiw+N2OLoVNc9brOMk4iw/ouwbBTHGtu0DxEvFWUYJrE0WcSOMsCYWgynzg3iVXOxRmYOETR29Qg+1PE1nkWwRnuPfxf5dp9DTTl+xrVpqda21wcF/JLThx5VSwF1CkjxeKGWuRQjyZJ+iZtplmDlq6w01Bz09KSAAMIDg++Mrafm51/tJtsbKOk8oRLb+X69XxuCS7gcR5pIKzLPN+9M/48uhTd+HvWygGH5lG1SrQyypcoBIjVQxEJGf7CEMGTzSlIiWAZajAInmGDcL8ok6HxbmClF+3574XgI9f8N86o8UYdN1uPzXLctWo+E2NS+5VR5+MvEscDbQQ4FqZk+/FAQPWtWcGcca6HbKd72bLYMO+zRRAX04oNlSLjaIe2ZflGT2nPbJmT/T/+AmlO6FiV5UzNkwrvCgKqZqoVxaPtdJFq2vHv0/BF9Ti3LMQrIghZXczlT8wuOX7ISYNGyYZrO7GHK4c0lAPGVs16NDTimk3q/+bDtFqGksbTXrmwW5U9aaoGG1ZJgUx215PI0gpqbem6ramP/8fflgMyUeXDidcHx1dlmijQjyTKCypCZLgkRlOlx5C88SptYs+JE/t4k81kBzEuRIhbxATP+NbfcBYw4sFyK2Vmw7B3hok6oiMw5wxV1MdTjrEbAQtFevMHqrltvTXzV/+2TLdkPYrPTYJ48C9aqZIGQ1o87QwTNKZJUMOOOkOKnxuEWAbJwLcfUTAJBvF7YqPrbCcjLLSZ1RN8xEgjwq3w9tgMJsdsp3iX51nvqMw7VFqnHQwbo5URX2DGbce/nYFBu6HAv5ejemJGyC/GPRy60pS/TmFwreNBB+b+wi65O2aJmfXxZxmfj8lfN6CMaxmfcbJl6JeDTEXWppWhDwK3BtwOHoPcb6bHL3sr4qBmqcjayEll9lNP6bkUTf5Etzlo7BLXcRZgwxuaRsO5dNt8//3vPUWFGYT/ef+f/0P/M0dev/P+R+0bvLX1qvonj3f4/ei/kEeJKCZb5Ec5sQ25yb2VNianpokWeyn+myx1PZ87s2QCNF32HmJfSv3cPe3sBXzrVWIy5pIwOnDVe8zQ5fE1dkhc1PrMBbog/JIZEDbnsAWxQ6t0VM7N9yoU5+GUtXDk8FP+vgUF6tsVHcHgkb/3BoIYnYZ1JWyaWSKAo2L6OE+4DjtjP15P+qXHzLgKO3xnObaNl2CHQWfPWNd+znFGRRg3e55VE+GWLKyGbaVjYtoFrpXv8R6wRdt8Kw0lhoB2vazwA/TTPQc6WdOcLhn/fwatvtBaAOrCs7Rva8PD0Kh3WenWMKj7eWOZPcQhxLQ1UvCnCk/Xya5YLD1TOm077UU7iF4oSLtjYmY8hSEKU7i0eIKhHUPUp2mttdc/AYND8BpmdiyEbCS86978bsqWLLNpp2J4mHmQNLvFf4jBo7g7gM4wuDTV5AoyeD6A4uvmfYXOOD2bxFgPygoUQHJkKqIWPKC+oLU9Kh8ZDRgNR9nO7kvHwrQSqFHuCxEcvlTpJcMJK5VpKGb1IeuRbXxXn45fhJ4YHp9mGHD7Tkq4zptxyoA/OF/90RdMo99IPpuhe8Q6gLZlF/K7i67n0HIvCri9IXi7yNacWhcv5NPIU/7l67/zoC5edIdsOXegJ+9qX78mWF7lZUrVAdE8mhWJWLn17ga9Y8+PjCGZq49JOzST4sQLwWBYcppWQcJhCyMcHnO911o5fV54jT8k0gouxx8ZLEZohM/B6ozggjt6FnCkn0MT/SyB7moR6uy2NWhv6tGlYiogsVIl30gAw8oFDK5pl3nb82lOsCKvz9gDf/g2e6xM+0a6Qx2ZE2/h656aU6A4upR89j41vJGToVLcEI9UbReVD8C8PAgUHBNFmOSZVpm3Dx/KI+yXt7MzDu49ibCD7LU69EWsLcAJlB+WC3h1JnJeND1uuV7FSzeM2iE4sk+k3jP3askcd9EV/BbcyCwg17Fw7aV3pub7Hmmmiq8BcstBmBtj/+HXL6jktE6fMmJOtPtzn0/sf5HYRzFqm4Cn0z987BNsWWxsmKxDDDhzqeXAbKhXeIJv6xsgKPt4ONc9DMk16OO3DcjCHGb2Ow1NcpLrCwOH432KANJB2Uwpbn0nIIQL7nvw65FH0Gzn5uP7B2nZV1Pv05dUOZulOFBQhnk7b5Qv4J5a7W1hmzicVrlWgj1XSqIPeiJTB+PzqFln3AZtcBBzveBitfVCV7fxzrUZlvHWdd+GKX9RKha2r9ZDQmsuH5GNXA8sExTD5X8E0efedvncsY52V0Dnhf0YZF4SeuRJV3h7q1jmY2nLxDiP+Q4lKLDt5h4EvE1DXl7sodwEvZyhaMIlH0jjdxJTuJ0hDy+/nDI/8IMHyIZhPb1LF/eucEu7UTYZv7RpsJFHXjc7KX7D9ri9Fw5ZCdoOA69y2K5lXTx0HxvEBM8K/YnbyPA8dVbk3vfljlm/jD/SqWu7WfXxz60pM2egQWX+rU9wXXAuNt2zyRJ3vPv3yEHsouG/CQ0s7esl3zJxMqzYhFEW5TaX++Az3dfaE1kcHxFpKe2q5V8hNT/Uzb63HRZfH9B4spmJMY5Grjvm8Q3q0WMMYi33yqa+bwtfq/1noGP1Iizy8LnHjLInCHtLBnPgRLFYiNDO5B0ImuvPbVxdZgbFy10WSxSvufpvCn5aX0yrUcrWdjGxpE5jxjNJ+6PUv2rLWB13dPkJKeNZIYVKqLGujRf+1hYLnCAk7z67vriEr/tZ3RN6QEzdMtOIiz9ly4NVaYBAgvUS9GDLYzfog5RbWBmIPOBAK/1u9xvFm68XMSkPhlo62g2tHXZgAPYVMiauDNGaM78Ua1OIJQzF/nTdjDsYjXut7IhJyyt4rxh+mRbIldOxrvNS7/RhwgxBbSrgXvUKeRzU6WkZE89q6K5NHjJXT8a7a/Zvkw8yQqd67OJmvaA2OROFn45i7BOxeD4MFK5/NoAtNuOR6gXv1H1MSYA208Rctrk8xeV1DLmyATnbTe1qwDBIVsssQbPf/OHP4M9CMmIJWc1hl/1BholXFD4gWLlfoMpELEZNcI3te4DzeXZH8YZ/1kQbANwIqA9jm/FaToQt8Iay7GliFuV6VoztMybQ7hjGJ/HxVdxySePm1lf6qzstfvCd9XcfX/gP38/YEOY7ESM8F6QTKqsidt8C0aO1AYlODhzZT5i2rDQLdffWyCybzgyu6Q6I2eUOWH4re0Oa88jmq1Qv+5fw27VTE8d4xe/8AauAHjIB9FYhsRcNOcqfrBplyTspK9JIgFdpIE/2EBIs1d0z9MvZfUs4koqScG8xM7A0LsuPYv+0nDuvHEhjDFrPOICdh5K4Uq+cXsAXv1M/z1kcp7xkJbT+gRKMNuQ3kSIXb2rrxflQHp/f+23bN36T3fsdwRrbTDfX7YDd2eCwqHP2a/V+BklOh81mQlTwvwM4Xnr4unXbJknORbFC68uyq2/vwBMBBmI/07qomW1CRsHTpfQHFVZVMuZD9CoShznVCadMnXoTexn7FatU9ZTIIKJg5P08TdfT1uSu/02GWfuBEykgd4m7BC4MUbU5aaLPx1QECC1iGYbzODwtlH7FdUIARuAT0Mc+qnHRZBJyPXgh5vXgLTddkngnRjMxa5k5qBxy4m8HsiUhWBsHX863GzlxRzY3MtLNI0GEa9AMX7TCSaOi7iNFwrQ4zaIksYEc4X3nBXsS/5RqTZAoPGlKlbxOfQASFtdEH/ckg8QaKZLzdHYLyDS+jpB0CobkaR+cVACAOkZMwjoR/nKPVj/75YgXT79+zdN8T87NK3I0Hx2i4+yCtNrqhRlbVCtb0aOzleb8bLJGGbN4NmICCUA0l3z2OlBRQiRiWKpRUK0sFCPoWUVcI5HSF+QsNJefZUE/fK9fJD8nYmDu2dBFhvyiQz94H2cZoiqBYzv6cmdiegVvwJ8/CU5sDFU/yPAGmkjk+xvZwPOemdLZsCcCcv4op8vr3Qtnsye3m4MaU+irF5Msgvpuyvzk8IWALpzo2PfSDxS7B6eIB+R19XWnajmcilOd9ITYDbPqLEjBGlI4cqeXk5H7TWi+zykyD6C6L7fFjg05BzDNegYghPB4NsQDCrr8KEi2vwIApTCya7s9rXyWPdiWCWoMnSHFoG3jUPbQDM5tNG9aaRuj2H6Re/4t6FHxDp+F4zWRfgC91UG0z8U3cGGZBq3xZClE/unaizUJYan5YsCDZrrWGJbimYjM2ro5+NLyAt3HdWk5Tda4xLHUatodt0HMABvrIdqyEMgtp3hIsaxCGAignmAWy1a758XOIA+CtZPpv3eQaFa/H7Fx7Yz9nMe8bxqihTf1n62YMtchFal/5/GpaYMU0uyJiAqqFAYuXsq8NOhvpZHfyM3YJlB6YTC/rpC5xfaQ5RLmAeOCO1gjGyZwZLS5aGENx35vu7hRN87yP4l6CCM00JmpDnf8MmKpSEBFWdJMuQr5MhOJCf5zgMLXdHfgHqRqsn1HPjD5vliH6++ZqsY4DA1h6SFs1a1RQehh+1unLKBzPKRNwvK6Hoy4BjZmLeQBuUukV+1KK02LhSFuRyUvRgNA8vKZuw20dFKGQnVfnfMv0MTF+WTizqYh8cGW9CbRbDGVf+Avhj0WmquKW95Oxo3uKYs2Yk2tK3gv4iW8sK/jadgynWhiCDC1qj1uTDyCSF/zhZDAqUxpqsVqgOtqf1bnU7cDAUodpnM+3BCX/62Ls5dsiP9PrOq1mr4ByYmjYeXz0+2uH+MzEWEREmQdwFDXhiJQbdgnNHlMl07iS8XWq4e12NEgJ2aoNd6B+vBL+XCupoWviLQpmtMiIhO8RFB4HyOspp+B7zZqU+YQUBCIKHi9LOoF3Dhr+ZDGd0gGCgxPT3b0AlcjrY1G+uoNmB5kil25YIRuFu8WRQhPKHveiQaxH3cvqaKFfY2sxDOgW1kjjt0nZLchYy+DOPkGdK6zdiWFEdPGOS/UZyqUN4O9sbQfwsJKqP/hfiwVqk6XsT/+RetLGrf0wsC/0NR/qDukgAdizTPbqhtHfhNs1/d4up/R79b/C0LVIAvnYfZbM+Nm8NU2hc1IFdP4AjFcSBHt/ZkDWiYdXueNmtL3kRKJVvuTdx+AAKmIXqEiCeJjPQbdCNQgAkjUcxY0LqoEgSE9ZkaVybPx8OA+a1jtxrk/7at9slQQpssyWpmYcv08CvWA6b3uItm9l8su5jDW5WykHiMHyyZtawoWAoIPTyok0qvXnpnI1rV/uSDcEpTNqHMgyeUeI1MpM/UaEGOQZphexuPD5XbB1wZ1zF6Tpsf/jfOJDaO8JaA530aD3ivt3X5gUd9FUtmGABmxr6DGWZgugYV/4R2biS0u0NAhq6vTzp8WwHF5HddV8ZxKEEO3YRiR+RzsvSmNURoRFm5iIxDkgA1kPLuWUaNy/zT+S6j+nJy0C88QVJf1FdpDQsYYMyyQ+4kzPrjaPZaViuasKTF6yuYjbeIJyG+z23wSO33NirfXx1tP78NhugeStGAANk+DfBkq0fdWwq16D+Wl6eRzyrTneWhAWF1jcG8uOQk42ue9VSRHssqAKlQhGOGsSwp9mI+avUtG/SuU/YYDNxVRvS3MMR6nge12SV5DD0fc1dcR3NPBrqznvYLuXE+c6hNLOZaUHVQGTVL4u6LcoiKgFBBpeJxORjxCiVHTbHDZd0GHRJTlUEeE+nTP5o/j/Xje3HSZd/djDR4suDzbyfOsZ51RqxI4U2CtPF7meffjjbEQIuYotTboIK81gu0ulmgsO2xp1EL3v+L/BJoOL/ylhtsXY6PbpxQNAH8DnsSpUL1jJd4Xg5TTMRWAUvdGqRyTkk+N2nio88h+YSWcyap77BCStiLACy2L7f8bcYcmkD0DVJd6kWI6QiwYqK373S5uuUc3k6UjYmz73Fe6y+FQyybwxat8+VX2cNs0Uq0eBQdEkHiajgQj+5y9YOb1b0LqBUwtgqdvxP5tBPoRHEBydY6nxF80xxUwgqqgbPOznbuh8/4lNCoyg9gLTgdpTTct3ieZX01Oj2DmMhxocVQ5cmfqGt+nQFOZ4U9JnLkLQy6vq5LV7FtukDee/CEbUWx7dUiMT0zAUBLBtQNWDn+QeJerkKN7t8XVz8fJGmIlzjm/cxHfaHs2l09FRzc4FtE3c403jLAReIrOmUd58wcCouLhQGlBymAJpgxMha4Q6A+udg/jXgVKLKOGaE6m1XKnwumKxLcg6fouKw69+m2f0ahJXMM7U7ZFcfrLYGpVnEGhwuUxmLdcE5ID937bb5xUWcSReix+PzF7aRYXwouds8MKrigWtgbqNSUSN1O4+kMY1w8zmFOudDCgvDHr61XGWGukfKRhKvhBLa5G86noenCRjovbPwFwVIsdKAsbuqH4j1z67k3pNBYNrbPYOBTgztrzpHU1QvpSCNsWCoA5JivpHh7ymwnjAZT4AtJ3mZkPwcdv5WwkMw72+SaSjPTcbbrF4Li9FrxbAumpkZ1r/54TFrDFebI70QY7D+vjux57iTMcsWHGXWQq98mrMd/liMhJLtfZfAqpy/df7c8pGrv7UduWp+/q+qI1MPwHfORqLkp1uMYSbPvQ9JJr8dJYY533/5TwgAxyfGXvMyc9KZI1Bhv6IEPRYxTQwXPllpLOhpWkziKj7/dcPQhyMJGojOobDcVXoUbfx1OCeUZhIh/EkzquL6Hw+a0JxZDa9HIgQWLJM24X3jGp2uV6EYbIwaguim5r/8m02huP0ue0rCWDJh6kzQAb08RDWdSpVb7KY2XefNnSUSeb0Y+xK+ivn3xesCfm/nVxoEg3lvqbXzP24bWWlcg9O17NzT5CLYIniVyy1XGH8aaiwQxio4i+j8i5X6gi7qb0I1LTMqxunpe/3f40gyMKMYoTKroalrtDpFb95Y9wAZaOS0b4huoXmle8tUCmcweh2iVJwsiP24mwfPW0g82SoTTVWEDsuotPF3yIh/MGSkbxNi5N+o5m3Qc7Rnrtmv/F4XpvLSsLRzpnmXg7HFJbh4o4eNTMyLzYEgJ0SSV2J3ygsdBihyaBJcXLjbAdi1kwfTTPXt4i6kxzhpirtZ04ys886FoytM1dWmYBTkm7/ryeraU2bGemDXWRXIUVbeU9L41j76NuYaew3+arg2VmgmO5huGx5Q/z6UOy7qBqDBXIgXpX7ArsEaKJQFPElG/AaMTKkaXUj4o190iqeMxlbaDkRntdY9Q46JFGtta+OQFMphURxZZpR9H664ztsamS2sUh5PgSOW4sJsLLtIt7oEju/i6wDb2UkvWS4kOiF24KvfJPqn5wpYu4JHSu+tu0fyuTjtfu3cpItQWq9B8iY2yA3HTtSe+Li8YkPTyoU7k28TZHyVOARTO+jpqakieVdMMJqFsOMNj/LhckMx86zJYZKosbgQ5F1fQxv+8RX7I+e3FVpj0T0Yr2G7iAr9X5zrdyGqIJq5OXyu/lGVgvvguM+1kvtrgQB4IE6XXbjlTSniwWI9Wupx7gSyilnYMhl9qXEpg8fk4HbrJRFWzvpj8zTgOL3uFelsUJ1nEt+6mDqVEDS57EblGXqZsJYAPzWA8fsFp5W12yagWPVDpPKzg8eXzx2B1PdXsl/uyie9lUkjOs2qg0SUAS90a6VOC/JsVl4VJTsJ5S/zdbQI4/T0vO0fYNR9l9Bfa0oTXlrPK4prUf9rsLjTgyLBG0dC4/P5fHNYtWrBbKrr9BPXlP/UbZCChuj3IHgHmmhRbotk4ci+xCzbgTf5QrhrMqjlaODEx86OaC/+p4TJlUIp/Eq/do9CZFMf+/RhhOhLluU/YwesiO+YRQMTdUHydDXMJZZMS24tbSGJGH7W950j1vB1ZJQxXgnhIfbMWFYXZ+TjmmFwEqcVNS+7PKQ+8hU3Cqr1QPdvQ1INlGDajHPAovTE74+lyGG62saQ8RMp3sVBj6UVhoAJqLo2jr/Rm/4YvVKrBcskB878z6ZoKULiZYhmSOQtDOHO/GvSnzcmF5qSRgxqExsYwOIpulRT4yQ5Y9DeugFkaF46LG+vON8f9Ew5aBssG13N5O91shDcNaXowV2H4iapDlSwb+A/obFVeTEY/p3dOK9rBf5cgqxeVwVMPohbEzLW6S+x1h75X73L37stBeRGudSxma4U5hQMOtNavekYloUiPL0hlol5zlxhpwj58L2UOWSmhptk9jtd0Aj5tUcXmObpKpPPgQkMSyFuKNasJChf55NXP37tgBYa76hUi2rkwdA1uPTm9AzYA+SHB7+CZy0WzrArghWg7LhJAi1uej/aTGAZp7sipLqPQSlGcNEGxo0ec0zxVit2zRaNEiuFcOMEDiMyDsDlOE3paE8BdLUQiJ1VY2kC/c059+DwKHvHIABIw19c0JfDQLJicmrVY0MPAlhUlpMBTiXBqPQunze8K2D0j7IR26VzOvSDRo9o0Ie/LaXfuwflt6LBOno8Ree6hSgwXrnJ2Uh4AvAFE3VDws2bO/ls2Fvzj5r47E4kyGCXjwH6oCsBttX+obRIKlnbFfShqPO6v7SoCshBr1Y2xdv4Sjar3hmRDZWV16dTRoxnpObNzs24p48yP1VHSb+vbgVoZWsuoKywphkx4cW+GAK/MWZ8I55Otb0fPBmB5a9e5gPXhzuNhIvKAqkdhww/jyVdSbVMw5bTElvMUiWL4MpQMpL6hKhmj0ZwleG84QM15DCapFHC0hdIodGwl8RSl9xTIfYROUpgfeulBUrfIrPw0oRMJ2usrK/I+yaqjnSVjoAYHc5VhvCVRbAUdxKmeF+w9UaCXuiOYp3nydvRoWnBePzmvy0u0fXhU10qqdDegwKhD7Zd3e77IiE8LHp6oXZCDcgMkTW2R9CFRPWk3TFXqKsOO8whHlCIE/hQJQMRko2qMOz9ixoqRTu3MAXrIBDozY3sfMxMkm5gy6Kp+C10jQCk9YzFjP229xwxsrSaAuIXGPrSGakUJ0kBvup/VzEqleRlKSC92dxLDX9v609X6a0KqxpgiximUUG9S4sQltresYxGCj+YXyo+CY3QTmhh2QQ4vWjurVY90l/l+6HXs6BC0uGaRl4oHezt0enlW4lT/ATHJjGvya8PhWaG1fyMLQfHjE+fcO6ErsxLp3e2apnOQ4QW+WhKlpava6n5YPq4KWpo7C7TuqesEI457/E+eVFqHsZgj/jEwwfxhTKVhDg1sxbDRa+/AASPfbam+EUu8E13nCB2rdDfro8c5RCiQmHZpQOwZriRcn/Qe//6Y36wXF7sKkA4GeIh0xYGPZVzN/IP5budhpxH0uKhrOE4ABuxDzslCzMH7xjJehVjPzhaYIwwslJ+JJFTYWw+BplxePV0h0dmxhAj+zCNCti7biMeG1UtFpS7BxvqcVN6i4bLRz2D8DE/htlopoWF2zfZyuR2ImEPR6etKVR8XQcAoRidnm5/djOdwHpNC6t5uy3hcImhBxpltZeZVxyhrTKNKlgTmTKXwWbnvQ1WU4j4jPi0LmpnE3LAn3j9WXnTwhg7iZ/g3BQ4Ee+2STtPZgkuWVHIDKCWRquZQboZhtBm+y6GchMLhHl/pxC/tnTQ9BG1zY03I2v2rvUUVgmfNZWxDNaCoB9fcPCwHIossxJgOzUkDai0slVDTIkiigRKlMtfAqlpO8875NmBYZIH4d6rjTUqyCIEuha26Qblzh/eLXtq3WNscxxWw5Zc/P0wYNaX30vgQWyL9vMct8ekQcc/x3ZwE5fk541QbGkqwpiY4twSHjm7pNMHcTSR0/+f/+fArHH+hK4jtf+hAdPDWo6WShndoma1LS4NTgLPjsSCQl2QjR6gvUfWxkQzg6lzOoha2X6tlgbq9s4jk8pUin4nK0TQFa54OQ3zpZilHpALKvPUDOIUtmPAetti3Liz7IAANIx+Fj73zNsdWQWne0O7+bT9pVSKba58FIZ48fMnHA7fQkY9we3Y2gx8lkbVtnmXYnHlbF51PzEFw53Vsdlnhf+TV/l5dCwl7WJn5GJj0dcjA7e7uRYa4UexBtqYGfwwEKQ8ybP7wqCH7QihepTSIZ/f/rEwhncENNrfCkMOr9KvWYzDioexr1J55vn3ixK+lhK1x8uPGLtuX27RBOO/no8Ry0Dr4wPVnJh1YeE8yyXBSG+eZ+frnnL24q65GAvqnVdPi3BA7J9bipHhRmcyrxD8L9lPFh4CcP2u7KIguu1mGWI0V5gk4lHwrA2//Og/KenTfdpZA63CFOFAbVl3mOlgxRHjEApp2PxcWpdj8vo61LDK7JlpVKWA9/OReyWvlPvb9YnPK3NdLAe6LeN2DSot52Pi0QKvjBoBrEsd9eY+5J9Io7z93MX2Izrjgx2VzD6sramsBrSvrEj4RamF27HQR6mD1WqKLFQEoEKIJJl+FYmV2yRYTU1sA4zaMe0UNAc+ArmJZHThfSkWcpYD4/C53UqPD4zKdBAozchP26wcvMyoYxUWmrRT1aa98pqBWfSIqoq0XsKD2W+VME5nwDnHwuEu80PhR7TXWA7hPw8fiA13pV4o09Lvk94p9XoQbCu/4QKF2dJaAJm6jB7AiE5kxhuiT92VDFR1HfwH0x2AAAA=" alt="KillSheet" style={ { height: mobile ? 24 : 48, marginTop: mobile ? 0 : 4, display: "block", marginLeft: "auto", marginRight: "auto" } } />
-        {!mobile && <div style={{ fontSize: 11, letterSpacing: "0.22em", color: "#9AA5B1", fontFamily: "'Rajdhani', sans-serif", marginTop: 6, textTransform: "uppercase", fontWeight: 500 }}>Build {"\u2022"} Play {"\u2022"} Track {"\u2022"} Conquer</div>}
-      </div>
+      {/* HEADER: phones show the logo above the tabs; desktop puts it inside the tab bar */}
+      {mobile && (
+        <div style={{ padding: "10px 12px", background: "#1A1D24", borderBottom: "1px solid #3A4150" }}>
+          <img src={LOGO_SRC} alt="KillSheet" style={{ height: 24, display: "block", margin: "0 auto" }} />
+        </div>
+      )}
 
       {/* NAV */}
       <nav style={{ display: "flex", background: "#1A1D24", borderBottom: "1px solid #3A4150", position: "sticky", top: 0, zIndex: 10, boxShadow: "0 2px 12px rgba(0,0,0,0.5)" }}>
+        {!mobile && (
+          <div style={{ display: "flex", alignItems: "center", padding: "0 20px", borderRight: "1px solid #3A4150", flexShrink: 0 }}>
+            <img src={LOGO_SRC} alt="KillSheet" style={{ height: 26, display: "block" }} />
+          </div>
+        )}
         {tabs.map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)} style={{
             flex: 1, padding: mobile ? "10px 2px" : "16px 8px", border: "none", cursor: "pointer",
@@ -14480,8 +14544,8 @@ function App() {
 
       {/* FOOTER */}
       <div style={{ textAlign: "center", padding: "20px 16px", borderTop: "1px solid #3A4150", background: "linear-gradient(180deg, #0E0F13, #08070600)" }}>
-        <div style={{ fontSize: 11, color: "#9AA5B1", letterSpacing: "0.3em", marginBottom: 4 }}>{"\u2719\u2719\u2719"}</div>
-        <div style={{ fontSize: 11, color: "#9AA5B1", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.08em" }}>KillSheet {"\u2022"} Fan-made companion {"\u2022"} Not affiliated with Games Workshop {"\u2022"} Data from official free rules</div>
+        <div style={{ fontSize: 13, color: "#9AA5B1", lineHeight: 1.6 }}>KillSheet: rosters, rules and game tracking for Kill Team players.</div>
+        <div style={{ fontSize: 12, color: "#8B95A1", lineHeight: 1.6 }}>Fan-made and not affiliated with Games Workshop. Rules are condensed from the free official downloads.</div>
       </div>
     </div>
   );
