@@ -7,13 +7,13 @@ DRONE = "Drone: Only Charge, Dash, Fall Back, Fight, Reposition and Shoot{x}; co
 GUNS = [("burst", "burst cannon", BURST), ("fusion", "fusion blaster", FUSION)]
 
 ROLES = {
-    "designator": ("Designator", [MARKERLIGHT, "Focused Markerlight (1AP): A visible enemy: once this TP, an XV26 shooting it gets Hit +1 with its own ranged weapons for that action. Not within enemy control range."], []),
+    "designator": ("Designator", [MARKERLIGHT, "Focused Markerlight (1AP): A visible enemy: once this turning point, an XV26 shooting it gets Hit +1 with its own ranged weapons for that action. Not within enemy control range."], []),
     "infiltrator": ("Infiltrator", ["Covert Protocols: Can counteract regardless of order; if Concealed, only Pick Up Marker, Place Marker or mission actions."], []),
     "liberator": ("Liberator", ["Grenadier: Can use frag, krak, smoke and stun grenades without using up equipment limits; frag/krak Hit +1."],
                   [("EMP bomb", 5, "3+", "2/2", 'Range 4", Blast 2", Devastating 1, Heavy (Reposition only), Lethal 4+, Limited 1, Saturate')]),
-    "lodestar": ("Lodestar", ["Electrochaff Launcher: Once/TP, when an enemy picks a Shoot target (not a Drone) and this isn't in enemy control range: for that action, XV26 visible within 3\" of this and more than 2\" from the shooter ignore Piercing and are obscured.",
+    "lodestar": ("Lodestar", ["Electrochaff Launcher: Once per turning point, when an enemy picks a Shoot target (not a Drone) and this isn't in enemy control range: for that action, XV26 visible within 3\" of this and more than 2\" from the shooter ignore Piercing and are obscured.",
                               "Homing Beacon: It carries your Homing Beacon marker (non-Drones can pick it up; if an enemy picks it up, it's discarded). Ready step: if it's placed in the killzone, roll D6 +1 per objective within 6\" of it; on 5+ gain 1CP."], []),
-    "neutraliser": ("Neutraliser", ["Multispectrum Sensor Package: SUPPORT. Once/TP, when an enemy within 8\" activates: each XV26 within 3\" of this can make a free Dash (not ending within 3\" of enemies) or change its order.",
+    "neutraliser": ("Neutraliser", ["Multispectrum Sensor Package: SUPPORT. Once per turning point, when an enemy within 8\" activates: each XV26 within 3\" of this can make a free Dash (not ending within 3\" of enemies) or change its order.",
                                     "System Jam (1AP, 2AP if Concealed): A visible enemy gets -1 APL until end of its next activation. Not within enemy control range."], []),
 }
 
@@ -66,7 +66,7 @@ TEAM = {
         ],
         "firefight": [
             ("Engage Jet Pack", "A non-Drone activates or counteracts: ignore the vertical distance of one climb and one drop."),
-            ("Saviour Protocols", "A non-Drone is picked as a Shoot target: a Drone visible within 3\" of it becomes the target instead. No effect vs Blast or Torrent."),
+            ("Saviour Protocols", "A non-Drone is picked as a Shoot target: a Drone visible within 3\" of it becomes the target instead. No effect against Blast or Torrent."),
             ("Vectored Retro-thrusters", "An enemy ends a Charge in a non-Drone's control range: it makes a free Fall Back of up to 3\" (can't be prevented); the enemy can then Reposition with its remaining move."),
             ("Ghostshroud", "End of an activation: an XV26 on Engage switches to Conceal. Each operative once per battle."),
         ],
@@ -74,8 +74,8 @@ TEAM = {
     "equipment": [
         {"id": "blacksun_filters", "name": "Advanced Blacksun Filters", "desc": "Shooting an obscured operative: you don't discard a success for it."},
         {"id": "target_locks", "name": "Hardwired Target Locks", "desc": "When you'd counteract: a Concealed XV26 more than 3\" from enemies can, switching to Engage, but it can only Shoot."},
-        {"id": "multitrackers", "name": "XV26 Multitrackers", "desc": "Once/TP shooting a burst cannon (sweeping): Torrent 2\", or Torrent 3\" with only one secondary target."},
-        {"id": "counter_jammers", "name": "Counter-network Jammers", "desc": "STRATEGIC GAMBIT: pick an objective or mission marker; this TP, enemies contesting it count total APL 1 lower if one is within 3\" of your XV26."},
+        {"id": "multitrackers", "name": "XV26 Multitrackers", "desc": "Once per turning point shooting a burst cannon (sweeping): Torrent 2\", or Torrent 3\" with only one secondary target."},
+        {"id": "counter_jammers", "name": "Counter-network Jammers", "desc": "STRATEGIC GAMBIT: pick an objective or mission marker; this turning point, enemies contesting it count total APL 1 lower if one is within 3\" of your XV26."},
     ],
     "operatives": [
         suit("shasvre_" + g[0], "Shas'vre (" + g[1] + ")", g[2] + [("Pulse pistol (ranged)", 4, "4+", "4/5", 'Range 8"')], [("Pulse pistol (point-blank)", 3, "4+", "4/5", "Accurate 1")],

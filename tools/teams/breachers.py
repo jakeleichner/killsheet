@@ -1,7 +1,7 @@
 SHOTGUN = [("Navis shotgun (close)", 4, "3+", "3/3", 'Range 6"'), ("Navis shotgun (long)", 4, "5+", "1/2", "-")]
 HATCHET = ("Navis hatchet", 3, "4+", "3/4", "-")
 GUN_BUTT = ("Gun butt", 3, "4+", "2/3", "-")
-MACHINE_SKULL = "Machine: Only Boost, Charge, Dash, Fall Back, Reposition. Can't retaliate/assist. Marker control APL -1. Conceal + in cover: untargetable (excl. within 2\")."
+MACHINE_SKULL = "Machine: Only Boost, Charge, Dash, Fall Back, Reposition. Can't retaliate/assist. Marker control APL -1. Conceal + in cover: untargetable (excluding within 2\")."
 
 OPERATIVES = [
     {"id": "sgt_at_arms", "name": "Navis Sergeant-at-Arms", "apl": 2, "move": '6"', "save": "4+", "wounds": 9, "pts": 25,
@@ -16,13 +16,13 @@ OPERATIVES = [
      "kw": "ARMSMAN"},
     {"id": "axejack", "name": "Navis Axejack", "apl": 2, "move": '6"', "save": "4+", "wounds": 8, "pts": 25,
      "ranged": [("Autopistol", 4, "4+", "2/3", 'Range 8"')], "melee": [("Power weapon", 4, "3+", "4/6", "Lethal 5+")],
-     "abilities": ["Emboldened: In a TP it Charged, 3+ dmg on it: D6, on 5+ subtract 1."],
+     "abilities": ["Emboldened: In a turning point it Charged, whenever an attack die inflicts 3 or more damage on it, roll one D6: on a 5+, subtract 1 from that damage."],
      "kw": "AXEJACK"},
     {"id": "cat_unit", "name": "Navis C.A.T. Unit", "apl": 2, "move": '8"', "save": "5+", "wounds": 5, "pts": 25,
      "ranged": [], "melee": [],
-     "abilities": ["Machine: Can't activate/act within enemy control range or once the Surveyor is incapacitated (TP can end with it ready). Only Charge, Dash, Fall Back, Reposition, Spot. Can't retaliate/assist/climb/jump. Marker control APL -1. Conceal + in cover: untargetable (excl. within 2\"). Draws visibility from any part of the model.",
+     "abilities": ["Machine: Can't activate/act within enemy control range or once the Surveyor is incapacitated (turning point can end with it ready). Only Charge, Dash, Fall Back, Reposition, Spot. Can't retaliate/assist/climb/jump. Marker control APL -1. Conceal + in cover: untargetable (excluding within 2\"). Draws visibility from any part of the model.",
                    "Expendable: Ignored for kill/elimination ops and escape/survive scoring.",
-                   "Spot (1AP): Pick a visible enemy. Until end of TP (while visible), Breachers shooting it gain Seek Light and it can't be obscured. Not within enemy control range."],
+                   "Spot (1AP): Pick a visible enemy. Until end of turning point (while visible), Breachers shooting it gain Seek Light and it can't be obscured. Not within enemy control range."],
      "kw": "C.A.T. UNIT"},
     {"id": "endurant", "name": "Navis Endurant", "apl": 2, "move": '4"', "save": "2+", "wounds": 11, "pts": 28,
      "ranged": [("Navis heavy shotgun (close)", 4, "3+", "3/3", 'Range 6", Relentless'), ("Navis heavy shotgun (long)", 4, "5+", "1/2", "Relentless")],
@@ -35,14 +35,14 @@ OPERATIVES = [
      "ranged": [], "melee": [],
      "abilities": [MACHINE_SKULL,
                    "Expendable: Ignored for kill/elimination ops and escape/survive scoring.",
-                   "Boost (1AP): Next Charge this activation moves +4\" (instead of +2\"). Once per battle, not TP1.",
+                   "Boost (1AP): Next Charge this activation moves +4\" (instead of +2\"). Once per battle, not in the first turning point.",
                    "Detonated by the Void-jammer's Gheistskull detonator."],
      "kw": "GHEISTSKULL"},
     {"id": "grenadier", "name": "Navis Grenadier", "apl": 2, "move": '6"', "save": "4+", "wounds": 8, "pts": 25,
      "ranged": [("Demolition charge", 4, "3+", "4/6", 'Range 3", Blast 2", Heavy (Reposition only), Limited 1, Piercing 1, Saturate')] + SHOTGUN,
      "melee": [HATCHET],
      "abilities": ["Grenadier: Can use frag, krak and stun grenades without using up equipment limits. Frag/krak Hit +1.",
-                   "Void Armour: Re-rolls up to two defence dice (instead of one) vs Blast/Torrent."],
+                   "Void Armour: Re-rolls up to two defence dice (instead of one) against Blast/Torrent."],
      "kw": "GRENADIER"},
     {"id": "gunner_volley", "name": "Navis Gunner (las-volley)", "apl": 2, "move": '6"', "save": "4+", "wounds": 9, "pts": 28,
      "ranged": [("Navis las-volley (focused)", 5, "4+", "4/5", "Heavy (Dash only), Rending"), ("Navis las-volley (sweeping)", 4, "4+", "4/5", 'Heavy (Dash only), Rending, Torrent 1"')],
@@ -61,7 +61,7 @@ OPERATIVES = [
     {"id": "surveyor", "name": "Navis Surveyor", "apl": 2, "move": '6"', "save": "4+", "wounds": 8, "pts": 25,
      "ranged": SHOTGUN, "melee": [HATCHET],
      "abilities": ["Remote Control (1AP): The C.A.T. Unit makes one free action (max 3\" move). Needs C.A.T. in killzone; not within enemy control range.",
-                   "Wayfind (1AP): SUPPORT. Another Breacher (excl. C.A.T./Gheistskull) visible within 6\" of this or the C.A.T.: +1 APL until end of its next activation. Not within enemy control range."],
+                   "Wayfind (1AP): SUPPORT. Another Breacher (excluding C.A.T./Gheistskull) visible within 6\" of this or the C.A.T.: +1 APL until end of its next activation. Not within enemy control range."],
      "kw": "SURVEYOR"},
     {"id": "void_jammer", "name": "Navis Void-jammer", "apl": 2, "move": '6"', "save": "4+", "wounds": 8, "pts": 25,
      "ranged": [("Gheistskull detonator", 4, "3+", "3/4", 'Blast 1", Lethal 4+, Limited 1, Silent, Stun, Detonate')] + SHOTGUN,
@@ -97,28 +97,28 @@ TEAM = {
         ],
     },
     "factionRules": [
-        ("Void Armour", "Shot by a Blast or Torrent weapon (excl. sweeping profiles): re-roll one defence die (Grenadier: two). Unaffected by x\" Devastating unless the target."),
-        ("Breach and Clear", "Once/TP when activating a ready Breacher: pick another ready Breacher visible within 3\". When the first is expended, activate that one next."),
+        ("Void Armour", "Shot by a Blast or Torrent weapon (excluding sweeping profiles): re-roll one defence die (Grenadier: two). Unaffected by x\" Devastating unless the target."),
+        ("Breach and Clear", "Once per turning point when activating a ready Breacher: pick another ready Breacher visible within 3\". When the first is expended, activate that one next."),
     ],
     "ploys": {
         "strategy": [
             ("Attack Order", "Place marker. Breachers within 3\" shooting/fighting/retaliating: weapons gain Ceaseless. Removed next Strategy phase. Not with Defence Order."),
             ("Defence Order", "Place marker. Breachers within 3\" being shot: re-roll defence dice of one result. Removed next Strategy phase. Not with Attack Order."),
-            ("Close Assault", "Fighting/shooting an operative within 3\": Navis shotguns +1 both Dmg; with 2+ fails, discard one to retain another as normal."),
-            ("Brace for Counterattack", "Breachers in your territory, or that haven't Charged/Fallen Back/Repositioned this TP: Normal and Crit Dmg of 3+ inflicts 1 less."),
+            ("Close Assault", "Fighting/shooting an operative within 3\": Navis shotguns +1 both Normal and Critical Dmg; with 2+ fails, discard one to retain another as normal."),
+            ("Brace for Counterattack", "Breachers in your territory, or that haven't Charged/Fallen Back/Repositioned this turning point: Normal and Critical Dmg of 3+ inflicts 1 less."),
         ],
         "firefight": [
-            ("Blitz", "Shoot/Fight vs enemy within 6\": first friendly to Shoot/Fight this TP gains Accurate 1; if also first activated this TP, gains Severe too."),
+            ("Blitz", "Shoot/Fight against enemy within 6\": first friendly to Shoot/Fight this turning point gains Accurate 1; if also first activated this turning point, gains Severe too."),
             ("Lock It Down", "On activation, pick an objective marker: this operative counts APL +1 to control it (until battle end or reused)."),
             ("Deck Hand", "APL 1-2 Breacher: move through one Accessible terrain feature for free and/or free Operate Hatch (even during Charge/Fall Back)."),
             ("Overwhelm Target", "Activating a Breacher via Breach and Clear: one of the pair gets +1 APL for its activation."),
         ],
     },
     "equipment": [
-        {"id": "slugs", "name": "Slugs", "desc": "Up to 3x/TP, Navis shotgun (long): Hit +1, +1 both Dmg, gains Accurate 1."},
+        {"id": "slugs", "name": "Slugs", "desc": "Up to 3x/turning point, Navis shotgun (long): Hit +1, +1 both Normal and Critical Dmg, gains Accurate 1."},
         {"id": "combat_stimms", "name": "Combat Stimms", "desc": "Ignore Move stat changes from being injured."},
         {"id": "rebreathers", "name": "Rebreathers", "desc": "Ignore APL changes; unaffected by enemy Shock."},
-        {"id": "override_device", "name": "System Override Device", "desc": "Once/TP, one Breacher: Operate Hatch costs 1 less AP."},
+        {"id": "override_device", "name": "System Override Device", "desc": "Once per turning point, one Breacher: Operate Hatch costs 1 less AP."},
     ],
     "operatives": OPERATIVES,
 }

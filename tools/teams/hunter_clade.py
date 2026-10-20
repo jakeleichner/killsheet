@@ -17,7 +17,7 @@ TARGETING = "Targeting Protocol: Shooting without having moved this activation, 
 RAD = "Rad-Saturation: Enemies within 2\" of friendly Vanguard worsen their weapons' Hit by 1 (not cumulative with injured)."
 STALKER = "Wasteland Stalker: When shot, if retaining cover saves: retain one extra, or retain one as a crit (not with Vantage)."
 SIGNAL = "Signal (1AP): SUPPORT. Another Hunter Clade operative visible within 6\": +1 APL until end of its next activation. Not within enemy control range."
-SPOT = "Spot (1AP): SUPPORT. A visible enemy: until end of TP, Hunter Clade within 3\" of this shooting it gain Seek Light and it can't be obscured. Not within enemy control range."
+SPOT = "Spot (1AP): SUPPORT. A visible enemy: until end of turning point, Hunter Clade within 3\" of this shooting it gain Seek Light and it can't be obscured. Not within enemy control range."
 
 def op(oid, name, wounds, pts, ranged, melee, abilities, kw):
     return {"id": oid, "name": name, "apl": 2, "move": '6"', "save": "4+", "wounds": wounds, "pts": pts,
@@ -62,7 +62,7 @@ TEAM = {
         ],
     },
     "factionRules": [
-        ("Doctrina Imperatives", "End of Select Operatives: pick one imperative as your Primary Mode. STRATEGIC GAMBIT: pick an imperative for your operatives until the next Strategy phase's Ready step; both its Optimisation and Deprecation apply. Once/battle, when you pick your Primary Mode, ignore its Deprecation."),
+        ("Doctrina Imperatives", "End of Select Operatives: pick one imperative as your Primary Mode. STRATEGIC GAMBIT: pick an imperative for your operatives until the next Strategy phase's Ready step; both its Optimisation and Deprecation apply. Once per battle, when you pick your Primary Mode, ignore its Deprecation."),
         ("Protector Imperative", "Ranged weapons gain Ceaseless. Deprecation: melee Hit worsened by 1."),
         ("Conqueror Imperative", "Melee weapons gain Ceaseless. Deprecation: ranged Hit worsened by 1."),
         ("Bulwark Imperative", "Normal Dmg of 3+ inflicts 1 less. Deprecation: -1\" Move."),
@@ -73,7 +73,7 @@ TEAM = {
         "strategy": [
             ("Debilitating Irradiation", "An enemy under Rad-Saturation attacking a Vanguard: -1 Normal Dmg (min 3)."),
             ("Neurostatic Interference", "Enemies within 6\" of a friendly Infiltrator can't re-roll attack dice."),
-            ("Scouting Protocol", "Each Concealed Ranger more than 6\" from enemies makes a free Dash. Not in the first TP."),
+            ("Scouting Protocol", "Each Concealed Ranger more than 6\" from enemies makes a free Dash. Not in the first turning point."),
             ("Accelerant Agents", "Each Ruststalker can Fight twice per activation, one of them free."),
         ],
         "firefight": [
@@ -84,10 +84,10 @@ TEAM = {
         ],
     },
     "equipment": [
-        {"id": "rad_bombardment", "name": "Rad Bombardment", "desc": "Once/battle STRATEGIC GAMBIT after TP1: pick an objective or your opponent's drop zone. D6 per enemy there (-1 under Vantage): 4+ -1 APL until end of its next activation; 6 also D3 dmg."},
-        {"id": "extremis_mind_link", "name": "Extremis Mind-link", "desc": "Once/battle, Control Edict for 0CP, and both operatives activate at the same time (alternate their actions in any order)."},
-        {"id": "redundancy_systems", "name": "Redundancy Systems", "desc": "Once/TP, an operative activates out of enemy control range: regain up to D3+2 wounds."},
-        {"id": "refractor_field", "name": "Refractor Field", "desc": "Once/TP, an operative is shot (start of Roll Defence Dice): attacker's Piercing worsened by 1."},
+        {"id": "rad_bombardment", "name": "Rad Bombardment", "desc": "Once per battle STRATEGIC GAMBIT after turning point 1: pick an objective or your opponent's drop zone. D6 per enemy there (-1 under Vantage): 4+ -1 APL until end of its next activation; 6 also D3 damage."},
+        {"id": "extremis_mind_link", "name": "Extremis Mind-link", "desc": "Once per battle, Control Edict for 0CP, and both operatives activate at the same time (alternate their actions in any order)."},
+        {"id": "redundancy_systems", "name": "Redundancy Systems", "desc": "Once per turning point, an operative activates out of enemy control range: regain up to D3+2 wounds."},
+        {"id": "refractor_field", "name": "Refractor Field", "desc": "Once per turning point, an operative is shot (start of Roll Defence Dice): attacker's Piercing worsened by 1."},
     ],
     "operatives": [
         op("infiltrator_princeps", "Sicarian Infiltrator Princeps", 11, 40, INF_RANGED, INF_MELEE,
@@ -95,7 +95,7 @@ TEAM = {
             "Canticle of Shroudpsalm: Friendly Infiltrators within 3\" of this, Concealed and in cover, can't be selected as valid targets (except within 2\").", CONTROL],
            "LEADER, SICARIAN, INFILTRATOR, PRINCEPS"),
         op("ruststalker_princeps", "Sicarian Ruststalker Princeps", 11, 40, [], [("Chordclaw & transonic blades", 5, "3+", "4/6", "Balanced, Rending")],
-           ["Canticle of Destruction: A friendly Ruststalker within 3\" fighting: its first crit strike each sequence deals +1 dmg.", STALKER, CONTROL],
+           ["Canticle of Destruction: A friendly Ruststalker within 3\" fighting: its first crit strike each sequence deals +1 damage.", STALKER, CONTROL],
            "LEADER, SICARIAN, RUSTSTALKER, PRINCEPS"),
         op("ranger_alpha", "Skitarii Ranger Alpha", 8, 25, [ARC_PISTOL, GALVANIC, MC_RADIUM, PHOSPHOR], ALPHA_MELEE,
            ["Loadout: galvanic rifle + gun butt; master-crafted radium pistol + power weapon; or arc pistol or phosphor blast pistol, + arc maul or taser goad.",

@@ -1,5 +1,5 @@
 MAGNIFY = "Magnify (weapon rule): Shooting a target visible to it, if another Apprentek/Cryptek on Engage (not in enemy control range) is visible to it, that one can be the active operative for valid target, conditions, cover and obscured; the weapon gains Ceaseless."
-INTERSTITIAL = "Interstitial Command (1AP): SUPPORT. Another operative (not Apprentek/Cryptek) visible within 6\" (or within 6\" of a visible Despotek) makes a free 1AP action: max 2\" move, not one it already did this TP, and not again this TP. Not within enemy control range or while counteracting."
+INTERSTITIAL = "Interstitial Command (1AP): SUPPORT. Another operative (not Apprentek/Cryptek) visible within 6\" (or within 6\" of a visible Despotek) makes a free 1AP action: max 2\" move, not one it already did this turning point, and not again this turning point. Not within enemy control range or while counteracting."
 SCUTTLER = "Scuttler: On Conceal and in cover: can't be targeted (except within 2\"). Fall Back costs 1 less AP. Own weapons only; no unique actions except {}."
 STEADFAST = "Steadfast: For marker control, can treat its APL as 3 (ignoring changes)."
 CLAWS = ("Claws", 3, "5+", "1/2", "-")
@@ -13,9 +13,9 @@ def cryptek(oid, name, ranged, melee, actions, pts=40):
 
 CHRONO_ACTIONS = [
     INTERSTITIAL,
-    "Timesplinter (1AP): Another expended friendly visible within 5\": remove and set up visible within 5\" horizontally. Not TP1, once per TP (team), not within enemy control range.",
+    "Timesplinter (1AP): Another expended friendly visible within 5\": remove and set up visible within 5\" horizontally. Not in the first turning point, once per turning point (team), not within enemy control range.",
     "Countertemporal Nanomine (1AP): Place the marker visible within 8\" (or on visible Vantage within 8\"). Enemies within 4\" of it: -2\" Move. Removed at this one's next activation. Not within enemy control range.",
-    "Chronometron (1AP): SUPPORT. Friendly visible within 6\": until this one's next activation, attackers vs it get -1 Atk. Not within enemy control range.",
+    "Chronometron (1AP): SUPPORT. Friendly visible within 6\": until this one's next activation, attackers against it get -1 Atk. Not within enemy control range.",
 ]
 
 def immortal(oid, name, gun, wounds, abilities, kw):
@@ -43,7 +43,7 @@ TEAM = {
         ],
     },
     "factionRules": [
-        ("Reanimation Protocols", "First time each operative is incapacitated: place a Reanimation marker in its control range, then remove it (and all its tokens/effects). Ready step: pick a marker, D6: 1-2 try another (each once per TP); 3+ it's REANIMATED: set up within 3\" of the marker (not in enemy control range), 1 wound, ready, order of your choice."),
+        ("Reanimation Protocols", "First time each operative is incapacitated: place a Reanimation marker in its control range, then remove it (and all its tokens/effects). Ready step: pick a marker, D6: 1-2 try another (each once per turning point); 3+ it's REANIMATED: set up within 3\" of the marker (not in enemy control range), 1 wound, ready, order of your choice."),
         ("Magnify", "Some Apprentek/Cryptek weapons have Magnify: when shooting, another visible Apprentek/Cryptek on Engage (not in enemy control range) can be treated as the active operative for targeting, cover and obscured; the weapon gains Ceaseless."),
         ("Living Metal", "Ready step of each Strategy phase (before Reanimation): each operative regains up to D3+1 wounds."),
     ],
@@ -57,15 +57,15 @@ TEAM = {
         "firefight": [
             ("Cortical Control", "An Apprentek/Cryptek does a SUPPORT action: ignore the distance requirement (visibility only)."),
             ("Dimensional Ambush", "Concealed Deathmark's activation: can Guard on Conceal in any killzone; switch to Engage for the interrupting Shoot/Fight."),
-            ("Reanimated Function", "Determining marker control: a Reanimation marker counts as a friendly with APL 1 until next TP (not for Martyrs)."),
+            ("Reanimated Function", "Determining marker control: a Reanimation marker counts as a friendly with APL 1 until next turning point (not for Martyrs)."),
             ("Living Lightning", "Immortal shooting a tesla carbine: loses the 2\" from Devastating, gains Blast 2\"."),
         ],
     },
     "equipment": [
-        {"id": "magnification_conduits", "name": "Magnification Conduits", "desc": "Once/TP, an Apprentek/Cryptek shooting can Magnify through another non-Plasmacyte on Engage (not in enemy control range) visible to it."},
-        {"id": "tesla_weave", "name": "Tesla Weave", "desc": "Once/TP, an enemy ends a Charge with your operatives in its control range: inflict D3+1 dmg on it."},
-        {"id": "phase_shifter", "name": "Phase Shifter", "desc": "Once/TP, a Cryptek being shot: attacker's Piercing worsened by 1."},
-        {"id": "tesseract_cube", "name": "Tesseract Cube", "desc": "Ready step, if the Cryptek is alive, not in enemy control range and not reanimated this TP: D6, 1 = never again, 4+ = +1CP (max 2CP per battle)."},
+        {"id": "magnification_conduits", "name": "Magnification Conduits", "desc": "Once per turning point, an Apprentek/Cryptek shooting can Magnify through another non-Plasmacyte on Engage (not in enemy control range) visible to it."},
+        {"id": "tesla_weave", "name": "Tesla Weave", "desc": "Once per turning point, an enemy ends a Charge with your operatives in its control range: inflict D3+1 damage on it."},
+        {"id": "phase_shifter", "name": "Phase Shifter", "desc": "Once per turning point, a Cryptek being shot: attacker's Piercing worsened by 1."},
+        {"id": "tesseract_cube", "name": "Tesseract Cube", "desc": "Ready step, if the Cryptek is alive, not in enemy control range and not reanimated this turning point: D6, 1 = never again, 4+ = +1CP (max 2CP per battle)."},
     ],
     "operatives": [
         cryptek("chrono_aeonstave", "Chronomancer (aeonstave)", [("Aeonstave (ranged)", 5, "3+", "3/3", 'Blast 2", Lethal 5+, Stun, Magnify')], [("Aeonstave (melee)", 4, "4+", "3/4", "Lethal 5+, Shock")], CHRONO_ACTIONS),
@@ -77,9 +77,9 @@ TEAM = {
                  "Harbinger of Despair (1AP): Place your Despair marker visible (or on visible Vantage). Enemies within 2\": +1AP for Pick Up Marker/mission actions; markers they contest count their total APL 1 lower. Removed at this one's next activation. Not within enemy control range."]),
         cryptek("technomancer", "Technomancer", [("Staff of light (ranged)", 6, "3+", "3/4", "Rending, Magnify")], [("Staff of light (melee)", 4, "4+", "3/5", "Rending")],
                 [INTERSTITIAL,
-                 "Canoptek Repair (1AP): SUPPORT. Friendly visible within 6\" regains up to 2D3 wounds. Once/TP (team); not within enemy control range.",
+                 "Canoptek Repair (1AP): SUPPORT. Friendly visible within 6\" regains up to 2D3 wounds. Once per turning point (team); not within enemy control range.",
                  "Augment Weapon (1AP): SUPPORT. Friendly visible within 6\": one datacard weapon (one profile) gains two of Lethal 5+, Rending, Saturate, Severe until this one's next activation. Not within enemy control range.",
-                 "Reinforce Metal (1AP): SUPPORT. Friendly visible within 6\": until this one's next activation, 3+ dmg on it is reduced by 1. Not within enemy control range."],
+                 "Reinforce Metal (1AP): SUPPORT. Friendly visible within 6\": until this one's next activation, 3+ damage on it is reduced by 1. Not within enemy control range."],
                 pts=50),
         {"id": "accelerator", "name": "Plasmacyte Accelerator", "apl": 2, "move": '7"', "save": "5+", "wounds": 5, "pts": 25,
          "ranged": [("Spark", 4, "4+", "2/3", 'Range 4", Piercing 1')], "melee": [CLAWS],
@@ -89,11 +89,11 @@ TEAM = {
         {"id": "reanimator", "name": "Plasmacyte Reanimator", "apl": 2, "move": '7"', "save": "5+", "wounds": 5, "pts": 25,
          "ranged": [("Atomiser beam", 4, "4+", "3/4", 'Range 6", Lethal 5+')], "melee": [CLAWS],
          "abilities": [SCUTTLER.format("Reanimate"),
-                       "Reanimate (1/2AP): A Reanimation marker visible within 6\": D6 3+ (or automatically for 2AP) that operative is REANIMATED (set up expended if it had already been expended this TP). Not within enemy control range."],
+                       "Reanimate (1/2AP): A Reanimation marker visible within 6\": D6 3+ (or automatically for 2AP) that operative is REANIMATED (set up expended if it had already been expended this turning point). Not within enemy control range."],
          "kw": "MEDIC, PLASMACYTE, REANIMATOR"},
         {"id": "apprentek", "name": "Apprentek", "apl": 3, "move": '6"', "save": "3+", "wounds": 11, "pts": 32,
          "ranged": [("Arcane conduit (ranged)", 4, "3+", "4/5", "Piercing 1, Magnify")], "melee": [("Arcane conduit (melee)", 3, "4+", "3/5", "-")],
-         "abilities": [MAGNIFY, "Apprentek Assistance: Has your Cryptek's unique actions, but can use only one Cryptek unique action per TP."],
+         "abilities": [MAGNIFY, "Apprentek Assistance: Has your Cryptek's unique actions, but can use only one Cryptek unique action per turning point."],
          "kw": "APPRENTEK"},
         {"id": "deathmark", "name": "Deathmark", "apl": 2, "move": '5"', "save": "3+", "wounds": 10, "pts": 32,
          "ranged": [("Synaptic disintegrator", 4, "2+", "4/3", "Devastating 2, Heavy (Dash only), Piercing 1, Severe")], "melee": [("Fists", 3, "3+", "3/4", "-")],
@@ -101,9 +101,9 @@ TEAM = {
                        "Multi-Dimensional Vision (1AP): Until its next activation, enemies can't be obscured when it shoots. Not within enemy control range."],
          "kw": "DEATHMARK"},
         immortal("despotek_gauss", "Immortal Despotek (gauss)", GAUSS, 11,
-                 [STEADFAST, "Interstitial Command (1AP): SUPPORT. Another operative (not Apprentek/Cryptek) visible within 6\" makes a free 1AP action (not Accelerate): max 2\" move, not one it already did this TP, and not again this TP. Not within enemy control range or while counteracting."], "DESPOTEK"),
+                 [STEADFAST, "Interstitial Command (1AP): SUPPORT. Another operative (not Apprentek/Cryptek) visible within 6\" makes a free 1AP action (not Accelerate): max 2\" move, not one it already did this turning point, and not again this turning point. Not within enemy control range or while counteracting."], "DESPOTEK"),
         immortal("despotek_tesla", "Immortal Despotek (tesla)", TESLA, 11,
-                 [STEADFAST, "Interstitial Command (1AP): SUPPORT. Another operative (not Apprentek/Cryptek) visible within 6\" makes a free 1AP action (not Accelerate): max 2\" move, not one it already did this TP, and not again this TP. Not within enemy control range or while counteracting."], "DESPOTEK"),
+                 [STEADFAST, "Interstitial Command (1AP): SUPPORT. Another operative (not Apprentek/Cryptek) visible within 6\" makes a free 1AP action (not Accelerate): max 2\" move, not one it already did this turning point, and not again this turning point. Not within enemy control range or while counteracting."], "DESPOTEK"),
         immortal("guardian_gauss", "Immortal Guardian (gauss)", GAUSS, 10, [STEADFAST], "GUARDIAN"),
         immortal("guardian_tesla", "Immortal Guardian (tesla)", TESLA, 10, [STEADFAST], "GUARDIAN"),
     ],

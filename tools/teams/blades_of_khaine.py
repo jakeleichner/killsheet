@@ -3,7 +3,7 @@ CATAPULT = ("Shuriken catapult", 4, "3+", "3/4", "Rending")
 EXARCH = "Exarch: Can do two Shoot or two Fight actions per activation."
 DEFENCE_TACTICS = "Defence Tactics: While contesting an objective or your mission marker, or shooting an enemy that does, weapons gain Balanced."
 BANSHEE_MASK = "Banshee Mask: When it fights, the enemy's melee Hit is worsened by 1 (not with injury)."
-MANDIBLASTERS = "Mandiblasters: On a Fight, at the start of Roll Attack Dice: inflict 2 dmg on that enemy."
+MANDIBLASTERS = "Mandiblasters: On a Fight, at the start of Roll Attack Dice: inflict 2 damage on that enemy."
 
 def asp(oid, name, ranged, melee, abilities, kw, apl=3, save="4+", wounds=8):
     return {"id": oid, "name": name, "apl": apl, "move": '7"', "save": save, "wounds": wounds, "pts": 28,
@@ -26,10 +26,10 @@ TEAM = {
         ],
     },
     "factionRules": [
-        ("Aspect Techniques", "Each technique works only for operatives of its Aspect. Max one per activation/counteraction and each once per TP (twice per TP if every operative shares the same Aspect)."),
+        ("Aspect Techniques", "Each technique works only for operatives of its Aspect. Max one per activation/counteraction and each once per turning point (twice per turning point if every operative shares the same Aspect)."),
         ("Dire Avenger techniques", "Vigilance of the Avenger: shuriken catapults gain Lethal 5+ for a Shoot. Unstinting, Immovable: being shot with 2+ fails, discard one to retain another as normal. The Slicing Hurricane: Shoot partway through a Reposition (catapult or pistol). Death of a Thousand Blades: catapult gains Torrent 2\" (one secondary target). Raging Heat of the Dying Flame: ignore injury until its next activation."),
-        ("Howling Banshee techniques", "The Woe: after Charging and killing in a Fight (now clear of enemies), a free Charge with the remaining move. Scream-That-Steals: resolve one success early, as a block. Shriek-That-Kills: use the shriek weapon for a Shoot (5 3+ 1/2, Range 6\", Saturate, Seek Light, Stun, Torrent 1\"). Rain of Tears: after a crit strike vs a survivor, end the fight and Fall Back up to 3\". Acrobatic: ignore climb/drop height and move through enemies (Charge capped at its Move)."),
-        ("Striking Scorpion techniques", "Strike and Fade: after killing in a fight and being more than 3\" from enemies, go Conceal and Dash. Scorpion's Eye: shuriken pistol gains Seek Light. Patient Stalk, Sudden Blow: Concealed Reposition can pass through enemy control range, then D3+2 dmg to one enemy it passed. Merciless Strikes: after the first crit strike, its melee weapon gains Shock. One with the Gloom: until its next activation, Concealed and in cover it can't be targeted (except within 2\")."),
+        ("Howling Banshee techniques", "The Woe: after Charging and killing in a Fight (now clear of enemies), a free Charge with the remaining move. Scream-That-Steals: resolve one success early, as a block. Shriek-That-Kills: use the shriek weapon for a Shoot (5 3+ 1/2, Range 6\", Saturate, Seek Light, Stun, Torrent 1\"). Rain of Tears: after a crit strike against a survivor, end the fight and Fall Back up to 3\". Acrobatic: ignore climb/drop height and move through enemies (Charge capped at its Move)."),
+        ("Striking Scorpion techniques", "Strike and Fade: after killing in a fight and being more than 3\" from enemies, go Conceal and Dash. Scorpion's Eye: shuriken pistol gains Seek Light. Patient Stalk, Sudden Blow: Concealed Reposition can pass through enemy control range, then D3+2 damage to one enemy it passed. Merciless Strikes: after the first crit strike, its melee weapon gains Shock. One with the Gloom: until its next activation, Concealed and in cover it can't be targeted (except within 2\")."),
     ],
     "ploys": {
         "strategy": [
@@ -46,10 +46,10 @@ TEAM = {
         ],
     },
     "equipment": [
-        {"id": "rune_prophecy", "name": "Rune of Prophecy", "desc": "Once/battle after the initiative roll-off: add or subtract D3 from your result."},
-        {"id": "wraithbone_talisman", "name": "Wraithbone Talisman", "desc": "Once/TP attacking: with 2+ fails, discard one to retain another as a normal success."},
-        {"id": "rune_shielding", "name": "Rune of Shielding", "desc": "Once/battle, ignore the Normal Dmg from one attack dice."},
-        {"id": "rune_foresight", "name": "Rune of Foresight", "desc": "Roll D3 when revealed: +1CP in that TP's Strategy phase."},
+        {"id": "rune_prophecy", "name": "Rune of Prophecy", "desc": "Once per battle after the initiative roll-off: add or subtract D3 from your result."},
+        {"id": "wraithbone_talisman", "name": "Wraithbone Talisman", "desc": "Once per turning point attacking: with 2+ fails, discard one to retain another as a normal success."},
+        {"id": "rune_shielding", "name": "Rune of Shielding", "desc": "Once per battle, ignore the Normal Dmg from one attack dice."},
+        {"id": "rune_foresight", "name": "Rune of Foresight", "desc": "Roll D3 when revealed: +1CP in that turning point's Strategy phase."},
     ],
     "operatives": [
         asp("da_exarch", "Dire Avenger Exarch", [CATAPULT, PISTOL, ("Twin shuriken catapult", 4, "3+", "3/4", "Ceaseless, Rending")],

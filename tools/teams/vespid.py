@@ -1,5 +1,5 @@
 CLAWS = ("Claws", 3, "4+", "3/4", "-")
-NEUTRON_FRAGMENT = "Neutron Fragment (weapon rule): If the target survives but you resolved any attack dice, it gains a Neutron Fragment token. On activation, D3 dmg per token."
+NEUTRON_FRAGMENT = "Neutron Fragment (weapon rule): If the target survives but you resolved any attack dice, it gains a Neutron Fragment token. On activation, D3 damage per token."
 
 def vespid(oid, name, ranged, abilities, kw, save="5+", wounds=9):
     return {"id": oid, "name": "Vespid " + name, "apl": 2, "move": '6"', "save": save, "wounds": wounds, "pts": 28,
@@ -24,7 +24,7 @@ TEAM = {
     },
     "factionRules": [
         ("Communion", "Ready step: gain D3 Communion points (+1 with the Oversight Drone in the killzone). Vespids (not the Drone) must spend 1 to: shoot anything but the closest enemy within 8\" (excluding enemies in other Vespids' control range); end a Charge anywhere but the closest enemy's control range; do Pick Up Marker or a mission action (not Operate Hatch). Shooting: spend 1 to re-roll one attack die."),
-        ("Neutron Charge", "Weapons with 'neutron' in the name gain Piercing 1 until end of TP once the Vespid moves or uses FLY."),
+        ("Neutron Charge", "Weapons with 'neutron' in the name gain Piercing 1 until end of turning point once the Vespid moves or uses FLY."),
         ("FLY", "When an action moves it, it can instead be set up wholly within its Move (Dash: 3\") horizontally, in a legal spot; not in enemy control range unless Charging (no extra Charge distance). In close quarters killzones, not through walls or open hatchways."),
     ],
     "ploys": {
@@ -36,14 +36,14 @@ TEAM = {
         ],
         "firefight": [
             ("Ocelli", "Shooting in an activation it used FLY: gets the first two Vantage benefits, counting as 3\" higher (not for Communion distance)."),
-            ("Darting Flight", "Reposition: +D3\" (or set up D3\" further with FLY); no Shoot or Fight for the rest of the TP."),
-            ("Neutron Overload", "Resolving a crit with a neutron weapon after moving/FLY, target within 4\": +D3 dmg."),
-            ("Vicious Venom", "Fighting (not the Drone) and striking with a crit: +D3 dmg."),
+            ("Darting Flight", "Reposition: +D3\" (or set up D3\" further with FLY); no Shoot or Fight for the rest of the turning point."),
+            ("Neutron Overload", "Resolving a crit with a neutron weapon after moving/FLY, target within 4\": +D3 damage."),
+            ("Vicious Venom", "Fighting (not the Drone) and striking with a crit: +D3 damage."),
         ],
     },
     "equipment": [
         {"id": "neurostimulant", "name": "Neurostimulant", "desc": "When gaining Communion points, roll two D3 and pick one."},
-        {"id": "convergence", "name": "Convergence Stimulant", "desc": "Once/TP, a Vespid does Pick Up Marker or a mission action without spending a Communion point."},
+        {"id": "convergence", "name": "Convergence Stimulant", "desc": "Once per turning point, a Vespid does Pick Up Marker or a mission action without spending a Communion point."},
         {"id": "accelerant", "name": "Accelerant Stimulant", "desc": "Charge or Dash (not the Drone): +1\" (or set up 1\" further with FLY).", "ex": ["oversight_drone"]},
         {"id": "aggression", "name": "Aggression Stimulant", "desc": "Fighting (not the Drone): melee weapons gain Ceaseless.", "ex": ["oversight_drone"]},
     ],
@@ -65,7 +65,7 @@ TEAM = {
                "SHADESTRAIN", save="3+"),
         vespid("skyblast", "Skyblast", [("Neutron grenade launcher", 4, "4+", "3/3", 'Blast 2", Devastating 2, Neutron Bombardment')],
                ["Neutron Bombardment (weapon rule): Place a Neutron Fallout marker in the primary target's control range.",
-                "Neutron Fallout: Once per enemy activation, when it's within 2\" of a Fallout marker: D3 dmg (not cumulative)."],
+                "Neutron Fallout: Once per enemy activation, when it's within 2\" of a Fallout marker: D3 damage (not cumulative)."],
                "SKYBLAST"),
         vespid("swarmguard", "Swarmguard", [("Flamer (standard)", 4, "2+", "3/3", 'Range 8", Saturate, Torrent 2"'), ("Flamer (skytorch)", 4, "2+", "3/3", 'Saturate, Torrent 0", Skytorch')],
                ["Skytorch (weapon rule): Only during Skytorch Assault. No target selection: shoot every operative in the torch zone (area between its old and new position, not wholly under Vantage), none in cover/obscured, furthest first.",

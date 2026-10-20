@@ -3,11 +3,11 @@ NEURO = ("Neuro disruptor", 4, "3+", "4/5", 'Range 8", Piercing 1, Stun')
 SHURIKEN = ("Shuriken pistol", 4, "3+", "3/4", 'Range 8", Rending')
 MELEE = [("Blade", 5, "3+", "4/6", "-"), ("Caress", 5, "3+", "4/5", "Rending"), ("Embrace", 5, "3+", "4/5", "Brutal"), ("Kiss", 5, "3+", "3/7", "-")]
 POWER = ("Power weapon", 5, "3+", "4/6", "Lethal 5+")
-LUCK = "Luck of the Laughing God: Once/TP, a firefight ploy for 0CP on this operative (including Command Re-roll on its dice); each ploy once per battle this way."
-LEAD = "Lead the Performance: Once/battle STRATEGIC GAMBIT, if this is in the killzone: change your ALLEGORY (and so the ACCOLADE)."
+LUCK = "Luck of the Laughing God: Once per turning point, a firefight ploy for 0CP on this operative (including Command Re-roll on its dice); each ploy once per battle this way."
+LEAD = "Lead the Performance: Once per battle STRATEGIC GAMBIT, if this is in the killzone: change your ALLEGORY (and so the ACCOLADE)."
 HG = ("Hallucinogen grenade", 4, "3+", "1/1", 'Range 6", Blast 2", Lethal 5+, Seek Light, Silent, Stun')
-SEER = ["Mirror of Minds (1AP): PSYCHIC. An enemy valid target within 8\": both players roll five D6; D3 dmg per matching pair (max 8). Not within enemy control range.",
-        "Fog of Dreams (1AP): PSYCHIC. A visible ready enemy: roll D6; it can't activate or act this TP until it's the last enemy to activate or your opponent has activated that many operatives. Not within enemy control range."]
+SEER = ["Mirror of Minds (1AP): PSYCHIC. An enemy valid target within 8\": both players roll five D6; D3 damage per matching pair (max 8). Not within enemy control range.",
+        "Fog of Dreams (1AP): PSYCHIC. A visible ready enemy: roll D6; it can't activate or act this turning point until it's the last enemy to activate or your opponent has activated that many operatives. Not within enemy control range."]
 
 def vd(oid, name, ranged, melee, abilities, kw, wounds=8):
     return {"id": oid, "name": name, "apl": 3, "move": '7"', "save": "4+", "wounds": wounds, "pts": 25,
@@ -45,7 +45,7 @@ TEAM = {
         ],
     },
     "factionRules": [
-        ("Saedath", "STRATEGIC GAMBIT in TP1: pick an ALLEGORY for the battle and one operative to have the PIVOTAL ROLE (it gains the ACCOLADE). STRATEGIC GAMBIT in later TPs: another operative gains the ACCOLADE. Once/TP, when the Pivotal Role operative completes the Performance, another operative gains the ACCOLADE."),
+        ("Saedath", "STRATEGIC GAMBIT in turning point 1: pick an ALLEGORY for the battle and one operative to have the PIVOTAL ROLE (it gains the ACCOLADE). STRATEGIC GAMBIT in later turning points: another operative gains the ACCOLADE. Once per turning point, when the Pivotal Role operative completes the Performance, another operative gains the ACCOLADE."),
         ("Epic", "Performance: it kills an enemy while fighting. Accolade: fighting, melee weapons gain Balanced."),
         ("Melodrama", "Performance: it kills an enemy while shooting. Accolade: ranged weapons gain Balanced."),
         ("Harlequin's Panoply", "Shot with no attack dice retained as crits: attacker's Piercing worsened by 1. Climbing up counts as 2\" vertical. They can move within enemy control range (start and end following normal rules)."),
@@ -53,7 +53,7 @@ TEAM = {
     "ploys": {
         "strategy": [
             ("Rising Crescendo", "Can Dash in the same activation after a Charge (not before)."),
-            ("Prismatic Blur", "Being shot after moving this TP: re-roll one defence die."),
+            ("Prismatic Blur", "Being shot after moving this turning point: re-roll one defence die."),
             ("Darting Salvo", "During a Reposition in its activation, it can stop to Shoot and then finish the move."),
             ("Cegorach's Jest", "Fighting/retaliating, opponent strikes with a normal: roll D6; below their weapon's Hit, that strike instead blocks one of your dice (ignore Brutal). Once per sequence."),
         ],
@@ -65,10 +65,10 @@ TEAM = {
         ],
     },
     "equipment": [
-        {"id": "shrieker_toxin", "name": "Shrieker Toxin Rounds", "desc": "Once/TP shooting a shuriken pistol or shrieker cannon (focused): Devastating 1 for that action."},
+        {"id": "shrieker_toxin", "name": "Shrieker Toxin Rounds", "desc": "Once per turning point shooting a shuriken pistol or shrieker cannon (focused): Devastating 1 for that action."},
         {"id": "death_mask", "name": "Death Mask", "desc": "Keep a Tragedy tally: +1 when an operative with an ACCOLADE is incapacitated. At 3, gain 1CP (once)."},
-        {"id": "wraithbone_talisman", "name": "Wraithbone Talisman", "desc": "Once/TP shooting/fighting/retaliating with 2+ fails: discard one to retain another as a normal."},
-        {"id": "understudys_mask", "name": "Understudy's Mask", "desc": "Once/battle, if your Pivotal Role operative is incapacitated: the operative you activate takes the Pivotal Role."},
+        {"id": "wraithbone_talisman", "name": "Wraithbone Talisman", "desc": "Once per turning point shooting/fighting/retaliating with 2+ fails: discard one to retain another as a normal."},
+        {"id": "understudys_mask", "name": "Understudy's Mask", "desc": "Once per battle, if your Pivotal Role operative is incapacitated: the operative you activate takes the Pivotal Role."},
     ],
     "operatives": [
         lead("lead_fusion", FUSION),

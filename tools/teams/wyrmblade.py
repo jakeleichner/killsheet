@@ -3,7 +3,7 @@ AUTOGUN = ("Autogun", 4, "4+", "2/3", "-")
 SHOTGUN = ("Shotgun", 4, "3+", "3/3", 'Range 6"')
 BIPOD = "Heavy Weapon Bipod: Shooting with its own weapons without having moved this activation, or as a counteraction: Ceaseless (Relentless if it already has Ceaseless). It can still move afterwards."
 ICON = ["Icon Bearer: Counts as APL 1 higher for marker control.",
-        "Overthrow the Oppressors: Once/TP, a ready Neophyte visible within 6\" is incapacitated: before removal it makes a free Shoot (can change order), or you can use A Plan Generations in the Making on it for 0CP."]
+        "Overthrow the Oppressors: Once per turning point, a ready Neophyte visible within 6\" is incapacitated: before removal it makes a free Shoot (can change order), or you can use A Plan Generations in the Making on it for 0CP."]
 GROUP = ["Group Activation: When it's expended, you must activate another ready Warrior (if able) before your opponent activates (max two in a row)."]
 
 def wb(oid, name, ranged, melee, abilities, kw, apl=2, save="5+", wounds=7, pts=25):
@@ -42,26 +42,26 @@ TEAM = {
         ],
     },
     "factionRules": [
-        ("Familiar Territory", "One third of your team (not Cult Agents) can start in HIDING. When one activates, expend it or have it emerge: set it up wholly within 6\" of your drop zone, more than 6\" from enemies, any order. Counts as a Reposition (Warriors ignore Group Activation). Any still hiding at end of TP2 are incapacitated."),
+        ("Familiar Territory", "One third of your team (not Cult Agents) can start in HIDING. When one activates, expend it or have it emerge: set it up wholly within 6\" of your drop zone, more than 6\" from enemies, any order. Counts as a Reposition (Warriors ignore Group Activation). Any still hiding at end of turning point 2 are incapacitated."),
         ("Cult Agent", "Shooting a Cult Agent ignores Piercing and Saturate; if retaining cover saves, retain one extra or one as a crit (not with Vantage)."),
         ("Cult Ambush", "Shooting or fighting in an activation that started with a switch from Conceal to Engage, or while hidden from all enemies at its start: weapons gain Ceaseless."),
     ],
     "ploys": {
         "strategy": [
             ("The Day Is at Hand", "Switching from Conceal to Engage on activation: ranged Rending and +1 melee Atk (max 5) that activation."),
-            ("Crossfire", "Shooting an enemy another Wyrmblade operative shot this TP: Accurate 1."),
+            ("Crossfire", "Shooting an enemy another Wyrmblade operative shot this turning point: Accurate 1."),
             ("One with the Shadows", "A Concealed operative being shot with Light terrain intervening (not within 1\" of either) is obscured."),
             ("Divert and Disappear", "Up to three operatives make a free Dash or Charge (max 3\"). A Cult Agent counts as two and can Fall Back (max 3\") instead, then -1 APL until end of its next activation."),
         ],
         "firefight": [
             ("Slink into Darkness", "End of an activation: an operative on Engage switches to Conceal. Each operative once per battle."),
             ("Coiled Serpent", "First Shoot or Fight in an activation that started with Conceal to Engage, after rolling: retain one normal as a crit (once per activation)."),
-            ("Unquestioning Loyalty", "A Cult Agent or the Leader is picked as a Shoot target or to fight: another Neophyte (not Leader) visible within 3\" takes its place. No effect vs Blast or Torrent."),
+            ("Unquestioning Loyalty", "A Cult Agent or the Leader is picked as a Shoot target or to fight: another Neophyte (not Leader) visible within 3\" takes its place. No effect against Blast or Torrent."),
             ("A Plan Generations in the Making", "A Neophyte is incapacitated: it makes a free mission action before removal."),
         ],
     },
     "equipment": [
-        {"id": "blasting_charges", "name": "Blasting Charges", "desc": "Once/TP, a Neophyte can use a blasting charge.", "gw": ("ranged", "Blasting charge", 4, "4+", "3/5", 'Range 4", Blast 1", Saturate'), "ex": AGENTS},
+        {"id": "blasting_charges", "name": "Blasting Charges", "desc": "Once per turning point, a Neophyte can use a blasting charge.", "gw": ("ranged", "Blasting charge", 4, "4+", "3/5", 'Range 4", Blast 1", Saturate'), "ex": AGENTS},
         {"id": "cult_knives", "name": "Cult Knives", "desc": "Neophytes gain a cult knife.", "gw": ("melee", "Cult knife", 3, "4+", "3/4", "-"), "ex": AGENTS},
         {"id": "explosive_traps", "name": "Explosive Traps", "desc": "Select two mines (not also the universal mines); Wyrmblade operatives don't trigger or take damage from them."},
         {"id": "spotlights", "name": "Spotlights", "desc": "Shooting: the target can't be obscured if it's visible within 6\" of a Neophyte that isn't in enemy control range."},
@@ -71,18 +71,18 @@ TEAM = {
            [AUTOGUN[:2] + ("3+",) + AUTOGUN[3:], ("Bolt pistol", 4, "3+", "3/4", 'Range 8"'), ("Master-crafted autopistol", 4, "3+", "2/4", 'Range 8", Lethal 5+'), ("Shotgun", 4, "2+", "3/3", 'Range 6"'), ("Web pistol", 4, "3+", "3/4", 'Range 6", Severe, Stun')],
            [("Chainsword", 4, "3+", "4/5", "-"), GUN_BUTT, ("Power maul", 4, "3+", "4/6", "Shock"), ("Power pick", 4, "3+", "4/5", "Rending")],
            ["Loadout: autogun + gun butt, shotgun + gun butt, or bolt pistol, master-crafted autopistol or web pistol + chainsword, power maul or power pick.",
-            "Shadow Vector: Once/TP, Slink into Darkness or Coiled Serpent costs 0CP on a Neophyte visible to this."],
+            "Shadow Vector: Once per turning point, Slink into Darkness or Coiled Serpent costs 0CP on a Neophyte visible to this."],
            "NEOPHYTE, LEADER", wounds=8),
         agent("kelermorph", "Kelermorph",
               [("Liberator autostubs (hypersense)", 5, "3+", "3/4", 'Range 6", Saturate, Seek Light, Hypersense'), ("Liberator autostubs (long range)", 4, "4+", "3/4", "Piercing Crits 1, Rending"), ("Liberator autostubs (short range)", 5, "3+", "3/4", 'Range 8", Piercing 1, Rending')],
               [("Kelermorph knife", 3, "4+", "3/4", "Rending")],
               ["Hypersense (weapon rule): Enemies can't be obscured.",
                "Expert Gunslinger: Can Shoot twice per activation.",
-               "Heroic Inspiration: If this has killed an enemy this TP, Neophytes visible within 3\" of it gain Severe when attacking."],
+               "Heroic Inspiration: If this has killed an enemy this turning point, Neophytes visible within 3\" of it gain Severe when attacking."],
               "KELERMORPH"),
         agent("locus", "Locus", [("Barbed tail", 4, "3+", "3/4", 'Range 3", Silent')], [("Locus blades", 5, "3+", "4/6", "Lethal 5+")],
               ["Expert Swordsman: Can Fight twice per activation. After a Fight, if out of enemy control range: a free Charge of up to 3\" (even if it already Charged; it can still Dash).",
-               "Quicksilver Strike: Once/TP, after an enemy moves or is set up: a free Charge of up to 3\" ending in its control range (can switch to Engage).",
+               "Quicksilver Strike: Once per turning point, after an enemy moves or is set up: a free Charge of up to 3\" ending in its control range (can switch to Engage).",
                "Bladed Stance: Fighting/retaliating, resolve one success early as a block."],
               "LOCUS"),
         agent("sanctus_sniper", "Sanctus Sniper", [("Sanctus sniper rifle (mobile)", 4, "3+", "3/4", "-"), ("Sanctus sniper rifle (stationary)", 4, "2+", "3/3", "Devastating 3, Heavy (Dash only), Silent")], [("Fists", 4, "3+", "2/4", "-")],

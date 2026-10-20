@@ -1,8 +1,8 @@
 FISTS = ("Fists", 3, "3+", "3/4", "-")
 ROKKIT = ("Rokkit launcha", 6, "5+", "4/5", 'Blast 1"')
 HAMMER = ("Smash hammer", 4, "3+", "5/6", "Brutal")
-KOMPETITIVE = "Kompetitive Streak: Once per Shoot, if it shoots an enemy another friendly operative already shot this TP (secondary targets count): gain 1 Wrecka point."
-PULSA = ["Pulsa (weapon rule): No target. Place your Pulsa marker visible (or on visible Vantage) with 1 Pulsa point, then roll attack dice: +1 point per success (max +3). D3 dmg to each operative wholly within x\" (x = its points).",
+KOMPETITIVE = "Kompetitive Streak: Once per Shoot, if it shoots an enemy another friendly operative already shot this turning point (secondary targets count): gain 1 Wrecka point."
+PULSA = ["Pulsa (weapon rule): No target. Place your Pulsa marker visible (or on visible Vantage) with 1 Pulsa point, then roll attack dice: +1 point per success (max +3). D3 damage to each operative wholly within x\" (x = its points).",
          "Shokkwave: Operatives within x\" of your Pulsa marker get -2\" Move and Hit worsened by 1 (cumulative with injured). The marker loses 1 point each Ready step and is removed at 0."]
 
 def wk(oid, name, ranged, melee, abilities, kw, wounds=12, save="4+", pts=32):
@@ -41,15 +41,15 @@ TEAM = {
         ],
         "firefight": [
             ("Proppa Scrap", "A Breaka Boy or the Boss Nob can Fight twice this activation."),
-            ("Kaboom!", "Shooting a Blast weapon: +1\" Blast and Severe vs the primary target for the action (not with Drill Rokkits)."),
+            ("Kaboom!", "Shooting a Blast weapon: +1\" Blast and Severe against the primary target for the action (not with Drill Rokkits)."),
             ("Just a Scratch", "Normal Dmg on an operative (not a Bomb Squig): ignore it."),
             ("Demolition Job", "After a Shoot or Fight (before removals): place a Demolition marker in the target's control range. Until the next Ready step, attacking an operative within 3\" of it lets you spend a Wrecka point for free."),
         ],
     },
     "equipment": [
-        {"id": "engine_oil", "name": "Engine Oil", "desc": "Once/TP, an operative (not a Bomb Squig) activates: ignore injured stat changes this activation."},
+        {"id": "engine_oil", "name": "Engine Oil", "desc": "Once per turning point, an operative (not a Bomb Squig) activates: ignore injured stat changes this activation."},
         {"id": "glyphs", "name": "Glyphs", "desc": "Pick Waaagh! or Destruction: its first use costs 0CP, and later uses cost 0CP if you have any Wrecka points."},
-        {"id": "drill_rokkits", "name": "Drill Rokkits", "desc": "Once/TP shooting a rokkit launcha or 'eavy rokkit launcha: it loses Blast and gains Piercing 1 for the action."},
+        {"id": "drill_rokkits", "name": "Drill Rokkits", "desc": "Once per turning point shooting a rokkit launcha or 'eavy rokkit launcha: it loses Blast and gains Piercing 1 for the action."},
         {"id": "extra_armour", "name": "Extra Armour", "desc": "Operatives (not Bomb Squigs) get -1\" Move and Save +1 (not with a Portable Barricade's Protective rule)."},
     ],
     "operatives": [
@@ -68,7 +68,7 @@ TEAM = {
            "BOMB SQUIG", wounds=5, save="5+", pts=25),
         wk("demolisha", "Breaka Boy Demolisha", [], [("Tankhammer (bash)", 4, "3+", "4/5", "-"), ("Tankhammer (detonate)", 4, "3+", "0/0", "Lethal 5+, Limited 1, Detonate")],
            ["Detonate (weapon rule): First time it would damage an enemy: D6+6 (2D6+6 for a crit) to that enemy and each other operative in its control range, which can't be ignored or reduced. Then the action ends; gain 1 Wrecka point +1 per operative incapacitated.",
-            "Reckless Temperament: Normal Dmg of 4+ inflicts 1 less on it; on Engage, Crit Dmg of 4+ too."],
+            "Reckless Temperament: Normal Dmg of 4+ inflicts 1 less on it; on Engage, Critical Dmg of 4+ too."],
            "BREAKA BOY, DEMOLISHA"),
         wk("fighter", "Breaka Boy Fighter", [], [HAMMER],
            ["Break Stuff (1AP): A terrain feature in control range: remove it if it's equipment terrain; otherwise place a Breach marker by it. Operatives within 1\" of the marker treat parts of it up to 1\" thick as Accessible. Not within enemy control range."],

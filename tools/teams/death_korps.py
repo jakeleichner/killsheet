@@ -1,6 +1,6 @@
 LASGUN = ("Lasgun", 4, "4+", "2/3", "-")
 BAYONET = ("Bayonet", 3, "4+", "2/3", "-")
-MEDIC = "Medic!: First time each TP another friendly visible within 3\" would be incapacitated (neither in enemy control range): it stays on 1 wound, can't be incapacitated that action, then free Dash ending in this one's control range. Both -1 APL until their next activations; ends its activation if during it."
+MEDIC = "Medic!: First time each turning point another friendly visible within 3\" would be incapacitated (neither in enemy control range): it stays on 1 wound, can't be incapacitated that action, then free Dash ending in this one's control range. Both -1 APL until their next activations; ends its activation if during it."
 
 def dk(oid, name, ranged, melee, abilities, kw, wounds=7):
     return {"id": oid, "name": "Death Korps " + name, "apl": 2, "move": '6"', "save": "5+", "wounds": wounds, "pts": 25,
@@ -12,7 +12,7 @@ def gunner(oid, label, ranged):
 # Operatives other Inquisitorial requisition can reuse (everything except the Watchmaster)
 OPERATIVES = [
     dk("bruiser", "Bruiser", [LASGUN], [("Trench club", 4, "3+", "3/3", "Shock")],
-       ["Bruiser: Once/TP fighting/retaliating, ignore the damage from one normal success. If incapacitated during the Fight action, strike with one unresolved success before removal."],
+       ["Bruiser: Once per turning point fighting/retaliating, ignore the damage from one normal success. If incapacitated during the Fight action, strike with one unresolved success before removal."],
        "BRUISER"),
     dk("confidant", "Confidant", [("Bolt pistol", 4, "4+", "3/4", 'Range 8"'), ("Boltgun", 4, "4+", "3/4", "-"), LASGUN, ("Relic laspistol", 4, "4+", "2/4", 'Range 8", Lethal 5+')],
        [BAYONET, ("Chainsword", 4, "4+", "4/5", "-")],
@@ -25,7 +25,7 @@ OPERATIVES = [
     gunner("gunner_melta", "meltagun", [("Meltagun", 4, "4+", "6/3", 'Range 6", Devastating 4, Piercing 2')]),
     gunner("gunner_plasma", "plasma gun", [("Plasma gun (standard)", 4, "4+", "4/6", "Piercing 1"), ("Plasma gun (supercharge)", 4, "4+", "5/6", "Hot, Lethal 5+, Piercing 1")]),
     dk("medic", "Medic", [LASGUN], [BAYONET],
-       [MEDIC, "Medikit (1AP): Friendly in control range regains up to 2D3 wounds (not one saved by Medic! this TP). Not within enemy control range."],
+       [MEDIC, "Medikit (1AP): Friendly in control range regains up to 2D3 wounds (not one saved by Medic! this turning point). Not within enemy control range."],
        "MEDIC"),
     dk("sapper", "Sapper", [LASGUN, ("Remote detonator", 4, "2+", "5/6", "Heavy (Dash only), Limited 1, Piercing 1, Silent, Detonate")], [BAYONET],
        ["Mine Layer: Carries your Mine marker; can Pick Up it, and after Placing it gets a free Dash.",
@@ -35,7 +35,7 @@ OPERATIVES = [
                             ("Long-las (stationary)", 4, "2+", "3/3", "Devastating 3, Heavy")], [BAYONET],
        ["Concealed Position (weapon rule): Only the first time it Shoots in the battle."], "SNIPER"),
     dk("spotter", "Spotter", [LASGUN, ("Mortar barrage", 4, "4+", "3/5", 'Blast 2", Heavy (Dash only), Silent')], [BAYONET],
-       ["Spot (1AP): SUPPORT. A visible enemy: until end of TP, Death Korps within 3\" of this shooting it gain Seek Light and it can't be obscured. Not within enemy control range."],
+       ["Spot (1AP): SUPPORT. A visible enemy: until end of turning point, Death Korps within 3\" of this shooting it gain Seek Light and it can't be obscured. Not within enemy control range."],
        "SPOTTER"),
     dk("trooper", "Trooper", [LASGUN], [BAYONET],
        ["Group Activation: When expended, activate another ready Trooper next (max two in a row)."], "TROOPER"),
@@ -43,7 +43,7 @@ OPERATIVES = [
        ["Veteran Guardsman: Whenever activated, it can receive one Guardsman Order.",
         "Bionics: Normal Dmg of 3+ inflicts 1 less on it."], "VETERAN"),
     dk("vox", "Vox-operator", [LASGUN], [BAYONET],
-       ["Relay Orders: Once/TP when it receives a Guardsman Order (not in enemy control range): all Death Korps in the killzone receive it; this gets -1 APL until end of its next activation.",
+       ["Relay Orders: Once per turning point when it receives a Guardsman Order (not in enemy control range): all Death Korps in the killzone receive it; this gets -1 APL until end of its next activation.",
         "Signal (1AP): SUPPORT. Another Death Korps visible within 6\": +1 APL until end of its next activation. Not within enemy control range."],
        "VOX-OPERATOR"),
     dk("zealot", "Zealot", [LASGUN], [BAYONET],
@@ -71,27 +71,27 @@ TEAM = {
         ],
     },
     "factionRules": [
-        ("Guardsmen Orders", "STRATEGIC GAMBIT and SUPPORT. The Watchmaster issues one order to all Death Korps within 6\" until end of TP (only the most recent counts). Take Aim!: ranged weapons gain Ceaseless (not mortar barrage or remote detonator). Fix Bayonets!: melee weapons gain Ceaseless. Dig In!: when shot with a cover save, re-roll defence dice of one result. Move! Move! Move!: +1\" Move when Repositioning."),
+        ("Guardsmen Orders", "STRATEGIC GAMBIT and SUPPORT. The Watchmaster issues one order to all Death Korps within 6\" until end of turning point (only the most recent counts). Take Aim!: ranged weapons gain Ceaseless (not mortar barrage or remote detonator). Fix Bayonets!: melee weapons gain Ceaseless. Dig In!: when shot with a cover save, re-roll defence dice of one result. Move! Move! Move!: +1\" Move when Repositioning."),
     ],
     "ploys": {
         "strategy": [
             ("Siege Warfare", "Ranged weapons gain Saturate and Accurate 1."),
             ("Take Cover", "Shot while retaining cover saves: Save improves by 1."),
             ("Clear the Line", "Melee weapons gain Accurate 1; also Severe when fighting wholly in your territory or retaliating."),
-            ("Regroup", "SUPPORT. Pick a Death Korps more than 3\" from enemies: others within 5\" of it (not in enemy control range) make a free Dash ending closer to it. Not in the same TP as Chronometer."),
+            ("Regroup", "SUPPORT. Pick a Death Korps more than 3\" from enemies: others within 5\" of it (not in enemy control range) make a free Dash ending closer to it. Not in the same turning point as Chronometer."),
         ],
         "firefight": [
             ("Inspirational Leadership", "SUPPORT. During the Watchmaster's or Confidant's activation: it issues a Guardsman Order."),
-            ("Combined Arms", "After rolling attack dice vs an enemy another Death Korps shot this TP: re-roll any."),
+            ("Combined Arms", "After rolling attack dice against an enemy another Death Korps shot this turning point: re-roll any."),
             ("In Life, Shame", "When a Death Korps is activated on Engage: it receives every Guardsman Order."),
             ("In Death, Atonement", "A ready Death Korps (not in enemy control range) is incapacitated: before removal it makes one free action (order can change), counting as injured."),
         ],
     },
     "equipment": [
-        {"id": "chronometer", "name": "Chronometer", "desc": "Once/battle STRATEGIC GAMBIT in TP1 or TP2: Death Korps wholly in your territory make a free Dash toward the enemy drop zone or edge. Not with Regroup."},
+        {"id": "chronometer", "name": "Chronometer", "desc": "Once per battle STRATEGIC GAMBIT in turning point 1 or turning point 2: Death Korps wholly in your territory make a free Dash toward the enemy drop zone or edge. Not with Regroup."},
         {"id": "comm_beads", "name": "Comm-beads", "desc": "When the Watchmaster or Confidant issues an order, you can give it to any one Death Korps instead of those within 6\"."},
         {"id": "hand_axes", "name": "Hand Axes", "desc": "Death Korps gain a hand axe.", "gw": ("melee", "Hand axe", 3, "4+", "3/4", "-")},
-        {"id": "gas_bombardment", "name": "Gas Bombardment", "desc": "Once/battle STRATEGIC GAMBIT: place a Gas marker (not under Vantage). Operatives within 3\" of it get -1 APL. Removed next Strategy phase."},
+        {"id": "gas_bombardment", "name": "Gas Bombardment", "desc": "Once per battle STRATEGIC GAMBIT: place a Gas marker (not under Vantage). Operatives within 3\" of it get -1 APL. Removed next Strategy phase."},
     ],
     "operatives": [
         dk("watchmaster", "Watchmaster",

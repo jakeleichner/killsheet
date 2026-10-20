@@ -25,27 +25,27 @@ TEAM = {
         ],
     },
     "factionRules": [
-        ("Noospheric Network", "Once per Servitor activation, spend 1AP to TRANSFER POWER. After that activation, another Servitor can NETWORK COUNTERACT before the opponent activates: set its order, then a free 1AP action (max 2\" move). Not if APL < 2. A Network-counteracted operative can still activate later, but can't counteract again that TP."),
+        ("Noospheric Network", "Once per Servitor activation, spend 1AP to TRANSFER POWER. After that activation, another Servitor can NETWORK COUNTERACT before the opponent activates: set its order, then a free 1AP action (max 2\" move). Not if APL < 2. A Network-counteracted operative can still activate later, but can't counteract again that turning point."),
     ],
     "ploys": {
         "strategy": [
             ("Duty of Reclamation", "Once per action: Command Re-roll costs 0CP for a Battleclade operative contesting an objective or your mission marker."),
-            ("Incantation of the Iron Soul", "3+ dmg on a Battleclade operative: D6, on 4+ subtract 1."),
+            ("Incantation of the Iron Soul", "Whenever an attack die inflicts 3 or more damage on a Battleclade operative, roll one D6: on a 4+, subtract 1 from that damage."),
             ("Noospheric Possession", "SUPPORT. Servitors within 6\" of the Auto-proxy or Underseer: weapons gain Accurate 1."),
             ("Prioritised Acquisition", "Pick an objective/mission marker: your contesting total APL counts +1; Battleclade within 3\" get +1 melee Atk (max 4)."),
         ],
         "firefight": [
             ("Remote Access", "During a Tech-Priest's activation, once: do a marker mission action with the marker within 4\" (uncontested) instead of in control range, or Operate Hatch within 4\"."),
             ("Auto-ferric Supplication", "A Tech-Priest is being shot: ignore Piercing for that sequence."),
-            ("Servile Surrogacy", "Tech-Priest targeted by Shoot/Fight: a Servitor visible within 3\" becomes the target instead (cover/obscured only if the original was). Not vs Blast or Torrent."),
+            ("Servile Surrogacy", "Tech-Priest targeted by Shoot/Fight: a Servitor visible within 3\" becomes the target instead (cover/obscured only if the original was). Not against Blast or Torrent."),
             ("System Exorcism", "When activating a Battleclade operative: remove one opponent effect or stat change from it (not wounds, injury, mission rules or your own Transfer Power -1APL)."),
         ],
     },
     "equipment": [
         {"id": "capacitors", "name": "Electromantic Capacitors", "desc": "Melee weapons gain Shock; when retaliating also Severe."},
-        {"id": "concealed_apparatus", "name": "Concealed Apparatus", "desc": "Once/battle, one Combat or Gun Servitor can use another weapon option from its datacard."},
-        {"id": "covert_guises", "name": "Covert Guises", "desc": "Roll D3: in TP1 Strategy phase, that many operatives wholly in your drop zone get a free Reposition (end wholly within 3\" of it). Technoarcheologist max one such Reposition."},
-        {"id": "reserve_cells", "name": "Neurocyclic Reserve Cells", "desc": "Once/TP: TRANSFER POWER for 0AP."},
+        {"id": "concealed_apparatus", "name": "Concealed Apparatus", "desc": "Once per battle, one Combat or Gun Servitor can use another weapon option from its datacard."},
+        {"id": "covert_guises", "name": "Covert Guises", "desc": "Roll D3: in turning point 1 Strategy phase, that many operatives wholly in your drop zone get a free Reposition (end wholly within 3\" of it). Technoarcheologist max one such Reposition."},
+        {"id": "reserve_cells", "name": "Neurocyclic Reserve Cells", "desc": "Once per turning point: TRANSFER POWER for 0AP."},
     ],
     "operatives": [
         {"id": "technoarcheologist", "name": "Technoarcheologist", "apl": 3, "move": '6"', "save": "3+", "wounds": 9, "pts": 32,
@@ -63,7 +63,7 @@ TEAM = {
         {"id": "auto_proxy", "name": "Auto-proxy Servitor", "apl": 2, "move": '5"', "save": "4+", "wounds": 8, "pts": 25,
          "ranged": [], "melee": [("Taser goad", 4, "4+", "3/4", "Lethal 5+, Shock")],
          "abilities": ["Achillan Eye: Battleclade shooting an enemy visible to this operative: ranged weapons gain Saturate (not while this is in enemy control range).",
-                       "Gaze of the Omnissiah (1AP): Visible enemy: until end of TP, Battleclade shooting it gain Seek Light and it can't be obscured. Not within enemy control range."],
+                       "Gaze of the Omnissiah (1AP): Visible enemy: until end of turning point, Battleclade shooting it gain Seek Light and it can't be obscured. Not within enemy control range."],
          "kw": "AUTO-PROXY, SERVITOR"},
         {"id": "breacher_servitor", "name": "Breacher Servitor", "apl": 2, "move": '5"', "save": "4+", "wounds": 8, "pts": 25,
          "ranged": [("Lascutter (close)", 4, "3+", "4/5", 'Range 2", Lethal 5+, Piercing 2'), ("Lascutter (short)", 4, "3+", "4/5", 'Range 6", Lethal 5+')],
@@ -80,8 +80,8 @@ TEAM = {
          "melee": [AUG_CLAW], "abilities": [], "kw": "GUN, SERVITOR"},
         {"id": "technomedic", "name": "Technomedic Servitor", "apl": 2, "move": '5"', "save": "4+", "wounds": 8, "pts": 25,
          "ranged": [], "melee": [("Servo-chirurgic claw", 4, "4+", "3/4", "Rending")],
-         "abilities": ["Mechanosuture Array: Once/TP, another Battleclade visible within 3\" would be incapacitated (neither in enemy control range): stays on 1 wound, can't be incapacitated that action, then free Dash ending in this one's control range; ends its activation if during it.",
-                       "Expedient Repair (1AP): Battleclade in control range regains up to D3+3 wounds (not one saved by Mechanosuture this TP). Not within enemy control range."],
+         "abilities": ["Mechanosuture Array: Once per turning point, another Battleclade visible within 3\" would be incapacitated (neither in enemy control range): stays on 1 wound, can't be incapacitated that action, then free Dash ending in this one's control range; ends its activation if during it.",
+                       "Expedient Repair (1AP): Battleclade in control range regains up to D3+3 wounds (not one saved by Mechanosuture this turning point). Not within enemy control range."],
          "kw": "MEDIC, TECHNOMEDIC, SERVITOR"},
     ],
 }

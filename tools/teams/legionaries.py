@@ -6,7 +6,7 @@ PLASMA_PISTOL = [("Plasma pistol (standard)", 4, "3+", "3/5", 'Range 8", Piercin
 TAINTED = ("Tainted bolt pistol", 4, "3+", "3/5", 'Range 8", Rending')
 ICON = ["Icon Bearer: Counts as APL 1 higher for marker control.",
         "Favoured of the Dark Gods: Ready step: if it controls an objective no one has tainted, that objective is tainted for the battle and you gain 1CP."]
-INFERNAL = ["Infernal Pact: Once/battle, when a Warrior activates, change its Mark of Chaos."]
+INFERNAL = ["Infernal Pact: Once per battle, when a Warrior activates, change its Mark of Chaos."]
 
 def leg(oid, name, ranged, melee, abilities, kw, wounds=14):
     return {"id": oid, "name": "Legionary " + name, "apl": 3, "move": '6"', "save": "3+", "wounds": wounds, "pts": 32,
@@ -48,22 +48,22 @@ TEAM = {
     ],
     "ploys": {
         "strategy": [
-            ("Blood for the Blood God", "Fighting (not Khorne): first strike each sequence +1 dmg (max 7). Khorne: melee Dmg stats +1 (max 7)."),
+            ("Blood for the Blood God", "Fighting (not Khorne): first strike each sequence +1 damage (max 7). Khorne: melee Dmg stats +1 (max 7)."),
             ("Implacable", "Being shot: Piercing 1 becomes Piercing Crits 1. Nurgle: ignore injured stat changes."),
-            ("Quicksilver Speed", "Fighting after moving this TP: enemy melee Hit worsened by 1. Slaanesh that moved this TP, shot from more than 6\": enemy Hit worsened by 1. Not cumulative with injured."),
+            ("Quicksilver Speed", "Fighting after moving this turning point: enemy melee Hit worsened by 1. Slaanesh that moved this turning point, shot from more than 6\": enemy Hit worsened by 1. Not cumulative with injured."),
             ("Fickle Fates", "Shooting a ready enemy: Balanced. A ready Tzeentch being shot: if you retain any crits, retain one fail as a normal."),
         ],
         "firefight": [
             ("Unending Bloodshed", "A Khorne Legionary is incapacitated while fighting/retaliating: strike with one unresolved success first."),
-            ("Mutability and Change", "A Tzeentch Legionary activates: +1 APL, but no action more than once this activation. A Warrior can't change its Mark this TP."),
-            ("Malignant Aura", "A Nurgle Legionary shooting, on picking a target: vs enemies within 3\" its ranged weapons gain Piercing 1 for the action."),
+            ("Mutability and Change", "A Tzeentch Legionary activates: +1 APL, but no action more than once this activation. A Warrior can't change its Mark this turning point."),
+            ("Malignant Aura", "A Nurgle Legionary shooting, on picking a target: against enemies within 3\" its ranged weapons gain Piercing 1 for the action."),
             ("Sickening Captivation", "During a Slaanesh Legionary's activation: an enemy visible within 4\" gets -1 APL until end of its next activation."),
         ],
     },
     "equipment": [
         {"id": "warded_armour", "name": "Warded Armour", "desc": "STRATEGIC GAMBIT: one Legionary has Save 2+ until the next Ready step."},
-        {"id": "tainted_rounds", "name": "Tainted Rounds", "desc": "Once/TP shooting with a bolt pistol or boltgun: Rending for that action."},
-        {"id": "chaos_talismans", "name": "Chaos Talismans", "desc": "STRATEGIC GAMBIT: pick a Mark. Once per activation, a Legionary with it rolling 2+ fails can take D3 dmg to discard one fail and retain another as a normal."},
+        {"id": "tainted_rounds", "name": "Tainted Rounds", "desc": "Once per turning point shooting with a bolt pistol or boltgun: Rending for that action."},
+        {"id": "chaos_talismans", "name": "Chaos Talismans", "desc": "STRATEGIC GAMBIT: pick a Mark. Once per activation, a Legionary with it rolling 2+ fails can take D3 damage to discard one fail and retain another as a normal."},
         {"id": "malefic_blades", "name": "Malefic Blades", "desc": "Legionaries gain a malefic blade.", "gw": ("melee", "Malefic blade", 5, "3+", "3/4", "-")},
     ],
     "operatives": [
@@ -78,12 +78,12 @@ TEAM = {
              "Soul Gorge: After fighting/retaliating, if it killed an enemy and survived: regain up to D3+1 wounds."],
             "LEADER, CHOSEN", wounds=15),
         leg("anointed", "Anointed", [BOLT_PISTOL], [("Daemonic claw", 5, "3+", "4/5", "Rending")],
-            ["Unleash Daemon: Once/battle on activation, for the rest of the battle: no Pick Up or mission actions (not Operate Hatch; drop any marker for 0AP); Normal and Crit Dmg of 4+ inflicts 1 less (Nurgle: max 1 less in total); daemonic claw gains Ceaseless and Lethal 5+."],
+            ["Unleash Daemon: Once per battle on activation, for the rest of the battle: no Pick Up or mission actions (not Operate Hatch; drop any marker for 0AP); Normal and Critical Dmg of 4+ inflicts 1 less (Nurgle: max 1 less in total); daemonic claw gains Ceaseless and Lethal 5+."],
             "ANOINTED"),
         leg("balefire_acolyte", "Balefire Acolyte",
             [BOLT_PISTOL, ("Fireblast", 4, "3+", "3/4", 'PSYCHIC, Blast 2", 1" Devastating 1, Saturate'), ("Life siphon", 5, "3+", "3/3", "PSYCHIC, Saturate, Siphon Life")],
             [("Fell dagger", 5, "3+", "3/4", "PSYCHIC, Rending, Siphon Life")],
-            ["Siphon Life (weapon rule): Once/TP: pick a Legionary visible within 6\"; it regains 1 wound per damaging success (D3 per crit).",
+            ["Siphon Life (weapon rule): Once per turning point: pick a Legionary visible within 6\"; it regains 1 wound per damaging success (D3 per crit).",
              "Can't take the Khorne Mark."],
             "PSYKER, BALEFIRE ACOLYTE"),
         leg("butcher", "Butcher", [BOLT_PISTOL], [("Double-handed chainaxe", 5, "4+", "5/7", "Brutal")],
@@ -100,7 +100,7 @@ TEAM = {
         leg("shrivetalon", "Shrivetalon", [BOLT_PISTOL], [("Flensing blades", 5, "3+", "3/5", "Lethal 5+")],
             ["Vicious Reflexes: Retaliating, it resolves the first attack dice.",
              "Horrifying Dismemberment: Kills an enemy while fighting/retaliating: another enemy visible within 3\" of either gets -1 APL until end of its next activation.",
-             "Grisly Mark (2AP): Once/battle, place your Grisly marker in its control range. Enemies within 3\" pay +1AP for Pick Up and mission actions, and count total APL 1 lower when contesting markers. Not within enemy control range."],
+             "Grisly Mark (2AP): Once per battle, place your Grisly marker in its control range. Enemies within 3\" pay +1AP for Pick Up and mission actions, and count total APL 1 lower when contesting markers. Not within enemy control range."],
             "SHRIVETALON"),
         leg("warrior_boltgun", "Warrior (boltgun)", [BOLTGUN], [FISTS], INFERNAL, "WARRIOR"),
         leg("warrior_chainsword", "Warrior (chainsword)", [BOLT_PISTOL], [CHAINSWORD], INFERNAL, "WARRIOR"),

@@ -12,7 +12,7 @@ AUTOPISTOL = ("Autopistol", 4, "4+", "2/3", 'Range 8"')
 LASGUN = ("Hot-shot lasgun", 4, "3+", "3/4", "-")
 EXPENDABLE = "Expendable: Ignored for kill/elimination ops and escape/survive scoring."
 PSYCHIC_NULL = "Psychic Null: PSYCHIC ranged weapons can't damage it; it can't be picked by or count for PSYCHIC actions. Operatives within 6\": no PSYCHIC actions/rules/ranged weapons, and PSYCHIC melee weapons lose their rules (Dmg max 3/4)."
-LOBOTOMISED = "Lobotomised: On activation, if visible within 3\" of another Agent (excl. Gun Servitor), +1 APL for that activation."
+LOBOTOMISED = "Lobotomised: On activation, if visible within 3\" of another Agent (excluding Gun Servitor), +1 APL for that activation."
 
 def servitor(oid, name, ranged):
     return {"id": oid, "name": name, "apl": 1, "move": '5"', "save": "4+", "wounds": 11, "pts": 32,
@@ -29,19 +29,19 @@ def sister(oid, name, ranged, melee, kw):
 CORE = [
     {"id": "autosavant", "name": "Autosavant", "apl": 2, "move": '6"', "save": "4+", "wounds": 7, "pts": 25,
      "ranged": [], "melee": [("Mechanical appendages", 3, "5+", "1/2", "-")],
-     "abilities": ["Scrivener: Each repeat use of an opponent's ploy (excl. Command Re-roll) while this is in the killzone: you gain 1CP (max 2CP/TP).",
+     "abilities": ["Scrivener: Each repeat use of an opponent's ploy (excluding Command Re-roll) while this is in the killzone: you gain 1CP (max 2CP/turning point).",
                    "Irrefutable Report: Always controls objective/mission markers it contests (overrides everything).",
                    "Lightly Armed: Only its datacard weapons; no unique actions."],
      "kw": "AUTOSAVANT", "ex": ["combat_daggers"]},
     {"id": "questkeeper", "name": "Questkeeper", "apl": 2, "move": '6"', "save": "5+", "wounds": 7, "pts": 25,
      "ranged": [AUTOPISTOL], "melee": [("Eviscerator", 4, "4+", "5/6", "Brutal")],
      "abilities": ["Irrepressible Purpose: Incapacitated during the Fight action: strike with one unresolved success before removal.",
-                   "Zealot: 3+ dmg on it: D6, on 5+ subtract 1."],
+                   "Zealot: Whenever an attack die inflicts 3 or more damage on it, roll one D6: on a 5+, subtract 1 from that damage."],
      "kw": "QUESTKEEPER"},
     {"id": "dw_veteran", "name": "Death World Veteran", "apl": 2, "move": '6"', "save": "5+", "wounds": 7, "pts": 25,
      "ranged": [AUTOPISTOL], "melee": [("Knife", 1, "2+", "5/7", "Lethal 5+"), ("Polearm", 4, "3+", "4/5", "-")],
      "abilities": ["Hunter: Can Charge while Concealed.",
-                   "Weathered: Once/TP fighting or retaliating: ignore the damage from one normal success."],
+                   "Weathered: Once per turning point fighting or retaliating: ignore the damage from one normal success."],
      "kw": "DEATH WORLD VETERAN"},
     {"id": "enlightener", "name": "Enlightener", "apl": 2, "move": '6"', "save": "5+", "wounds": 7, "pts": 25,
      "ranged": [AUTOPISTOL], "melee": [("Paired blades", 4, "3+", "3/5", "Balanced, Rending")],
@@ -62,7 +62,7 @@ CORE = [
     {"id": "penal", "name": "Penal Legionnaire", "apl": 2, "move": '6"', "save": "5+", "wounds": 7, "pts": 25,
      "ranged": [("Hand flamer", 4, "2+", "3/3", 'Range 6", Saturate, Torrent 1"')], "melee": [("Chainsword", 4, "4+", "4/5", "-")],
      "abilities": ["Chem-mask: Ignore APL changes and injured stat changes; unaffected by enemy Shock and Stun.",
-                   "Cruel: Vs a wounded enemy, its weapons gain Relentless."],
+                   "Cruel: Against a wounded enemy, its weapons gain Relentless."],
      "kw": "PENAL LEGIONNAIRE"},
     {"id": "pistolier", "name": "Pistolier", "apl": 2, "move": '6"', "save": "5+", "wounds": 7, "pts": 25,
      "ranged": [("Scoped plasma pistol (std)", 4, "3+", "3/5", 'Range 12", Piercing 1'), ("Scoped plasma pistol (super)", 4, "3+", "4/5", 'Range 12", Hot, Lethal 5+, Piercing 1'),
@@ -79,9 +79,9 @@ CORE_IDS = [o["id"] for o in CORE]
 SERVITORS = ["gs_heavy_bolter", "gs_multi_melta", "gs_plasma_cannon"]
 
 SCIONS = [
-    scion("sc_trooper", "Trooper", [LASGUN], ["Adaptive Equipment: Once/TP each, one Scion Trooper can do the Smoke Grenade action and one the Stun Grenade action (doesn't use equipment limits)."], "TROOPER"),
-    scion("sc_medic", "Medic", [LASGUN], ["Medic!: First time each TP another friendly Agent visible within 3\" would be incapacitated (neither in enemy control range): it stays on 1 wound, can't be incapacitated that action, then free Dash ending in this one's control range. Both -1 APL until their next activations; ends that operative's activation if during it.",
-                                         "Medikit (1AP): Friendly Agent in control range regains up to 2D3 wounds (not one saved by Medic! this TP). Not within enemy control range."], "MEDIC"),
+    scion("sc_trooper", "Trooper", [LASGUN], ["Adaptive Equipment: Once per turning point each, one Scion Trooper can do the Smoke Grenade action and one the Stun Grenade action (doesn't use equipment limits)."], "TROOPER"),
+    scion("sc_medic", "Medic", [LASGUN], ["Medic!: First time each turning point another friendly Agent visible within 3\" would be incapacitated (neither in enemy control range): it stays on 1 wound, can't be incapacitated that action, then free Dash ending in this one's control range. Both -1 APL until their next activations; ends that operative's activation if during it.",
+                                         "Medikit (1AP): Friendly Agent in control range regains up to 2D3 wounds (not one saved by Medic! this turning point). Not within enemy control range."], "MEDIC"),
     scion("sc_vox", "Vox-operator", [LASGUN], ["Signal (1AP): SUPPORT. Another friendly Agent: +1 APL until end of its next activation. Can do this twice per activation. Not within enemy control range."], "VOX-OPERATOR"),
     scion("sc_gunner_flamer", "Gunner (flamer)", [("Flamer", 4, "2+", "3/3", 'Range 8", Saturate, Torrent 2"')], [], "GUNNER"),
     scion("sc_gunner_gl", "Gunner (grenade launcher)", [("Grenade launcher (frag)", 4, "3+", "2/4", 'Blast 2"'), ("Grenade launcher (krak)", 4, "3+", "4/5", "Piercing 1")], [], "GUNNER"),
@@ -162,7 +162,7 @@ TEAM = {
         "cost": {"br_cat_unit": 0.5, "br_gheistskull": 0.5},
         "pools": [{"groups": ["Agents", "Requisition: Tempestus Scions", "Requisition: Sisters of Silence", "Requisition: Imperial Navy Breachers",
                               "Requisition: Death Korps", "Requisition: Exaction Squad", "Requisition: Kasrkin"],
-                   "min": 10, "max": 10, "label": "Agents (incl. requisitioned)", "whenAny": {"ids": DK_IDS, "min": 11, "max": 11}}],
+                   "min": 10, "max": 10, "label": "Agents (including requisitioned)", "whenAny": {"ids": DK_IDS, "min": 11, "max": 11}}],
         "caps": [
             {"ids": SERVITORS, "max": 2, "label": "Max 2 Gun Servitors (each a different weapon)"},
             {"ids": SERVITORS, "max": 1, "whenAny": REQ_IDS, "label": "Only 1 Gun Servitor when requisitioning"},
@@ -174,7 +174,7 @@ TEAM = {
             {"ids": ["gs_multi_melta", "sc_gunner_melta", "br_gunner_melta", "dk_gunner_melta", "ks_gunner_melta"], "max": 1, "label": "Max 1 weapon with Piercing 2"},
             {"ids": ["pistolier", "gs_multi_melta", "gs_plasma_cannon", "sc_gunner_gl", "sc_gunner_melta", "sc_gunner_plasma", "br_gunner_melta", "br_gunner_plasma", "br_grenadier",
                      "dk_gunner_gl", "dk_gunner_melta", "dk_gunner_plasma", "dk_sapper", "ex_gunner_gl", "ks_gunner_gl", "ks_gunner_melta", "ks_gunner_plasma"],
-             "max": 3, "label": "Max 3 weapons with Piercing X (excl. Piercing Crits)"},
+             "max": 3, "label": "Max 3 weapons with Piercing X (excluding Piercing Crits)"},
         ],
         "requires": [
             {"id": "br_gheistskull", "needs": "br_void_jammer", "label": "Gheistskull needs a Void-jammer in the team."},
@@ -202,17 +202,17 @@ TEAM = {
             ("Irrefutable Jurisdiction", "Agent within 3\" of an objective being shot: re-roll one defence die (if contesting it: re-roll any dice of one result)."),
         ],
         "firefight": [
-            ("Absolute Authority", "When the opponent uses a ploy costing CP (excl. Command Re-roll): it isn't used, CP refunded, can't be reused this TP. Once per battle per ploy."),
+            ("Absolute Authority", "When the opponent uses a ploy costing CP (excluding Command Re-roll): it isn't used, CP refunded, can't be reused this turning point. Once per battle per ploy."),
             ("Relentless in Pursuit", "Enemy within 2\" of a ready Agent moves: that Agent gets a free Reposition (ending within 2\" of it) or free Charge (ending in its control range)."),
-            ("The Emperor's Will", "On activation: ignore changes to that Agent's stats (incl. weapons) for the activation."),
+            ("The Emperor's Will", "On activation: ignore changes to that Agent's stats (including weapons) for the activation."),
             ("Intimidating Presence", "Enemy visible within 3\" of an Agent (6\" of a Mystic) does Pick Up Marker or a mission action (not Operate Hatch): costs +1AP."),
         ],
     },
     "equipment": [
-        {"id": "rosette", "name": "Inquisitorial Rosette", "desc": "Once/battle when an Agent activates, if you used Quarry this TP: pick a new quarry."},
+        {"id": "rosette", "name": "Inquisitorial Rosette", "desc": "Once per battle when an Agent activates, if you used Quarry this turning point: pick a new quarry."},
         {"id": "combat_daggers", "name": "Combat Daggers", "desc": "Agents gain a combat dagger (Sisters of Silence: +1 Atk).", "gw": ("melee", "Combat dagger", 3, "4+", "3/4", "-")},
-        {"id": "bodysuits", "name": "Armoured Bodysuits", "desc": "Agents with a 5+ Save (excl. Tome-skull) being shot: retain one defence roll of 4 as a normal success."},
-        {"id": "servo_skull", "name": "Servo-skull", "desc": "Once/battle, one Agent: mission action costs 1 less AP."},
+        {"id": "bodysuits", "name": "Armoured Bodysuits", "desc": "Agents with a 5+ Save (excluding Tome-skull) being shot: retain one defence roll of 4 as a normal success."},
+        {"id": "servo_skull", "name": "Servo-skull", "desc": "Once per battle, one Agent: mission action costs 1 less AP."},
     ],
     "operatives": [
         {"id": "interrogator", "name": "Interrogator", "apl": 2, "move": '6"', "save": "5+", "wounds": 8, "pts": 25,
@@ -224,7 +224,7 @@ TEAM = {
         {"id": "tome_skull", "name": "Tome-skull", "apl": 2, "move": '6"', "save": "5+", "wounds": 5, "pts": 25,
          "ranged": [], "melee": [],
          "abilities": ["Consecrated Tome: Can have an Inquisitorial Tome rule (kept even if the Interrogator is removed).",
-                       "Machine: Only Charge, Dash, Fall Back, Reposition. Can't retaliate/assist. Marker control APL -1. Conceal + in cover: untargetable (excl. within 2\").",
+                       "Machine: Only Charge, Dash, Fall Back, Reposition. Can't retaliate/assist. Marker control APL -1. Conceal + in cover: untargetable (excluding within 2\").",
                        EXPENDABLE,
                        "Group Activation: When expended, activate the Interrogator next (and vice versa)."],
          "kw": "TOME-SKULL", "ex": ["combat_daggers"]},

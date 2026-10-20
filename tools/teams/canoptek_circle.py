@@ -4,9 +4,9 @@ CRAWLER_ABILITIES = [
     "Steadfast: For marker control, can treat its APL as 3 (ignoring changes).",
 ]
 WARRIOR_ABILITIES = [
-    "Aggressive Defence: Incapacitated by an enemy within 2\": roll D3, on 2+ that enemy takes 1 dmg.",
+    "Aggressive Defence: Incapacitated by an enemy within 2\": roll D3, on 2+ that enemy takes 1 damage.",
     "Expendable Construct: Ignored for kill/elimination ops and escape/survive scoring.",
-    "A Ceaseless Scuttling: STRATEGIC GAMBIT each TP after the first: with fewer than three Warriors alive, set up another one ready, Concealed, wholly in your drop zone.",
+    "A Ceaseless Scuttling: STRATEGIC GAMBIT each turning point after the first: with fewer than three Warriors alive, set up another one ready, Concealed, wholly in your drop zone.",
 ]
 
 def crawler(oid, name, ranged):
@@ -36,26 +36,26 @@ TEAM = {
         ],
     },
     "factionRules": [
-        ("Obelisk Node Matrix", "TP1 STRATEGIC GAMBIT: place three Obelisk Node markers wholly in your territory; later TPs: move each up to 3\". Nodes control uncontested markers within 1\" (none if both players' nodes would). Nodes within 6\" horizontally of each other form a matrix with the area between them. Friendlies in your matrix: datacard weapons gain Accurate 1 and +1 APL (max 3)."),
+        ("Obelisk Node Matrix", "turning point 1 STRATEGIC GAMBIT: place three Obelisk Node markers wholly in your territory; later turning points: move each up to 3\". Nodes control uncontested markers within 1\" (none if both players' nodes would). Nodes within 6\" horizontally of each other form a matrix with the area between them. Friendlies in your matrix: datacard weapons gain Accurate 1 and +1 APL (max 3)."),
     ],
     "ploys": {
         "strategy": [
             ("Cryptogravitic Repulsion", "Once per action, the first time an enemy would move into your matrix, it costs an extra 1\"."),
-            ("Souldrain", "Enemies in your matrix, or fighting a Canoptek in it: melee weapons -1 to both Dmg (min 2) until end of activation."),
+            ("Souldrain", "Enemies in your matrix, or fighting a Canoptek in it: melee weapons -1 to both Normal and Critical Dmg (min 2) until end of activation."),
             ("Hypershielding", "Shot while your matrix intervenes or it's in your matrix: re-roll defence dice of one result."),
             ("Transdynamic Amplification", "Shooting with your matrix intervening, or at a target in it: weapons gain Ceaseless."),
         ],
         "firefight": [
-            ("Nodal Response", "During an activation: swap a strategy ploy you used this TP for another (pay any extra CP), or use one now."),
-            ("Sacrificial Thrall", "The Geomancer is targeted by a Shoot or Fight: a Canoptek visible within 3\" becomes the target instead (cover/obscured only if the original was). Not vs Blast/Torrent."),
+            ("Nodal Response", "During an activation: swap a strategy ploy you used this turning point for another (pay any extra CP), or use one now."),
+            ("Sacrificial Thrall", "The Geomancer is targeted by a Shoot or Fight: a Canoptek visible within 3\" becomes the target instead (cover/obscured only if the original was). Not against Blast/Torrent."),
             ("Shield Flare", "Normal Dmg on an operative in your matrix (or with the matrix intervening): ignore it."),
             ("Animate Obelisk Nodes", "Instead of activating or counteracting: move your nodes up to 6\" combined (rounded up per node), then the opponent activates."),
         ],
     },
     "equipment": [
         {"id": "nanoscarab_caskets", "name": "Nanoscarab Caskets", "desc": "When activated, an operative regains up to D3 wounds."},
-        {"id": "phase_shifter", "name": "Phase Shifter", "desc": "Once/TP, the Geomancer being shot: attacker's Piercing worsened by 1."},
-        {"id": "matrix_manipulator", "name": "Matrix Manipulator", "desc": "Once/battle during an activation: the Geomancer counts as a fourth Obelisk Node."},
+        {"id": "phase_shifter", "name": "Phase Shifter", "desc": "Once per turning point, the Geomancer being shot: attacker's Piercing worsened by 1."},
+        {"id": "matrix_manipulator", "name": "Matrix Manipulator", "desc": "Once per battle during an activation: the Geomancer counts as a fourth Obelisk Node."},
         {"id": "awakened_nodes", "name": "Awakened Obelisk Nodes", "desc": "Roll D3 when revealed: Animate Obelisk Nodes costs 0CP that many times."},
     ],
     "operatives": [
@@ -74,12 +74,12 @@ TEAM = {
                "Cranial Overload (1AP): An enemy visible within 3\" (or any in your matrix, if this is): -1 APL until end of its next activation. Not within enemy control range."],
               "ACCELERATOR"),
         macro("reanimator", "Reanimator", [("Atomiser beam", 4, "4+", "3/4", 'Range 6", Lethal 5+')], [("Claws & tail", 4, "4+", "3/4", "-")],
-              ["Reanimate: Once/TP, another friendly visible within 6\" (or both in your matrix) would be incapacitated (neither in enemy control range): it stays on 1 wound, can't be incapacitated that action, then free Dash ending in this one's control range or your matrix. Both -1 APL until their next activations; ends its activation if during it.",
-               "Nanoscarab Beam (1AP): A friendly visible within 6\" (or in your matrix) regains up to 3D3 wounds (not one saved by Reanimate this TP). Once/TP; not within enemy control range."],
+              ["Reanimate: Once per turning point, another friendly visible within 6\" (or both in your matrix) would be incapacitated (neither in enemy control range): it stays on 1 wound, can't be incapacitated that action, then free Dash ending in this one's control range or your matrix. Both -1 APL until their next activations; ends its activation if during it.",
+               "Nanoscarab Beam (1AP): A friendly visible within 6\" (or in your matrix) regains up to 3D3 wounds (not one saved by Reanimate this turning point). Once per turning point; not within enemy control range."],
               "MEDIC, REANIMATOR"),
         macro("warrior_scalpel", "Warrior (gauss scalpel)", [("Gauss scalpel", 4, "4+", "2/3", "Piercing 1")], [CLAWS_TAIL], WARRIOR_ABILITIES, "WARRIOR"),
         macro("warrior_tesla", "Warrior (tesla caster)", [("Tesla caster (focused)", 4, "4+", "2/3", "-"), ("Tesla caster (living lightning)", 4, "4+", "2/3", 'Blast 2"')], [CLAWS_TAIL], WARRIOR_ABILITIES, "WARRIOR"),
     ],
 }
 TEAM["operatives"][1]["abilities"] = TEAM["operatives"][1]["abilities"]
-TEAM["operatives"][2]["abilities"] = ["Dimensional Banishment (weapon rule): After using it, if you dealt damage or retained a crit and the target survived: roll 2D6; if higher than its remaining wounds, it's incapacitated (overrides Medic!-style rules; no Reanimation marker). Not vs NEMESIS or Red Terror."] + CRAWLER_ABILITIES
+TEAM["operatives"][2]["abilities"] = ["Dimensional Banishment (weapon rule): After using it, if you dealt damage or retained a crit and the target survived: roll 2D6; if higher than its remaining wounds, it's incapacitated (overrides Medic!-style rules; no Reanimation marker). Not against NEMESIS or Red Terror."] + CRAWLER_ABILITIES

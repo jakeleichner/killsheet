@@ -7,7 +7,7 @@ FISTS = ("Fists", 3, "3+", "3/4", "-")
 DAGGER = ("Dagger", 4, "4+", "3/5", "-")
 AUTOMATA = "Sorcerous Automata: -1 APL for its activation unless a friendly Sorcerer is within 9\"."
 ICON = "Icon Bearer: Counts as APL 1 higher for marker control."
-RELIC = "Relic Hunters: Once/battle, a Tzaangor Warrior in enemy territory can Pick Up, Place Marker or do a mission action for 1 less AP."
+RELIC = "Relic Hunters: Once per battle, a Tzaangor Warrior in enemy territory can Pick Up, Place Marker or do a mission action for 1 less AP."
 OPTIONS = [("bolt", "inferno bolt pistol", BOLT_PISTOL, None), ("khopesh", "Prosperine khopesh", None, KHOPESH), ("warpflame", "warpflame pistol", WARPFLAME, None)]
 
 SORCERERS = {
@@ -15,7 +15,7 @@ SORCERERS = {
                 ["Protected by Fate (1AP): PSYCHIC. A visible Warpcoven operative: until this one's next activation, its death or a re-use, re-roll any defence dice when it's shot. Not within enemy control range.",
                  "Ravage Destiny (1AP): PSYCHIC. An enemy visible within 9\": until this one's next activation, its death or a re-use, the opponent must re-roll its attack results of 6, and it counts as APL 1 lower for marker control. Not within enemy control range."]),
     "tempyrion": ("Tempyrion", [("Fluxblast", 4, "3+", "3/4", 'PSYCHIC, Blast 2", Rending')],
-                  ["Reconstitution Ritual (1AP): PSYCHIC. A Warpcoven operative visible within 6\" regains up to 2D3 wounds. Once per TP across your team; not within enemy control range.",
+                  ["Reconstitution Ritual (1AP): PSYCHIC. A Warpcoven operative visible within 6\" regains up to 2D3 wounds. Once per turning point across your team; not within enemy control range.",
                    "Temporal Flux (1AP): PSYCHIC. Place your Temporal Flux marker in the control range of a Warpcoven operative visible within 6\". At the end of its next activation, if it's still wholly within 6\" of the marker, set it back up with the marker in its control range, then remove the marker. Not within enemy control range or while the marker is out."]),
     "warpfire": ("Warpfire", [("Firestorm", 5, "4+", "2/3", 'PSYCHIC, Saturate, Seek Light, Torrent 2"'), ("Mindburn", 5, "4+", "1/1", "PSYCHIC, Lethal 5+, Saturate, Seek Light, Mindburn")],
                  ["Mindburn (weapon rule): If crits inflict damage, the target gains your Mindburn token (Hit worsened by 1) until the end of its next activation, its death or your next use of this weapon.",
@@ -74,10 +74,10 @@ TEAM = {
         ("Boons of Tzeentch", "Each Sorcerer takes one boon for the battle; each boon once per team."),
         ("Incorporeal Sight", "Ranged weapons gain Saturate; enemies can't be obscured when it shoots."),
         ("Time-Walk", "+1\" Move."),
-        ("Echoes from the Warp", "Once/battle when it counteracts: change its order and make one extra free 1AP action (a different one)."),
+        ("Echoes from the Warp", "Once per battle when it counteracts: change its order and make one extra free 1AP action (a different one)."),
         ("Warp Swell", "+1 Normal Dmg on melee weapons."),
         ("Mutant Appendage", "Enemy control range doesn't stop Pick Up or mission actions. Once per activation, Pick Up, Place Marker or a mission action costs 1 less AP."),
-        ("Immaterial Flight", "Once/TP, when it Charges or Repositions in its activation, it can FLY (set up wholly within its Move horizontally; not in enemy control range unless Charging)."),
+        ("Immaterial Flight", "Once per turning point, when it Charges or Repositions in its activation, it can FLY (set up wholly within its Move horizontally; not in enemy control range unless Charging)."),
         ("Twist of Fate", "PSYCHIC ranged weapons gain Piercing Crits 1."),
         ("Astral Bombardment", "One PSYCHIC ranged weapon gains Devastating 1 (doombolt: 2\" Devastating 2; firestorm or mindburn: pick Seek Light or Devastating 1 each Shoot)."),
         ("Master of the Immaterium", "+3\" to the distance requirements of its PSYCHIC actions (Temporal Flux: first effect only)."),
@@ -86,21 +86,21 @@ TEAM = {
         "strategy": [
             ("Aetherial Warding", "Being shot: Piercing 1 becomes Piercing Crits 1."),
             ("Savage Herd", "Tzaangor melee weapons gain Accurate 1; also Severe if assisted, or fighting visible within 6\" of a Sorcerer."),
-            ("Fate Itself Is My Weapon", "Roll two D6 and set them aside. This TP, after any attack roll (before re-rolls), swap one in for a rolled die (no re-roll; one per sequence). If both totalled under 9, discard the other after the first use."),
+            ("Fate Itself Is My Weapon", "Roll two D6 and set them aside. This turning point, after any attack roll (before re-rolls), swap one in for a rolled die (no re-roll; one per sequence). If both totalled under 9, discard the other after the first use."),
             ("Brotherhood of Sorcerers", "Sorcerers' PSYCHIC weapons gain Balanced, or Ceaseless if another Sorcerer is within 9\"."),
         ],
         "firefight": [
             ("All Is Dust", "An attack dice inflicts Normal Dmg on a Rubric Marine: it inflicts 1 instead."),
             ("Mutant Herd", "A Tzaangor activates: another ready Tzaangor visible within 2\" activates at the same time (alternate actions)."),
             ("Capricious Plan", "End of a Sorcerer's activation: a free Dash (even if normally not allowed), or change its order."),
-            ("Psychic Cabal", "A Sorcerer activates: it borrows one PSYCHIC action or unused PSYCHIC ranged weapon from another Sorcerer visible within 9\" for the activation (the lender can't use that weapon this TP)."),
+            ("Psychic Cabal", "A Sorcerer activates: it borrows one PSYCHIC action or unused PSYCHIC ranged weapon from another Sorcerer visible within 9\" for the activation (the lender can't use that weapon this turning point)."),
         ],
     },
     "equipment": [
         {"id": "ensorcelled_rounds", "name": "Ensorcelled Rounds", "desc": "Inferno boltguns, inferno bolt pistols and autopistols gain Devastating 1."},
-        {"id": "sorcerous_scrolls", "name": "Sorcerous Scrolls", "desc": "Once/battle when a Sorcerer activates or counteracts: swap its boon for one no other operative has."},
+        {"id": "sorcerous_scrolls", "name": "Sorcerous Scrolls", "desc": "Once per battle when a Sorcerer activates or counteracts: swap its boon for one no other operative has."},
         {"id": "daemonmaw_weapons", "name": "Daemonmaw Weapons", "desc": "Rubric Marines get +1 melee Atk, and Accurate 1 when retaliating."},
-        {"id": "arcane_robes", "name": "Arcane Robes", "desc": "Once/TP, Critical Dmg on a Sorcerer becomes Normal Dmg."},
+        {"id": "arcane_robes", "name": "Arcane Robes", "desc": "Once per turning point, Critical Dmg on a Sorcerer becomes Normal Dmg."},
     ],
     "operatives": [sorcerer(k, o) for k in SORCERERS for o in OPTIONS] + [
         rubric("gunner_warpflamer", "Gunner (warpflamer)", [("Warpflamer", 4, "2+", "4/4", 'Range 8", Saturate, Piercing 1, Torrent 2"')], [], "GUNNER"),

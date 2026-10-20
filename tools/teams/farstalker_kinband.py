@@ -1,7 +1,7 @@
 BLADE = ("Blade", 3, "3+", "3/5", "-")
 RIFLE4 = ("Kroot rifle", 4, "4+", "3/4", "-")
 SCATTER = ("Kroot scattergun", 4, "3+", "3/3", 'Range 6"')
-READY = ["Ready for Anything: Once/TP during a Warrior's activation, use Meat, Piercing Shot or Toxin Shot for it without using up that rule's once-per-TP limit."]
+READY = ["Ready for Anything: Once per turning point during a Warrior's activation, use Meat, Piercing Shot or Toxin Shot for it without using up that rule's once-per-turning-point limit."]
 
 def kroot(oid, name, ranged, melee, abilities, kw, wounds=8, move='6"', pts=28):
     return {"id": oid, "name": "Kroot " + name, "apl": 2, "move": move, "save": "5+", "wounds": wounds, "pts": pts,
@@ -43,24 +43,24 @@ TEAM = {
         ],
     },
     "equipment": [
-        {"id": "meat", "name": "Meat", "desc": "Once/TP when a Kroot (not a Hound) activates out of enemy control range: regain up to D3+1 wounds.", "ex": ["hound"]},
-        {"id": "trophy", "name": "Trophy", "desc": "Once/battle during a Kroot's activation (not a Hound, not in enemy control range): +1 APL for that activation.", "ex": ["hound"]},
-        {"id": "piercing_shot", "name": "Piercing Shot", "desc": "Once/TP with a Kroot rifle, scattergun or dual Kroot pistols (focused): Piercing 1 for that action (not with Toxin Shot)."},
-        {"id": "toxin_shot", "name": "Toxin Shot", "desc": "Once/TP with a Kroot rifle, scattergun or dual Kroot pistols (focused): Lethal 5+ and Stun for that action (not with Piercing Shot)."},
+        {"id": "meat", "name": "Meat", "desc": "Once per turning point when a Kroot (not a Hound) activates out of enemy control range: regain up to D3+1 wounds.", "ex": ["hound"]},
+        {"id": "trophy", "name": "Trophy", "desc": "Once per battle during a Kroot's activation (not a Hound, not in enemy control range): +1 APL for that activation.", "ex": ["hound"]},
+        {"id": "piercing_shot", "name": "Piercing Shot", "desc": "Once per turning point with a Kroot rifle, scattergun or dual Kroot pistols (focused): Piercing 1 for that action (not with Toxin Shot)."},
+        {"id": "toxin_shot", "name": "Toxin Shot", "desc": "Once per turning point with a Kroot rifle, scattergun or dual Kroot pistols (focused): Lethal 5+ and Stun for that action (not with Piercing Shot)."},
     ],
     "operatives": [
         kroot("kill_broker", "Kill-broker", [("Kroot rifle", 4, "3+", "3/4", "-"), ("Pulse weapon", 4, "4+", "4/5", "-")], [("Ritual blade", 4, "3+", "4/5", "-")],
               ["Loadout: Kroot rifle or pulse weapon, + ritual blade.",
-               "Call the Kill: STRATEGIC GAMBIT (in killzone): pick an enemy as your mark for the TP; Kroot attacking it gain Balanced. When it dies, pick a new mark.",
+               "Call the Kill: STRATEGIC GAMBIT (in killzone): pick an enemy as your mark for the turning point; Kroot attacking it gain Balanced. When it dies, pick a new mark.",
                "Victory Shriek: When your mark dies, one Kroot within 6\" of this gains Balanced for the battle (each Kroot once)."],
               "LEADER, KILL-BROKER", wounds=9, pts=32),
         kroot("bow_hunter", "Bow-hunter", [("Accelerator bow (fused arrow)", 4, "3+", "4/5", "Piercing 1"), ("Accelerator bow (glide arrow)", 4, "3+", "3/4", "Silent"), ("Accelerator bow (voltaic arrow)", 4, "3+", "3/5", 'Blast 1"')], [BLADE],
-              ["Energise (1AP): Its bow gains Lethal 5+ until end of TP or until it shoots with it. Not within enemy control range."], "BOW-HUNTER"),
+              ["Energise (1AP): Its bow gains Lethal 5+ until end of turning point or until it shoots with it. Not within enemy control range."], "BOW-HUNTER"),
         kroot("cold_blood", "Cold-blood", [("Kroot rifle", 4, "3+", "3/4", "-")], [BLADE],
               ["Hardy: An attack dice would inflict Critical Dmg on it: you can make it Normal Dmg instead.",
                "Cold-blooded: Attacking a wounded enemy: Lethal 5+; if it's also injured, Rending too."], "COLD-BLOOD", wounds=9),
         kroot("cut_skin", "Cut-skin", [], [("Cut-skin's blades", 4, "3+", "3/5", "Ceaseless, Lethal 5+")],
-              ["Vicious Duellist: Fighting/retaliating: each attack die the opponent discards as a fail deals 1 dmg to them.",
+              ["Vicious Duellist: Fighting/retaliating: each attack die the opponent discards as a fail deals 1 damage to them.",
                "Savage Assault: First Fight each activation, if both survive: a free Fight against the same enemy."], "CUT-SKIN"),
         kroot("hound", "Hound", [], [("Ripping fangs", 4, "3+", "3/4", "Rending")],
               ["Beast: Only Charge, Dash, Fall Back, Fight, Gather, Guard, Reposition, Pick Up and Place Marker; own weapons only.",
@@ -74,7 +74,7 @@ TEAM = {
               "LONG-SIGHT"),
         kroot("pistolier", "Pistolier", [("Dual Kroot pistols (focused)", 4, "3+", "3/5", 'Range 8", Ceaseless, Lethal 5+'), ("Dual Kroot pistols (salvo)", 4, "3+", "3/5", 'Range 8", Salvo')], [BLADE],
               ["Salvo (weapon rule): Shoot two different valid targets (not in friendly control range), each sequence rolled separately.",
-               "Quick Draw: Once/TP, when it's picked as a target (or Blast secondary) while ready: interrupt with a free Shoot (focused profile) at that enemy (can switch to Engage)."],
+               "Quick Draw: Once per turning point, when it's picked as a target (or Blast secondary) while ready: interrupt with a free Shoot (focused profile) at that enemy (can switch to Engage)."],
               "PISTOLIER"),
         kroot("stalker", "Stalker", [SCATTER], [("Stalker's blade", 4, "3+", "3/5", "Balanced, Rending")],
               ["Stalker: Can Charge while Concealed.",
