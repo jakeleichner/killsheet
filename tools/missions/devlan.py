@@ -25,6 +25,7 @@ PACK = dict(
     kind="Joint Ops",
     modes=["Co-op / solo"],
     killzone="Volkus",
+    kz="volkus",
     summary="Hunt the Red Terror, a Tyranid monster that burrows, heals and keeps coming back, through nine linked missions backed by swarms of Termagants.",
     source="Joint Ops: Terror on Devlan Mission Pack",
     keyMaps=["devlan-p03", "devlan-p04", "devlan-p05"],
@@ -232,6 +233,6 @@ PACK = dict(
           cards=[("1-4", "Activate one ready Termagant."),
                  ("5-6", "Activate two ready Termagants, one after the other."),
                  ("7-13", "Activate the Red Terror.")],
-          next_win="Honourable Campaign Defeat", next_lose="Spirited Campaign Defeat"),
+          next_win="Honourable Campaign Defeat", next_lose="Spirited Campaign Defeat", tps=5, equip=6),
     ],
 )

@@ -25,6 +25,7 @@ PACK = dict(
     kind="Joint Ops + Adversary Ops",
     modes=["Co-op / solo", "Head-to-head"],
     killzone="Descent (Volkus above, Tomb World below)",
+    kz="open",
     summary="Fight across two boards stacked as one: a Volkus surface and a Necron tomb below, linked by entryways. Three co-op missions and three head-to-head ones, ending with a C'tan Shard waking up.",
     source="Joint Ops: Shadowhunt Mission Pack",
     keyMaps=["shadowhunt-p04", "shadowhunt-p05"],

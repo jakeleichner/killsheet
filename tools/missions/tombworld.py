@@ -9,6 +9,7 @@ PACK = dict(
     kind="Joint Ops + Adversary Ops",
     modes=["Co-op / solo", "Head-to-head"],
     killzone="Tomb World",
+    kz="tomb_world",
     summary="Sneak through a Necron tomb. Every shot and fight raises the threat level, which brings more guardians and nastier event cards. Also has head-to-head rules where Necrons guard the rooms.",
     source="Tomb World Mission Pack",
     keyMaps=[],

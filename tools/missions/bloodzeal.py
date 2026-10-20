@@ -11,6 +11,7 @@ PACK = dict(
     kind="Add-on cards",
     modes=["Head-to-head"],
     killzone="Any, plus a shrine statue",
+    kz="open",
     summary="An add-on for any two-player mission: a deck of Blood (attack) and Zeal (defence) cards you draw and play during the battle, plus a shrine statue in the middle of the board.",
     source="Blood and Zeal Mission Pack",
     keyMaps=[],

@@ -13,6 +13,7 @@ PACK = dict(
     kind="Nemesis Operatives",
     modes=["Co-op / solo", "Head-to-head"],
     killzone="Volkus",
+    kz="volkus",
     summary="A burrowing Ambull and its Borewyrm young break into the fight and attack whoever is closest. One co-op mission and one head-to-head mission.",
     source="Ambull: Nemesis Operatives Mission Pack",
     keyMaps=["ambull-p08", "ambull-p09"],

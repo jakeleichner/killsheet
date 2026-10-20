@@ -6,6 +6,7 @@ PACK = dict(
     kind="Standalone mini-game",
     modes=["Co-op / solo (1-3 players)"],
     killzone="Volkus",
+    kz="volkus",
     summary="A simplified spin-off for 1-3 players: Titus and two Ultramarines fight three waves of Tyranids, in the style of Space Marine 2. It uses its own cut-down rules, not your kill team.",
     source="Lieutenant Titus Mission Pack",
     keyMaps=["titus-p11", "titus-p12"],

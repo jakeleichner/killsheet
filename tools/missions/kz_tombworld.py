@@ -6,6 +6,7 @@ PACK = dict(
     kind="Killzone rules",
     modes=["Any"],
     killzone="Tomb World",
+    kz="tomb_world",
     summary="The terrain rules for the Tomb World board: walls, hatchways, breach points, teleport pads, rooms and close quarters fighting. Tomb World, Shadowhunt and The Archivist all use it.",
     source="Killzone: Tomb World (with its Aug '26 update log)",
     keyMaps=["kz_tombworld-p09", "kz_tombworld-p10"],

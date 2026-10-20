@@ -31,6 +31,7 @@ PACK = dict(
     kind="Joint Ops",
     modes=["Co-op / solo"],
     killzone="Volkus",
+    kz="volkus",
     summary="Three linked missions against a garrison with an expert sniper on the top floor. Rescue an officer, flank the position, then storm it.",
     source="Joint Ops: Deadly Sniper Mission Pack",
     keyMaps=[],

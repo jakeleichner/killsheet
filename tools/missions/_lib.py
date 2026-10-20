@@ -38,7 +38,7 @@ def NPO(name, apl, move, save, wounds, weapons, behaviour, priorities, rules=(),
     return d
 
 
-def M(num, name, mode, summary, maps=(), rules=(), actions=(), victory=(), cards=(), cards_title="NPO activation cards", extra=(), next_win=None, next_lose=None):
+def M(num, name, mode, summary, maps=(), rules=(), actions=(), victory=(), cards=(), cards_title="NPO activation cards", extra=(), next_win=None, next_lose=None, **setup):
     """A mission. cards = [(result, effect)] for the NPO activation table."""
     d = {"num": num, "name": name, "mode": mode, "summary": summary, "maps": list(maps),
          "rules": list(rules), "actions": list(actions), "victory": list(victory)}
@@ -51,6 +51,8 @@ def M(num, name, mode, summary, maps=(), rules=(), actions=(), victory=(), cards
         d["nextWin"] = next_win
     if next_lose:
         d["nextLose"] = next_lose
+    # Mission Setup defaults when this mission is picked in the Builder: kz, tps, equip, tacOps.
+    d.update(setup)
     return d
 
 

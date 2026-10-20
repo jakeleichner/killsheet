@@ -6614,6 +6614,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
   const [oppWounds, setOppWounds] = useLocalStorage("oppWounds", {});
   const [oppCollapsed, setOppCollapsed] = useLocalStorage("oppCollapsed", {});
   const [activated, setActivated] = useLocalStorage("activated", {});
+  const [npoUnits, setNpoUnits] = useLocalStorage("npoUnits", []);
   const [chapterPrimary, setChapterPrimary] = useLocalStorage("chapterPrimary", "");
   const [chapterSecondary, setChapterSecondary] = useLocalStorage("chapterSecondary", "");
   const [chapterVeteran, setChapterVeteran] = useLocalStorage("chapterVeteran", {});
@@ -6630,6 +6631,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
   const [showImport, setShowImport] = useState(false);
   const [importCode, setImportCode] = useState("");
   const [importError, setImportError] = useState("");
+  const [setupRef, setSetupRef] = useState({ pack: "", idx: "" });
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerGroup, setPickerGroup] = useState(null);
   const [pickerSearch, setPickerSearch] = useState("");
@@ -6742,8 +6744,10 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
   const killzoneNames = { open: "Open Play", volkus: "Volkus", gallowdark: "Gallowdark", tomb_world: "Tomb World", bheta_decima: "Bheta-Decima" };
 
   const confirmSetup = () => {
-    const cfg = { missionName: setupMission, equipSlots: setupEquip, numTacOps: setupTacOps, numTPs: setupTPs, killzone: setupKZ };
+    const mission = setupRef.pack && setupRef.idx !== "" ? { pack: setupRef.pack, idx: Number(setupRef.idx) } : null;
+    const cfg = { missionName: setupMission, equipSlots: setupEquip, numTacOps: setupTacOps, numTPs: setupTPs, killzone: setupKZ, mission };
     setGameConfig(cfg);
+    setNpoUnits([]);
     setPrimaryYou(Array(cfg.numTPs).fill(0));
     setPrimaryOpp(Array(cfg.numTPs).fill(0));
     setTacOps(Array.from({ length: cfg.numTacOps }, () => ({ name: "", checks: [false, false] })));
@@ -6789,6 +6793,33 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
           <div style={{ ...h3, color: "#C9772E" }}>GAME PARAMETERS</div>
           <div style={dv} />
 
+          <InputRow label="Mission pack">
+            <select value={setupRef.pack} onChange={(e) => { setSetupRef({ pack: e.target.value, idx: "" }); if (!e.target.value) setSetupMission(""); }} style={{ background: "#262A33", border: "1px solid #3A4150", borderRadius: 2, color: "#F1F2F5", fontSize: 11, padding: "4px 8px", fontFamily: "'Segoe UI', sans-serif", outline: "none", maxWidth: 190 }}>
+              <option value="">None / custom</option>
+              {MISSION_PACKS.filter(mp => mp.missions.length > 0).map(mp => <option key={mp.id} value={mp.id}>{mp.name}</option>)}
+            </select>
+          </InputRow>
+
+          {setupRef.pack && (
+            <InputRow label="Mission">
+              <select value={setupRef.idx} onChange={(e) => {
+                const idx = e.target.value;
+                setSetupRef({ pack: setupRef.pack, idx });
+                if (idx === "") return;
+                const mp = MISSION_PACKS.find(x => x.id === setupRef.pack);
+                const m = mp.missions[Number(idx)];
+                const standalone = m.num === "AO" || m.num === "MAPS";
+                setSetupMission(standalone ? mp.name + " (" + m.name + ")" : m.name);
+                setSetupKZ(m.kz || mp.kz || "open");
+                setSetupTPs(m.tps || 4);
+                if (!standalone) { setSetupEquip(m.equip || 4); setSetupTacOps(m.tacOps || 0); }
+              }} style={{ background: "#262A33", border: "1px solid #3A4150", borderRadius: 2, color: "#F1F2F5", fontSize: 11, padding: "4px 8px", fontFamily: "'Segoe UI', sans-serif", outline: "none", maxWidth: 190 }}>
+                <option value="">Pick a mission</option>
+                {MISSION_PACKS.find(x => x.id === setupRef.pack).missions.map((m, i) => <option key={i} value={i}>{(typeof m.num === "number" ? m.num + ". " : "") + m.name + " (" + m.mode + ")"}</option>)}
+              </select>
+            </InputRow>
+          )}
+
           <InputRow label="Mission Name">
             <input type="text" value={setupMission} onChange={(e) => setSetupMission(e.target.value)} placeholder="e.g. Loot & Salvage" style={{ background: "#262A33", border: "1px solid #3A4150", borderRadius: 2, color: "#F1F2F5", fontSize: 11, padding: "4px 8px", width: mobile ? 140 : 180, fontFamily: "'Segoe UI', sans-serif", outline: "none" }} />
           </InputRow>
@@ -6823,8 +6854,8 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
         </div>
 
         <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
-          {(() => { const changed = setupMission !== "" || setupEquip !== 3 || setupTacOps !== 3 || setupTPs !== 4 || setupKZ !== "open"; return (
-          <button onClick={() => { setSetupMission(""); setSetupEquip(3); setSetupTacOps(3); setSetupTPs(4); setSetupKZ("open"); }} style={{ ...bs(changed ? "#C9772E" : "#9AA5B1"), flex: 1, padding: "10px 0", fontSize: 10, background: changed ? "#C9772E12" : "transparent" }}>Reset to Defaults</button>
+          {(() => { const changed = setupRef.pack !== "" || setupMission !== "" || setupEquip !== 3 || setupTacOps !== 3 || setupTPs !== 4 || setupKZ !== "open"; return (
+          <button onClick={() => { setSetupRef({ pack: "", idx: "" }); setSetupMission(""); setSetupEquip(3); setSetupTacOps(3); setSetupTPs(4); setSetupKZ("open"); }} style={{ ...bs(changed ? "#C9772E" : "#9AA5B1"), flex: 1, padding: "10px 0", fontSize: 10, background: changed ? "#C9772E12" : "transparent" }}>Reset to Defaults</button>
           ); })()}
           <button onClick={confirmSetup} style={{ ...bs("#C9772E"), flex: 2, padding: "10px 0", fontSize: 12, fontWeight: 700, background: "#C9772E12", letterSpacing: "0.08em" }}>
             {"\u2720"} Begin Roster Building {"\u2720"}
@@ -6948,7 +6979,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
     }
     return getEquipSlotCount() < gc.equipSlots;
   };
-  const selectFaction = (id) => { setFid(id); setRoster([]); setEq({}); setUEq({}); setWounds({}); setCardCollapsed({}); setUsedPloys({}); setCp(2); setVpYou(0); setVpOpp(0); setHasInitiative(true); setLastCpTp(0); setTp(1); setPrimaryYou(Array(gc.numTPs).fill(0)); setPrimaryOpp(Array(gc.numTPs).fill(0)); setTacOps(Array.from({ length: gc.numTacOps }, () => ({ name: "", checks: [false, false] }))); setOppRoster(null); setOppWounds({}); setShowImport(false); setActivated({}); setChapterPrimary(""); setChapterSecondary(""); setChapterVeteran({}); setRosterLocked(false); };
+  const selectFaction = (id) => { setFid(id); setRoster([]); setEq({}); setUEq({}); setWounds({}); setCardCollapsed({}); setUsedPloys({}); setCp(2); setVpYou(0); setVpOpp(0); setHasInitiative(true); setLastCpTp(0); setTp(1); setPrimaryYou(Array(gc.numTPs).fill(0)); setPrimaryOpp(Array(gc.numTPs).fill(0)); setTacOps(Array.from({ length: gc.numTacOps }, () => ({ name: "", checks: [false, false] }))); setOppRoster(null); setOppWounds({}); setShowImport(false); setActivated({}); setChapterPrimary(""); setChapterSecondary(""); setChapterVeteran({}); setRosterLocked(false); setNpoUnits([]); };
 
   const getWounds = (opId, maxW) => wounds[opId] !== undefined ? wounds[opId] : maxW;
   const setOpWounds = (opId, maxW, delta) => {
@@ -7526,7 +7557,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
           <button onClick={() => setShowMP(true)} title={mp.status === "connected" ? "Connected: " + mp.roomCode : mp.status === "hosting" ? "Hosting: " + mp.roomCode : "Multiplayer"} style={{ ...bs(mp.status === "connected" ? "#3D6B3F" : mp.status === "hosting" || mp.status === "joining" ? "#C9772E" : mp.status === "error" ? "#B8341C" : "#6B9BF7"), fontSize: 8, padding: "3px 8px", background: mp.status === "connected" ? "#3D6B3F20" : mp.status === "hosting" || mp.status === "joining" ? "#C9772E20" : "transparent" }}>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><MPIcon name={mpIconFor(mp.status)} size={11} />{mp.status === "connected" ? "Online" : mp.status === "hosting" ? "Hosting" : mp.status === "joining" ? "Joining" : "Play online"}</span>
           </button>
-          {f && <button onClick={() => { if (confirm("Reset all game state? Wounds, CP, VP, ploys, and activated will be cleared.")) { setWounds({}); setCp(2); setVpYou(0); setVpOpp(0); setUsedPloys({}); setActivated({}); setHasInitiative(true); setLastCpTp(0); setTp(1); setPrimaryYou(Array(gc.numTPs).fill(0)); setPrimaryOpp(Array(gc.numTPs).fill(0)); setTacOps(Array.from({ length: gc.numTacOps }, () => ({ name: "", checks: [false, false] }))); setOppWounds({}); }}} style={{ ...bs("#B8341C"), fontSize: 8, padding: "3px 8px" }}>{"\u21BA"} Reset</button>}
+          {f && <button onClick={() => { if (confirm("Reset all game state? Wounds, CP, VP, ploys, and activated will be cleared.")) { setWounds({}); setCp(2); setVpYou(0); setVpOpp(0); setUsedPloys({}); setActivated({}); setHasInitiative(true); setLastCpTp(0); setTp(1); setPrimaryYou(Array(gc.numTPs).fill(0)); setPrimaryOpp(Array(gc.numTPs).fill(0)); setTacOps(Array.from({ length: gc.numTacOps }, () => ({ name: "", checks: [false, false] }))); setOppWounds({}); setNpoUnits([]); }}} style={{ ...bs("#B8341C"), fontSize: 8, padding: "3px 8px" }}>{"\u21BA"} Reset</button>}
           {f && (
             <button onClick={() => setValidate(!validate)} style={{ ...bs(validate ? "#3D6B3F" : "#9AA5B1"), fontSize: 9, padding: "4px 10px" }}>
               {validate ? "\u2720 Validate" : "\u2716 Validate off"}
@@ -7709,6 +7740,8 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
               </div>
             )}
           </div>
+
+        {gc.mission && <MissionPanel mref={gc.mission} npoUnits={npoUnits} setNpoUnits={setNpoUnits} />}
 
         {/* Mobile panel toggle */}
         {mobile && roster.length > 0 && (
@@ -8356,6 +8389,7 @@ const MISSION_PACKS = [
    "Co-op / solo"
   ],
   "killzone": "Volkus",
+  "kz": "volkus",
   "summary": "Hunt the Red Terror, a Tyranid monster that burrows, heals and keeps coming back, through nine linked missions backed by swarms of Termagants.",
   "source": "Joint Ops: Terror on Devlan Mission Pack",
   "keyMaps": [
@@ -9082,7 +9116,9 @@ const MISSION_PACKS = [
     ],
     "cardsTitle": "NPO activation cards",
     "nextWin": "Honourable Campaign Defeat",
-    "nextLose": "Spirited Campaign Defeat"
+    "nextLose": "Spirited Campaign Defeat",
+    "tps": 5,
+    "equip": 6
    }
   ]
  },
@@ -9095,6 +9131,7 @@ const MISSION_PACKS = [
    "Head-to-head"
   ],
   "killzone": "Volkus + Tyranid Infestation",
+  "kz": "volkus",
   "summary": "Push into a Tyranid infestation through six branching missions, with random event cards stirring up the swarm. Also has head-to-head rules where Tyranids attack both sides.",
   "source": "Joint Ops: Typhon Mission Pack",
   "keyMaps": [
@@ -9660,7 +9697,8 @@ const MISSION_PACKS = [
      "You lose if all your operatives are incapacitated."
     ],
     "nextWin": "End of campaign",
-    "nextLose": "End of campaign"
+    "nextLose": "End of campaign",
+    "tps": 6
    },
    {
     "num": "AO",
@@ -9727,6 +9765,7 @@ const MISSION_PACKS = [
    "Head-to-head"
   ],
   "killzone": "Tomb World",
+  "kz": "tomb_world",
   "summary": "Sneak through a Necron tomb. Every shot and fight raises the threat level, which brings more guardians and nastier event cards. Also has head-to-head rules where Necrons guard the rooms.",
   "source": "Tomb World Mission Pack",
   "keyMaps": [],
@@ -10289,6 +10328,7 @@ const MISSION_PACKS = [
    "Head-to-head"
   ],
   "killzone": "Descent (Volkus above, Tomb World below)",
+  "kz": "open",
   "summary": "Fight across two boards stacked as one: a Volkus surface and a Necron tomb below, linked by entryways. Three co-op missions and three head-to-head ones, ending with a C'tan Shard waking up.",
   "source": "Joint Ops: Shadowhunt Mission Pack",
   "keyMaps": [
@@ -11063,6 +11103,7 @@ const MISSION_PACKS = [
    "Co-op / solo"
   ],
   "killzone": "Volkus",
+  "kz": "volkus",
   "summary": "Three linked missions against a garrison with an expert sniper on the top floor. Rescue an officer, flank the position, then storm it.",
   "source": "Joint Ops: Deadly Sniper Mission Pack",
   "keyMaps": [],
@@ -11451,6 +11492,7 @@ const MISSION_PACKS = [
    "Head-to-head"
   ],
   "killzone": "Volkus",
+  "kz": "volkus",
   "summary": "A burrowing Ambull and its Borewyrm young break into the fight and attack whoever is closest. One co-op mission and one head-to-head mission.",
   "source": "Ambull: Nemesis Operatives Mission Pack",
   "keyMaps": [
@@ -11685,6 +11727,7 @@ const MISSION_PACKS = [
    "Head-to-head"
   ],
   "killzone": "Tomb World (mission 1), Volkus (mission 2)",
+  "kz": "open",
   "summary": "The Archivist, an alien data trader, helps whoever pays best and betrays everyone else. One co-op mission and one head-to-head bidding war.",
   "source": "The Archivist: Nemesis Operatives Mission Pack",
   "keyMaps": [
@@ -11835,7 +11878,9 @@ const MISSION_PACKS = [
       "effect": "Activate the Archivist NPO with APL 3 (max twice and 9\" of movement per turning point)."
      }
     ],
-    "cardsTitle": "NPO activation cards"
+    "cardsTitle": "NPO activation cards",
+    "kz": "tomb_world",
+    "tps": 5
    },
    {
     "num": 2,
@@ -11886,7 +11931,8 @@ const MISSION_PACKS = [
       "effect": "Activate the Archivist NPO with APL 3 (max twice and 12\" of movement per turning point)."
      }
     ],
-    "cardsTitle": "NPO activation cards"
+    "cardsTitle": "NPO activation cards",
+    "kz": "volkus"
    }
   ]
  },
@@ -11899,6 +11945,7 @@ const MISSION_PACKS = [
    "Co-op / solo"
   ],
   "killzone": "Volkus + Compound Siege",
+  "kz": "volkus",
   "summary": "One team attacks a walled compound, the other defends it. Hold the centre at the end, or wipe out the other side. Includes optional ruses and co-op rules.",
   "source": "Volkus Compound Mission Pack",
   "keyMaps": [
@@ -12247,6 +12294,7 @@ const MISSION_PACKS = [
    "Co-op / solo (1-3 players)"
   ],
   "killzone": "Volkus",
+  "kz": "volkus",
   "summary": "A simplified spin-off for 1-3 players: Titus and two Ultramarines fight three waves of Tyranids, in the style of Space Marine 2. It uses its own cut-down rules, not your kill team.",
   "source": "Lieutenant Titus Mission Pack",
   "keyMaps": [
@@ -12636,6 +12684,7 @@ const MISSION_PACKS = [
    "Head-to-head"
   ],
   "killzone": "Volkus",
+  "kz": "volkus",
   "summary": "A Hivestorm launch event mission: grab intelligence and get out while a colossal gun fires overhead, with a different rule each turning point.",
   "source": "Hivestorm Launch Event Mission: The Great Gun Fires",
   "keyMaps": [],
@@ -12702,6 +12751,7 @@ const MISSION_PACKS = [
    "Head-to-head"
   ],
   "killzone": "Any, plus a shrine statue",
+  "kz": "open",
   "summary": "An add-on for any two-player mission: a deck of Blood (attack) and Zeal (defence) cards you draw and play during the battle, plus a shrine statue in the middle of the board.",
   "source": "Blood and Zeal Mission Pack",
   "keyMaps": [],
@@ -12913,6 +12963,7 @@ const MISSION_PACKS = [
    "Any"
   ],
   "killzone": "Tomb World",
+  "kz": "tomb_world",
   "summary": "The terrain rules for the Tomb World board: walls, hatchways, breach points, teleport pads, rooms and close quarters fighting. Tomb World, Shadowhunt and The Archivist all use it.",
   "source": "Killzone: Tomb World (with its Aug '26 update log)",
   "keyMaps": [
@@ -13155,16 +13206,46 @@ const Arrow = ({ open }) => <span aria-hidden="true" style={{ color: open ? "#C9
 const sectionHead = (text) => <div style={{ ...h3, color: "#C9772E", margin: "20px 0 8px" }}>{text}</div>;
 
 function MapImages({ ids }) {
+  const [view, setView] = useState(null);
+  const [zoom, setZoom] = useState(false);
+  const show = (i) => { setView(i); setZoom(false); };
+  React.useEffect(() => {
+    if (view == null) return;
+    const onKey = (e) => {
+      if (e.key === "Escape") setView(null);
+      if (e.key === "ArrowRight") show((view + 1) % ids.length);
+      if (e.key === "ArrowLeft") show((view - 1 + ids.length) % ids.length);
+    };
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKey);
+    return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = prev; };
+  }, [view, ids.length]);
+  const navBtn = { ...bs("#F1F2F5"), background: "#1A1D24E0", padding: "8px 14px", fontSize: 16 };
   return (
     <div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 10 }}>
-        {ids.map(id => (
-          <a key={id} href={"maps/" + id + ".jpg"} target="_blank" rel="noopener noreferrer" style={{ ...cd, display: "block", padding: 6, marginBottom: 0 }}>
+        {ids.map((id, i) => (
+          <button key={id} onClick={() => show(i)} style={{ ...cd, display: "block", width: "100%", padding: 6, marginBottom: 0, cursor: "zoom-in" }}>
             <img src={"maps/" + id + ".jpg"} alt="Mission map page" loading="lazy" style={{ width: "100%", display: "block", borderRadius: 4 }} />
-          </a>
+          </button>
         ))}
       </div>
-      <div style={{ ...mu, fontSize: 12, marginTop: 6 }}>Tap a page to open it full size.</div>
+      <div style={{ ...mu, fontSize: 12, marginTop: 6 }}>Tap a page to enlarge it.</div>
+      {view != null && (
+        <div onClick={() => setView(null)} style={{ position: "fixed", inset: 0, zIndex: 10000, background: "rgba(8,9,12,0.94)", display: "flex", flexDirection: "column" }}>
+          <div onClick={e => e.stopPropagation()} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px" }}>
+            <span style={{ flex: 1, ...mu, fontSize: 12 }}>{ids.length > 1 ? "Page " + (view + 1) + " of " + ids.length + " · " : ""}{zoom ? "Tap to fit" : "Tap to zoom"}</span>
+            {ids.length > 1 && <button onClick={() => show((view - 1 + ids.length) % ids.length)} aria-label="Previous page" style={navBtn}>{"‹"}</button>}
+            {ids.length > 1 && <button onClick={() => show((view + 1) % ids.length)} aria-label="Next page" style={navBtn}>{"›"}</button>}
+            <button onClick={() => setView(null)} aria-label="Close" style={navBtn}>{"✕"}</button>
+          </div>
+          <div onClick={e => e.stopPropagation()} style={{ flex: 1, overflow: "auto", display: "flex", alignItems: zoom ? "flex-start" : "center", justifyContent: zoom ? "flex-start" : "center", padding: zoom ? 0 : "0 12px 12px" }}>
+            <img src={"maps/" + ids[view] + ".jpg"} alt="Mission map page" onClick={() => setZoom(!zoom)}
+              style={zoom ? { width: "max(100%, 1100px)", maxWidth: "none", flexShrink: 0, cursor: "zoom-out" } : { maxWidth: "100%", maxHeight: "100%", objectFit: "contain", cursor: "zoom-in" }} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -13282,6 +13363,154 @@ function CardDeck({ deck }) {
   );
 }
 
+// The body of one mission: maps, rules, actions, victory, activation deck, campaign links.
+// Used on the Missions tab and in the Builder's mission panel.
+function MissionBody({ pack, mission, idx, onGoMission }) {
+  const [open, setOpen] = useState({});
+  const toggle = (key) => setOpen(o => ({ ...o, [key]: !o[key] }));
+  const rules = (items, prefix) => items.map(it => <RuleItem key={prefix + it.name} item={it} open={!!open[prefix + it.name]} onToggle={() => toggle(prefix + it.name)} />);
+  const nextStep = (label, target) => {
+    if (target == null) return null;
+    const i = typeof target === "number" ? pack.missions.findIndex(m => m.num === target) : -1;
+    return (
+      <div style={{ ...mu, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
+        <span style={{ width: 44, color: label === "Win" ? "#5A9C3A" : "#B8341C", fontWeight: 700 }}>{label}</span>
+        {i >= 0 && onGoMission
+          ? <button onClick={() => onGoMission(i)} style={{ ...bs("#C9772E"), padding: "4px 10px", fontSize: 12 }}>Mission {target}: {pack.missions[i].name}</button>
+          : <span style={{ color: "#F1F2F5" }}>{i >= 0 ? "Mission " + target + ": " + pack.missions[i].name : target}</span>}
+      </div>
+    );
+  };
+  return (
+    <div>
+      {mission.maps.length > 0 && (<div>{sectionHead(mission.maps.length > 1 ? "Maps" : "Map")}<MapImages ids={mission.maps} /></div>)}
+      {mission.maps.length === 0 && pack.maps && (<div>{sectionHead("Maps")}{pack.mapsNote && <p style={{ ...mu, marginBottom: 8 }}>{pack.mapsNote}</p>}<MapImages ids={pack.maps} /></div>)}
+      {mission.rules.length > 0 && (<div>{sectionHead("Mission rules")}{rules(mission.rules, "r/")}</div>)}
+      {mission.actions.length > 0 && (<div>{sectionHead("Mission actions")}{rules(mission.actions, "a/")}</div>)}
+      {mission.victory.length > 0 && (
+        <div>
+          {sectionHead("Victory")}
+          <div style={{ ...cd, padding: 12 }}>
+            {mission.victory.map((v, i) => <div key={i} style={{ ...mu, color: "#C8CDD3", marginBottom: 4 }}>{mission.victory.length > 1 ? "• " : ""}{v}</div>)}
+          </div>
+        </div>
+      )}
+      {mission.cards && (<div>{sectionHead("NPO activation")}<ActivationTable key={pack.id + idx} title={mission.cardsTitle} rows={mission.cards} /></div>)}
+      {(mission.nextWin != null || mission.nextLose != null) && (
+        <div>
+          {sectionHead("Campaign: next mission")}
+          <div style={{ ...cd, padding: 12 }}>{nextStep("Win", mission.nextWin)}{nextStep("Lose", mission.nextLose)}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Builder: the mission picked at Mission Setup. Victory is always shown; the rest opens on tap.
+function MissionPanel({ mref, npoUnits, setNpoUnits }) {
+  const [showAll, setShowAll] = useState(false);
+  const pack = MISSION_PACKS.find(p => p.id === mref.pack);
+  const mission = pack && pack.missions[mref.idx];
+  if (!mission) return null;
+  return (
+    <div>
+      <div style={{ ...cd, padding: 12, marginBottom: 10, borderLeft: "3px solid " + modeColor(mission.mode) }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 11, color: "#9AA5B1", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.12em", textTransform: "uppercase" }}>{pack.name} {"·"} {missionLabel(mission)}</div>
+            <div style={{ fontSize: 17, fontWeight: 700, color: "#F1F2F5", fontFamily: "'Rajdhani', sans-serif" }}>{mission.name}</div>
+          </div>
+          <span style={bg(modeColor(mission.mode))}>{mission.mode}</span>
+        </div>
+        {mission.victory.length > 0 && (
+          <div style={{ marginTop: 8 }}>
+            <div style={{ ...h3, color: "#FFB627", marginBottom: 4 }}>How to win</div>
+            {mission.victory.map((v, i) => <div key={i} style={{ ...mu, color: "#C8CDD3", marginBottom: 2 }}>{mission.victory.length > 1 ? "• " : ""}{v}</div>)}
+          </div>
+        )}
+        <button onClick={() => setShowAll(!showAll)} style={{ background: "none", border: "none", color: "#C9772E", cursor: "pointer", padding: "10px 0 0", fontSize: 13, fontFamily: "'Inter', sans-serif", display: "flex", alignItems: "center", gap: 6 }}>
+          <Arrow open={showAll} /> {showAll ? "Hide mission details" : "Map, mission rules and actions"}
+        </button>
+        {showAll && (
+          <div>
+            <MissionBody key={pack.id + "/" + mref.idx} pack={pack} mission={{ ...mission, victory: [] }} idx={mref.idx} />
+            {pack.decks && pack.decks.map(d => <div key={d.name}>{sectionHead(d.name)}<CardDeck deck={d} /></div>)}
+            {pack.rules.length > 0 && <p style={{ ...mu, fontSize: 12, marginTop: 10 }}>The pack's general rules (setup, NPO behaviour, campaign) are on the Missions tab under {pack.name}.</p>}
+          </div>
+        )}
+      </div>
+      {pack.npos.length > 0 && <NpoTracker pack={pack} units={npoUnits} setUnits={setNpoUnits} />}
+    </div>
+  );
+}
+
+// Builder: enemy NPOs on the table, each with its own wound tracker.
+function NpoTracker({ pack, units, setUnits }) {
+  const [type, setType] = useState(pack.npos[0].name);
+  const [openCard, setOpenCard] = useState(null);
+  const [collapsed, setCollapsed] = useState(false);
+  const byName = Object.fromEntries(pack.npos.map(n => [n.name, n]));
+  const mine = units.filter(u => u.pack === pack.id && byName[u.type]);
+  const alive = mine.filter(u => u.wounds > 0);
+  const add = () => {
+    const n = byName[type] || pack.npos[0];
+    const count = units.filter(u => u.pack === pack.id && u.type === n.name).length + 1;
+    setUnits([...units, { uid: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), pack: pack.id, type: n.name, label: n.name + " " + count, max: Number(n.wounds) || 1, wounds: Number(n.wounds) || 1 }]);
+  };
+  const setW = (uid, w) => setUnits(units.map(u => u.uid === uid ? { ...u, wounds: Math.max(0, Math.min(u.max, w)) } : u));
+  const remove = (uid) => setUnits(units.filter(u => u.uid !== uid));
+  const small = { ...bs("#9AA5B1"), padding: "6px 10px", fontSize: 12 };
+  return (
+    <div style={{ ...cd, padding: 12, marginBottom: 10, borderLeft: "3px solid #B8341C" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        <button onClick={() => setCollapsed(!collapsed)} style={{ flex: 1, minWidth: 0, background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: 6 }}>
+          <Arrow open={!collapsed} />
+          <span style={{ fontSize: 15, fontWeight: 700, color: "#F1F2F5", fontFamily: "'Rajdhani', sans-serif" }}>{pack.id === "titus" ? "Operatives" : "Enemies (NPOs)"}</span>
+        </button>
+        <span style={{ fontSize: 12, color: "#9AA5B1" }}>{alive.length} on the table {"·"} {alive.reduce((t, u) => t + u.max, 0)} starting wounds</span>
+      </div>
+      {!collapsed && (
+        <div>
+          <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
+            <select value={type} onChange={e => setType(e.target.value)} style={{ flex: "1 1 160px", minWidth: 0, background: "#262A33", border: "1px solid #3A4150", borderRadius: 4, color: "#F1F2F5", fontSize: 13, padding: "7px 8px", fontFamily: "'Inter', sans-serif" }}>
+              {pack.npos.map(n => <option key={n.name} value={n.name}>{n.name} ({n.wounds}W)</option>)}
+            </select>
+            <button onClick={add} style={{ ...bs("#C9772E"), padding: "6px 14px", fontSize: 12 }}>+ Add</button>
+            {mine.some(u => u.wounds <= 0) && <button onClick={() => setUnits(units.filter(u => !(u.pack === pack.id && u.wounds <= 0)))} style={small}>Clear dead</button>}
+            {mine.length > 0 && <button onClick={() => { if (confirm("Remove all NPOs from the tracker?")) setUnits(units.filter(u => u.pack !== pack.id)); }} style={small}>Clear all</button>}
+          </div>
+          {alive.length > 10 && <div style={{ ...mu, fontSize: 12, color: "#FFB627", marginTop: 6 }}>Most packs limit NPOs to 10 on the table at once.</div>}
+          {mine.length === 0 && <div style={{ ...mu, fontSize: 13, marginTop: 8 }}>Add each NPO as you set it up. The mission rules above say how many and where.</div>}
+          {mine.map(u => {
+            const dead = u.wounds <= 0;
+            const injured = !dead && u.wounds < u.max / 2;
+            const isOpen = openCard === u.uid;
+            return (
+              <div key={u.uid} style={{ marginTop: 8, opacity: dead ? 0.5 : 1 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#0E0F13", borderRadius: 6, padding: "6px 8px" }}>
+                  <button onClick={() => setOpenCard(isOpen ? null : u.uid)} style={{ flex: 1, minWidth: 0, background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: 6 }}>
+                    <Arrow open={isOpen} />
+                    <span style={{ fontSize: 14, fontWeight: 700, color: dead ? "#9AA5B1" : "#F1F2F5", fontFamily: "'Rajdhani', sans-serif", textDecoration: dead ? "line-through" : "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.label}</span>
+                    {injured && <span style={{ fontSize: 11, color: "#FFB627" }}>injured</span>}
+                  </button>
+                  <button onClick={() => setW(u.uid, u.wounds - 1)} aria-label="Lose a wound" style={{ width: 32, height: 32, border: "1px solid #B8341C60", borderRadius: 4, background: "transparent", color: "#B8341C", cursor: "pointer", fontSize: 16 }}>{"−"}</button>
+                  <span style={{ minWidth: 48, textAlign: "center", fontSize: 15, fontWeight: 700, color: dead ? "#B8341C" : injured ? "#FFB627" : "#F1F2F5", fontFamily: "'Rajdhani', sans-serif" }}>{u.wounds}/{u.max}</span>
+                  <button onClick={() => setW(u.uid, u.wounds + 1)} aria-label="Regain a wound" style={{ width: 32, height: 32, border: "1px solid #3D6B3F80", borderRadius: 4, background: "transparent", color: "#5A9C3A", cursor: "pointer", fontSize: 16 }}>+</button>
+                  <button onClick={() => remove(u.uid)} aria-label="Remove" style={{ width: 32, height: 32, border: "1px solid #3A4150", borderRadius: 4, background: "transparent", color: "#9AA5B1", cursor: "pointer", fontSize: 13 }}>{"✕"}</button>
+                </div>
+                <div style={{ height: 3, background: "#262A33", borderRadius: 2, margin: "3px 2px 0" }}>
+                  <div style={{ height: 3, width: (100 * u.wounds / u.max) + "%", background: dead ? "#B8341C" : injured ? "#FFB627" : "#5A9C3A", borderRadius: 2 }} />
+                </div>
+                {isOpen && <div style={{ marginTop: 6 }}><NpoCard npo={byName[u.type]} open={true} onToggle={() => setOpenCard(null)} /></div>}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Missions() {
   const [packId, setPackId] = useState(null);
   const [missionIdx, setMissionIdx] = useState(null);
@@ -13293,18 +13522,6 @@ function Missions() {
   const go = (pid, mi) => { setPackId(pid); setMissionIdx(mi); window.scrollTo(0, 0); };
   const back = (label, onClick) => <button onClick={onClick} style={{ ...bs("#9AA5B1"), padding: "6px 12px", fontSize: 12, marginBottom: 12 }}>{"←"} {label}</button>;
   const rules = (items, prefix) => items.map(it => <RuleItem key={prefix + it.name} item={it} open={!!open[prefix + it.name]} onToggle={() => toggle(prefix + it.name)} />);
-  const nextStep = (label, target) => {
-    if (target == null) return null;
-    const idx = typeof target === "number" ? pack.missions.findIndex(m => m.num === target) : -1;
-    return (
-      <div style={{ ...mu, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
-        <span style={{ width: 44, color: label === "Win" ? "#5A9C3A" : "#B8341C", fontWeight: 700 }}>{label}</span>
-        {idx >= 0
-          ? <button onClick={() => go(pack.id, idx)} style={{ ...bs("#C9772E"), padding: "4px 10px", fontSize: 12 }}>Mission {target}: {pack.missions[idx].name}</button>
-          : <span style={{ color: "#F1F2F5" }}>{target}</span>}
-      </div>
-    );
-  };
   const filters = ["All", "Co-op / solo", "Head-to-head"];
   const shown = MISSION_PACKS.filter(p => filter === "All" || p.modes.some(m => m.startsWith(filter.slice(0, 5))));
 
@@ -13383,25 +13600,7 @@ function Missions() {
           <div style={{ display: "flex", gap: 4, flexWrap: "wrap", margin: "6px 0 8px" }}><span style={bg(modeColor(mission.mode))}>{mission.mode}</span></div>
           <p style={mu}>{mission.summary}</p>
 
-          {mission.maps.length > 0 && (<div>{sectionHead(mission.maps.length > 1 ? "Maps" : "Map")}<MapImages ids={mission.maps} /></div>)}
-          {mission.maps.length === 0 && pack.maps && <p style={{ ...mu, marginTop: 8 }}>Use any of this pack's maps (on the pack page).</p>}
-          {mission.rules.length > 0 && (<div>{sectionHead("Mission rules")}{rules(mission.rules, pack.id + "/" + missionIdx + "/r/")}</div>)}
-          {mission.actions.length > 0 && (<div>{sectionHead("Mission actions")}{rules(mission.actions, pack.id + "/" + missionIdx + "/a/")}</div>)}
-          {mission.victory.length > 0 && (
-            <div>
-              {sectionHead("Victory")}
-              <div style={{ ...cd, padding: 12 }}>
-                {mission.victory.map((v, i) => <div key={i} style={{ ...mu, color: "#C8CDD3", marginBottom: 4 }}>{mission.victory.length > 1 ? "• " : ""}{v}</div>)}
-              </div>
-            </div>
-          )}
-          {mission.cards && (<div>{sectionHead("NPO activation")}<ActivationTable key={pack.id + missionIdx} title={mission.cardsTitle} rows={mission.cards} /></div>)}
-          {(mission.nextWin != null || mission.nextLose != null) && (
-            <div>
-              {sectionHead("Campaign: next mission")}
-              <div style={{ ...cd, padding: 12 }}>{nextStep("Win", mission.nextWin)}{nextStep("Lose", mission.nextLose)}</div>
-            </div>
-          )}
+          <MissionBody key={pack.id + "/" + missionIdx} pack={pack} mission={mission} idx={missionIdx} onGoMission={(i) => go(pack.id, i)} />
           {pack.npos.length > 0 && <p style={{ ...mu, marginTop: 16 }}>Enemy datacards and the pack's general rules are on the <button onClick={() => go(pack.id, null)} style={{ background: "none", border: "none", padding: 0, color: "#C9772E", cursor: "pointer", fontSize: 13, textDecoration: "underline" }}>{pack.name} page</button>.</p>}
         </div>
       )}

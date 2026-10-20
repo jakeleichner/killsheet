@@ -6,6 +6,7 @@ PACK = dict(
     kind="Launch event mission",
     modes=["Head-to-head"],
     killzone="Volkus",
+    kz="volkus",
     summary="A Hivestorm launch event mission: grab intelligence and get out while a colossal gun fires overhead, with a different rule each turning point.",
     source="Hivestorm Launch Event Mission: The Great Gun Fires",
     keyMaps=[],

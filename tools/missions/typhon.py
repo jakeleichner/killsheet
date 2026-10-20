@@ -22,6 +22,7 @@ PACK = dict(
     kind="Joint Ops + Adversary Ops",
     modes=["Co-op / solo", "Head-to-head"],
     killzone="Volkus + Tyranid Infestation",
+    kz="volkus",
     summary="Push into a Tyranid infestation through six branching missions, with random event cards stirring up the swarm. Also has head-to-head rules where Tyranids attack both sides.",
     source="Joint Ops: Typhon Mission Pack",
     keyMaps=["typhon-p09", "typhon-p10", "typhon-p03"],
@@ -171,7 +172,7 @@ PACK = dict(
               R("The Swarm Awoken", "After the first turning point, the NPOs draw an extra event card whenever they have initiative."),
           ],
           victory=["From the fifth turning point on, you win when every NPO is incapacitated (no more arrive after the fourth Strategy phase).", "You lose if all your operatives are incapacitated."],
-          next_win="End of campaign", next_lose="End of campaign"),
+          next_win="End of campaign", next_lose="End of campaign", tps=6),
         M("AO", "Adversary Ops", "Head-to-head", "Play a normal head-to-head mission with three objective markers (Preliminary Ops or Approved Ops) while Tyranid NPOs guard the objectives and attack both sides.",
           maps=["typhon-p25", "typhon-p26", "typhon-p27", "typhon-p28", "typhon-p29", "typhon-p30"],
           rules=[

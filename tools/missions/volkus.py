@@ -27,6 +27,7 @@ PACK = dict(
     kind="Siege (head-to-head or co-op)",
     modes=["Head-to-head", "Co-op / solo"],
     killzone="Volkus + Compound Siege",
+    kz="volkus",
     summary="One team attacks a walled compound, the other defends it. Hold the centre at the end, or wipe out the other side. Includes optional ruses and co-op rules.",
     source="Volkus Compound Mission Pack",
     keyMaps=["volkus-p07", "volkus-p08"],
