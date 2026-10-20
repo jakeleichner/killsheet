@@ -6416,7 +6416,42 @@ function WeaponBox({ w, tag, wtype, cp, setCp, requestDamageApply, applySelfDama
 }
 
 /* ═══ DATACARD ═══ */
-function Datacard({ op, fc, equipWeapons, equipEffects, curWounds, onWound, collapsed, onToggle, ignoreInjured, cp, setCp, isActivated, onActivate, requestDamageApply, applySelfDamage }) {
+// ── Limited uses (Limited x weapons, once-per-battle abilities, shared grenades) ──
+const limitedMax = (wr) => { const m = /Limited (\d)/.exec(wr || ""); return m ? Number(m[1]) : 0; };
+const isOncePerBattle = (text) => /once per battle/i.test(text || "");
+const grenadePool = (w) => w.note && w.note.indexOf("Explosive grenade") === 0;
+
+function UsePips({ label, used, max, onSet }) {
+  return (
+    <div onClick={e => e.stopPropagation()} style={{ display: "flex", alignItems: "center", gap: 6, margin: "0 0 8px 10px", flexWrap: "wrap" }}>
+      <span style={{ fontSize: 11, color: used >= max ? DS.threat : DS.textSecondary, fontFamily: DS.fontDisplay, letterSpacing: "0.06em", textTransform: "uppercase" }}>{label}</span>
+      {Array.from({ length: max }, (_, i) => (
+        <button key={i} onClick={() => onSet(used > i ? i : i + 1)} aria-label={used > i ? "Mark use " + (i + 1) + " as unused" : "Mark use " + (i + 1) + " as used"}
+          style={{ width: 24, height: 24, borderRadius: 4, border: "1.5px solid " + (used > i ? DS.threat : DS.divider), background: used > i ? DS.threat + "30" : "transparent", color: DS.threat, cursor: "pointer", fontSize: 12, padding: 0, lineHeight: 1 }}>{used > i ? "\u2715" : ""}</button>
+      ))}
+      {used >= max && <span style={{ fontSize: 11, color: DS.threat }}>used up</span>}
+    </div>
+  );
+}
+
+const ORDER_STYLE = { engage: { label: "Engage", color: "#C9772E" }, conceal: { label: "Conceal", color: "#6B9BF7" } };
+function OrderChip({ order, onToggle }) {
+  const o = ORDER_STYLE[order] || ORDER_STYLE.conceal;
+  return (
+    <button onClick={(e) => { e.stopPropagation(); onToggle(); }} title="Tap to switch order"
+      style={{ flexShrink: 0, padding: "4px 8px", borderRadius: 4, border: "1px solid " + o.color + "70", background: o.color + "20", color: o.color, cursor: "pointer", fontFamily: DS.fontDisplay, fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>{o.label}</button>
+  );
+}
+
+function Datacard({ op, fc, equipWeapons, equipEffects, curWounds, onWound, collapsed, onToggle, ignoreInjured, cp, setCp, isActivated, onActivate, requestDamageApply, applySelfDamage, order, onOrder, uses, setUse }) {
+  const weaponUses = (w) => {
+    if (!uses) return null;
+    if (grenadePool(w)) return <UsePips label="Team grenades" used={uses["team|explosive"] || 0} max={2} onSet={(n) => setUse("team|explosive", n)} />;
+    const max = limitedMax(w.wr);
+    if (!max) return null;
+    const key = op.id + "|w|" + w.name;
+    return <UsePips label={"Limited " + max} used={uses[key] || 0} max={max} onSet={(n) => setUse(key, n)} />;
+  };
   const allRanged = [...op.ranged.map(w => ({ ...w, type: "ranged" })), ...equipWeapons.filter(w => w.type === "ranged")];
   const allMelee = [...op.melee.map(w => ({ ...w, type: "melee" })), ...equipWeapons.filter(w => w.type === "melee")];
 
@@ -6464,6 +6499,7 @@ function Datacard({ op, fc, equipWeapons, equipEffects, curWounds, onWound, coll
                 </div>
               )}
             </div>
+            {onOrder && <OrderChip order={order} onToggle={onOrder} />}
             <span style={{ fontSize: 12, color: DS.textSecondary, marginTop: 3 }}>{collapsed ? "\u25BC" : "\u25B2"}</span>
           </div>
         </div>
@@ -6517,20 +6553,23 @@ function Datacard({ op, fc, equipWeapons, equipEffects, curWounds, onWound, coll
               {allRanged.length > 0 && (
                 <div style={{ marginBottom: allMelee.length > 0 || op.abilities.length > 0 || equipEffects.length > 0 ? 14 : 0 }}>
                   <div style={{ fontFamily: DS.fontDisplay, fontSize: 11, fontWeight: 600, color: DS.textSecondary, letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 8 }}>Ranged</div>
-                  {allRanged.map((w, i) => (<WeaponBox key={"r" + i} w={w} tag={w.note || null} wtype="ranged" cp={cp} setCp={setCp} requestDamageApply={requestDamageApply} applySelfDamage={applySelfDamage} />))}
+                  {allRanged.map((w, i) => (<React.Fragment key={"r" + i}><WeaponBox w={w} tag={w.note || null} wtype="ranged" cp={cp} setCp={setCp} requestDamageApply={requestDamageApply} applySelfDamage={applySelfDamage} />{weaponUses(w)}</React.Fragment>))}
                 </div>
               )}
               {allMelee.length > 0 && (
                 <div style={{ marginBottom: op.abilities.length > 0 || equipEffects.length > 0 ? 14 : 0 }}>
                   <div style={{ fontFamily: DS.fontDisplay, fontSize: 11, fontWeight: 600, color: DS.textSecondary, letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 8 }}>Melee</div>
-                  {allMelee.map((w, i) => (<WeaponBox key={"m" + i} w={w} tag={w.note || null} wtype="melee" cp={cp} setCp={setCp} requestDamageApply={requestDamageApply} applySelfDamage={applySelfDamage} />))}
+                  {allMelee.map((w, i) => (<React.Fragment key={"m" + i}><WeaponBox w={w} tag={w.note || null} wtype="melee" cp={cp} setCp={setCp} requestDamageApply={requestDamageApply} applySelfDamage={applySelfDamage} />{weaponUses(w)}</React.Fragment>))}
                 </div>
               )}
               {op.abilities.length > 0 && (
                 <div style={{ marginBottom: equipEffects.length > 0 ? 14 : 0 }}>
                   <div style={{ fontFamily: DS.fontDisplay, fontSize: 11, fontWeight: 600, color: DS.textSecondary, letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 8 }}>Abilities</div>
                   {op.abilities.map((a, i) => (
-                    <div key={i} style={{ fontSize: 13, color: DS.textPrimary, lineHeight: 1.5, paddingLeft: 12, borderLeft: "2px solid " + fc + "40", marginBottom: 6 }}>{a}</div>
+                    <React.Fragment key={i}>
+                      <div style={{ fontSize: 13, color: DS.textPrimary, lineHeight: 1.5, paddingLeft: 12, borderLeft: "2px solid " + fc + "40", marginBottom: 6 }}>{a}</div>
+                      {uses && isOncePerBattle(a) && <UsePips label="Once per battle" used={uses[op.id + "|a|" + i] || 0} max={1} onSet={(n) => setUse(op.id + "|a|" + i, n)} />}
+                    </React.Fragment>
                   ))}
                 </div>
               )}
@@ -6589,6 +6628,92 @@ const TEAM_SEARCH_WORDS = { gellerpox: "nurgle", goremongers: "khorne", warpcove
 const searchNorm = (t) => t.toLowerCase().replace(/\u00ad/g, "").replace(/[^a-z0-9 ]/g, "");
 const factionSearchText = (fc) => searchNorm([fc.name, fc.badge, factionGroup(fc), BADGE_SEARCH_WORDS[fc.badge] || "", TEAM_SEARCH_WORDS[fc.id] || ""].join(" "));
 
+// Builder: step-by-step checklist for the current turning point.
+const STRATEGY_HINT = /strategic gambit|strategy phase|ready step|initiative step|initiative roll/i;
+function TurnGuide({ tp, numTPs, setTp, hasInitiative, onInitiative, cp, f, roster, getWounds, activated, orders, counteracted, setCounteracted, checks, setChecks }) {
+  const [open, setOpen] = useLocalStorage("guideOpen", true);
+  const alive = roster.filter(op => getWounds(op.id, op.wounds) > 0);
+  const expended = alive.filter(op => activated[op.id]);
+  const engaged = alive.filter(op => orders[op.id] === "engage");
+  const canCounter = expended.filter(op => orders[op.id] === "engage");
+  const firefight = expended.length > 0 || ["f1", "f2", "f3", "end"].some(k => checks[k]);
+  const toggle = (k) => setChecks({ ...checks, [k]: !checks[k] });
+  const seen = new Set();
+  const teamHints = [
+    ...(f.factionRules || []).filter(r => STRATEGY_HINT.test(r.desc)).map(r => r.name),
+    ...roster.flatMap(op => op.abilities.filter(a => STRATEGY_HINT.test(a)).map(a => a.split(":")[0])),
+  ].filter(n => n && n.length < 60 && !seen.has(n) && seen.add(n));
+  const chip = (text, color) => <span key={text} style={{ display: "inline-block", fontSize: 12, padding: "2px 8px", borderRadius: 4, background: (color || "#9AA5B1") + "18", border: "1px solid " + (color || "#9AA5B1") + "40", color: color || "#C8CDD3", margin: "4px 4px 0 0" }}>{text}</span>;
+  const Step = ({ id, title, children }) => (
+    <div style={{ display: "flex", gap: 10, padding: "8px 0", borderTop: "1px solid #262A33" }}>
+      <button onClick={() => toggle(id)} aria-label={checks[id] ? "Mark not done" : "Mark done"} style={{ width: 22, height: 22, flexShrink: 0, marginTop: 1, borderRadius: 4, border: "1.5px solid " + (checks[id] ? "#5A9C3A" : "#3A4150"), background: checks[id] ? "#5A9C3A30" : "transparent", color: "#5A9C3A", cursor: "pointer", padding: 0, fontSize: 12 }}>{checks[id] ? "\u2713" : ""}</button>
+      <div style={{ flex: 1, minWidth: 0, opacity: checks[id] ? 0.55 : 1 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: "#F1F2F5", fontFamily: "'Rajdhani', sans-serif" }}>{title}</div>
+        <div style={{ ...mu, fontSize: 13 }}>{children}</div>
+      </div>
+    </div>
+  );
+  const phaseHead = (text, color) => <div style={{ ...h3, color, margin: "12px 0 2px" }}>{text}</div>;
+  return (
+    <div style={{ ...cd, padding: 12, marginBottom: 10, borderLeft: "3px solid #FFB627" }}>
+      <button onClick={() => setOpen(!open)} style={{ width: "100%", background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, textAlign: "left" }}>
+        <Arrow open={open} />
+        <span style={{ flex: 1, fontSize: 15, fontWeight: 700, color: "#F1F2F5", fontFamily: "'Rajdhani', sans-serif" }}>Turning point guide</span>
+        <span style={{ fontSize: 12, color: "#FFB627", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.08em", textTransform: "uppercase" }}>TP {tp} {"\u00b7"} {firefight ? "Firefight" : "Strategy"}</span>
+      </button>
+      {open && (
+        <div>
+          {phaseHead("Strategy phase", "#C9772E")}
+          <Step id="s1" title="Initiative">
+            {tp === 1 ? "Follow the mission's setup for who has initiative." : "Roll off. The winner decides who has initiative; on a tie, the player without it decides."}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4, flexWrap: "wrap" }}>
+              <span style={{ color: hasInitiative ? "#C9772E" : "#6B9BF7", fontWeight: 600 }}>{hasInitiative ? "You have initiative." : "Your opponent has initiative."}</span>
+              <button onClick={onInitiative} style={{ ...bs("#9AA5B1"), padding: "3px 10px", fontSize: 11 }}>Switch</button>
+            </div>
+          </Step>
+          <Step id="s2" title="Gain CP">
+            {tp === 1 ? "Both players gain 1CP." : "The player with initiative gains 1CP; the other gains 2CP."} KillSheet adds yours when the turning point starts. You have {cp}CP.
+          </Step>
+          <Step id="s3" title="Ready">Ready all operatives. KillSheet clears your expended marks when the turning point changes.</Step>
+          <Step id="s4" title="Gambits">
+            Starting with initiative, take turns using a strategy ploy or passing until both players pass in a row. Each strategy ploy once per turning point.
+            <div>{(f.ploys.strategy || []).map(p => chip(p.name, "#C9772E"))}</div>
+            {teamHints.length > 0 && <div style={{ marginTop: 6 }}>Your team rules for this phase:<div>{teamHints.map(n => chip(n))}</div></div>}
+          </Step>
+          {phaseHead("Firefight phase", "#B8341C")}
+          <Step id="f1" title="Activate">
+            Take turns activating one ready operative, starting with initiative. Pick its order, do actions up to its APL, then tick it as expended.
+            <div style={{ marginTop: 4, color: "#C8CDD3" }}>{expended.length} of {alive.length} expended {"\u00b7"} {engaged.length} Engage, {alive.length - engaged.length} Conceal</div>
+          </Step>
+          <Step id="f2" title="Counteract">
+            When all your operatives are expended but your opponent still has ready ones, one expended Engage operative can make a free 1AP action (moving no more than 2"). Each operative once per turning point.
+            <div>
+              {canCounter.length === 0
+                ? <div style={{ marginTop: 4 }}>Nobody can counteract yet: it needs an expended operative with an Engage order.</div>
+                : canCounter.map(op => (
+                  <button key={op.id} onClick={() => setCounteracted({ ...counteracted, [op.id]: !counteracted[op.id] })} style={{ ...bs(counteracted[op.id] ? "#9AA5B1" : "#C9772E"), padding: "3px 10px", fontSize: 11, margin: "4px 4px 0 0", textDecoration: counteracted[op.id] ? "line-through" : "none", textTransform: "none", letterSpacing: "0.02em" }}>{op.name}</button>
+                ))}
+              {canCounter.length > 0 && <div style={{ fontSize: 12, marginTop: 4 }}>Tap an operative once it has counteracted.</div>}
+            </div>
+          </Step>
+          <Step id="f3" title="Firefight ploys">
+            Use these during activations, each once per turning point. Command Re-roll (1CP: re-roll one attack or defence die) can be used any number of times.
+            <div>{(f.ploys.firefight || []).map(p => chip(p.name, "#B8341C"))}</div>
+          </Step>
+          <Step id="end" title="End of turning point">
+            When every operative on both sides is expended, the turning point ends. Score any VP your mission gives now.
+            <div style={{ marginTop: 6 }}>
+              {tp < numTPs
+                ? <button onClick={() => setTp(tp + 1)} style={{ ...bs("#FFB627"), padding: "6px 12px", fontSize: 12 }}>Start turning point {tp + 1}</button>
+                : <span style={{ color: "#FFB627" }}>This is the last turning point. The battle ends after it; most VP wins.</span>}
+            </div>
+          </Step>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
   const mobile = useIsMobile();
   // Persisted game state
@@ -6602,11 +6727,11 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
   const [rosterLocked, setRosterLocked] = useLocalStorage("rosterLocked", false);
   const [cardCollapsed, setCardCollapsed] = useLocalStorage("cardCollapsed", {});
   const [usedPloys, setUsedPloys] = useLocalStorage("usedPloys", {});
-  const [cp, setCp] = useLocalStorage("cp", 2);
+  const [cp, setCp] = useLocalStorage("cp", 3); // 2 to start + 1 for the first Strategy phase
   const [vpYou, setVpYou] = useLocalStorage("vpYou", 0);
   const [vpOpp, setVpOpp] = useLocalStorage("vpOpp", 0);
   const [hasInitiative, setHasInitiative] = useLocalStorage("hasInitiative", true);
-  const [lastCpTp, setLastCpTp] = useLocalStorage("lastCpTp", 0);
+  const [lastCpTp, setLastCpTp] = useLocalStorage("lastCpTp", 1);
   const [primaryYou, setPrimaryYou] = useLocalStorage("primaryYou", []);
   const [primaryOpp, setPrimaryOpp] = useLocalStorage("primaryOpp", []);
   const [tacOps, setTacOps] = useLocalStorage("tacOps", []);
@@ -6616,6 +6741,10 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
   const [activated, setActivated] = useLocalStorage("activated", {});
   const [npoUnits, setNpoUnits] = useLocalStorage("npoUnits", []);
   const [savedRosters, setSavedRosters] = useLocalStorage("savedRosters", []);
+  const [orders, setOrders] = useLocalStorage("orders", {});
+  const [battleUses, setBattleUses] = useLocalStorage("battleUses", {});
+  const [counteracted, setCounteracted] = useLocalStorage("counteracted", {});
+  const [guideChecks, setGuideChecks] = useLocalStorage("guideChecks", {});
   const [chapterPrimary, setChapterPrimary] = useLocalStorage("chapterPrimary", "");
   const [chapterSecondary, setChapterSecondary] = useLocalStorage("chapterSecondary", "");
   const [chapterVeteran, setChapterVeteran] = useLocalStorage("chapterVeteran", {});
@@ -6750,6 +6879,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
     const cfg = { missionName: setupMission, equipSlots: setupEquip, numTacOps: setupTacOps, numTPs: setupTPs, killzone: setupKZ, mission };
     setGameConfig(cfg);
     setNpoUnits([]);
+    setOrders({}); setBattleUses({}); setCounteracted({}); setGuideChecks({});
     setPrimaryYou(Array(cfg.numTPs).fill(0));
     setPrimaryOpp(Array(cfg.numTPs).fill(0));
     setTacOps(Array.from({ length: cfg.numTacOps }, () => ({ name: "", checks: [false, false] })));
@@ -6758,6 +6888,8 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
   // TP change: reset ploys, gain CP only on forward advancement
   if (prevTp !== tp) {
     setPrevTp(tp);
+    setCounteracted({});
+    setGuideChecks({});
     setUsedPloys({});
     setActivated({});
     if (tp > lastCpTp) {
@@ -6981,7 +7113,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
     }
     return getEquipSlotCount() < gc.equipSlots;
   };
-  const selectFaction = (id) => { setFid(id); setRoster([]); setEq({}); setUEq({}); setWounds({}); setCardCollapsed({}); setUsedPloys({}); setCp(2); setVpYou(0); setVpOpp(0); setHasInitiative(true); setLastCpTp(0); setTp(1); setPrimaryYou(Array(gc.numTPs).fill(0)); setPrimaryOpp(Array(gc.numTPs).fill(0)); setTacOps(Array.from({ length: gc.numTacOps }, () => ({ name: "", checks: [false, false] }))); setOppRoster(null); setOppWounds({}); setShowImport(false); setActivated({}); setChapterPrimary(""); setChapterSecondary(""); setChapterVeteran({}); setRosterLocked(false); setNpoUnits([]); };
+  const selectFaction = (id) => { setFid(id); setRoster([]); setEq({}); setUEq({}); setWounds({}); setCardCollapsed({}); setUsedPloys({}); setCp(3); setVpYou(0); setVpOpp(0); setHasInitiative(true); setLastCpTp(1); setTp(1); setPrimaryYou(Array(gc.numTPs).fill(0)); setPrimaryOpp(Array(gc.numTPs).fill(0)); setTacOps(Array.from({ length: gc.numTacOps }, () => ({ name: "", checks: [false, false] }))); setOppRoster(null); setOppWounds({}); setShowImport(false); setActivated({}); setChapterPrimary(""); setChapterSecondary(""); setChapterVeteran({}); setRosterLocked(false); setNpoUnits([]); setOrders({}); setBattleUses({}); setCounteracted({}); setGuideChecks({}); };
 
   const getWounds = (opId, maxW) => wounds[opId] !== undefined ? wounds[opId] : maxW;
   const setOpWounds = (opId, maxW, delta) => {
@@ -7604,7 +7736,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
           <button onClick={() => setShowMP(true)} title={mp.status === "connected" ? "Connected: " + mp.roomCode : mp.status === "hosting" ? "Hosting: " + mp.roomCode : "Multiplayer"} style={{ ...bs(mp.status === "connected" ? "#3D6B3F" : mp.status === "hosting" || mp.status === "joining" ? "#C9772E" : mp.status === "error" ? "#B8341C" : "#6B9BF7"), fontSize: 8, padding: "3px 8px", background: mp.status === "connected" ? "#3D6B3F20" : mp.status === "hosting" || mp.status === "joining" ? "#C9772E20" : "transparent" }}>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><MPIcon name={mpIconFor(mp.status)} size={11} />{mp.status === "connected" ? "Online" : mp.status === "hosting" ? "Hosting" : mp.status === "joining" ? "Joining" : "Play online"}</span>
           </button>
-          {f && <button onClick={() => { if (confirm("Reset all game state? Wounds, CP, VP, ploys, and activated will be cleared.")) { setWounds({}); setCp(2); setVpYou(0); setVpOpp(0); setUsedPloys({}); setActivated({}); setHasInitiative(true); setLastCpTp(0); setTp(1); setPrimaryYou(Array(gc.numTPs).fill(0)); setPrimaryOpp(Array(gc.numTPs).fill(0)); setTacOps(Array.from({ length: gc.numTacOps }, () => ({ name: "", checks: [false, false] }))); setOppWounds({}); setNpoUnits([]); }}} style={{ ...bs("#B8341C"), fontSize: 8, padding: "3px 8px" }}>{"\u21BA"} Reset</button>}
+          {f && <button onClick={() => { if (confirm("Reset all game state? Wounds, CP, VP, ploys, and activated will be cleared.")) { setWounds({}); setCp(3); setVpYou(0); setVpOpp(0); setUsedPloys({}); setActivated({}); setHasInitiative(true); setLastCpTp(1); setTp(1); setPrimaryYou(Array(gc.numTPs).fill(0)); setPrimaryOpp(Array(gc.numTPs).fill(0)); setTacOps(Array.from({ length: gc.numTacOps }, () => ({ name: "", checks: [false, false] }))); setOppWounds({}); setNpoUnits([]); setOrders({}); setBattleUses({}); setCounteracted({}); setGuideChecks({}); }}} style={{ ...bs("#B8341C"), fontSize: 8, padding: "3px 8px" }}>{"\u21BA"} Reset</button>}
           {f && (
             <button onClick={() => setValidate(!validate)} style={{ ...bs(validate ? "#3D6B3F" : "#9AA5B1"), fontSize: 9, padding: "4px 10px" }}>
               {validate ? "\u2720 Validate" : "\u2716 Validate off"}
@@ -7828,6 +7960,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
             )}
           </div>
 
+        {roster.length > 0 && <TurnGuide tp={tp} numTPs={gc.numTPs} setTp={setTp} hasInitiative={hasInitiative} onInitiative={handleInitiativeToggle} cp={cp} f={f} roster={roster} getWounds={getWounds} activated={activated} orders={orders} counteracted={counteracted} setCounteracted={setCounteracted} checks={guideChecks} setChecks={setGuideChecks} />}
         {gc.mission && <MissionPanel mref={gc.mission} npoUnits={npoUnits} setNpoUnits={setNpoUnits} />}
 
         {/* Mobile panel toggle */}
@@ -8234,7 +8367,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
                   return aAlive - bAlive;
                 }).map(op => {
                   const result = getEquipForOp(op);
-                  return (<Datacard key={op.id} op={op} fc={f.color} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getWounds(op.id, op.wounds)} onWound={(delta) => setOpWounds(op.id, op.wounds, delta)} collapsed={cardCollapsed[op.id] || false} onToggle={() => toggleCardCollapse(op.id)} ignoreInjured={result.ignoreInjured} cp={cp} setCp={setCp} isActivated={activated[op.id] || false} onActivate={() => setActivated(prev => ({ ...prev, [op.id]: !prev[op.id] }))} requestDamageApply={requestDamageApply} applySelfDamage={(amount) => { setOpWounds(op.id, op.wounds, -amount); showToast(op.name + " took " + amount + " self-dmg"); }} />);
+                  return (<Datacard key={op.id} op={op} fc={f.color} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getWounds(op.id, op.wounds)} onWound={(delta) => setOpWounds(op.id, op.wounds, delta)} collapsed={cardCollapsed[op.id] || false} onToggle={() => toggleCardCollapse(op.id)} ignoreInjured={result.ignoreInjured} cp={cp} setCp={setCp} isActivated={activated[op.id] || false} onActivate={() => setActivated(prev => ({ ...prev, [op.id]: !prev[op.id] }))} requestDamageApply={requestDamageApply} applySelfDamage={(amount) => { setOpWounds(op.id, op.wounds, -amount); showToast(op.name + " took " + amount + " self-dmg"); }} order={orders[op.id] || "conceal"} onOrder={() => setOrders(prev => ({ ...prev, [op.id]: prev[op.id] === "engage" ? "conceal" : "engage" }))} uses={battleUses} setUse={(k, n) => setBattleUses(prev => ({ ...prev, [k]: n }))} />);
                 })}
 
               </div>

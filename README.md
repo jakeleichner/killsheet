@@ -169,6 +169,8 @@ Planned implementation:
 Estimated 2-3 hours. Should be its own focused session with its own QA pass (mixing infra + UI changes tends to combine bugs confusingly).
 
 ### Done recently
+- Table helpers: Engage/Conceal order chip on each datacard (`ks_orders`, everyone starts Conceal); use boxes under Limited x weapons, once-per-battle abilities and a shared 2-use explosive grenade pool (`ks_battleUses`); Turning point guide card (Strategy and Firefight steps, team ploys and strategy-phase rules, counteract helper, next-TP button; `ks_guideChecks`, `ks_counteracted` clear each TP). All of these clear on Reset, new team and new setup.
+- Fixed: turning point 1 started at 2CP; it now starts at 3CP (2 to start + 1 for the first Strategy phase), with `lastCpTp` = 1.
 - Saved rosters (this device only): a Save button on the datacards bar stores the roster as `{name, f, o, fe, ue, cp, cs, cv}` in `ks_savedRosters`; the team picker lists them with Load, Rename, Copy code and Delete. Loading rebuilds operatives with `makeInstances`, so saved rosters pick up later team data fixes. "Clear current game data" (was "Wipe all saved data") keeps saved rosters.
 - Builder now opens on the team list every time (`pickerOpen` starts true). If a team is saved, a "Continue with <team>" button at the top resumes the game; picking a different team while a roster exists asks before clearing it.
 - Fixed: Tutorial buttons and unit cards showed raw `\u25B6` / `\u2022` text (escape codes in JSX attribute strings aren't converted; wrap them in `{"..."}`).
@@ -191,13 +193,15 @@ Estimated 2-3 hours. Should be its own focused session with its own QA pass (mix
 - Pre-ship checker added: `python3 tools/check.py` (hooks before early returns, every tab has an icon and panel, unique localStorage keys, no direct localStorage use, print class, JSX script tag).
 
 ### Other open tasks (rough priority order)
+- **Install on phone + offline mode (PWA)**: web app manifest, service worker caching the page and `maps/`, home-screen icon (use the logo package once it's in the repo).
+- **Game history**: at the end of a game, save team, opponent team, mission, VP and result; a simple stats page per team.
+- **Once-per-battle ploys**: Wyrmblade/XV26 per-operative Conceal ploys and similar aren't tracked yet (only weapons, abilities and grenades are).
 - **Legion of the Damned**: previewed in the Big Autumn Preview; add once its rules are published.
 - **Campaign tracking (Ctesiphus Expedition)**: track a map-based campaign across games. Needs the campaign PDF from the owner first, to see what it tracks (map territory, requisition points, operative experience, injuries and so on). Likely a new tab with its own saved state, and it may later need the same backend as Community Rosters if players want to share one campaign.
 - **Wire in the new logo package** — header horizontal lockup (mark-only on mobile fallback), favicon, apple-touch-icon for installable PWA. Assets exist; not yet integrated.
 
 ### Lower-priority backlog
 - Roll history/log in the dice roller (last 5-10 rolls).
-- Limited 1 actual per-operative usage tracking.
 - More factions: see convention 11. Add `tools/teams/<team>.py`, list it in `ORDER.txt`, run the build, then `python3 tools/check.py` and build a full roster in the preview.
 - Functional mission scoring (primary objectives, tac-op tracking).
 - Make killzone rules functional (currently cosmetic).
