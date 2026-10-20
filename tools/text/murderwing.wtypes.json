@@ -1,0 +1,50 @@
+{
+"Bolt pistol": [
+"ranged"
+],
+"Plasma pistol (standard)": [
+"ranged"
+],
+"Plasma pistol (supercharge)": [
+"ranged"
+],
+"Lightning claw": [
+"melee"
+],
+"Power fist": [
+"melee"
+],
+"Power weapon": [
+"melee"
+],
+"Relic lightning claws": [
+"melee"
+],
+"Mutated claws": [
+"melee"
+],
+"Great chainaxe": [
+"melee"
+],
+"Chainsword": [
+"melee"
+],
+"Lightning claws": [
+"melee"
+],
+"Flamer": [
+"ranged"
+],
+"Meltagun": [
+"ranged"
+],
+"Plasma gun (standard)": [
+"ranged"
+],
+"Plasma gun (supercharge)": [
+"ranged"
+],
+"Fists": [
+"melee"
+]
+}

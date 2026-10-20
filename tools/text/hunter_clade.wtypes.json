@@ -1,0 +1,56 @@
+{
+ "Flechette blaster": [
+  "ranged"
+ ],
+ "Stubcarbine": [
+  "ranged"
+ ],
+ "Power weapon": [
+  "melee"
+ ],
+ "Taser goad": [
+  "melee"
+ ],
+ "Chordclaw & transonic blades": [
+  "melee"
+ ],
+ "Arc pistol": [
+  "ranged"
+ ],
+ "Galvanic rifle": [
+  "ranged"
+ ],
+ "Master-crafted radium pistol": [
+  "ranged"
+ ],
+ "Phosphor blast pistol": [
+  "ranged"
+ ],
+ "Arc maul": [
+  "melee"
+ ],
+ "Gun butt": [
+  "melee"
+ ],
+ "Chordclaw & transonic razor": [
+  "melee"
+ ],
+ "Transonic blades": [
+  "melee"
+ ],
+ "Radium carbine": [
+  "ranged"
+ ],
+ "Transuranic arquebus": [
+  "ranged"
+ ],
+ "Arc rifle": [
+  "ranged"
+ ],
+ "Plasma caliver (standard)": [
+  "ranged"
+ ],
+ "Plasma caliver (supercharge)": [
+  "ranged"
+ ]
+}

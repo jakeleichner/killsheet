@@ -10,7 +10,7 @@ A single-file web app that acts as a companion for **Kill Team** (Games Workshop
 
 The name and branding were deliberately kept generic ("KillSheet," not "Kill Team Companion") to avoid Games Workshop trademark issues. The app references GW game mechanics and stats (which are rules, not protected expression) but uses no GW logos, names-as-branding, artwork, or lore text.
 
-**Current factions implemented:** see `FACTIONS` in `killsheet.html` (Deathwatch is listed last on purpose). All teams were entered from the official online rules PDFs (Aug '26 errata); Angels of Death, Kommandos and Plague Marines were re-entered from their newer PDFs. Inquisitorial Agents has all six requisition groups. Abilities, ploys and equipment are condensed summaries, not GW's full text. Operatives with a weapon choice ("with one of the following options") are separate entries, e.g. "Navis Gunner (meltagun)", so caps like "max 2 Gunners" can be enforced.
+**Current factions implemented:** 48 teams, every team rules download on Warhammer Community except Ctesiphus Expedition. See `FACTIONS` in `killsheet.html` (Deathwatch is listed last on purpose). All teams were entered from the official online rules PDFs (Aug '26 errata); Angels of Death, Kommandos and Plague Marines were re-entered from their newer PDFs. Inquisitorial Agents has all six requisition groups. Abilities, ploys and equipment are condensed summaries, not GW's full text. Operatives with a weapon choice ("with one of the following options") are separate entries, e.g. "Navis Gunner (meltagun)", so caps like "max 2 Gunners" can be enforced.
 
 ---
 
@@ -142,6 +142,8 @@ These will bite you if you don't know them:
 
 10. **Team-building rules live in `composition`** (see the comment above `baseOf` for the full shape): `groups` (required/optional pick groups, optionally gated by a faction equipment id), `repeatable`, `maxCount`, `caps` (combined limits like "max 2 Gunners"), `requires` ("X needs Y"), and `cost` (½ or ×2 selections). `compCheck()` / `compCanAdd()` enforce them.
 
+11. **Team data is generated.** Don't hand-edit the `FACTIONS` block. Each team lives in `tools/teams/<team>.py` (a `TEAM` dict); `tools/teams/ORDER.txt` sets the picker order (Deathwatch last). Run `python3 tools/teams/build.py killsheet.html` to rewrite `FACTIONS`. The build validates ids, groups, caps and stat formats, and checks every weapon's ranged/melee type against `tools/text/<source>.wtypes.json` (read from the PDF's weapon icons).
+
 ---
 
 ## Work queue (what's left to do)
@@ -162,7 +164,11 @@ Planned implementation:
 Estimated 2-3 hours. Should be its own focused session with its own QA pass (mixing infra + UI changes tends to combine bugs confusingly).
 
 ### Done recently
-- Batch 2 (in progress): updated Angels of Death, Kommandos, Plague Marines; added Death Korps, Exaction Squad, Kasrkin; Inquisitorial Agents now has every requisition group. Murderwing fix: a plasma-pistol Chaos Lord counts toward the max-2 plasma/melta limit.
+- Batch 2 done: 30 more teams (Blades of Khaine through XV26 Stealth Battlesuits), for 48 in total. Updated Angels of Death, Kommandos, Plague Marines; added Death Korps, Exaction Squad, Kasrkin; Inquisitorial Agents now has every requisition group. Murderwing fix: a plasma-pistol Chaos Lord counts toward the max-2 plasma/melta limit.
+- Team source files moved into the repo (`tools/teams/`, `tools/text/`) so they can't be lost with a temp folder.
+- Multiplayer now uses drawn line icons with words (Play online, Hosting, Joining, Online, Host a new game, Join, Disconnect) instead of symbol characters.
+- Builder validation toggle reads "Validate" (was "Valid").
+- Phone fixes: the team picker and the CP/VP counters no longer push the page wider than the screen.
 - 12 new teams added (see Current factions). Builder rules engine rebuilt to support them: repeat operatives, required groups, equipment-unlocked groups (Gellerpox Mutoid Vermin), per-operative and combined caps, "requires" pairs, ½ and ×2 selections, shared totals across groups, and borrowed-operative groups (Inquisitorial requisitions).
 - Fixed: multiplayer never showed the opponent's roster (`FACTIONS.find` on an object).
 - Print sheet now labels the base size as "mm base" (it said "pts").
@@ -173,12 +179,14 @@ Estimated 2-3 hours. Should be its own focused session with its own QA pass (mix
 - Pre-ship checker added: `python3 tools/check.py` (hooks before early returns, every tab has an icon and panel, unique localStorage keys, no direct localStorage use, print class, JSX script tag).
 
 ### Other open tasks (rough priority order)
+- **Ctesiphus Expedition** team: the one team rules download not yet in the app. Needs its PDF.
+- **Legion of the Damned**: previewed in the Big Autumn Preview; add once its rules are published.
 - **Wire in the new logo package** — header horizontal lockup (mark-only on mobile fallback), favicon, apple-touch-icon for installable PWA. Assets exist; not yet integrated.
 
 ### Lower-priority backlog
 - Roll history/log in the dice roller (last 5-10 rolls).
 - Limited 1 actual per-operative usage tracking.
-- More factions (data entry against official PDFs). To add one: copy an existing team object in `FACTIONS`, fill it from the PDF, use `composition` for the team-building rules, then run `python3 tools/check.py` and build a full roster in the preview.
+- More factions: see convention 11. Add `tools/teams/<team>.py`, list it in `ORDER.txt`, run the build, then `python3 tools/check.py` and build a full roster in the preview.
 - Functional mission scoring (primary objectives, tac-op tracking).
 - Make killzone rules functional (currently cosmetic).
 - Multiplayer reconnect path.

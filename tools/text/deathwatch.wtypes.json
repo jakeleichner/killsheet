@@ -1,0 +1,68 @@
+{
+"Bolt pistol": [
+"ranged"
+],
+"Power maul & storm shield": [
+"melee"
+],
+"Frag cannon (shell)": [
+"ranged"
+],
+"Frag cannon (shrapnel)": [
+"ranged"
+],
+"Fists": [
+"melee"
+],
+"Plasma pistol (standard)": [
+"ranged"
+],
+"Plasma pistol (supercharge)": [
+"ranged"
+],
+"Power weapon": [
+"melee"
+],
+"Special issue bolt pistol": [
+"ranged"
+],
+"Xenophase blade (duel)": [
+"melee"
+],
+"Xenophase blade (phase sweep)": [
+"melee"
+],
+"Heavy thunder hammer": [
+"melee"
+],
+"Heavy plasma incinerator": [
+"ranged"
+],
+"Auxiliary grenade launcher": [
+"ranged"
+],
+"Hellstorm bolt rifle": [
+"ranged"
+],
+"Melta bomb": [
+"ranged"
+],
+"Marksman bolt carbine": [
+"ranged"
+],
+"Infernus heavy bolter (flame)": [
+"ranged"
+],
+"Infernus heavy bolter": [
+"ranged"
+],
+"Combat knives": [
+"melee"
+],
+"Stalker bolt rifle (mobile)": [
+"ranged"
+],
+"Stalker bolt rifle (heavy)": [
+"ranged"
+]
+}

@@ -1,0 +1,56 @@
+{
+"Abyssal lance (ranged)": [
+"ranged"
+],
+"Abyssal lance (melee)": [
+"melee"
+],
+"Aeonstave (ranged)": [
+"ranged"
+],
+"Entropic lance (ranged)": [
+"ranged"
+],
+"Aeonstave (melee)": [
+"melee"
+],
+"Entropic lance (melee)": [
+"melee"
+],
+"Staff of light (ranged)": [
+"ranged"
+],
+"Staff of light (melee)": [
+"melee"
+],
+"Spark": [
+"ranged"
+],
+"Claws": [
+"melee"
+],
+"Atomiser beam": [
+"ranged"
+],
+"Synaptic disintegrator": [
+"ranged"
+],
+"Fists": [
+"melee"
+],
+"Arcane conduit (ranged)": [
+"ranged"
+],
+"Arcane conduit (melee)": [
+"melee"
+],
+"Gauss blaster": [
+"ranged"
+],
+"Tesla carbine": [
+"ranged"
+],
+"Bayonet": [
+"melee"
+]
+}

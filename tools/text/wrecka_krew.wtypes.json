@@ -1,0 +1,44 @@
+{
+ "Explosives": [
+  "ranged"
+ ],
+ "Bite": [
+  "melee"
+ ],
+ "Smash hammer": [
+  "melee"
+ ],
+ "Rokkit pistol": [
+  "ranged"
+ ],
+ "Two rokkit pistols (focused)": [
+  "ranged"
+ ],
+ "Two rokkit pistols (salvo)": [
+  "ranged"
+ ],
+ "Choppa": [
+  "melee"
+ ],
+ "Tankhammer (bash)": [
+  "melee"
+ ],
+ "\u2019Eavy rokkit launcha": [
+  "ranged"
+ ],
+ "Rokkit launcha": [
+  "ranged"
+ ],
+ "Fists": [
+  "melee"
+ ],
+ "Knucklebustas": [
+  "melee"
+ ],
+ "Rokkit rack": [
+  "ranged"
+ ],
+ "Pulsa rokkit": [
+  "ranged"
+ ]
+}

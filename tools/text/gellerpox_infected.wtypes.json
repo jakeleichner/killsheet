@@ -1,0 +1,53 @@
+{
+"Pyregut (standard)": [
+"ranged"
+],
+"Pyregut (deluge)": [
+"ranged"
+],
+"Fleshmelded weapons": [
+"melee"
+],
+"Mutant tentacles": [
+"ranged"
+],
+"Mutant claw & tentacles": [
+"melee"
+],
+"Mutant claw": [
+"melee"
+],
+"Diseased effluence": [
+"ranged"
+],
+"Diseased nippers": [
+"melee"
+],
+"Mutant fist and cleaver": [
+"melee"
+],
+"Frag grenade": [
+"ranged"
+],
+"Heavy axe": [
+"melee"
+],
+"Improvised weapon": [
+"melee"
+],
+"Swarm": [
+"ranged"
+],
+"Sting": [
+"melee"
+],
+"Bloodsucking proboscis": [
+"melee"
+],
+"Acid spit": [
+"ranged"
+],
+"Fanged maw": [
+"melee"
+]
+}

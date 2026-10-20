@@ -1,0 +1,32 @@
+{
+"Ram": [
+"melee"
+],
+"Neutron rail rifle (standard)": [
+"ranged"
+],
+"Neutron rail rifle (aimed)": [
+"ranged"
+],
+"Claws": [
+"melee"
+],
+"Neutron blaster": [
+"ranged"
+],
+"Neutron grenade launcher": [
+"ranged"
+],
+"Neutron sting": [
+"ranged"
+],
+"Neutron grenade": [
+"ranged"
+],
+"Flamer (standard)": [
+"ranged"
+],
+"Flamer (skytorch)": [
+"ranged"
+]
+}

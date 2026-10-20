@@ -1,0 +1,62 @@
+{
+"Autopistol": [
+"ranged"
+],
+"Power weapon": [
+"melee"
+],
+"Bolt pistol": [
+"ranged"
+],
+"Heirloom autopistol": [
+"ranged"
+],
+"Navis shotgun (close range)": [
+"ranged"
+],
+"Navis shotgun (long range)": [
+"ranged"
+],
+"Chainsword": [
+"melee"
+],
+"Navis hatchet": [
+"melee"
+],
+"Navis heavy shotgun (close range)": [
+"ranged"
+],
+"Navis heavy shotgun (long range)": [
+"ranged"
+],
+"Shield bash": [
+"melee"
+],
+"Meltagun": [
+"ranged"
+],
+"Navis las-volley (focused)": [
+"ranged"
+],
+"Navis las-volley (sweeping)": [
+"ranged"
+],
+"Plasma gun (standard)": [
+"ranged"
+],
+"Plasma gun (supercharge)": [
+"ranged"
+],
+"Gun butt": [
+"melee"
+],
+"Demolition charge": [
+"ranged"
+],
+"Chainfist": [
+"melee"
+],
+"Gheistskull detonator": [
+"ranged"
+]
+}

@@ -1,0 +1,57 @@
+{
+"Throwing plasma knife": [
+"ranged"
+],
+"Dual plasma knives": [
+"melee"
+],
+"APM launcher (armour piercing)": [
+"ranged"
+],
+"APM launcher (breaching)": [
+"ranged"
+],
+"APM launcher (high explosive)": [
+"ranged"
+],
+"Fists": [
+"melee"
+],
+"Bolt revolver": [
+"ranged"
+],
+"Bolt shotgun (short range)": [
+"ranged"
+],
+"Bolt shotgun (long range)": [
+"ranged"
+],
+"Plasma knife": [
+"?",
+"melee"
+],
+"Wroughtlock revolvers": [
+"ranged"
+],
+"Magna-coil rifle (concealed)": [
+"ranged"
+],
+"Magna-coil rifle (mobile)": [
+"ranged"
+],
+"Magna-coil rifle (stationary)": [
+"ranged"
+],
+"Entrencher": [
+"melee"
+],
+"SiNR handbow": [
+"ranged"
+],
+"Throwing hatchet": [
+"ranged"
+],
+"Hatchet": [
+"melee"
+]
+}

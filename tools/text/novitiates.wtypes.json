@@ -1,0 +1,59 @@
+{
+"Condemnor stakethrower": [
+"ranged"
+],
+"Null rod": [
+"melee"
+],
+"Plasma pistol (standard)": [
+"ranged"
+],
+"Plasma pistol (supercharge)": [
+"ranged"
+],
+"Relic bolt pistol": [
+"ranged"
+],
+"Relic boltgun": [
+"ranged"
+],
+"Gun butt": [
+"melee"
+],
+"Power weapon": [
+"melee"
+],
+"Autopistol": [
+"ranged"
+],
+"Dialogus stave": [
+"melee"
+],
+"Neural whips (ranged)": [
+"ranged"
+],
+"Neural whips (melee)": [
+"melee"
+],
+"Duelling blades": [
+"melee"
+],
+"Surgical saw": [
+"melee"
+],
+"Penitent eviscerator": [
+"melee"
+],
+"Autogun": [
+"ranged"
+],
+"Novitiate blade": [
+"melee"
+],
+"Mace of the Righteous": [
+"melee"
+],
+"Ministorum flamer": [
+"ranged"
+]
+}

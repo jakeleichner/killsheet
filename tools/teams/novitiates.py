@@ -1,0 +1,98 @@
+AUTOPISTOL = ("Autopistol", 4, "4+", "2/3", 'Range 8"')
+GUN_BUTT = ("Gun butt", 3, "4+", "2/3", "-")
+MILITANT_FAITH = "Militant Faith: If you use an Act of Faith in its attack sequence and an enemy is incapacitated, refund those Faith points (only one if using Icon of Faith)."
+
+def nov(oid, name, ranged, melee, abilities, kw):
+    return {"id": oid, "name": "Novitiate " + name, "apl": 2, "move": '6"', "save": "4+", "wounds": 7, "pts": 28,
+            "ranged": ranged, "melee": melee, "abilities": abilities, "kw": kw}
+
+TEAM = {
+    "id": "novitiates", "source": "novitiates", "name": "Novitiates", "badge": "ADEPTA SORORITAS", "color": "#C24A6B",
+    "archetypes": "Recon, Security",
+    "composition": {
+        "total": 10,
+        "groups": [
+            {"name": "Leader", "desc": "1 Superior", "min": 1, "max": 1, "ids": ["superior"]},
+            {"name": "Operatives", "desc": "9 Novitiate operatives from the list below", "min": 9, "max": 9,
+             "ids": ["condemnor", "dialogus", "duellist", "exactor", "hospitaller", "penitent", "preceptor", "pronatus", "purgatus", "reliquarius", "militant_pistol", "militant_autogun"]},
+        ],
+        "repeatable": ["militant_pistol", "militant_autogun", "purgatus"],
+        "maxCount": {"purgatus": 2},
+        "rules": [
+            "Select 1 Superior (plasma pistol + power weapon, relic boltgun + gun butt, or relic bolt pistol + power weapon).",
+            "Select 9 other operatives. Other than Militants and Purgatus, each only once.",
+            "Max 2 Purgatus.",
+        ],
+    },
+    "factionRules": [
+        ("Acts of Faith", "Ready step of each Strategy phase: gain Faith points = half your non-incapacitated Novitiates (round up). When a Novitiate attacks or is shot, in the Roll Attack/Defence Dice step spend points for one Act of Faith per sequence: Guidance (1) re-roll one die; Blessing (2) retain a normal as a crit; Intervention (3) retain a fail as a normal."),
+    ],
+    "ploys": {
+        "strategy": [
+            ("Blessed Rejuvenation", "Whenever you spend Faith points, at the end of that action the operative regains up to D3 wounds (if not incapacitated, and the Act cost points)."),
+            ("Righteous Advance", "Up to a third of your Novitiates (round down, min 1) make a free Dash, each ending closer to its nearest enemy, objective or the enemy drop zone. Not TP1."),
+            ("Ardent Vengeance", "Attacking an expended enemy: weapons gain Punishing."),
+            ("Defenders of the Faith", "Novitiate contesting an objective: halve the damage from one success (round up, min 2)."),
+        ],
+        "firefight": [
+            ("Blinding Aura", "Enemy Shoot selects a Novitiate: while it's >2\" away, it can't be targeted by that enemy this activation (action ends if no other target)."),
+            ("Guided by Faith", "Selecting a ranged weapon: vs operatives within 6\" it gains Seek Light."),
+            ("Glorious Martyrdom", "Novitiate incapacitated: for each enemy visible within 2\", gain 1 Faith point and inflict D3 dmg on it."),
+            ("Blazing Inferno", "Ministorum flamer inflicts crit damage: target gains a Blaze token. On its activation: D3 dmg; its player can take -1 APL that activation to remove the token."),
+        ],
+    },
+    "equipment": [
+        {"id": "auto_chastisers", "name": "Auto-chastisers", "desc": "Once/TP attacking: inflict 1-3 dmg on your own operative (not lethal) to use an Act of Faith costing up to that much for free."},
+        {"id": "holy_embrocations", "name": "Holy Embrocations", "desc": "Ignore Move stat changes from being injured."},
+        {"id": "icon_of_faith", "name": "Icon of Faith", "desc": "Once/TP: use up to two different Acts of Faith in one sequence."},
+        {"id": "sanctified_rounds", "name": "Sanctified Rounds", "desc": "Shooting an autogun, autopistol, relic bolt pistol or relic boltgun: spend a Faith point for Piercing Crits 1."},
+    ],
+    "operatives": [
+        {"id": "superior", "name": "Novitiate Superior", "apl": 3, "move": '6"', "save": "3+", "wounds": 9, "pts": 32,
+         "ranged": [("Plasma pistol (std)", 4, "3+", "3/5", 'Range 8", Piercing 1'), ("Plasma pistol (super)", 4, "3+", "4/5", 'Range 8", Hot, Lethal 5+, Piercing 1'),
+                    ("Relic bolt pistol", 4, "3+", "3/5", 'Range 8", Lethal 5+'), ("Relic boltgun", 4, "3+", "3/5", "Lethal 5+")],
+         "melee": [("Gun butt", 3, "3+", "2/3", "-"), ("Power weapon", 4, "3+", "4/6", "Lethal 5+")],
+         "abilities": ["Loadout: plasma pistol + power weapon, relic boltgun + gun butt, or relic bolt pistol + power weapon.",
+                       "Inspirational Example: Incapacitates an enemy: +1 Faith point (+2 if its Wounds stat is 12+). Not with Glorious Martyrdom."],
+         "kw": "LEADER, SUPERIOR"},
+        nov("condemnor", "Condemnor", [("Condemnor stakethrower", 4, "3+", "3/3", "Anti-PSYKER, Devastating 2, Piercing Crits 1, Silent")], [("Null rod", 4, "4+", "3/3", "Anti-PSYKER, Shock")],
+            ["Anti-PSYKER (weapon rule): Vs a PSYKER: +1 both Dmg and Lethal 5+.",
+             "Null Rod: PSYCHIC ranged weapons can't damage it; it can't be picked by PSYCHIC actions. Operatives within 6\": no PSYCHIC actions/rules/ranged weapons; PSYCHIC melee weapons lose their rules (Dmg max 3/4)."],
+            "CONDEMNOR"),
+        nov("dialogus", "Dialogus", [AUTOPISTOL], [("Dialogus stave", 4, "4+", "3/3", "Shock")],
+            ["Auto-broadcaster (0AP): Place your Auto-broadcaster within 8\" horizontally, or move it up to 8\". Enemies within 3\" of it can't re-roll attack dice. Removed if this is. Not within enemy control range.",
+             "Stirring Rhetoric (1AP): SUPPORT. Another Novitiate visible within 6\" (or within 6\" of the Auto-broadcaster): +1 APL (max 3) until end of its next activation. Not within enemy control range."],
+            "DIALOGUS"),
+        nov("duellist", "Duellist", [AUTOPISTOL], [("Duelling blades", 4, "3+", "4/5", "Ceaseless, Riposte")],
+            ["Riposte (weapon rule): Each time you block with a crit, also inflict the weapon's Critical Dmg on the enemy."],
+            "DUELLIST"),
+        nov("exactor", "Exactor", [("Neural whips (ranged)", 5, "3+", "2/3", 'Range 3", Lethal 5+, Stun')], [("Neural whips (melee)", 5, "3+", "2/3", "Lethal 5+, Shock")],
+            ["Whip Into Frenzy (1AP): Another Novitiate (not Superior) visible within 3\": +1 APL, +1\" Move and two Fight actions until end of its next activation. Not within enemy control range."],
+            "EXACTOR"),
+        nov("hospitaller", "Hospitaller", [AUTOPISTOL], [("Surgical saw", 4, "4+", "2/3", "Lethal 5+, Rending")],
+            ["Medic!: First time each TP another Novitiate visible within 3\" would be incapacitated (neither in enemy control range): stays on 1 wound, can't be incapacitated that action, then free Dash ending in this one's control range. Both -1 APL until their next activations; ends its activation if during it.",
+             "Chirurgeon's Tools (1AP): Novitiate in control range regains up to 2D3 wounds (not one saved by Medic! this TP). Not within enemy control range."],
+            "MEDIC, HOSPITALLER"),
+        nov("penitent", "Penitent", [AUTOPISTOL], [("Penitent eviscerator", 4, "4+", "5/6", "Brutal, Zealous Rage")],
+            ["Zealous Rage (weapon rule): Fighting with it: Ceaseless.",
+             "Absolution Through Destruction: After a Fight (if alive), a free Fight (max two in a row; applies to each Fight from Whip Into Frenzy)."],
+            "PENITENT"),
+        nov("preceptor", "Preceptor", [], [("Mace of the Righteous", 4, "4+", "5/5", "Brutal, Severe")],
+            ["Unflinching Example: Incapacitates a ready enemy in its control range: +1 Faith point (+2 if its Wounds stat is 12+).",
+             "Glorious Hymnal: SUPPORT. Novitiates within 3\" of it: weapons gain Severe."],
+            "PRECEPTOR"),
+        nov("pronatus", "Pronatus", [AUTOPISTOL], [GUN_BUTT],
+            ["Relic Seeker: Once per activation: Pick Up Marker, Place Marker or a mission action costs 1 less AP.",
+             "Divine Acquisition: Once/TP, doing a mission action that needs it to control a marker: gain Faith points equal to the TP number."],
+            "PRONATUS"),
+        nov("purgatus", "Purgatus", [("Ministorum flamer", 4, "2+", "4/4", 'Range 8", Saturate, Torrent 2"')], [GUN_BUTT],
+            ["Purge with Flame: Once/TP, Blazing Inferno costs 0CP for this operative."],
+            "PURGATUS"),
+        nov("reliquarius", "Reliquarius", [AUTOPISTOL], [GUN_BUTT],
+            ["Icon Bearer: Marker control APL +1.",
+             "Raise Icon (1AP): Gain 1 Faith point (+ the TP number if it controls an objective). Once/TP; not within enemy control range."],
+            "RELIQUARIUS"),
+        nov("militant_pistol", "Militant (blade)", [AUTOPISTOL], [("Novitiate blade", 4, "4+", "4/5", "-")], [MILITANT_FAITH], "MILITANT"),
+        nov("militant_autogun", "Militant (autogun)", [("Autogun", 4, "4+", "2/3", "-")], [GUN_BUTT], [MILITANT_FAITH], "MILITANT"),
+    ],
+}

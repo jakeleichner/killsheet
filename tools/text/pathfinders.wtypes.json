@@ -1,0 +1,48 @@
+{
+"Fusion grenade": [
+"ranged"
+],
+"Pulse carbine": [
+"ranged"
+],
+"Gun butt": [
+"melee"
+],
+"Fists": [
+"melee"
+],
+"Suppressed pulse carbine": [
+"ranged"
+],
+"Bionic arm": [
+"melee"
+],
+"Marksman rail rifle (standard)": [
+"ranged"
+],
+"Marksman rail rifle (dart round)": [
+"ranged"
+],
+"Ion rifle (standard)": [
+"ranged"
+],
+"Ion rifle (overcharge)": [
+"ranged"
+],
+"Rail rifle": [
+"ranged"
+],
+"Twin pulse carbine": [
+"ranged"
+],
+"Ram": [
+"?",
+"melee"
+],
+"Burst cannon (focused)": [
+"ranged"
+],
+"Burst cannon (sweeping)": [
+"ranged"
+]
+}

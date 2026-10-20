@@ -1,0 +1,101 @@
+{
+"Mechanical appendages": [
+"melee"
+],
+"Extended stock relic autopistol": [
+"ranged"
+],
+"Fists": [
+"melee"
+],
+"Autopistol": [
+"ranged"
+],
+"Paired blades": [
+"melee"
+],
+"Knife": [
+"melee"
+],
+"Polearm": [
+"melee"
+],
+"Shotgun": [
+"ranged"
+],
+"Hand flamer": [
+"ranged"
+],
+"Chainsword": [
+"melee"
+],
+"Eviscerator": [
+"melee"
+],
+"Scoped plasma pistol (standard)": [
+"ranged"
+],
+"Scoped plasma pistol (supercharge)": [
+"ranged"
+],
+"Suppressed autopistol": [
+"ranged"
+],
+"Boltgun": [
+"ranged"
+],
+"Gun butt": [
+"melee"
+],
+"Flamer": [
+"ranged"
+],
+"Heavy bolter (focused)": [
+"ranged"
+],
+"Heavy bolter (sweeping)": [
+"ranged"
+],
+"Multi-melta": [
+"ranged"
+],
+"Plasma cannon (standard)": [
+"ranged"
+],
+"Plasma cannon (supercharge)": [
+"ranged"
+],
+"Servo claw": [
+"melee"
+],
+"Executioner greatblade": [
+"melee"
+],
+"Hot-shot lasgun": [
+"ranged"
+],
+"Grenade launcher (frag)": [
+"ranged"
+],
+"Grenade launcher (krak)": [
+"ranged"
+],
+"Hot-shot volley gun (focused)": [
+"ranged"
+],
+"Hot-shot volley gun (sweeping)": [
+"ranged"
+],
+"Meltagun": [
+"ranged"
+],
+"Plasma gun (standard)": [
+"ranged"
+],
+"Plasma gun (supercharge)": [
+"ranged"
+],
+"Combat dagger": [
+"?"
+]
+}
