@@ -6500,6 +6500,18 @@ const IMPERIUM_BADGES = ["ADEPTUS ASTARTES", "SPACE MARINES", "SPACE WOLVES", "I
 const CHAOS_BADGES = ["CHAOS", "CHAOS SPACE MARINES", "DEATH GUARD"];
 const FACTION_GROUPS = ["Imperium", "Chaos", "Xenos"];
 const factionGroup = (fc) => IMPERIUM_BADGES.includes(fc.badge) ? "Imperium" : CHAOS_BADGES.includes(fc.badge) ? "Chaos" : "Xenos";
+// Extra words the team search matches, so players can find a team by the name they know.
+const BADGE_SEARCH_WORDS = {
+  "ADEPTUS ASTARTES": "space marines", "SPACE WOLVES": "space marines", "SPACE MARINES": "adeptus astartes",
+  "ASTRA MILITARUM": "imperial guard guardsmen", "ADEPTA SORORITAS": "sisters of battle", "ADEPTUS MINISTORUM": "sisters ecclesiarchy",
+  "ADEPTUS MECHANICUS": "admech skitarii", "ADEPTUS ARBITES": "arbites enforcers", "INQUISITION": "inquisitor",
+  "CHAOS SPACE MARINES": "heretic astartes", "DEATH GUARD": "chaos space marines heretic astartes nurgle", "CHAOS": "heretic traitor",
+  "AELDARI": "eldar", "DRUKHARI": "dark eldar aeldari", "T'AU EMPIRE": "tau", "LEAGUES OF VOTANN": "squats kin dwarfs",
+  "GENE\u00adSTEALER CULTS": "genestealer cults tyranids", "TYRANIDS": "nids",
+};
+const TEAM_SEARCH_WORDS = { gellerpox: "nurgle", goremongers: "khorne", warpcoven: "thousand sons tzeentch", voiddancers: "harlequins", blooded: "traitor guard" };
+const searchNorm = (t) => t.toLowerCase().replace(/\u00ad/g, "").replace(/[^a-z0-9 ]/g, "");
+const factionSearchText = (fc) => searchNorm([fc.name, fc.badge, factionGroup(fc), BADGE_SEARCH_WORDS[fc.badge] || "", TEAM_SEARCH_WORDS[fc.id] || ""].join(" "));
 
 function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
   const mobile = useIsMobile();
@@ -7460,9 +7472,9 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
         </div>
       ) : (() => {
         const group = pickerGroup || (f ? factionGroup(f) : "Imperium");
-        const q = pickerSearch.trim().toLowerCase();
+        const q = searchNorm(pickerSearch.trim());
         const all = Object.values(FACTIONS).sort((x, y) => x.name.localeCompare(y.name));
-        const shown = q ? all.filter(fc => (fc.name + " " + fc.badge.replace("\u00ad", "")).toLowerCase().includes(q)) : all.filter(fc => factionGroup(fc) === group);
+        const shown = q ? all.filter(fc => factionSearchText(fc).includes(q)) : all.filter(fc => factionGroup(fc) === group);
         const pick = (fc) => {
           if (fid === fc.id) { setPickerOpen(false); return; }
           if (rosterLocked && !confirm("Roster is locked. Change faction? This will reset everything.")) return;
@@ -7479,7 +7491,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
                   </button>
                 );
               })}
-              <input value={pickerSearch} onChange={e => setPickerSearch(e.target.value)} placeholder="Search teams" style={{ flex: "1 1 140px", minWidth: 0, background: "#1A1D24", border: "1px solid #3A4150", borderRadius: 6, color: "#F1F2F5", padding: "7px 10px", fontSize: 13, fontFamily: "'Inter', sans-serif" }} />
+              <input value={pickerSearch} onChange={e => setPickerSearch(e.target.value)} placeholder="Search teams or factions" style={{ flex: "1 1 140px", minWidth: 0, background: "#1A1D24", border: "1px solid #3A4150", borderRadius: 6, color: "#F1F2F5", padding: "7px 10px", fontSize: 13, fontFamily: "'Inter', sans-serif" }} />
               {f && <button onClick={() => { setPickerOpen(false); setPickerSearch(""); }} style={{ ...bs("#9AA5B1"), fontSize: 11, padding: "6px 10px" }}>Cancel</button>}
             </div>
             {shown.length === 0 && <p style={{ ...mu, margin: "8px 0" }}>No team matches "{pickerSearch}".</p>}
