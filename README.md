@@ -10,7 +10,7 @@ A single-file web app that acts as a companion for **Kill Team** (Games Workshop
 
 The name and branding were deliberately kept generic ("KillSheet," not "Kill Team Companion") to avoid Games Workshop trademark issues. The app references GW game mechanics and stats (which are rules, not protected expression) but uses no GW logos, names-as-branding, artwork, or lore text.
 
-**Current factions implemented:** Angels of Death (Space Marines), Ork Kommandos, Plague Marines. The data shape is well-tested across these three; adding more is data-entry work against official PDFs.
+**Current factions implemented (15):** Angels of Death, Ork Kommandos, Plague Marines, Imperial Navy Breachers, Inquisitorial Agents, Battleclade, Hernkyn Yaegirs, Wolf Scouts, Gellerpox Infected, Pathfinders, Novitiates, Hierotek Circle, Vespid Stingwings, Murderwing, Deathwatch (newest, listed last). The 12 added in Oct 2026 were entered from the official online rules PDFs with the Aug '26 errata. Abilities, ploys and equipment are condensed summaries, not GW's full text. Operatives with a weapon choice ("with one of the following options") are separate entries, e.g. "Navis Gunner (meltagun)", so caps like "max 2 Gunners" can be enforced.
 
 ---
 
@@ -162,6 +162,9 @@ Planned implementation:
 Estimated 2-3 hours. Should be its own focused session with its own QA pass (mixing infra + UI changes tends to combine bugs confusingly).
 
 ### Done recently
+- 12 new teams added (see Current factions). Builder rules engine rebuilt to support them: repeat operatives, required groups, equipment-unlocked groups (Gellerpox Mutoid Vermin), per-operative and combined caps, "requires" pairs, ½ and ×2 selections, shared totals across groups, and borrowed-operative groups (Inquisitorial requisitions).
+- Fixed: multiplayer never showed the opponent's roster (`FACTIONS.find` on an object).
+- Print sheet now labels the base size as "mm base" (it said "pts").
 - Gold restored for CP/TP signal indicators.
 - All four tab icons replaced with a matching SVG line set (Rules: document, Builder: crossed swords, Tutorial: play, Community: reticle).
 - Locked roster now shows only the selected faction/universal equipment, with a "LOCKED — N SELECTED" header.
@@ -169,12 +172,13 @@ Estimated 2-3 hours. Should be its own focused session with its own QA pass (mix
 - Pre-ship checker added: `python3 tools/check.py` (hooks before early returns, every tab has an icon and panel, unique localStorage keys, no direct localStorage use, print class, JSX script tag).
 
 ### Other open tasks (rough priority order)
+- **Complete Inquisitorial Agents requisitions** — the team can requisition from Death Korps, Exaction Squad, Imperial Navy Breachers, Kasrkin, Sisters of Silence and Tempestus Scions. Death Korps, Exaction Squad and Kasrkin datacards aren't in the Inquisitorial PDF; add those groups once their team PDFs are provided.
 - **Wire in the new logo package** — header horizontal lockup (mark-only on mobile fallback), favicon, apple-touch-icon for installable PWA. Assets exist; not yet integrated.
 
 ### Lower-priority backlog
 - Roll history/log in the dice roller (last 5-10 rolls).
 - Limited 1 actual per-operative usage tracking.
-- More factions (data entry against official PDFs).
+- More factions (data entry against official PDFs). To add one: copy an existing team object in `FACTIONS`, fill it from the PDF, use `composition` for the team-building rules, then run `python3 tools/check.py` and build a full roster in the preview.
 - Functional mission scoring (primary objectives, tac-op tracking).
 - Make killzone rules functional (currently cosmetic).
 - Multiplayer reconnect path.
