@@ -103,11 +103,11 @@ const FACTIONS = {
     archetypes: "Security, Seek & Destroy",
     composition: {
       total: 6,
-      leaders: { min: 1, max: 1, ids: ["captain", "ai_sgt", "int_sgt"], label: "1 Leader (Captain, Assault Int. Sgt, or Intercessor Sgt)" },
-      troops: { min: 5, max: 5, ids: ["ai_gren", "ai_warrior", "elim", "heavy_gun", "int_gunner", "int_warrior"], label: "5 Operatives from the list below" },
-      unique: ["ai_gren", "elim", "heavy_gun", "int_gunner"],
-      unlimited: ["ai_warrior", "int_warrior"],
-      halfSlots: [],
+      groups: [
+        { name: "Leader", desc: "1 Leader (Captain, Assault Int. Sgt, or Intercessor Sgt)", min: 1, max: 1, ids: ["captain", "ai_sgt", "int_sgt"] },
+        { name: "Operatives", desc: "5 Operatives from the list below", min: 5, max: 5, ids: ["ai_gren", "ai_warrior", "elim", "heavy_gun", "int_gunner", "int_warrior"] },
+      ],
+      repeatable: ["ai_warrior", "int_warrior"],
       rules: [
         "Select exactly 1 leader operative.",
         "Select exactly 5 other operatives.",
@@ -188,11 +188,12 @@ const FACTIONS = {
     archetypes: "Infiltration, Seek & Destroy",
     composition: {
       total: 10,
-      leaders: { min: 1, max: 1, ids: ["nob"], label: "1 Boss Nob (with Big Choppa or Power Klaw)" },
-      troops: { min: 9, max: 9, ids: ["bomb_squig", "boy", "breacha", "burna", "comms", "dakka", "grot", "rokkit", "slasha", "snipa"], label: "9 Kommando operatives from the list below" },
-      unique: ["breacha", "burna", "comms", "dakka", "rokkit", "slasha", "snipa"],
-      unlimited: ["boy"],
-      halfSlots: ["bomb_squig", "grot"],
+      groups: [
+        { name: "Leader", desc: "1 Boss Nob (with Big Choppa or Power Klaw)", min: 1, max: 1, ids: ["nob"] },
+        { name: "Operatives", desc: "9 Kommando operatives from the list below", min: 9, max: 9, ids: ["bomb_squig", "boy", "breacha", "burna", "comms", "dakka", "grot", "rokkit", "slasha", "snipa"] },
+      ],
+      repeatable: ["boy"],
+      cost: { bomb_squig: 0.5, grot: 0.5 },
       rules: [
         "Select exactly 1 Boss Nob leader.",
         "Select 9 other operatives.",
@@ -282,11 +283,10 @@ const FACTIONS = {
     archetypes: "Security, Seek & Destroy",
     composition: {
       total: 6,
-      leaders: { min: 1, max: 1, ids: ["champion"], label: "1 Plague Marine Champion" },
-      troops: { min: 5, max: 5, ids: ["bombardier", "fighter", "pm_heavy", "icon_bearer", "plaguecaster", "pm_warrior"], label: "5 Plague Marine operatives from the list below" },
-      unique: ["bombardier", "fighter", "pm_heavy", "icon_bearer", "plaguecaster", "pm_warrior"],
-      unlimited: [],
-      halfSlots: [],
+      groups: [
+        { name: "Leader", desc: "1 Plague Marine Champion", min: 1, max: 1, ids: ["champion"] },
+        { name: "Operatives", desc: "5 Plague Marine operatives from the list below", min: 5, max: 5, ids: ["bombardier", "fighter", "pm_heavy", "icon_bearer", "plaguecaster", "pm_warrior"] },
+      ],
       rules: [
         "Select exactly 1 Plague Marine Champion leader.",
         "Select exactly 5 other operatives.",
@@ -356,6 +356,85 @@ const FACTIONS = {
     ],
   },
 };
+
+/* ═══ ROSTER & COMPOSITION HELPERS ═══
+   composition: {
+     total: selections in a full team (for the "x/total" counters),
+     groups: [{ name, desc, min, max, ids, equip? }]  each operative id belongs to one group;
+             `equip` = faction equipment id that must be selected to use the group,
+     repeatable: ids that can be taken more than once (others: once),
+     maxCount: { id: n }  per-id cap for repeatables,
+     caps: [{ ids, max, label }]  at most `max` operatives from `ids` combined,
+     requires: [{ id, needs, label }]  `id` can only be taken alongside `needs`,
+     cost: { id: 0.5 | 2 }  selection weight (default 1),
+     rules: [text shown in the Team Composition panel],
+   } */
+const baseOf = (o) => o.baseId || o.id;
+
+// Repeat copies get their own id ("boy~2") and name ("Kommando Boy 2") so wounds,
+// activation and multiplayer sync track each copy separately.
+function makeInstance(op, n) {
+  return n === 1 ? { ...op } : { ...op, id: op.id + "~" + n, baseId: op.id, name: op.name + " " + n };
+}
+function makeInstances(faction, baseIds) {
+  const seen = {};
+  return baseIds.map(bid => {
+    const op = faction.operatives.find(x => x.id === bid);
+    if (!op) return null;
+    seen[bid] = (seen[bid] || 0) + 1;
+    return makeInstance(op, seen[bid]);
+  }).filter(Boolean);
+}
+
+const compCost = (c, bid) => (c.cost && c.cost[bid]) || 1;
+const compMaxCount = (c, bid) => (c.maxCount && c.maxCount[bid]) || ((c.repeatable || []).includes(bid) ? 99 : 1);
+const compCount = (roster, bid) => roster.filter(o => baseOf(o) === bid).length;
+const compSelections = (c, roster) => roster.reduce((s, o) => s + compCost(c, baseOf(o)), 0);
+const compGroupUsed = (c, roster, g) => roster.filter(o => g.ids.includes(baseOf(o))).reduce((s, o) => s + compCost(c, baseOf(o)), 0);
+const opName = (f, bid) => { const o = f.operatives.find(x => x.id === bid); return o ? o.name : bid; };
+
+function compCanAdd(f, roster, bid, eq) {
+  const c = f.composition;
+  const g = c.groups.find(gr => gr.ids.includes(bid));
+  if (!g) return false;
+  if (g.equip && !(eq && eq[g.equip])) return false;
+  if (compGroupUsed(c, roster, g) + compCost(c, bid) > g.max) return false;
+  if (compCount(roster, bid) >= compMaxCount(c, bid)) return false;
+  for (const cap of c.caps || []) {
+    if (cap.ids.includes(bid) && roster.filter(o => cap.ids.includes(baseOf(o))).length >= cap.max) return false;
+  }
+  for (const rq of c.requires || []) {
+    if (rq.id === bid && compCount(roster, rq.needs) === 0) return false;
+  }
+  return true;
+}
+
+function compCheck(f, roster, eq) {
+  const c = f.composition;
+  const errors = [];
+  const warnings = [];
+  c.groups.forEach(g => {
+    const used = compGroupUsed(c, roster, g);
+    if (g.equip && used > 0 && !(eq && eq[g.equip])) errors.push(g.name + " need the " + (f.equipment.find(q => q.id === g.equip) || {}).name + " equipment.");
+    if (used > g.max) errors.push(g.name + ": too many — maximum " + g.max + " (" + used + " selected).");
+    else if (used < g.min) warnings.push(g.name + ": need " + (g.min - used) + " more (" + used + "/" + g.min + ").");
+  });
+  const counted = {};
+  roster.forEach(o => { counted[baseOf(o)] = (counted[baseOf(o)] || 0) + 1; });
+  Object.keys(counted).forEach(bid => {
+    const max = compMaxCount(c, bid);
+    if (counted[bid] > max) errors.push(opName(f, bid) + (max === 1 ? " can only be included once." : " is limited to " + max + "."));
+  });
+  (c.caps || []).forEach(cap => {
+    const n = roster.filter(o => cap.ids.includes(baseOf(o))).length;
+    if (n > cap.max) errors.push(cap.label + " (" + n + " selected).");
+  });
+  (c.requires || []).forEach(rq => {
+    if (counted[rq.id] && !counted[rq.needs]) errors.push(rq.label);
+  });
+  const complete = roster.length > 0 && errors.length === 0 && warnings.length === 0;
+  return { errors, warnings, complete, selections: compSelections(c, roster) };
+}
 
 /* ═══ TUTORIAL ═══ */
 const TUT = [
@@ -1295,7 +1374,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
           if (p.fid === null) {
             setOppRoster(null);
           } else {
-            const opF = FACTIONS.find(ff => ff.id === p.fid);
+            const opF = FACTIONS[p.fid];
             if (opF) setOppRoster({ factionId: p.fid, factionName: opF.name, factionColor: opF.color, operatives: (p.roster || []).map(o => ({ ...o, equipNote: "" })) });
           }
         }
@@ -1314,7 +1393,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
           if (p.fid === null) {
             setOppRoster(null);
           } else {
-            const opF = FACTIONS.find(ff => ff.id === p.fid);
+            const opF = FACTIONS[p.fid];
             if (opF) setOppRoster({ factionId: p.fid, factionName: opF.name, factionColor: opF.color, operatives: (p.roster || []).map(o => ({ ...o, equipNote: "" })) });
           }
         }
@@ -1602,7 +1681,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
     if (!fid || roster.length === 0) return;
     const data = {
       f: fid,
-      o: roster.map(r => r.id),
+      o: roster.map(r => baseOf(r)),
       fe: Object.keys(eq).filter(k => eq[k]),
       ue: Object.keys(uEq).filter(k => uEq[k]),
     };
@@ -1620,7 +1699,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
       const data = JSON.parse(raw);
       const faction = FACTIONS[data.f];
       if (!faction) return "Unknown faction: " + data.f;
-      const ops = data.o.map(id => faction.operatives.find(x => x.id === id)).filter(Boolean);
+      const ops = makeInstances(faction, data.o);
       if (ops.length === 0) return "No valid operatives found.";
       setFid(data.f);
       setRoster(ops);
@@ -1647,7 +1726,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
       const data = JSON.parse(raw);
       const faction = FACTIONS[data.f];
       if (!faction) { setImportError("Unknown faction: " + data.f); return; }
-      const ops = data.o.map(id => faction.operatives.find(x => x.id === id)).filter(Boolean);
+      const ops = makeInstances(faction, data.o);
       if (ops.length === 0) { setImportError("No valid operatives found."); return; }
       // Build equipment state for opponent
       const oppEq = {};
@@ -1662,7 +1741,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
         faction.equipment.forEach(q => {
           if (!oppEq[q.id]) return;
           if (op.ex && op.ex.includes(q.id)) return;
-          if (q.ex && q.ex.includes(op.id)) return;
+          if (q.ex && q.ex.includes(baseOf(op))) return;
           if (q.gw) weapons.push({ ...q.gw });
           if (q.mod === "ignore_injured") { ignoreInjured = true; effects.push(q.name + ": Ignore injured stat changes."); }
           else if (q.mod === "poison_bolts") {
@@ -1907,44 +1986,8 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
 
   // ── Validation logic ──
   const getValidation = () => {
-    if (!f || !f.composition) return { errors: [], warnings: [], valid: true };
-    const c = f.composition;
-    const errors = [];
-    const warnings = [];
-    const leaderCount = roster.filter(r => c.leaders.ids.includes(r.id)).length;
-    const troopCount = roster.filter(r => c.troops.ids.includes(r.id)).length;
-
-    // Leader count
-    if (leaderCount === 0) errors.push("No leader selected \u2014 select exactly " + c.leaders.min + ".");
-    else if (leaderCount > c.leaders.max) errors.push("Too many leaders \u2014 maximum " + c.leaders.max + ".");
-
-    // Troop count (accounting for half slots)
-    let effectiveTroopSlots = 0;
-    roster.forEach(r => {
-      if (!c.troops.ids.includes(r.id)) return;
-      if (c.halfSlots.includes(r.id)) effectiveTroopSlots += 0.5;
-      else effectiveTroopSlots += 1;
-    });
-    if (effectiveTroopSlots < c.troops.min) {
-      const diff = c.troops.min - effectiveTroopSlots;
-      warnings.push("Need " + diff + " more operative" + (diff !== 1 ? "s" : "") + " (" + effectiveTroopSlots + "/" + c.troops.min + " slots filled).");
-    }
-    if (effectiveTroopSlots > c.troops.max) errors.push("Too many operatives \u2014 maximum " + c.troops.max + " slots (half-selections count as 0.5).");
-
-    // Unique constraints
-    c.unique.forEach(uid => {
-      const count = roster.filter(r => r.id === uid).length;
-      if (count > 1) {
-        const op = f.operatives.find(o => o.id === uid);
-        errors.push((op ? op.name : uid) + " can only be included once.");
-      }
-    });
-
-    // Total
-    if (roster.length > 0 && roster.length < c.total) {
-      warnings.push("Roster has " + roster.length + "/" + c.total + " operatives.");
-    }
-    if (roster.length > c.total) errors.push("Too many operatives \u2014 maximum " + c.total + " total.");
+    if (!f || !f.composition) return { errors: [], warnings: [], valid: true, complete: false, selections: roster.length };
+    const { errors, warnings, complete, selections } = compCheck(f, roster, eq);
 
     // Equipment validation
     const factionEqCount = Object.keys(eq).filter(k => eq[k]).length;
@@ -1958,60 +2001,33 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
       warnings.push("Equipment: " + totalEqSlots + " selections (limit is " + gc.equipSlots + ").");
     }
 
-    return { errors, warnings, valid: errors.length === 0, equipCount: totalEqSlots };
+    return { errors, warnings, valid: errors.length === 0, complete, selections, equipCount: totalEqSlots };
   };
 
-  // ── Can this operative be added? ──
+  // ── Can another copy of this operative be added? ──
   const canAdd = (opId, rosterOverride) => {
     if (!validate || !f || !f.composition) return true;
-    const r = rosterOverride || roster;
-    const c = f.composition;
-    const isLeader = c.leaders.ids.includes(opId);
-    const isTroop = c.troops.ids.includes(opId);
-    const already = r.find(x => x.id === opId);
-
-    // Already in roster? Can always toggle off
-    if (already) return true;
-
-    // Total cap
-    if (r.length >= c.total) return false;
-
-    // Leader cap
-    if (isLeader) {
-      const leaderCount = r.filter(x => c.leaders.ids.includes(x.id)).length;
-      if (leaderCount >= c.leaders.max) return false;
-    }
-
-    // Troop slot cap
-    if (isTroop) {
-      let usedSlots = 0;
-      r.forEach(x => {
-        if (!c.troops.ids.includes(x.id)) return;
-        usedSlots += c.halfSlots.includes(x.id) ? 0.5 : 1;
-      });
-      const thisSlotCost = c.halfSlots.includes(opId) ? 0.5 : 1;
-      if (usedSlots + thisSlotCost > c.troops.max) return false;
-    }
-
-    // Unique check
-    if (c.unique.includes(opId) && r.find(x => x.id === opId)) return false;
-
-    return true;
+    return compCanAdd(f, rosterOverride || roster, opId, eq);
   };
 
-  const toggleOp = (id) => {
+  // Add one copy of an operative (numbered if it's a repeat)
+  const addOp = (id) => {
     if (rosterLocked) return;
     setRoster(prev => {
-      if (prev.find(r => r.id === id)) {
-        return prev.filter(r => r.id !== id);
-      } else {
-        if (validate && !canAdd(id, prev)) return prev;
-        const op = f.operatives.find(x => x.id === id);
-        if (op) return [...prev, op];
-        return prev;
-      }
+      if (validate && !canAdd(id, prev)) return prev;
+      const op = f.operatives.find(x => x.id === id);
+      return op ? [...prev, makeInstance(op, compCount(prev, id) + 1)] : prev;
     });
   };
+  // Remove the most recent copy of an operative
+  const removeOp = (id) => {
+    if (rosterLocked) return;
+    setRoster(prev => {
+      const idx = prev.map(baseOf).lastIndexOf(id);
+      return idx < 0 ? prev : prev.filter((_, i) => i !== idx);
+    });
+  };
+  const toggleOp = (id) => (compCount(roster, id) > 0 ? removeOp(id) : addOp(id));
 
   const getEquipForOp = (op) => {
     if (!f) return { weapons: [], effects: [], ignoreInjured: false };
@@ -2022,7 +2038,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
     f.equipment.forEach(q => {
       if (!eq[q.id]) return;
       if (op.ex && op.ex.includes(q.id)) return;
-      if (q.ex && q.ex.includes(op.id)) return;
+      if (q.ex && q.ex.includes(baseOf(op))) return;
       if (q.gw) weapons.push({ ...q.gw });
       if (q.mod === "ignore_injured") {
         ignoreInjured = true;
@@ -2047,8 +2063,8 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
     return { weapons, effects, ignoreInjured };
   };
 
-  const v = f ? getValidation() : { errors: [], warnings: [], valid: true };
-  const isComplete = f && f.composition && roster.length === f.composition.total && v.valid;
+  const v = f ? getValidation() : { errors: [], warnings: [], valid: true, complete: false, selections: 0 };
+  const isComplete = !!(f && f.composition && v.complete);
 
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto", padding: "20px 16px", position: "relative" }}>
@@ -2389,7 +2405,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
                   <div>
                     <div style={{ fontSize: 11, fontWeight: 700, color: "#3D6B3F", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.06em" }}>{"\u2720"} ROSTER LOCKED</div>
                     <div style={{ fontSize: 10, color: "#9AA5B1", marginTop: 2 }}>
-                      {roster.length}{f.composition ? "/" + f.composition.total : ""} operatives {"\u2022"} {roster.reduce((s, o) => s + o.wounds, 0)}W
+                      {v.selections}{f.composition ? "/" + f.composition.total : ""} selections {"\u2022"} {roster.length} operatives {"\u2022"} {roster.reduce((s, o) => s + o.wounds, 0)}W
                     </div>
                   </div>
                   <button onClick={() => setRosterLocked(false)} style={{ ...bs("#B8341C"), fontSize: 9, padding: "5px 10px" }}>{"\u2720"} Unlock</button>
@@ -2405,21 +2421,18 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
                   <span style={{ fontSize: 10, color: "#9AA5B1" }}>{showRules ? "\u25B2" : "\u25BC"}</span>
                 </div>
                 {/* Quick summary always visible */}
-                <div style={{ ...mu, fontSize: 9, marginTop: 4 }}>
-                  {f.composition.leaders.label}
-                </div>
-                <div style={{ ...mu, fontSize: 9 }}>
-                  {f.composition.troops.label}
-                </div>
+                {f.composition.groups.map((g, i) => (
+                  <div key={i} style={{ ...mu, fontSize: 9, marginTop: i === 0 ? 4 : 0 }}>{g.desc}</div>
+                ))}
                 {showRules && (
                   <div style={{ marginTop: 8 }}>
                     <div style={dv} />
                     {f.composition.rules.map((r, i) => (
                       <div key={i} style={{ fontSize: 9, color: "#9AA5B1", paddingLeft: 8, borderLeft: "2px solid " + f.color + "25", marginBottom: 4, lineHeight: 1.4 }}>{r}</div>
                     ))}
-                    {f.composition.halfSlots.length > 0 && (
+                    {f.composition.cost && Object.keys(f.composition.cost).length > 0 && (
                       <div style={{ fontSize: 9, color: "#C9772E", background: "#C9772E08", padding: "4px 6px", borderRadius: 2, marginTop: 6, border: "1px solid #C9772E15" }}>
-                        {"\u26A0"} Half-slot operatives: {f.composition.halfSlots.map(id => { const o = f.operatives.find(x => x.id === id); return o ? o.name : id; }).join(", ")}
+                        {"\u26A0"} Selection weights: {Object.keys(f.composition.cost).map(id => opName(f, id) + " = " + (f.composition.cost[id] === 0.5 ? "\u00BD" : f.composition.cost[id])).join(", ")}
                       </div>
                     )}
                   </div>
@@ -2450,41 +2463,53 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
               </div>
             )}
 
-            {/* Operatives — Leaders */}
+            {/* Operatives, one section per composition group */}
             <div style={{ ...cd, padding: 10 }}>
-              <div style={{ ...h3, color: f.color }}>LEADER</div>
-              <div style={dv} />
-              {f.operatives.filter(op => f.composition && f.composition.leaders.ids.includes(op.id)).map(op => {
-                const inR = roster.find(r => r.id === op.id);
-                const blocked = validate && !inR && !canAdd(op.id);
+              {f.composition.groups.map((g, gi) => {
+                const gated = g.equip && !eq[g.equip];
+                const used = compGroupUsed(f.composition, roster, g);
                 return (
-                  <div key={op.id} onClick={() => !blocked && toggleOp(op.id)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 2px", cursor: blocked ? "not-allowed" : "pointer", borderBottom: "1px solid #1A2430", opacity: blocked ? 0.3 : 1 }}>
-                    <div style={{ width: 14, height: 14, borderRadius: 2, border: "1.5px solid " + (inR ? f.color : "#262A33"), background: inR ? f.color + "20" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: f.color, flexShrink: 0 }}>{inR ? "\u2720" : ""}</div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 11, fontWeight: inR ? 700 : 400, color: inR ? "#F1F2F5" : "#9AA5B1", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: inR ? "'Rajdhani', sans-serif" : "inherit" }}>{op.name}</div>
-                      <div style={{ fontSize: 10, color: "#9AA5B1" }}>{op.wounds}W {"\u2022"} {op.save} {"\u2022"} APL {op.apl}</div>
-                    </div>
+                <div key={gi} style={{ marginTop: gi === 0 ? 0 : 10 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                    <div style={{ ...h3, color: f.color, marginBottom: 0 }}>{g.name.toUpperCase()}</div>
+                    <div style={{ fontSize: 9, color: used >= g.min && used <= g.max ? "#9AA5B1" : "#C9772E", fontFamily: "monospace" }}>{used}/{g.min === g.max ? g.max : g.min + "\u2013" + g.max}</div>
                   </div>
-                );
-              })}
-
-              <div style={{ ...h3, color: f.color, marginTop: 10 }}>OPERATIVES</div>
-              <div style={dv} />
-              {f.operatives.filter(op => !f.composition || !f.composition.leaders.ids.includes(op.id)).map(op => {
-                const inR = roster.find(r => r.id === op.id);
-                const blocked = validate && !inR && !canAdd(op.id);
-                const isHalf = f.composition && f.composition.halfSlots.includes(op.id);
-                return (
-                  <div key={op.id} onClick={() => !blocked && toggleOp(op.id)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 2px", cursor: blocked ? "not-allowed" : "pointer", borderBottom: "1px solid #1A2430", opacity: blocked ? 0.3 : 1 }}>
-                    <div style={{ width: 14, height: 14, borderRadius: 2, border: "1.5px solid " + (inR ? f.color : "#262A33"), background: inR ? f.color + "20" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: f.color, flexShrink: 0 }}>{inR ? "\u2720" : ""}</div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                        <span style={{ fontSize: 11, fontWeight: inR ? 700 : 400, color: inR ? "#F1F2F5" : "#9AA5B1", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: inR ? "'Rajdhani', sans-serif" : "inherit" }}>{op.name}</span>
-                        {isHalf && (<span style={{ fontSize: 7, color: "#C9772E", background: "#C9772E15", padding: "0 4px", borderRadius: 2, border: "1px solid #C9772E20" }}>{"\u00BD"}</span>)}
+                  <div style={dv} />
+                  {gated && <div style={{ ...mu, fontSize: 9, marginBottom: 4 }}>Select the {(f.equipment.find(q => q.id === g.equip) || {}).name} equipment to add these.</div>}
+                  {f.operatives.filter(op => g.ids.includes(op.id)).map(op => {
+                    const n = compCount(roster, op.id);
+                    const multi = compMaxCount(f.composition, op.id) > 1;
+                    const blocked = validate && !canAdd(op.id);
+                    const cost = compCost(f.composition, op.id);
+                    const nameEl = (
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                          <span style={{ fontSize: 11, fontWeight: n ? 700 : 400, color: n ? "#F1F2F5" : "#9AA5B1", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: n ? "'Rajdhani', sans-serif" : "inherit" }}>{op.name}</span>
+                          {cost !== 1 && (<span style={{ fontSize: 7, color: "#C9772E", background: "#C9772E15", padding: "0 4px", borderRadius: 2, border: "1px solid #C9772E20" }}>{cost === 0.5 ? "\u00BD" : "\u00D7" + cost}</span>)}
+                        </div>
+                        <div style={{ fontSize: 10, color: "#9AA5B1" }}>{op.wounds}W {"\u2022"} {op.save} {"\u2022"} APL {op.apl}</div>
                       </div>
-                      <div style={{ fontSize: 10, color: "#9AA5B1" }}>{op.wounds}W {"\u2022"} {op.save} {"\u2022"} APL {op.apl}</div>
-                    </div>
-                  </div>
+                    );
+                    if (multi) {
+                      const btn = (on) => ({ width: 26, height: 26, border: "1px solid #3A4150", borderRadius: 4, background: "#1A1D24", cursor: on ? "pointer" : "not-allowed", opacity: on ? 1 : 0.3, fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, flexShrink: 0 });
+                      return (
+                        <div key={op.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 2px", borderBottom: "1px solid #1A2430", opacity: !n && blocked ? 0.3 : 1 }}>
+                          {nameEl}
+                          <button onClick={() => n && removeOp(op.id)} disabled={!n} aria-label={"Remove " + op.name} style={{ ...btn(!!n), color: "#B8341C" }}>{"\u2212"}</button>
+                          <div style={{ minWidth: 18, textAlign: "center", fontSize: 13, fontWeight: 700, color: n ? f.color : "#5A6470", fontFamily: "'Rajdhani', sans-serif" }}>{n}</div>
+                          <button onClick={() => !blocked && addOp(op.id)} disabled={blocked} aria-label={"Add " + op.name} style={{ ...btn(!blocked), color: "#3D6B3F" }}>+</button>
+                        </div>
+                      );
+                    }
+                    const off = !n && blocked;
+                    return (
+                      <div key={op.id} onClick={() => !off && toggleOp(op.id)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 2px", cursor: off ? "not-allowed" : "pointer", borderBottom: "1px solid #1A2430", opacity: off ? 0.3 : 1 }}>
+                        <div style={{ width: 14, height: 14, borderRadius: 2, border: "1.5px solid " + (n ? f.color : "#262A33"), background: n ? f.color + "20" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: f.color, flexShrink: 0 }}>{n ? "\u2720" : ""}</div>
+                        {nameEl}
+                      </div>
+                    );
+                  })}
+                </div>
                 );
               })}
 
@@ -2492,7 +2517,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
               <div style={{ marginTop: 8, padding: "6px 0", borderTop: "1px solid #3A415030" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div style={{ fontSize: 11, color: isComplete ? "#3D6B3F" : f.color, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.04em" }}>
-                    {roster.length}{f.composition ? "/" + f.composition.total : ""} selected {"\u2022"} {roster.reduce((s, o) => s + o.wounds, 0)}W
+                    {v.selections}{f.composition ? "/" + f.composition.total : ""} selected {"\u2022"} {roster.reduce((s, o) => s + o.wounds, 0)}W
                   </div>
                   {roster.length > 0 && (
                     <button onClick={() => setRosterLocked(true)} style={{ ...bs("#3D6B3F"), fontSize: 9, padding: "4px 10px" }}>{"\u2720"} Lock Roster</button>
@@ -2708,7 +2733,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
                       <div>
                         <div style={{ fontSize: 12, fontWeight: 700, color: f.color, fontFamily: "'Rajdhani', sans-serif" }}>{f.name}</div>
                         <div style={{ fontSize: 9, color: "#9AA5B1" }}>
-                          {roster.length}{f.composition ? "/" + f.composition.total : ""} operatives {"\u2022"} {roster.reduce((s, o) => s + getWounds(o.id, o.wounds), 0)}W alive {"\u2022"} {roster.filter(o => getWounds(o.id, o.wounds) <= 0).length} dead
+                          {roster.length} operatives {"\u2022"} {roster.reduce((s, o) => s + getWounds(o.id, o.wounds), 0)}W alive {"\u2022"} {roster.filter(o => getWounds(o.id, o.wounds) <= 0).length} dead
                         </div>
                       </div>
                     </div>

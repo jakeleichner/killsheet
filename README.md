@@ -138,6 +138,10 @@ These will bite you if you don't know them:
 
 8. **Print uses a `datacard-print` className.** Preserve it when editing Datacard.
 
+9. **Repeat operatives are numbered copies.** Taking an operative twice adds a copy whose `id` is `base~2` (name "Kommando Boy 2") with `baseId: "base"`. Wounds, activation, collapse and multiplayer all key on `id`, so each copy is tracked separately. Anything that needs the datacard's identity (composition rules, equipment `ex` lists, export codes) must use `baseOf(op)`, not `op.id`. Roster codes store base ids; `makeInstances()` rebuilds the copies on import.
+
+10. **Team-building rules live in `composition`** (see the comment above `baseOf` for the full shape): `groups` (required/optional pick groups, optionally gated by a faction equipment id), `repeatable`, `maxCount`, `caps` (combined limits like "max 2 Gunners"), `requires` ("X needs Y"), and `cost` (½ or ×2 selections). `compCheck()` / `compCanAdd()` enforce them.
+
 ---
 
 ## Work queue (what's left to do)
