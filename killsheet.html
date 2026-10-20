@@ -6495,6 +6495,12 @@ function MPIcon({ name, size = 12 }) {
   );
 }
 
+// Team picker groups, keyed off each team's badge. Anything not listed is Xenos.
+const IMPERIUM_BADGES = ["ADEPTUS ASTARTES", "SPACE MARINES", "SPACE WOLVES", "IMPERIAL NAVY", "INQUISITION", "ADEPTUS MECHANICUS", "ADEPTA SORORITAS", "ADEPTUS MINISTORUM", "ASTRA MILITARUM", "ADEPTUS ARBITES", "ROGUE TRADER"];
+const CHAOS_BADGES = ["CHAOS", "CHAOS SPACE MARINES", "DEATH GUARD"];
+const FACTION_GROUPS = ["Imperium", "Chaos", "Xenos"];
+const factionGroup = (fc) => IMPERIUM_BADGES.includes(fc.badge) ? "Imperium" : CHAOS_BADGES.includes(fc.badge) ? "Chaos" : "Xenos";
+
 function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
   const mobile = useIsMobile();
   // Persisted game state
@@ -6536,6 +6542,9 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
   const [showImport, setShowImport] = useState(false);
   const [importCode, setImportCode] = useState("");
   const [importError, setImportError] = useState("");
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerGroup, setPickerGroup] = useState(null);
+  const [pickerSearch, setPickerSearch] = useState("");
   const [importMode, setImportMode] = useState("opponent");
   const [toast, setToast] = useState("");
   const [damageRequest, setDamageRequest] = useState(null); // { amount: number } | null
@@ -7442,15 +7451,49 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
         {validate ? " \u2022 Validation on" : ""}
       </p>
 
-      {/* Faction select */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8, marginBottom: 14 }}>
-        {Object.values(FACTIONS).map(fc => (
-          <div key={fc.id} onClick={() => { if (rosterLocked && fid === fc.id) return; if (rosterLocked && fid !== fc.id) { if (!confirm("Roster is locked. Change faction? This will reset everything.")) return; } selectFaction(fc.id); }} style={{ ...cd, cursor: "pointer", borderColor: fid === fc.id ? fc.color : "#3A4150", textAlign: "center", padding: 12, minWidth: 0, overflowWrap: "anywhere", borderTop: fid === fc.id ? "2px solid " + fc.color : "2px solid #3A4150", boxShadow: fid === fc.id ? "0 0 16px " + fc.color + "20, 0 2px 8px rgba(0,0,0,0.4)" : cd.boxShadow }}>
-            <div style={bg(fc.color)}>{fc.badge}</div>
-            <div style={{ fontSize: 12, fontWeight: 700, marginTop: 6, fontFamily: "'Rajdhani', sans-serif", color: fid === fc.id ? fc.color : "#F1F2F5", letterSpacing: "0.04em" }}>{fc.name}</div>
+      {/* Faction select: collapses to one bar once a team is picked */}
+      {f && !pickerOpen ? (
+        <div style={{ ...cd, display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", marginBottom: 14, borderTop: "2px solid " + f.color }}>
+          <div style={bg(f.color)}>{f.badge}</div>
+          <div style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", color: f.color, letterSpacing: "0.04em" }}>{f.name}</div>
+          <button onClick={() => { setPickerGroup(factionGroup(f)); setPickerSearch(""); setPickerOpen(true); }} style={{ ...bs("#9AA5B1"), fontSize: 11, padding: "6px 12px" }}>Change team</button>
+        </div>
+      ) : (() => {
+        const group = pickerGroup || (f ? factionGroup(f) : "Imperium");
+        const q = pickerSearch.trim().toLowerCase();
+        const all = Object.values(FACTIONS).sort((x, y) => x.name.localeCompare(y.name));
+        const shown = q ? all.filter(fc => (fc.name + " " + fc.badge.replace("\u00ad", "")).toLowerCase().includes(q)) : all.filter(fc => factionGroup(fc) === group);
+        const pick = (fc) => {
+          if (fid === fc.id) { setPickerOpen(false); return; }
+          if (rosterLocked && !confirm("Roster is locked. Change faction? This will reset everything.")) return;
+          selectFaction(fc.id); setPickerOpen(false); setPickerSearch("");
+        };
+        return (
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 8, flexWrap: "wrap" }}>
+              {FACTION_GROUPS.map(g => {
+                const on = !q && g === group;
+                return (
+                  <button key={g} onClick={() => { setPickerGroup(g); setPickerSearch(""); }} style={{ ...bs(on ? "#C9772E" : "#9AA5B1"), fontSize: 12, padding: "6px 12px", background: on ? "#C9772E20" : "transparent" }}>
+                    {g} <span style={{ opacity: 0.6 }}>{all.filter(fc => factionGroup(fc) === g).length}</span>
+                  </button>
+                );
+              })}
+              <input value={pickerSearch} onChange={e => setPickerSearch(e.target.value)} placeholder="Search teams" style={{ flex: "1 1 140px", minWidth: 0, background: "#1A1D24", border: "1px solid #3A4150", borderRadius: 6, color: "#F1F2F5", padding: "7px 10px", fontSize: 13, fontFamily: "'Inter', sans-serif" }} />
+              {f && <button onClick={() => { setPickerOpen(false); setPickerSearch(""); }} style={{ ...bs("#9AA5B1"), fontSize: 11, padding: "6px 10px" }}>Cancel</button>}
+            </div>
+            {shown.length === 0 && <p style={{ ...mu, margin: "8px 0" }}>No team matches "{pickerSearch}".</p>}
+            <div style={{ display: "grid", gridTemplateColumns: mobile ? "repeat(2, minmax(0, 1fr))" : "repeat(auto-fill, minmax(150px, 1fr))", gap: 8 }}>
+              {shown.map(fc => (
+                <div key={fc.id} onClick={() => pick(fc)} style={{ ...cd, cursor: "pointer", borderColor: fid === fc.id ? fc.color : "#3A4150", textAlign: "center", padding: 10, minWidth: 0, overflowWrap: "anywhere", borderTop: "2px solid " + (fid === fc.id ? fc.color : fc.color + "60"), boxShadow: fid === fc.id ? "0 0 16px " + fc.color + "20, 0 2px 8px rgba(0,0,0,0.4)" : cd.boxShadow }}>
+                  <div style={bg(fc.color)}>{fc.badge}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, marginTop: 6, fontFamily: "'Rajdhani', sans-serif", color: fid === fc.id ? fc.color : "#F1F2F5", letterSpacing: "0.04em" }}>{fc.name}</div>
+                </div>
+              ))}
+            </div>
           </div>
-        ))}
-      </div>
+        );
+      })()}
 
       {f && (
         <div>

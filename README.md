@@ -10,7 +10,7 @@ A single-file web app that acts as a companion for **Kill Team** (Games Workshop
 
 The name and branding were deliberately kept generic ("KillSheet," not "Kill Team Companion") to avoid Games Workshop trademark issues. The app references GW game mechanics and stats (which are rules, not protected expression) but uses no GW logos, names-as-branding, artwork, or lore text.
 
-**Current factions implemented:** 48 teams, every kill team on Warhammer Community's downloads page (Ctesiphus Expedition, filed alongside them, is a map-based campaign system, not a team). See `FACTIONS` in `killsheet.html` (Deathwatch is listed last on purpose). All teams were entered from the official online rules PDFs (Aug '26 errata); Angels of Death, Kommandos and Plague Marines were re-entered from their newer PDFs. Inquisitorial Agents has all six requisition groups. Abilities, ploys and equipment are condensed summaries, not GW's full text. Operatives with a weapon choice ("with one of the following options") are separate entries, e.g. "Navis Gunner (meltagun)", so caps like "max 2 Gunners" can be enforced.
+**Current factions implemented:** 48 teams, every kill team on Warhammer Community's downloads page (Ctesiphus Expedition, filed alongside them, is a map-based campaign system, not a team). See `FACTIONS` in `killsheet.html`. The Builder's team picker sorts teams A-Z under three tabs (Imperium, Chaos, Xenos, set by each team's badge in `IMPERIUM_BADGES` / `CHAOS_BADGES`) with a search box, and shrinks to a one-line bar once a team is picked. All teams were entered from the official online rules PDFs (Aug '26 errata); Angels of Death, Kommandos and Plague Marines were re-entered from their newer PDFs. Inquisitorial Agents has all six requisition groups. Abilities, ploys and equipment are condensed summaries, not GW's full text. Operatives with a weapon choice ("with one of the following options") are separate entries, e.g. "Navis Gunner (meltagun)", so caps like "max 2 Gunners" can be enforced.
 
 ---
 
@@ -164,6 +164,7 @@ Planned implementation:
 Estimated 2-3 hours. Should be its own focused session with its own QA pass (mixing infra + UI changes tends to combine bugs confusingly).
 
 ### Done recently
+- Team picker reorganized: Imperium / Chaos / Xenos tabs, A-Z, a search box, and it collapses to a "Change team" bar after you pick. Picking your current team again no longer wipes the roster.
 - Batch 2 done: 30 more teams (Blades of Khaine through XV26 Stealth Battlesuits), for 48 in total. Updated Angels of Death, Kommandos, Plague Marines; added Death Korps, Exaction Squad, Kasrkin; Inquisitorial Agents now has every requisition group. Murderwing fix: a plasma-pistol Chaos Lord counts toward the max-2 plasma/melta limit.
 - Team source files moved into the repo (`tools/teams/`, `tools/text/`) so they can't be lost with a temp folder.
 - Multiplayer now uses drawn line icons with words (Play online, Hosting, Joining, Online, Host a new game, Join, Disconnect) instead of symbol characters.

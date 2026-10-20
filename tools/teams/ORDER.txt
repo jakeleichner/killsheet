@@ -1,4 +1,4 @@
-# Team order in the app's picker. Originals first, Deathwatch last.
+# Order of teams in FACTIONS. The picker sorts A-Z on its own, so this only affects code order.
 angels
 kommandos
 plague_marines
