@@ -21,7 +21,7 @@ The repo lives in iCloud Drive, which the sandboxed Python server can't read. To
 
 ## Deploying
 Deploys are manual: the owner drags the `deploy/` folder into Cloudflare Pages (`killsheet.pages.dev`). Pushing to GitHub does not deploy.
-After every push, refresh it: `cp killsheet.html deploy/index.html && rm -rf deploy/maps && cp -R maps deploy/maps`. `deploy/` is git-ignored. The `maps/` folder must go up with the page, or the Missions tab shows broken images.
+After every push, rebuild it: `python3 tools/build_deploy.py`. That pre-compiles `killsheet.html` (with macOS's built-in `jsc` and the vendored `tools/vendor/babel.min.js`) into a fast-loading `deploy/index.html` and copies `maps/` beside it. Never copy `killsheet.html` into `deploy/` directly: it works, but loads about 13x slower. `deploy/` is git-ignored.
 
 ## Bulk edits
 Long base64 strings (TAB_ICONS, logos) are easier to replace with a Python regex script than with Edit.

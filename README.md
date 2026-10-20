@@ -38,6 +38,7 @@ The name and branding were deliberately kept generic ("KillSheet," not "Kill Tea
 
 - **Live at:** `https://killsheet.pages.dev` (Cloudflare Pages, free tier, no card).
 - **Deploy method:** Direct upload. The file must be named `index.html`, zipped or in a folder, then dragged into the Cloudflare Pages dashboard ("Create deployment").
+- **Build:** run `python3 tools/build_deploy.py` to make `deploy/` (pre-compiled page + maps). Don't copy `killsheet.html` there by hand.
 - **Cache:** Browsers cache aggressively. After deploying, a hard refresh (Cmd/Ctrl+Shift+R) is needed to see changes.
 - **Rollback:** Every deployment is retained; you can roll back to any prior one from the dashboard.
 - The owner is non-technical for HTML purposes — they rely on the dev (you) to produce the file; they handle the drag-and-drop deploy.
@@ -169,6 +170,7 @@ Planned implementation:
 Estimated 2-3 hours. Should be its own focused session with its own QA pass (mixing infra + UI changes tends to combine bugs confusingly).
 
 ### Done recently
+- Faster loading: `tools/build_deploy.py` compiles the JSX once with macOS `jsc` + `tools/vendor/babel.min.js` (7.23.9, same version the page used) and writes `deploy/index.html` without Babel. First paint went from ~1.66s to ~0.12s on a Mac. `killsheet.html` keeps `type="text/babel"` so the preview workflow is unchanged.
 - Design round 2: slim header (desktop: logo inside the tab bar, `LOGO_SRC`; phones: small logo above the tabs), taglines and decorative crosses removed, plain two-line footer. Ready/Expended chip replaces the unlabeled activation box (on phones the chips sit on a second row under the name). Dice roller, import panel, opponent column and Play online window restyled (13px text, bigger buttons and dice, Cover/Obscured toggle buttons). Undo toast for Reset game, switching team, loading and deleting saved rosters (`withUndo` snapshots `ks_` storage via `snapshotKillSheetStorage`; Undo restores and reloads); those actions no longer ask for confirmation. Dim text colours brightened (#5A6470/#4A5563 to #8B95A1, red text #E0664A, green text #5A9C3A). Keyboard: focus ring, clickable divs have `role="button"` + `tabIndex`, and Enter/Space activates them (App-level listener).
 - Tutorial rebuilt in the new style with current rules and real datacards (Intercessor Sergeant/Warrior vs Kommando Boss Nob/Boy): order chosen on activation, bolt rifle 4/3+/3/4 Piercing Crits 1 (one fewer defence die on a crit), optimal blocking including two normal saves on a crit (`tutBlock`), and an interactive fight where you pick Strike or Block each turn against the Nob. Removed the old-edition content (Accurate/Balanced/Heavy bolt rifle, orders in the Strategy phase, primary-objective scoring) and the unused `TUT` data.
 - Community tab redesigned: clear Coming soon note, a 4-step "Share a roster today" guide using saved rosters and codes, and a non-interactive preview of the board.
