@@ -19,7 +19,8 @@ The repo lives in iCloud Drive, which the sandboxed Python server can't read. To
 3. Re-copy after every edit, then load a new URL (e.g. `?v=2`, `?v=3`). A plain reload can show a cached old copy.
 
 ## Deploying
-Deploys are manual: the owner renames `killsheet.html` to `index.html` and drags it into Cloudflare Pages (`killsheet.pages.dev`). Pushing to GitHub does not deploy.
+Deploys are manual: the owner drags the `deploy/` folder into Cloudflare Pages (`killsheet.pages.dev`). Pushing to GitHub does not deploy.
+After every push, refresh it: `cp killsheet.html deploy/index.html`. `deploy/` is git-ignored.
 
 ## Bulk edits
 Long base64 strings (TAB_ICONS, logos) are easier to replace with a Python regex script than with Edit.
