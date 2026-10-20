@@ -83,7 +83,7 @@ The gold→rust bulk swap was done globally, which flattened the "look here" sig
 - Roster lock/unlock. Import/export via base64 codes (own roster vs opponent roster).
 - Datacards: v2 design, bold 4-up stat block, interactive wound counter (+/−), activation toggle, injured/incapacitated states, collapse/expand, equipment effects surfaced.
 
-**Rules reference** (Rules tab): five tabs (How to Play, Moving & Terrain, Combat, Equipment, Glossary) plus a search box across everything. Every rule is a `RuleItem` card: name, one-line summary, and an arrow if it opens for more detail. Data lives in `GAME_SEQUENCE`, `CORE_CONCEPTS`, `CORE_ACTIONS`, `MOVEMENT_RULES`, `VISIBILITY_RULES`, `SHOOTING_RULES`, `FIGHTING_RULES`, `TERRAIN_TYPES`, `WR`, `UNIV_EQUIPMENT` and `GLOSSARY`, all using `{ name, tag?, summary, detail?, steps? }` (or mapped into it in `RULE_SECTIONS`). Core rules come from GW's free Kill Team Lite Rules (Jul '25) and the core rules update log (Jun '26).
+**Rules reference** (Rules tab): five tabs (How to Play, Moving & Terrain, Combat, Equipment, Glossary) plus a search box across everything. Every rule is a `RuleItem` card: name, one-line summary, and an arrow if it opens for more detail. Data lives in `GAME_SEQUENCE`, `CORE_CONCEPTS`, `CORE_ACTIONS`, `MOVEMENT_RULES`, `VISIBILITY_RULES`, `SHOOTING_RULES`, `FIGHTING_RULES`, `TERRAIN_TYPES`, `WR`, `UNIV_EQUIPMENT` and `GLOSSARY`, all using `{ name, tag?, summary, detail?, steps? }` (or mapped into it in `RULE_SECTIONS`). Core rules come from GW's free Kill Team Lite Rules (Jul '25) and the core rules update log (Jun '26). Markers and objectives (Pick Up Marker, Place Marker, marker control) aren't in any free GW PDF (checked the Lite rules, Approved Ops Tournament Companion and Hivestorm); they were written from the Core Book text on Wahapedia (Jun '26 version).
 
 **Tutorial** — step-by-step interactive walkthrough of a turning point against a bot, with real dice rolls.
 
@@ -164,7 +164,7 @@ Planned implementation:
 Estimated 2-3 hours. Should be its own focused session with its own QA pass (mixing infra + UI changes tends to combine bugs confusingly).
 
 ### Done recently
-- Rules tab redesigned: 5 tabs instead of 10, search, one card style with an arrow on cards that open. New How to Play section (setup, turning points, Strategy and Firefight phases, CP, orders, stats, dice, damage). Fixed: Fighting listed the old-edition Assists rule; Counteract now says once per operative per turning point; Visibility cards looked tappable but did nothing.
+- Rules tab redesigned: 5 tabs instead of 10, search, one card style with an arrow on cards that open. New How to Play section (setup, turning points, Strategy and Firefight phases, CP, orders, stats, dice, damage). Fixed: Fighting listed the old-edition Assists rule; Counteract now says once per operative per turning point; Visibility cards looked tappable but did nothing. Added markers and objectives (Pick Up Marker, Place Marker, marker control).
 - Team picker reorganized: Imperium / Chaos / Xenos tabs, A-Z, a search box, and it collapses to a "Change team" bar after you pick. Picking your current team again no longer wipes the roster.
 - Batch 2 done: 30 more teams (Blades of Khaine through XV26 Stealth Battlesuits), for 48 in total. Updated Angels of Death, Kommandos, Plague Marines; added Death Korps, Exaction Squad, Kasrkin; Inquisitorial Agents now has every requisition group. Murderwing fix: a plasma-pistol Chaos Lord counts toward the max-2 plasma/melta limit.
 - Team source files moved into the repo (`tools/teams/`, `tools/text/`) so they can't be lost with a temp folder.
@@ -181,7 +181,6 @@ Estimated 2-3 hours. Should be its own focused session with its own QA pass (mix
 - Pre-ship checker added: `python3 tools/check.py` (hooks before early returns, every tab has an icon and panel, unique localStorage keys, no direct localStorage use, print class, JSX script tag).
 
 ### Other open tasks (rough priority order)
-- **Markers and objectives rules**: the Rules tab has no Pick Up Marker / Place Marker actions or marker-control rules, because the free Lite rules leave them out. Add them from the Kill Team Core Book if the owner has it.
 - **Builder opens on the team picker**: right now the Builder reopens the last team you used (saved in `ks_fid`), with the picker collapsed. Instead, open with the picker showing and no team chosen. Decide what happens to a saved roster or game in progress: probably keep it, and offer "Continue with <team>" at the top of the picker.
 - **Legion of the Damned**: previewed in the Big Autumn Preview; add once its rules are published.
 - **Campaign tracking (Ctesiphus Expedition)**: track a map-based campaign across games. Needs the campaign PDF from the owner first, to see what it tracks (map territory, requisition points, operative experience, injuries and so on). Likely a new tab with its own saved state, and it may later need the same backend as Community Rosters if players want to share one campaign.

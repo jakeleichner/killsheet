@@ -77,6 +77,7 @@ const WR = {
 
 /* ═══ CORE RULES ═══ */
 // Sourced from the Kill Team Lite Rules (Jul '25) and the core rules update log (Jun '26).
+// Markers, Pick Up Marker and Place Marker aren't in the Lite rules; they follow the Core Book (Jun '26) as listed on Wahapedia.
 // Rules tab item shape: { name, tag?, summary, detail?: string | string[], steps?: string[] }.
 // Items with detail get an arrow and expand on tap; steps always show.
 const GAME_SEQUENCE = [
@@ -138,6 +139,12 @@ const CORE_CONCEPTS = [
   { name: "Command Re-roll", tag: "1CP", summary: "Firefight ploy. After rolling your attack or defence dice, re-roll one of them." },
   { name: "Control range", summary: "Something within 1\" of an operative and visible to it is within its control range.", detail: "Control range is mutual. If it's true for either operative, they're both within each other's control range." },
   { name: "Valid target", summary: "An Engage operative is a valid target if it's visible. A Conceal operative is a valid target only if it's visible and not in cover." },
+  { name: "Markers and objectives", summary: "Operatives contest markers within their control range. You control a marker if the total APL of your operatives contesting it is higher than your opponent's.", detail: [
+    "On a tie, nobody controls it. Control can't change in the middle of an action.",
+    "Objective markers are 40mm across. Other markers are 20mm.",
+    "An operative carrying a marker is the only one that contests and controls it, and the marker counts as being wherever that operative is.",
+    "Your mission says which markers score VP and which ones can be picked up.",
+  ] },
   { name: "Damage", summary: "Damage reduces an operative's wounds.", detail: [
     "Wounded: fewer wounds than it started with.",
     "Injured: fewer than half its starting wounds. Subtract 2\" from its Move and worsen its weapons' Hit by 1.",
@@ -155,6 +162,14 @@ const CORE_ACTIONS = [
   ] },
   { name: "Shoot", tag: "1AP", summary: "Shoot a ranged weapon at a valid target. See Combat, Shooting.", detail: "Not allowed with a Conceal order, or while within an enemy's control range." },
   { name: "Fight", tag: "1AP", summary: "Fight an enemy within control range with a melee weapon. See Combat, Fighting.", detail: "Only allowed while an enemy is within control range." },
+  { name: "Pick Up Marker", tag: "1AP", summary: "Pick up a marker the operative controls, if the mission says that marker can be picked up. The operative now carries it.", detail: [
+    "While carrying it, the operative is the only one that contests and controls that marker.",
+    "Not allowed while within an enemy's control range, or while already carrying a marker.",
+  ] },
+  { name: "Place Marker", tag: "1AP", summary: "Put down a marker the operative is carrying, within its control range.", detail: [
+    "Not allowed in the same activation as Pick Up Marker.",
+    "If an operative carrying a marker is incapacitated, it places the marker for 0AP before it's removed, even if other rules would stop it.",
+  ] },
 ];
 
 /* ═══ FACTIONS ═══ */
@@ -8326,6 +8341,7 @@ const GLOSSARY = [
   { term: "Counteract", def: "When all yours are expended, one expended Engage operative performs a free 1AP action (max 2\" move). Each operative once per TP." },
   { term: "Ploy", def: "Spend CP for bonus rules. Strategy ploys in Strategy phase, Firefight ploys in Firefight phase. 1CP each." },
   { term: "Strategic Gambit", def: "Used in Gambit step of Strategy phase. All strategy ploys are Strategic Gambits. Each used once/TP max." },
+  { term: "Contest", def: "An operative contests every marker within its control range. The side with more total APL contesting a marker controls it." },
   { term: "Cover Save", def: "When in cover, defender retains one defence die as auto normal success without rolling." },
   { term: "Obscured", def: "Intervening Heavy terrain (>1\" from both). Attacker loses one success and crits become normals." },
 ];
