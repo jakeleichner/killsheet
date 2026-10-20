@@ -99,7 +99,7 @@ The gold→rust bulk swap was done globally, which flattened the "look here" sig
 
 **Print system** — generates physical-style datacards + a reference sheet.
 
-**Persistence** — game state survives reload. "Wipe all saved data" button on the setup screen.
+**Persistence** — game state survives reload. Named rosters can be saved to the device and reloaded from the team picker (no login; logins would come with the Community Rosters backend). "Wipe all saved data" button on the setup screen.
 
 ---
 
@@ -169,6 +169,7 @@ Planned implementation:
 Estimated 2-3 hours. Should be its own focused session with its own QA pass (mixing infra + UI changes tends to combine bugs confusingly).
 
 ### Done recently
+- Saved rosters (this device only): a Save button on the datacards bar stores the roster as `{name, f, o, fe, ue, cp, cs, cv}` in `ks_savedRosters`; the team picker lists them with Load, Rename, Copy code and Delete. Loading rebuilds operatives with `makeInstances`, so saved rosters pick up later team data fixes. "Clear current game data" (was "Wipe all saved data") keeps saved rosters.
 - Builder now opens on the team list every time (`pickerOpen` starts true). If a team is saved, a "Continue with <team>" button at the top resumes the game; picking a different team while a roster exists asks before clearing it.
 - Fixed: Tutorial buttons and unit cards showed raw `\u25B6` / `\u2022` text (escape codes in JSX attribute strings aren't converted; wrap them in `{"..."}`).
 - Missions step 2: Mission Setup has a pack/mission picker that fills in turning points, killzone, equipment and tac ops (`gameConfig.mission` = `{pack, idx}`; per-mission overrides are `kz`, `tps`, `equip`, `tacOps` in the pack data). In a game, `MissionPanel` shows how to win, with the map, rules, actions, activation deck and event cards one tap away, and `NpoTracker` tracks enemy NPOs with wound counters (saved in `ks_npoUnits`, cleared by Reset, new setup and team change). Map pages open in a pop-out viewer (tap to zoom, arrows to flip, Esc or X to close) instead of a new tab.

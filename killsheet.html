@@ -5872,7 +5872,7 @@ function clearKillSheetStorage() {
     const keys = [];
     for (let i = 0; i < window.localStorage.length; i++) {
       const k = window.localStorage.key(i);
-      if (k && k.indexOf(LS_PREFIX) === 0) keys.push(k);
+      if (k && k.indexOf(LS_PREFIX) === 0 && k !== LS_PREFIX + "savedRosters") keys.push(k);
     }
     keys.forEach(k => window.localStorage.removeItem(k));
   } catch (e) { /* ignore */ }
@@ -6615,6 +6615,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
   const [oppCollapsed, setOppCollapsed] = useLocalStorage("oppCollapsed", {});
   const [activated, setActivated] = useLocalStorage("activated", {});
   const [npoUnits, setNpoUnits] = useLocalStorage("npoUnits", []);
+  const [savedRosters, setSavedRosters] = useLocalStorage("savedRosters", []);
   const [chapterPrimary, setChapterPrimary] = useLocalStorage("chapterPrimary", "");
   const [chapterSecondary, setChapterSecondary] = useLocalStorage("chapterSecondary", "");
   const [chapterVeteran, setChapterVeteran] = useLocalStorage("chapterVeteran", {});
@@ -6632,6 +6633,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
   const [importCode, setImportCode] = useState("");
   const [importError, setImportError] = useState("");
   const [setupRef, setSetupRef] = useState({ pack: "", idx: "" });
+  const [savedMenu, setSavedMenu] = useState(null);
   const [pickerOpen, setPickerOpen] = useState(true);
   const [pickerGroup, setPickerGroup] = useState(null);
   const [pickerSearch, setPickerSearch] = useState("");
@@ -6864,12 +6866,12 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
         {(fid || (roster && roster.length > 0)) && (
           <div style={{ textAlign: "center", marginTop: 14 }}>
             <button onClick={() => {
-              if (confirm("Wipe ALL saved data? This will clear your roster, faction, equipment, wounds, CP, VP, and all game state. Cannot be undone.")) {
+              if (confirm("Clear the current game? This clears your roster, team, equipment, wounds, CP, VP and game state. Your saved rosters are kept. This can't be undone.")) {
                 clearKillSheetStorage();
                 if (typeof window !== "undefined") window.location.reload();
               }
             }} style={{ background: "transparent", border: "none", color: "#9AA5B1", fontSize: 9, fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.08em", cursor: "pointer", textDecoration: "underline", padding: "4px 8px" }}>
-              {"\u2716"} Wipe all saved data
+              {"\u2716"} Clear current game data
             </button>
           </div>
         )}
@@ -7012,6 +7014,51 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
     }).catch(() => {
       prompt("Copy this roster code:", code);
     });
+  };
+
+  // ── Saved rosters (this device only) ──
+  const rosterData = () => ({ f: fid, o: roster.map(r => baseOf(r)), fe: Object.keys(eq).filter(k => eq[k]), ue: Object.keys(uEq).filter(k => uEq[k]), cp: chapterPrimary, cs: chapterSecondary, cv: chapterVeteran });
+  const saveRoster = () => {
+    if (!fid || roster.length === 0) return;
+    const fallback = f.name + " (" + roster.length + ")";
+    const typed = prompt("Name this roster:", fallback);
+    if (typed == null) return;
+    const name = typed.trim() || fallback;
+    const entry = { id: Date.now().toString(36), name, savedAt: Date.now(), ...rosterData() };
+    const same = savedRosters.find(r => r.name.toLowerCase() === name.toLowerCase());
+    if (same) {
+      if (!confirm('Replace your saved roster "' + same.name + '"?')) return;
+      setSavedRosters(savedRosters.map(r => r.id === same.id ? { ...entry, id: same.id } : r));
+    } else {
+      setSavedRosters([entry, ...savedRosters]);
+    }
+    showToast("Saved: " + name);
+  };
+  const loadSaved = (entry) => {
+    const faction = FACTIONS[entry.f];
+    if (!faction) { showToast("That team is no longer in the app."); return; }
+    if (roster.length > 0 && !confirm('Load "' + entry.name + '"? This replaces your current roster and game.')) return;
+    selectFaction(entry.f);
+    setRoster(makeInstances(faction, entry.o));
+    const e = {}; (entry.fe || []).forEach(id => { e[id] = true; }); setEq(e);
+    const u = {}; (entry.ue || []).forEach(id => { u[id] = true; }); setUEq(u);
+    setChapterPrimary(entry.cp || ""); setChapterSecondary(entry.cs || ""); setChapterVeteran(entry.cv || {});
+    setPickerOpen(false); setPickerSearch(""); setSavedMenu(null);
+    showToast("Loaded: " + entry.name);
+  };
+  const renameSaved = (entry) => {
+    const typed = prompt("Rename roster:", entry.name);
+    if (typed == null || !typed.trim()) return;
+    setSavedRosters(savedRosters.map(r => r.id === entry.id ? { ...r, name: typed.trim() } : r));
+  };
+  const deleteSaved = (entry) => {
+    if (!confirm('Delete your saved roster "' + entry.name + '"?')) return;
+    setSavedRosters(savedRosters.filter(r => r.id !== entry.id));
+    setSavedMenu(null);
+  };
+  const copySavedCode = (entry) => {
+    const code = btoa(JSON.stringify({ f: entry.f, o: entry.o, fe: entry.fe, ue: entry.ue }));
+    navigator.clipboard.writeText(code).then(() => showToast("Roster code copied")).catch(() => prompt("Copy this roster code:", code));
   };
 
   const importMyRoster = (code) => {
@@ -7600,6 +7647,35 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
                 <span style={{ color: f.color, fontSize: 18 }}>{"\u203A"}</span>
               </button>
             )}
+            {savedRosters.length > 0 && (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ ...h3, marginBottom: 6 }}>My saved rosters</div>
+                {savedRosters.map(r => {
+                  const fc = FACTIONS[r.f];
+                  const menu = savedMenu === r.id;
+                  const small = { ...bs("#9AA5B1"), padding: "5px 10px", fontSize: 11 };
+                  return (
+                    <div key={r.id} style={{ ...cd, padding: "8px 10px", marginBottom: 6, borderLeft: "3px solid " + (fc ? fc.color : "#3A4150") }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: "#F1F2F5", fontFamily: "'Rajdhani', sans-serif", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</div>
+                          <div style={{ fontSize: 12, color: "#9AA5B1" }}>{fc ? fc.name : "Unknown team"} {"\u00b7"} {r.o.length} operative{r.o.length === 1 ? "" : "s"} {"\u00b7"} {new Date(r.savedAt).toLocaleDateString()}</div>
+                        </div>
+                        <button onClick={() => loadSaved(r)} style={{ ...bs("#C9772E"), padding: "6px 12px", fontSize: 12 }}>Load</button>
+                        <button onClick={() => setSavedMenu(menu ? null : r.id)} aria-label="More options" style={{ ...bs("#9AA5B1"), padding: "6px 10px", fontSize: 12 }}>{"\u22EF"}</button>
+                      </div>
+                      {menu && (
+                        <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+                          <button onClick={() => renameSaved(r)} style={small}>Rename</button>
+                          <button onClick={() => copySavedCode(r)} style={small}>Copy code</button>
+                          <button onClick={() => deleteSaved(r)} style={{ ...small, color: "#B8341C", borderColor: "#B8341C60" }}>Delete</button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
             <div style={{ ...h3, marginBottom: 6 }}>{f ? "Or pick another team" : "Pick a team"}</div>
             <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 8, flexWrap: "wrap" }}>
               {FACTION_GROUPS.map(g => {
@@ -8111,6 +8187,9 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
                         const allCollapsed = roster.length > 0 && roster.every(op => cardCollapsed[op.id]);
                         return <button onClick={allCollapsed ? expandAll : collapseAll} title={allCollapsed ? "Expand all" : "Collapse all"} style={{ ...bs("#9AA5B1"), fontSize: 9, padding: mobile ? "6px 8px" : "2px 5px" }}>{allCollapsed ? "\u25BC" : "\u25B2"}</button>;
                       })()}
+                      <button onClick={saveRoster} title="Save to My Rosters on this device" style={{ ...bs("#5A9C3A"), fontSize: 11, padding: mobile ? "5px 8px" : "2px 7px", display: "flex", alignItems: "center", gap: 4 }}>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }}><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" /></svg>Save
+                      </button>
                       <button onClick={exportRoster} title="Share roster code" style={{ ...bs("#C9772E"), fontSize: 9, padding: mobile ? "6px 8px" : "2px 5px" }}>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }}><path d="M4 12v7a2 2 0 002 2h12a2 2 0 002-2v-7" /><polyline points="16 6 12 2 8 6" /><line x1="12" y1="2" x2="12" y2="15" /></svg>
                       </button>
