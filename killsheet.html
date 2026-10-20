@@ -17,6 +17,10 @@
     * { scrollbar-width: thin; scrollbar-color: #3A4150 #0E0F13; }
     button:hover { opacity: 0.85; }
     :focus-visible { outline: 2px solid #FFB627; outline-offset: 2px; border-radius: 4px; }
+    /* Short fade-and-rise when a screen appears. Restarts whenever a tab panel goes from hidden to shown. */
+    @keyframes ksAppear { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    .ks-appear { animation: ksAppear 0.24s ease-out both; }
+    @media (prefers-reduced-motion: reduce) { .ks-appear { animation: none; } }
     [role="button"] { cursor: pointer; }
     @media (max-width: 600px) {
       #root { font-size: 13px; }
@@ -6900,6 +6904,8 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
   const [setupRef, setSetupRef] = useState({ pack: "", idx: "" });
   const [savedMenu, setSavedMenu] = useState(null);
   const [showSetup, setShowSetup] = useState(false);
+  const [teamIntro, setTeamIntro] = useState(false);
+  const [introRule, setIntroRule] = useState(null);
   const [undo, setUndo] = useState(null);
   const undoTimer = React.useRef(null);
   // Run a big change (reset, switch team, load or delete a roster) and offer Undo for a few seconds.
@@ -7127,6 +7133,14 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
             <NumPicker value={setupTPs} onChange={setSetupTPs} min={1} max={6} />
           </InputRow>
 
+          <InputRow label="Roster validation">
+            <button onClick={() => setValidate(!validate)} aria-pressed={validate} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 12px", borderRadius: 6, cursor: "pointer", border: "1px solid " + (validate ? "#5A9C3A" : "#3A4150"), background: validate ? "#5A9C3A20" : "transparent", color: validate ? "#7CC05C" : "#9AA5B1", fontSize: 13, fontWeight: 600 }}>
+              <span style={{ width: 30, height: 16, borderRadius: 8, background: validate ? "#5A9C3A" : "#3A4150", position: "relative", display: "inline-block" }}><span style={{ position: "absolute", top: 2, left: validate ? 16 : 2, width: 12, height: 12, borderRadius: "50%", background: "#F1F2F5", transition: "left 0.15s" }} /></span>
+              {validate ? "On" : "Off"}
+            </button>
+          </InputRow>
+          <div style={{ fontSize: 12, color: "#9AA5B1", marginTop: -2, marginBottom: 4, textAlign: "right" }}>Validation applies right away. The other settings apply when you tap Use these settings.</div>
+
           <InputRow label="Killzone">
             <select value={setupKZ} onChange={(e) => setSetupKZ(e.target.value)} style={{ background: "#262A33", border: "1px solid #3A4150", borderRadius: 2, color: "#F1F2F5", fontSize: 11, padding: "4px 8px", fontFamily: "'Segoe UI', sans-serif", outline: "none" }}>
               <option value="open">Open Play</option>
@@ -7154,7 +7168,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
         </div>
         {gameConfig && (
           <div style={{ textAlign: "center", marginTop: 10 }}>
-            <button onClick={() => setShowSetup(false)} style={{ ...bs("#9AA5B1"), padding: "8px 16px", fontSize: 12 }}>Back without changing</button>
+            <button onClick={() => setShowSetup(false)} style={{ ...bs("#9AA5B1"), padding: "8px 16px", fontSize: 12 }}>Cancel</button>
           </div>
         )}
         {(fid || (roster && roster.length > 0)) && (
@@ -7357,7 +7371,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
     const u = {}; (entry.ue || []).forEach(id => { u[id] = true; }); setUEq(u);
     setChapterPrimary(entry.cp || ""); setChapterSecondary(entry.cs || ""); setChapterVeteran(entry.cv || {}); setCarried(entry.cw || {});
     });
-    setPickerOpen(false); setPickerSearch(""); setSavedMenu(null);
+    setPickerOpen(false); setPickerSearch(""); setSavedMenu(null); setTeamIntro(false);
   };
   const renameSaved = (entry) => {
     const typed = prompt("Rename roster:", entry.name);
@@ -7944,7 +7958,49 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
       </div>
 
       {/* Faction select: collapses to one bar once a team is picked */}
-      {f && !pickerOpen ? (rosterLocked ? null :
+      {f && !pickerOpen && teamIntro ? (
+        <div className="ks-appear" style={{ ...cd, padding: 0, overflow: "hidden", marginBottom: 14, borderTop: "3px solid " + f.color }}>
+          <div style={{ padding: mobile ? 16 : 22, background: "linear-gradient(135deg, " + f.color + "22, transparent 60%)" }}>
+            <span style={bg(f.color)}>{f.badge}</span>
+            <div style={{ fontSize: mobile ? 28 : 34, fontWeight: 700, color: "#F1F2F5", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.02em", marginTop: 8, lineHeight: 1.1 }}>{f.name}</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
+              {f.archetypes && f.archetypes.split(/,\s*/).map(a => <span key={a} style={{ fontSize: 13, padding: "4px 10px", borderRadius: 6, background: "#262A33", color: "#C8CDD3" }}>{a}</span>)}
+              {f.composition && f.composition.total && <span style={{ fontSize: 13, padding: "4px 10px", borderRadius: 6, background: "#262A33", color: "#C8CDD3" }}>{f.composition.total} selections</span>}
+              <span style={{ fontSize: 13, padding: "4px 10px", borderRadius: 6, background: "#262A33", color: "#C8CDD3" }}>{f.operatives.length} operative types</span>
+            </div>
+          </div>
+          <div style={{ padding: mobile ? "4px 16px 16px" : "4px 22px 22px" }}>
+            {(f.factionRules || []).length > 0 && (
+              <div>
+                <div style={{ ...h3, color: "#C9772E", margin: "14px 0 8px" }}>How this team plays</div>
+                {f.factionRules.map((r, i) => {
+                  const open = introRule === i;
+                  const short = splitRule(r.desc);
+                  return (
+                    <div key={i} role="button" tabIndex={0} onClick={() => setIntroRule(open ? null : i)} style={{ padding: "10px 12px", marginBottom: 6, borderRadius: 6, background: "#0E0F13", border: "1px solid " + (open ? f.color + "80" : "#262A33"), cursor: "pointer" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ flex: 1, fontSize: 15, fontWeight: 700, color: open ? f.color : "#F1F2F5", fontFamily: "'Rajdhani', sans-serif" }}>{r.name}</span>
+                        <Arrow open={open} />
+                      </div>
+                      <div style={{ ...mu, fontSize: 13, marginTop: 2 }}>{open ? r.desc : short.summary}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {f.composition && f.composition.rules && f.composition.rules.length > 0 && (
+              <div>
+                <div style={{ ...h3, color: "#C9772E", margin: "14px 0 8px" }}>Building the team</div>
+                {f.composition.rules.map((t, i) => <div key={i} style={{ display: "flex", gap: 8, ...mu, fontSize: 13, marginBottom: 4 }}><span style={{ color: f.color }}>{"\u2022"}</span><span>{t}</span></div>)}
+              </div>
+            )}
+            <div style={{ display: "flex", gap: 8, marginTop: 18, flexWrap: "wrap" }}>
+              <button onClick={() => { setTeamIntro(false); window.scrollTo(0, 0); }} style={{ ...bs("#C9772E"), background: "#C9772E20", padding: "12px 20px", fontSize: 15, flex: mobile ? "1 1 100%" : "0 0 auto" }}>Build my roster {"\u203A"}</button>
+              <button onClick={() => { setTeamIntro(false); setPickerGroup(factionGroup(f)); setPickerOpen(true); }} style={{ ...bs("#9AA5B1"), padding: "12px 16px", fontSize: 13, flex: mobile ? "1 1 100%" : "0 0 auto" }}>Pick a different team</button>
+            </div>
+          </div>
+        </div>
+      ) : f && !pickerOpen ? (rosterLocked ? null :
         <div style={{ ...cd, display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", marginBottom: 14, borderTop: "2px solid " + f.color }}>
           <div style={bg(f.color)}>{f.badge}</div>
           <div style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", color: f.color, letterSpacing: "0.04em" }}>{f.name}</div>
@@ -7958,12 +8014,12 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
         const pick = (fc) => {
           if (fid === fc.id) { setPickerOpen(false); return; }
           if (roster.length > 0) withUndo("Switched to " + fc.name, () => selectFaction(fc.id)); else selectFaction(fc.id);
-          setPickerOpen(false); setPickerSearch("");
+          setPickerOpen(false); setPickerSearch(""); setTeamIntro(true); setIntroRule(null); window.scrollTo(0, 0);
         };
         return (
-          <div style={{ marginBottom: 14 }}>
+          <div className="ks-appear" style={{ marginBottom: 14 }}>
             {f && (
-              <button onClick={() => { setPickerOpen(false); setPickerSearch(""); }} style={{ ...cd, width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", marginBottom: 10, cursor: "pointer", textAlign: "left", borderTop: "2px solid " + f.color }}>
+              <button onClick={() => { setPickerOpen(false); setPickerSearch(""); setTeamIntro(false); }} style={{ ...cd, width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", marginBottom: 10, cursor: "pointer", textAlign: "left", borderTop: "2px solid " + f.color }}>
                 <div style={bg(f.color)}>{f.badge}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", color: f.color, letterSpacing: "0.04em" }}>Continue with {f.name}</div>
@@ -8026,8 +8082,8 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
         );
       })()}
 
-      {f && !pickerOpen && (
-        <div>
+      {f && !pickerOpen && !teamIntro && (
+        <div className="ks-appear">
           {/* Score bar: slim, stays under the nav while you scroll */}
           <div style={{ position: "sticky", top: navH, zIndex: 9, background: "#0E0F13", padding: "6px 0", marginBottom: 6 }}>
             <div style={{ ...cd, marginBottom: 0, padding: mobile ? "8px 8px" : "8px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: mobile ? 6 : 14 }}>
@@ -14536,11 +14592,11 @@ function App() {
       </nav>
 
       {/* CONTENT: all tabs stay mounted, hidden with display:none to preserve state */}
-      <div style={{ display: tab === "rules" ? "block" : "none" }}><Rules /></div>
-      <div style={{ display: tab === "missions" ? "block" : "none" }}><Missions /></div>
-      <div style={{ display: tab === "builder" ? "block" : "none" }}><Builder tp={tp} setTp={setTp} mp={mp} mpHandlerRef={mpHandlerRef} showMP={showMP} setShowMP={setShowMP} /></div>
-      <div style={{ display: tab === "tutorial" ? "block" : "none" }}><Tutorial /></div>
-      <div style={{ display: tab === "community" ? "block" : "none" }}><CommunityRosters /></div>
+      <div className="ks-appear" style={{ display: tab === "rules" ? "block" : "none" }}><Rules /></div>
+      <div className="ks-appear" style={{ display: tab === "missions" ? "block" : "none" }}><Missions /></div>
+      <div className="ks-appear" style={{ display: tab === "builder" ? "block" : "none" }}><Builder tp={tp} setTp={setTp} mp={mp} mpHandlerRef={mpHandlerRef} showMP={showMP} setShowMP={setShowMP} /></div>
+      <div className="ks-appear" style={{ display: tab === "tutorial" ? "block" : "none" }}><Tutorial /></div>
+      <div className="ks-appear" style={{ display: tab === "community" ? "block" : "none" }}><CommunityRosters /></div>
 
       {/* FOOTER */}
       <div style={{ textAlign: "center", padding: "20px 16px", borderTop: "1px solid #3A4150", background: "linear-gradient(180deg, #0E0F13, #08070600)" }}>
