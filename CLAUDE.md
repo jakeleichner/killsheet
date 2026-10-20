@@ -7,6 +7,7 @@ Read `README.md` first: it has the project context, design system, gotchas, and 
 - Commit and push straight to `main`. No feature branches or PRs.
 - Keep the README's "Work queue" current: remove items as they're finished.
 - `gh` is at `/opt/homebrew/bin/gh` (Homebrew isn't on Claude's shell PATH).
+- Text shown in the app must read like a person wrote it: no em dashes, no hype ("extremely powerful", "game-changer"), no filler ("This means", "Essentially"), no tacked-on slogans ("Make it count."), no ALL-CAPS emphasis. Plain, direct rules language.
 
 ## Before every push
 1. Run `python3 tools/check.py`. It must end with "All checks passed." It catches hooks after an early return (React #310 crash), tabs missing an icon or panel, duplicate/direct localStorage use, and a missing print class or JSX script tag.

@@ -39,40 +39,40 @@ const WR = {
   "Balanced": "After rolling your attack dice, you may pick one die and re-roll it. You must keep the new result even if it's worse.",
   "Blast 1\"": "After resolving the attack against your primary target, you must also shoot every other operative (friend or foe) that is visible to and within 1\" of that target. Each secondary attack is rolled separately. Secondary targets use the primary's cover/obscured status.",
   "Blast 2\"": "After resolving the attack against your primary target, you must also shoot every other operative (friend or foe) that is visible to and within 2\" of that target. Each secondary attack is rolled separately. Secondary targets use the primary's cover/obscured status.",
-  "Brutal": "When your opponent is blocking in melee, they can ONLY use critical successes to block. Their normal successes cannot block anything — they're wasted. Extremely powerful against low-crit fighters.",
-  "Ceaseless": "After rolling your attack dice, pick one result number (e.g. all your 2s) and re-roll every die showing that number. Useful for turning near-misses into hits.",
-  "Devastating 2": "Whenever you retain a critical success, it IMMEDIATELY deals 2 bonus damage to the target before anything else resolves. The critical die is NOT discarded — it still counts as a crit for the normal damage step too. Devastating stacks per crit.",
-  "Devastating 3": "Whenever you retain a critical success, it IMMEDIATELY deals 3 bonus damage to the target before anything else resolves. The critical die is NOT discarded — it still counts as a crit for the normal damage step too. Devastating stacks per crit.",
-  "Heavy": "You cannot move and use this weapon in the same activation. If you moved (any move action), you can't shoot with it. If you shot with it, you can't move. Does not prevent the Guard action.",
-  "Heavy (Dash only)": "You can only Dash in the same activation as using this weapon — no Reposition, Charge, or Fall Back. If you need to move further than 3\", you can't use this weapon that activation.",
-  "Heavy (Reposition only)": "You can only Reposition in the same activation as using this weapon — no Dash, Charge, or Fall Back.",
-  "Hot": "After using this weapon, roll 1D6. If the result is LESS than the weapon's Hit stat, the operative takes self-damage equal to the result multiplied by 2. Example: Hit stat 3+, you roll a 2 = 4 self-damage. Risk vs reward.",
-  "Lethal 5+": "Your attack dice results of 5 or 6 count as critical successes (normally only 6s are crits). This dramatically increases your crit chance from ~17% to ~33% per die.",
-  "Limited 1": "This weapon can only be used once during the entire battle. After that single use, the operative no longer has it. Make it count. If used with Blast/Torrent (hitting multiple targets), it still only counts as one use.",
-  "Piercing 1": "The defender collects 1 fewer defence die (usually rolling 2 instead of 3). This makes the attack significantly harder to save against. Applies regardless of whether you score crits.",
-  "Piercing Crits 1": "Only if you retain at least one critical success: the defender collects 1 fewer defence die. If you score no crits, this rule does nothing. Pairs well with Lethal 5+ to trigger more often.",
-  "Punishing": "If you retain at least one critical success, you can take one of your FAILED dice (one that missed) and keep it as a normal success instead of discarding it. Essentially turns a miss into a hit when you're rolling well.",
-  "Range 4\"": "This weapon can only target operatives within 4\" of the shooter. Targets further away are not valid. Short range — you'll need to get close.",
+  "Brutal": "When your opponent blocks in melee, they can only block with critical successes. Their normal successes can't block at all.",
+  "Ceaseless": "After rolling your attack dice, pick one result (e.g. all your 2s) and re-roll every die showing it.",
+  "Devastating 2": "Each time you retain a critical success, deal 2 damage to the target right away, before anything else resolves. The crit still counts in the normal damage step, so each crit adds this damage on top.",
+  "Devastating 3": "Each time you retain a critical success, deal 3 damage to the target right away, before anything else resolves. The crit still counts in the normal damage step, so each crit adds this damage on top.",
+  "Heavy": "You can't move and use this weapon in the same activation. If the operative moved, it can't shoot with this weapon; if it shot with it, it can't move. Guard is still allowed.",
+  "Heavy (Dash only)": "The only move allowed in the same activation as this weapon is a Dash (no Reposition, Charge or Fall Back). If you need to move more than 3\", you can't use this weapon that activation.",
+  "Heavy (Reposition only)": "The only move allowed in the same activation as this weapon is a Reposition (no Dash, Charge or Fall Back).",
+  "Hot": "After using this weapon, roll 1D6. If the result is lower than the weapon's Hit stat, the operative takes damage equal to double the roll. Example: Hit 3+, you roll a 2, it takes 4 damage.",
+  "Lethal 5+": "Attack rolls of 5 or 6 count as critical successes (normally only 6s do). That raises your crit chance per die from about 17% to about 33%.",
+  "Limited 1": "This weapon can only be used once per battle. Hitting several targets with it (Blast or Torrent) still counts as one use.",
+  "Piercing 1": "The defender rolls 1 fewer defence die (usually 2 instead of 3), whether or not you score crits.",
+  "Piercing Crits 1": "If you retain at least one critical success, the defender rolls 1 fewer defence die. No crits, no effect. Lethal 5+ makes it trigger more often.",
+  "Punishing": "If you retain at least one critical success, you can keep one failed die as a normal success instead of discarding it.",
+  "Range 4\"": "This weapon can only target operatives within 4\" of the shooter. Targets further away aren't valid.",
   "Range 6\"": "This weapon can only target operatives within 6\" of the shooter. Targets further away are not valid.",
   "Range 7\"": "This weapon can only target operatives within 7\" of the shooter. Targets further away are not valid.",
-  "Range 8\"": "This weapon can only target operatives within 8\" of the shooter. Targets further away are not valid. Common on pistol-type weapons.",
+  "Range 8\"": "This weapon can only target operatives within 8\" of the shooter. Targets further away aren't valid. Most pistols have this.",
   "Range 9\"": "This weapon can only target operatives within 9\" of the shooter. Targets further away are not valid.",
-  "Relentless": "After rolling your attack dice, you may re-roll ANY or ALL of your dice. You can pick and choose which to re-roll. Strictly better than Balanced (which only re-rolls one) and Ceaseless (which only re-rolls one result number).",
-  "Rending": "If you retain at least one critical success, you may upgrade one of your normal successes to a critical success. This means one crit on the roll effectively generates a second crit. Very strong damage boost.",
-  "Saturate": "The defender cannot use their cover save. Normally, being in cover grants one automatic normal defence success — Saturate removes this entirely. The target is still in cover for other purposes (e.g. Conceal order validity).",
-  "Seek Light": "When selecting a valid target, enemy operatives with a Conceal order cannot use Light terrain for cover. This can expose Concealed operatives that would otherwise be untargetable. However, it does NOT remove their cover save if they're still in cover from other terrain.",
-  "Severe": "If you did NOT roll any natural critical successes (no 6s), you may upgrade one of your normal successes to a critical success. Acts as a safety net — guarantees at least one crit if you hit at all. Does NOT trigger if you already have a crit (from a 6 or Lethal). Devastating and Piercing Crits still apply to this upgraded crit.",
-  "Shock": "The first time you strike with a critical success in a fight sequence, in addition to dealing Critical Dmg, you also force your opponent to discard one of their unresolved normal successes. If they have no normals, discard one of their crits instead. Reduces their ability to strike back.",
-  "Silent": "This operative can perform the Shoot action with this weapon even while it has a Conceal order. Normally, Concealed operatives cannot Shoot. This lets snipers fire while staying hidden.",
-  "Stun": "If you retain at least one critical success, the target operative's APL stat is reduced by 1 until the end of its next activation. This means it gets fewer actions next time — a major tactical debuff. An operative with APL 2 drops to 1 (only one action).",
-  "Torrent 0\"": "This weapon has the Torrent rule for interactions with other rules, but you cannot actually select secondary targets. Effectively a single-target flamer.",
+  "Relentless": "After rolling your attack dice, re-roll any or all of them. Balanced re-rolls one die and Ceaseless re-rolls one result; this lets you pick every die.",
+  "Rending": "If you retain at least one critical success, you can upgrade one normal success to a critical success, so one crit on the roll gives you two.",
+  "Saturate": "The defender can't use their cover save (the free normal success for being in cover). The target still counts as in cover for everything else, e.g. whether a Concealed operative can be targeted.",
+  "Seek Light": "When picking a valid target, enemies on Conceal can't use Light terrain for cover, so you can target Concealed operatives hiding behind it. They keep their cover save if other terrain still covers them.",
+  "Severe": "If you rolled no critical successes, you can upgrade one normal success to a crit, so any roll with a hit gets at least one crit. It doesn't apply if you already have a crit (from a 6 or Lethal). Devastating and Piercing Crits work with the upgraded crit.",
+  "Shock": "The first time you strike with a crit in a fight, your opponent also discards one of their unresolved normal successes (or a crit if they have no normals). That leaves them fewer dice to strike back with.",
+  "Silent": "This operative can Shoot with this weapon while on a Conceal order (Concealed operatives normally can't Shoot), so snipers can fire and stay hidden.",
+  "Stun": "If you retain at least one critical success, the target's APL drops by 1 until the end of its next activation, so it gets one fewer action. An APL 2 operative gets only one.",
+  "Torrent 0\"": "This weapon counts as having Torrent for other rules, but you can't select secondary targets the normal way.",
   "Torrent 1\"": "Select your primary target as normal. Then, you may also select any number of additional valid targets within 1\" of the primary target as secondary targets. Each secondary is shot separately with its own attack/defence sequence. Secondary targets cannot be within control range of friendly operatives.",
   "Torrent 2\"": "Select your primary target as normal. Then, you may also select any number of additional valid targets within 2\" of the primary target as secondary targets. Each secondary is shot separately with its own attack/defence sequence. Secondary targets cannot be within control range of friendly operatives.",
-  "Poison": "If you inflict any damage with this weapon (at least one hit gets through), the target gains a Poison token (if it doesn't already have one). Friendly operatives of the same faction are immune. At the start of each activation, a poisoned operative takes 1 automatic damage — this can accumulate over multiple turning points.",
-  "Toxic": "When using this weapon against a target that already has one of your Poison tokens, add +1 to BOTH the Normal Dmg and Critical Dmg stats. Example: a 3/4 weapon becomes 4/5 against poisoned targets. Rewards poisoning targets first, then hitting them with Toxic weapons.",
-  "PSYCHIC": "This is a psychic weapon. Faction-specific restrictions apply — for example, Plague Marines cannot select the same PSYCHIC ranged weapon for both Shoot actions in one activation. Check your faction's Astartes rule for details.",
-  "Explosive": "This operative can perform the Shoot action with this weapon even while within control range of an enemy operative. However, this operative is always the primary target — it shoots itself. It cannot benefit from cover or be obscured. Used by Bomb Squigs.",
-  "Concealed Position": "This weapon profile can only be used the very first time the operative performs a Shoot action during the entire battle. After that first shot, this profile is no longer available — switch to a different profile.",
+  "Poison": "If this weapon deals any damage, the target gains a Poison token (if it doesn't have one). Friendly operatives of the same faction are immune. At the start of each of its activations, a poisoned operative takes 1 damage, so the damage adds up over the turning points.",
+  "Toxic": "Against a target that already has one of your Poison tokens, add 1 to both the Normal and Critical Dmg stats. Example: a 3/4 weapon becomes 4/5.",
+  "PSYCHIC": "This is a psychic weapon. Some factions limit how you use them; for example, Plague Marines can't pick the same PSYCHIC ranged weapon for both Shoot actions in one activation. Check your faction's Astartes rule.",
+  "Explosive": "This operative can Shoot with this weapon even while within an enemy's control range. It's always the primary target itself, and it can't be in cover or obscured. Used by Bomb Squigs.",
+  "Concealed Position": "This profile can only be used the first time the operative Shoots in the battle. After that, use another profile.",
 };
 
 /* ═══ CORE RULES ═══ */
@@ -199,7 +199,7 @@ const FACTIONS = {
         "Select 9 other operatives.",
         "Other than Boy, each specialist can only be included once.",
         "Boy operatives can be taken multiple times.",
-        "Bomb Squig and Grot each count as half a selection \u2014 taking both uses only 1 slot total.",
+        "Bomb Squig and Grot each count as half a selection, so taking both uses 1 slot.",
       ],
     },
     factionRules: [{ name: "Throat Slittas", desc: "Kommandos (excl. Bomb Squig) can Charge while Concealed." }],
@@ -1816,12 +1816,12 @@ function compCheck(f, roster, eq) {
     const used = compGroupUsed(c, roster, g);
     if (g.equip && used > 0 && !(eq && eq[g.equip])) errors.push(g.name + " need the " + (f.equipment.find(q => q.id === g.equip) || {}).name + " equipment.");
     const min = g.equip ? (eq && eq[g.equip] ? g.max : 0) : g.min;
-    if (used > g.max) errors.push(g.name + ": too many — maximum " + g.max + " (" + used + " selected).");
+    if (used > g.max) errors.push(g.name + ": " + used + " selected, max " + g.max + ".");
     else if (used < min) warnings.push(g.name + ": need " + (min - used) + " more (" + used + "/" + min + ").");
   });
   (c.pools || []).forEach(pool => {
     const used = poolUsed(c, roster, pool);
-    if (used > pool.max) errors.push(pool.label + ": too many \u2014 maximum " + pool.max + " (" + used + " selected).");
+    if (used > pool.max) errors.push(pool.label + ": " + used + " selected, max " + pool.max + ".");
     else if (used < pool.min) warnings.push(pool.label + ": need " + (pool.min - used) + " more (" + used + "/" + pool.min + ").");
   });
   const counted = {};
@@ -1902,7 +1902,7 @@ const SEQ_PHASES = [
       { text: "Ready all operatives (flip order tokens to Ready)", detail: "All operatives become Ready regardless of previous status." },
       { text: "Alternate Strategic Gambits or pass (until both pass in succession)", detail: "Starting with initiative player, alternate using a Strategic Gambit (costs 1CP) or passing. All strategy ploys are Strategic Gambits. Each gambit max once per TP." },
     ],
-    reminders: ["Initiative decides activation order AND simultaneous effect resolution.", "CP from previous TPs carry over — don't forget unspent CP.", "You must pass when you have no more gambits to use or want to save CP.", "Strategy ploy effects last until end of TP (unless stated otherwise)."],
+    reminders: ["Initiative decides activation order AND simultaneous effect resolution.", "CP from previous TPs carry over, so count any you didn't spend.", "You must pass when you have no more gambits to use or want to save CP.", "Strategy ploy effects last until end of TP (unless stated otherwise)."],
   },
   { id: "firefight", name: "Firefight Phase", color: "#B8341C", icon: "\uD83D\uDD25",
     checks: [
@@ -1913,7 +1913,7 @@ const SEQ_PHASES = [
       { text: "Opponent activates one of their Ready operatives", detail: "Alternate until all operatives on both sides are expended." },
       { text: "Counteract if all yours are expended (optional)", detail: "One Engaged expended operative: free 1AP action (excl. Guard), max 2\" move, once per TP per operative." },
     ],
-    reminders: ["Concealed operatives CANNOT Shoot, Charge, or counteract.", "Kommandos with Throat Slittas CAN Charge while Concealed.", "If one player runs out of operatives, the other activates rest — consider counteracting.", "Firefight ploys can be used during this phase (1CP each, max once per TP except Command Re-roll).", "Action restrictions: can't do same action twice per activation (unless a rule says otherwise)."],
+    reminders: ["Concealed operatives CANNOT Shoot, Charge, or counteract.", "Kommandos with Throat Slittas CAN Charge while Concealed.", "If one player runs out of operatives, the other activates the rest. Consider counteracting.", "Firefight ploys can be used during this phase (1CP each, max once per TP except Command Re-roll).", "Action restrictions: can't do same action twice per activation (unless a rule says otherwise)."],
     actions: [
       { name: "Reposition", ap: 1, summary: "Move up to Move stat. Not into enemy CR." },
       { name: "Dash", ap: 1, summary: "Move up to 3\". No climbing." },
@@ -1950,7 +1950,7 @@ const SEQ_PHASES = [
       { text: "Remove incapacitated operatives", detail: "Any operatives reduced to 0 wounds are removed from the killzone." },
       { text: "Begin next Turning Point (or end game after TP4)", detail: "Return to Strategy Phase. After 4 TPs, the player with the most VP wins." },
     ],
-    reminders: ["APL determines marker control — Icon Bearers treat APL as +1.", "Some Tac Ops are scored at specific TPs — check timing.", "Games last exactly 4 turning points unless mission says otherwise."],
+    reminders: ["APL determines marker control. Icon Bearers count their APL as 1 higher.", "Some Tac Ops only score in specific TPs, so check timing.", "Games last exactly 4 turning points unless mission says otherwise."],
   },
 ];
 
@@ -1961,7 +1961,7 @@ const CP_TABLE = [
   { tp: 4, init: 1, other: 2, note: "Final turning point" },
 ];
 
-/* ═══ STYLES — V2 DESIGN SYSTEM ═══ */
+/* ═══ STYLES: V2 DESIGN SYSTEM ═══ */
 const cd = { background: "#1A1D24", border: "1px solid #3A4150", borderRadius: 6, padding: 16, marginBottom: 12, boxShadow: "0 4px 16px rgba(0,0,0,0.35)" };
 const mu = { fontSize: 13, color: "#9AA5B1", lineHeight: 1.5, fontFamily: "'Inter', sans-serif" };
 const h3 = { fontSize: 11, fontWeight: 600, color: "#9AA5B1", marginBottom: 8, letterSpacing: "0.14em", fontFamily: "'Rajdhani', sans-serif", textTransform: "uppercase" };
@@ -1973,7 +1973,7 @@ const bs = (c) => ({ padding: "8px 14px", border: "1px solid " + (c || "#C9772E"
 /* ═══════════════════════════════════════════════════════════════
    NEW DESIGN SYSTEM v2 (preview)
    Rust + neutral grays + UI-tuned faction colors. Inter body, Rajdhani display.
-   See spec in chat. This is additive — won't replace old styles until approved.
+   See spec in chat. This is additive and won't replace old styles until approved.
    ═══════════════════════════════════════════════════════════════ */
 const DS = {
   // Surfaces
@@ -2047,7 +2047,7 @@ const ICE_CONFIG = {
     { urls: "stun:stun1.l.google.com:19302" },
     { urls: "stun:stun.cloudflare.com:3478" },
     { urls: "stun:global.stun.twilio.com:3478" },
-    // ExpressTURN free tier — UDP, TCP, and TCP-on-443 (firewall bypass)
+    // ExpressTURN free tier: UDP, TCP, and TCP-on-443 (firewall bypass)
     { urls: "turn:free.expressturn.com:3478", username: "000000002093370707", credential: "c2p512k7LlW6Rc9l98gsjjQkdAo=" },
     { urls: "turn:free.expressturn.com:3478?transport=tcp", username: "000000002093370707", credential: "c2p512k7LlW6Rc9l98gsjjQkdAo=" },
     { urls: "turn:free.expressturn.com:443?transport=tcp", username: "000000002093370707", credential: "c2p512k7LlW6Rc9l98gsjjQkdAo=" },
@@ -2086,7 +2086,7 @@ function useMultiplayer(onMessage) {
       const msg = String(err && err.message || err);
       let friendly = msg;
       if (msg.indexOf("Negotiation") !== -1) {
-        friendly = "Connection failed — likely a network/firewall issue. Try a different network, or use export/import codes as a fallback.";
+        friendly = "Connection failed, probably a network or firewall problem. Try a different network, or use export/import codes as a fallback.";
       }
       setPeerError(friendly);
       setStatus("error");
@@ -2114,8 +2114,8 @@ function useMultiplayer(onMessage) {
       }
       // Translate common opaque errors into user-friendly text
       let friendly = msg;
-      if (msg.indexOf("Negotiation") !== -1) friendly = "Connection failed — likely a network/firewall issue. Try a different network or use export/import codes.";
-      else if (msg.indexOf("network") !== -1 || msg.indexOf("Network") !== -1) friendly = "Network error — check your internet connection.";
+      if (msg.indexOf("Negotiation") !== -1) friendly = "Connection failed, probably a network or firewall problem. Try a different network or use export/import codes.";
+      else if (msg.indexOf("network") !== -1 || msg.indexOf("Network") !== -1) friendly = "Network error. Check your internet connection.";
       else if (msg.indexOf("server-error") !== -1) friendly = "PeerJS broker is having issues. Try again in a minute.";
       setPeerError(friendly);
       setStatus("error");
@@ -2139,11 +2139,11 @@ function useMultiplayer(onMessage) {
       const msg = String(err && err.message || err);
       let friendly = msg;
       if (msg.indexOf("Could not connect") !== -1 || msg.indexOf("peer-unavailable") !== -1) {
-        friendly = "Room not found — check the code.";
+        friendly = "Room not found. Check the code.";
       } else if (msg.indexOf("Negotiation") !== -1) {
-        friendly = "Connection failed — likely a network/firewall issue. Try a different network or use export/import codes.";
+        friendly = "Connection failed, probably a network or firewall problem. Try a different network or use export/import codes.";
       } else if (msg.indexOf("network") !== -1 || msg.indexOf("Network") !== -1) {
-        friendly = "Network error — check your internet connection.";
+        friendly = "Network error. Check your internet connection.";
       } else if (msg.indexOf("server-error") !== -1) {
         friendly = "PeerJS broker is having issues. Try again in a minute.";
       }
@@ -2602,7 +2602,7 @@ function Datacard({ op, fc, equipWeapons, equipEffects, curWounds, onWound, coll
           </div>
         )}
 
-        {/* Header — clickable */}
+        {/* Header: clickable */}
         <div onClick={onToggle} style={{ padding: "14px 16px 12px", cursor: "pointer", userSelect: "none", opacity: isActivated ? 0.55 : 1 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
@@ -2627,7 +2627,7 @@ function Datacard({ op, fc, equipWeapons, equipEffects, curWounds, onWound, coll
           </div>
         </div>
 
-        {/* Wound bar — always visible */}
+        {/* Wound bar: always visible */}
         <div style={{ height: 3, background: DS.bgBase }}>
           <div style={{ height: "100%", width: woundPct + "%", background: woundColorTone, transition: "width 0.3s, background 0.3s" }} />
         </div>
@@ -2635,7 +2635,7 @@ function Datacard({ op, fc, equipWeapons, equipEffects, curWounds, onWound, coll
         {/* Expanded content */}
         {!collapsed && (
           <div>
-            {/* Bold stat block — 4 up */}
+            {/* Bold stat block: 4 up */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", borderTop: "1px solid " + DS.divider, borderBottom: "1px solid " + DS.divider, background: DS.bgCard }}>
               {[
                 { label: "APL", val: op.apl, color: DS.textPrimary },
@@ -2664,12 +2664,12 @@ function Datacard({ op, fc, equipWeapons, equipEffects, curWounds, onWound, coll
             <div style={{ padding: "16px 18px 18px" }}>
               {rawInjured && !incapacitated && !ignoreInjured && (
                 <div style={{ fontFamily: DS.fontDisplay, fontSize: 11, color: DS.threat, background: DS.threat + "14", padding: "8px 12px", borderRadius: 4, marginBottom: 12, borderLeft: "3px solid " + DS.threat, fontWeight: 500, letterSpacing: "0.06em" }}>
-                  {"\u26A0 INJURED \u2014 \u22122\" Move, \u22121 Hit"}
+                  {"\u26A0 INJURED: \u22122\" Move, \u22121 Hit"}
                 </div>
               )}
               {rawInjured && !incapacitated && ignoreInjured && (
                 <div style={{ fontFamily: DS.fontDisplay, fontSize: 11, color: DS.success, background: DS.success + "14", padding: "8px 12px", borderRadius: 4, marginBottom: 12, borderLeft: "3px solid " + DS.success, fontWeight: 500, letterSpacing: "0.06em" }}>
-                  {"\u2720 Below half wounds \u2014 injury penalties IGNORED (equipment)"}
+                  {"\u2720 Below half wounds, but equipment ignores the injury penalties"}
                 </div>
               )}
 
@@ -2777,7 +2777,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
       if (msg.type === "snapshot" && msg.payload) {
         const p = msg.payload;
         // Peer's "owned" state becomes our opponent state.
-        // Always propagate, even if empty — clears stale opponent data and shows correct faction/color from the moment they pick one.
+        // Always propagate, even if empty: clears stale opponent data and shows correct faction/color from the moment they pick one.
         if (p.fid !== undefined) {
           if (p.fid === null) {
             setOppRoster(null);
@@ -2814,7 +2814,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
         showToast("Opponent: " + msg.text);
         setChatHistory(prev => [...prev, { from: "them", text: String(msg.text).slice(0, 500), ts: Date.now() }].slice(-50));
       } else if (msg.type === "applyRemoteDamage" && typeof msg.opId === "string" && typeof msg.amount === "number") {
-        // Opponent shot one of our operatives — apply to our own roster
+        // Opponent shot one of our operatives: apply to our own roster
         const op = roster.find(o => o.id === msg.opId);
         if (op) {
           setOpWounds(op.id, op.wounds, -msg.amount);
@@ -3269,7 +3269,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
     // Page 2: Reference sheet
     html += '<div style="break-before:page;page-break-before:always;padding-top:8px;">';
     html += '<div style="text-align:center;margin-bottom:8px;border-bottom:2px solid #333;padding-bottom:4px;">';
-    html += '<div style="font-size:14px;font-weight:700;color:' + fc + ';">' + fName + ' \u2014 Reference Sheet</div></div>';
+    html += '<div style="font-size:14px;font-weight:700;color:' + fc + ';">' + fName + ' Reference Sheet</div></div>';
 
     html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">';
 
@@ -3358,10 +3358,10 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
     html += '<tr><td style="border:1px solid #ccc;padding:2px 4px;font-weight:700;">TP</td>';
     for (let i = 1; i <= gc.numTPs; i++) html += '<td style="border:1px solid #ccc;padding:2px 8px;text-align:center;font-weight:700;">' + i + '</td>';
     html += '<td style="border:1px solid #ccc;padding:2px 4px;font-weight:700;">TOTAL</td></tr>';
-    html += '<tr><td style="border:1px solid #ccc;padding:4px;">You — Primary</td>';
+    html += '<tr><td style="border:1px solid #ccc;padding:4px;">Your Primary</td>';
     for (let i = 0; i < gc.numTPs; i++) html += '<td style="border:1px solid #ccc;padding:4px;"></td>';
     html += '<td style="border:1px solid #ccc;padding:4px;"></td></tr>';
-    html += '<tr><td style="border:1px solid #ccc;padding:4px;">Opp — Primary</td>';
+    html += '<tr><td style="border:1px solid #ccc;padding:4px;">Opponent Primary</td>';
     for (let i = 0; i < gc.numTPs; i++) html += '<td style="border:1px solid #ccc;padding:4px;"></td>';
     html += '<td style="border:1px solid #ccc;padding:4px;"></td></tr>';
     for (let t = 0; t < gc.numTacOps; t++) {
@@ -3575,13 +3575,13 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
                 <button onClick={mp.host} style={{ ...bs("#C9772E"), width: "100%", padding: "10px 0", fontSize: 12, fontWeight: 700, background: "#C9772E12", letterSpacing: "0.06em", marginBottom: 10 }}>
                   {"\u2691"} Host New Game
                 </button>
-                <div style={{ fontSize: 9, color: "#9AA5B1", textAlign: "center", margin: "8px 0", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.1em" }}>{"\u2014"} OR {"\u2014"}</div>
+                <div style={{ fontSize: 9, color: "#9AA5B1", textAlign: "center", margin: "8px 0", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.1em" }}>OR</div>
                 <div style={{ display: "flex", gap: 4 }}>
                   <input type="text" value={joinCodeInput} onChange={(e) => setJoinCodeInput(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6))} placeholder="ROOM CODE" maxLength={6} style={{ flex: 1, background: "#0E0F13", border: "1px solid #6B9BF7", borderRadius: 2, color: "#C9772E", fontSize: 14, fontWeight: 700, fontFamily: "monospace", letterSpacing: "0.2em", padding: "8px 10px", outline: "none", textAlign: "center" }} />
                   <button onClick={() => { mp.join(joinCodeInput); setJoinCodeInput(""); }} disabled={joinCodeInput.length < 4} style={{ ...bs(joinCodeInput.length >= 4 ? "#6B9BF7" : "#3A4150"), padding: "8px 14px", fontSize: 11, fontWeight: 700, background: joinCodeInput.length >= 4 ? "#6B9BF720" : "transparent", opacity: joinCodeInput.length >= 4 ? 1 : 0.5, cursor: joinCodeInput.length >= 4 ? "pointer" : "not-allowed" }}>Join</button>
                 </div>
                 <div style={{ fontSize: 9, color: "#9AA5B1", marginTop: 12, lineHeight: 1.5 }}>
-                  <strong style={{ color: "#C9772E" }}>How it works:</strong> One player hosts to get a room code, the other player enters it to connect. Browsers talk peer-to-peer — no servers, no accounts. Both players need this page open. Connection drops if either tab closes.
+                  <strong style={{ color: "#C9772E" }}>How it works:</strong> One player hosts and gets a room code; the other enters it to connect. The two browsers connect directly, and nobody needs an account. Keep this page open on both devices, because closing either tab ends the connection.
                 </div>
               </div>
             ) : mp.status === "hosting" ? (
@@ -3686,7 +3686,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
               </div>
             </div>
 
-            {/* CP + VP row — bigger, cleaner */}
+            {/* CP + VP row: bigger, cleaner */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
               {/* CP */}
               <div style={{ background: "#262A33", borderRadius: 4, padding: "10px 8px", border: "1px solid #FFB62725", textAlign: "center" }}>
@@ -3728,7 +3728,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
             {/* Scoring panel */}
             {showScoring && (
               <div style={{ marginTop: 6, borderTop: "1px solid #262A33", paddingTop: 8 }}>
-                {/* Primary — You */}
+                {/* Primary: You */}
                 <div style={{ marginBottom: 8 }}>
                   <div style={{ fontSize: 10, fontWeight: 700, color: "#3D6B3F", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.1em", marginBottom: 4 }}>YOUR PRIMARY (tap to cycle: 0 → 1 → 2VP)</div>
                   <div style={{ display: "flex", gap: 4 }}>
@@ -3745,7 +3745,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
                   </div>
                 </div>
 
-                {/* Primary — Opponent */}
+                {/* Primary: Opponent */}
                 <div style={{ marginBottom: 8 }}>
                   <div style={{ fontSize: 10, fontWeight: 700, color: "#B8341C", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.1em", marginBottom: 4 }}>OPPONENT PRIMARY</div>
                   <div style={{ display: "flex", gap: 4 }}>
@@ -3762,7 +3762,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
                   </div>
                 </div>
 
-                {/* Tac Ops — You */}
+                {/* Tac Ops: You */}
                 <div>
                   <div style={{ fontSize: 10, fontWeight: 700, color: "#C9772E", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.1em", marginBottom: 4 }}>YOUR TAC OPS (1VP each checkbox)</div>
                   {tacOps.map((t, opIdx) => (
@@ -3806,7 +3806,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
           {/* LEFT PANEL */}
           <div style={{ width: mobile ? "100%" : 260, flexShrink: 0, display: mobile && roster.length > 0 && mobilePanel !== "roster" ? "none" : "block", position: mobile ? "static" : "sticky", top: mobile ? "auto" : 50, maxHeight: mobile ? "none" : "calc(100vh - 60px)", overflowY: mobile ? "visible" : "auto", overflowX: "hidden" }}>
 
-            {/* Roster Section — collapsible when locked */}
+            {/* Roster Section: collapsible when locked */}
             {rosterLocked ? (
               <div style={{ ...cd, padding: 10, borderColor: "#3D6B3F40", marginBottom: 0 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -3996,7 +3996,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
             <div style={{ ...cd, padding: 10 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div style={{ ...h3, color: "#C9772E", marginBottom: 0 }}>FACTION EQUIPMENT</div>
-                {rosterLocked && <div style={{ fontSize: 8, color: "#9AA5B1", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.08em" }}>{"\uD83D\uDD12"} LOCKED — {f.equipment.filter(q => eq[q.id]).length} SELECTED</div>}
+                {rosterLocked && <div style={{ fontSize: 8, color: "#9AA5B1", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.08em" }}>{"\uD83D\uDD12"} LOCKED: {f.equipment.filter(q => eq[q.id]).length} SELECTED</div>}
               </div>
               <div style={dv} />
               {rosterLocked && f.equipment.filter(q => eq[q.id]).length === 0 && <div style={{ ...mu, fontSize: 9 }}>No faction equipment selected.</div>}
@@ -4022,7 +4022,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div style={{ ...h3, color: "#9AA5B1", marginBottom: 0 }}>UNIVERSAL EQUIPMENT</div>
                 {rosterLocked ? (
-                  <div style={{ fontSize: 8, color: "#9AA5B1", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.08em" }}>{"\uD83D\uDD12"} LOCKED — {UNIV_EQUIP.filter(q => uEq[q.id]).length} SELECTED</div>
+                  <div style={{ fontSize: 8, color: "#9AA5B1", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.08em" }}>{"\uD83D\uDD12"} LOCKED: {UNIV_EQUIP.filter(q => uEq[q.id]).length} SELECTED</div>
                 ) : validate && f && f.composition && (
                   <div style={{ fontSize: 8, color: v.equipCount > gc.equipSlots ? "#C9772E" : "#9AA5B1", fontFamily: "monospace" }}>{v.equipCount}/{gc.equipSlots} slots</div>
                 )}
@@ -4201,7 +4201,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
             )}
           </div>
 
-          {/* OPPONENT PANEL — third column on desktop, below on mobile */}
+          {/* OPPONENT PANEL: third column on desktop, below on mobile */}
           {!mobile && roster.length > 0 && (
             <div style={{ width: oppRoster ? 320 : 0, flexShrink: 0, transition: "width 0.3s", overflow: "hidden" }}>
               {oppRoster ? (
@@ -4302,9 +4302,9 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
 
 /* ═══ TERRAIN TYPES ═══ */
 const TERRAIN_TYPES = [
-  { name: "Heavy", color: "#B8341C", desc: "Larger terrain features. Can obscure operatives — if Heavy terrain is intervening between shooter and target (and more than 1\" from both), the target is obscured.", rules: ["Attacker must discard one success when target is obscured.", "All attacker crits become normal successes when target is obscured.", "Cannot obscure if within 1\" of either operative."] },
+  { name: "Heavy", color: "#B8341C", desc: "Larger terrain features. Can obscure operatives: if Heavy terrain is intervening between shooter and target (and more than 1\" from both), the target is obscured.", rules: ["Attacker must discard one success when target is obscured.", "All attacker crits become normal successes when target is obscured.", "Cannot obscure if within 1\" of either operative."] },
   { name: "Light", color: "#C9772E", desc: "Smaller terrain features. No additional rules on its own, but other rules interact with it differently. Vantage terrain is also Light terrain.", rules: ["Provides cover but does not obscure.", "Operatives on Vantage can ignore Light terrain for targeting Concealed enemies below them."] },
-  { name: "Blocking", color: "#9AA5B1", desc: "Usually gaps between or underneath terrain. Visibility cannot be drawn through Blocking terrain. For cover and obscured purposes, gaps count as intervening like the terrain around them.", rules: ["Visibility cannot pass through.", "Treated as intervening for cover/obscured.", "Rare — exists for necessary gap-blocking."] },
+  { name: "Blocking", color: "#9AA5B1", desc: "Usually gaps between or underneath terrain. Visibility cannot be drawn through Blocking terrain. For cover and obscured purposes, gaps count as intervening like the terrain around them.", rules: ["Visibility cannot pass through.", "Treated as intervening for cover/obscured.", "Rare. Used to block specific gaps."] },
   { name: "Vantage", color: "#6B9BF7", desc: "Upper levels operatives can stand on. Also counts as Light terrain. Provides shooting bonuses and targeting advantages against lower operatives.", rules: ["Shooting target 2\"+ lower with Engage: weapon gains Accurate 1. 4\"+ lower: Accurate 2.", "Targeting Concealed operatives 2\"+ lower: they can't use Light terrain for cover (but keep cover save as crit or get +1 save).", "For obscured, ignore Heavy terrain connected to Vantage the shooter or target is on.", "Operatives can jump from Vantage terrain higher than 2\"."] },
   { name: "Accessible", color: "#3D6B3F", desc: "Operatives can move through this terrain (e.g. doors, open hatches), but it costs an additional 1\" to do so. Only the centre of the base needs to pass through.", rules: ["Move through costs +1\" extra.", "Base centre determines passage, not full base.", "Takes precedence over normal terrain blocking."] },
   { name: "Insignificant", color: "#D5D6D7", desc: "Very small terrain. Ignored for climbing and dropping purposes. Operatives can move over it without going up and down.", rules: ["Ignore for climbing/dropping.", "Move over freely."] },
@@ -4315,20 +4315,20 @@ const TERRAIN_TYPES = [
 /* ═══ MOVEMENT RULES ═══ */
 const MOVEMENT_RULES = [
   { name: "Increments", desc: "All movement is done in straight-line increments, not curves. Each increment is rounded up to the nearest inch. For example, a 0.5\" increment counts as 1\"." },
-  { name: "Climbing", desc: "Must be within 1\" horizontally and 3\" vertically of visible terrain to climb it. Each climb is treated as a minimum of 2\" vertically (a 1\" climb costs 2\"). Must finish in a placeable location — can't stop midway." },
+  { name: "Climbing", desc: "Must be within 1\" horizontally and 3\" vertically of visible terrain to climb it. Each climb is treated as a minimum of 2\" vertically (a 1\" climb costs 2\"). Must finish in a placeable location, so it can't stop midway." },
   { name: "Dropping", desc: "When moving off terrain or after jumping. Ignore 2\" of vertical drop distance per action (total, not per drop). A drop of 2\" or less is free. Multiple drops in one action share the 2\" allowance." },
   { name: "Jumping", desc: "From Vantage terrain higher than 2\": move up to 4\" horizontally from the edge in one straight-line increment, then drop or climb from there. Can cross gaps up to 4\" wide. If there's a rampart at the edge, climb over it first, then jump from the highest point. When landing, ignore 1\" or less height difference including ramparts." },
   { name: "Through Friendlies", desc: "Friendly operatives can move through other friendly operatives (base and miniature), but not through enemy operatives." },
-  { name: "Terrain Blocking", desc: "Bases cannot move through terrain — operatives must move around, climb over, or drop/jump off. Bases cannot extend over the killzone edge." },
+  { name: "Terrain Blocking", desc: "Bases can't move through terrain. Operatives must move around, climb over, or drop/jump off. Bases cannot extend over the killzone edge." },
 ];
 
 /* ═══ VISIBILITY & OBSCURED ═══ */
 const VISIBILITY_RULES = [
   { name: "Visible", desc: "Look from behind the operative. Draw an unobstructed straight line (1mm diameter) from its head to any part of the target (ignore bases). If you can, the target is visible. An operative is always visible to itself." },
-  { name: "Intervening", desc: "If terrain is between the operative and target, it's intervening. When unclear, use targeting lines — imaginary 1mm lines from any point of the operative's base to every facing part of the target's base. Anything at least one line crosses is intervening. Anything all lines cross is wholly intervening." },
-  { name: "Cover", desc: "An operative is in cover if there's intervening terrain within its control range (visible and within 1\"). Cannot be in cover while within 2\" of the other operative. An operative cannot be in cover from and obscured by the same terrain feature — defender must choose one. Cover with Conceal = not a valid target. Cover with Engage = cover save (auto normal defence success)." },
+  { name: "Intervening", desc: "If terrain is between the operative and target, it's intervening. When unclear, use targeting lines: imaginary 1mm lines from any point of the operative's base to every facing part of the target's base. Anything at least one line crosses is intervening. Anything all lines cross is wholly intervening." },
+  { name: "Cover", desc: "An operative is in cover if there's intervening terrain within its control range (visible and within 1\"). Cannot be in cover while within 2\" of the other operative. An operative cannot be in cover from and obscured by the same terrain feature; the defender chooses one. Cover with Conceal = not a valid target. Cover with Engage = cover save (auto normal defence success)." },
   { name: "Obscured", desc: "An operative is obscured if there's intervening Heavy terrain between it and the shooter. Cannot be obscured by Heavy terrain within 1\" of either operative. When shooting an obscured target: (1) discard one success of your choice, (2) all crits become normal successes and can't be changed back. This takes precedence over all other rules." },
-  { name: "Cover vs Obscured", desc: "Cover protects Concealed operatives from being targeted and grants a free defence die for Engaged ones. Obscured makes attacks less effective by removing a success and downgrading crits. They're different — cover is about the target's position near terrain, obscured is about Heavy terrain between shooter and target." },
+  { name: "Cover vs Obscured", desc: "Cover protects Concealed operatives from being targeted and grants a free defence die for Engaged ones. Obscured makes attacks less effective by removing a success and downgrading crits. Cover depends on terrain near the target; obscured depends on Heavy terrain between shooter and target." },
 ];
 
 /* ═══ UNIVERSAL EQUIPMENT ═══ */
@@ -4344,7 +4344,7 @@ const UNIV_EQUIPMENT = [
   { name: "Light Barricades (x2)", type: "terrain", desc: "Light terrain (feet are Insignificant and Exposed). Set up wholly within your territory, on killzone floor, >2\" from other equipment terrain, access points, and Accessible terrain." },
   { name: "Heavy Barricade", type: "terrain", desc: "Heavy terrain. Set up wholly within 4\" of your drop zone, on killzone floor, >2\" from other equipment terrain, access points, and Accessible terrain." },
   { name: "Ladders (x2)", type: "terrain", desc: "Insignificant and Exposed terrain. Set up wholly within your territory, upright against terrain at least 2\" tall, >2\" from other equipment terrain, >1\" from doors and access points. Once per action, when an operative is climbing the terrain a ladder is placed against, treat the vertical distance as 1\" if the ladder is within that operative's control range during the entire climb." },
-  { name: "Portable Barricade", type: "terrain", desc: "Light, Protective, Portable terrain (feet Insignificant/Exposed). Protective: while an operative is in cover from this terrain, improve its Save by 1 (max 2+). Portable: only provides cover while an operative is connected to it and the shield is intervening. A connected operative can perform Move With Barricade (1AP) — same as Reposition but max Move stat -2\", no climb/drop/jump." },
+  { name: "Portable Barricade", type: "terrain", desc: "Light, Protective, Portable terrain (feet Insignificant/Exposed). Protective: while an operative is in cover from this terrain, improve its Save by 1 (max 2+). Portable: only provides cover while an operative is connected to it and the shield is intervening. A connected operative can perform Move With Barricade (1AP): like Reposition, but max Move stat -2\", no climb/drop/jump." },
   { name: "Breaching Charge", type: "upgrade", desc: "Once per battle, when a friendly operative performs the Breach action, it can do so for 1 less AP (min 1AP) as though it had 'breach marker' on its datacard." },
 ];
 
@@ -4517,7 +4517,7 @@ function Rules() {
             ]} />
           </div>
           <RuleCard title="Key Fighting Rules" color="#B8341C">
-            <div style={mu}>Must have enemy in control range. Striking deals damage immediately — use this to kill before the enemy strikes back. Blocking cancels a future strike — use to survive. If one operative is incapacitated, the other resolves all remaining dice. You can block with no opponent dice left (useful to avoid killing an enemy you want alive).</div>
+            <div style={mu}>Must have enemy in control range. Striking deals damage right away, so use it to finish an enemy before it strikes back. Blocking cancels one of its strikes, so use it to survive. If one operative is incapacitated, the other resolves all remaining dice. You can block with no opponent dice left (useful to avoid killing an enemy you want alive).</div>
           </RuleCard>
         </div>
       )}
@@ -4691,14 +4691,14 @@ function Tutorial() {
     () => (
       <Section title="Welcome, Commander" phase="Setup">
         <Narrator>
-          This tutorial will walk you through <Highlight>one full Turning Point</Highlight> of play. You'll roll for initiative, activate operatives, execute a shooting attack, and fight in melee combat.
+          This tutorial takes you through <Highlight>one full Turning Point</Highlight>: you roll for initiative, activate operatives, shoot, and fight in melee.
         </Narrator>
         <Narrator>
           You command <Highlight color="#3D6B3F">two Space Marine Intercessors</Highlight>. The enemy has <Highlight color="#B8341C">two Ork Boyz</Highlight>. Your Marines are tougher and shoot better. The Orks are scrappy in melee.
         </Narrator>
         <Battlefield />
         <Narrator>
-          A game lasts <Highlight>4 Turning Points</Highlight>. Each TP has two phases: <Highlight>Strategy</Highlight> (planning) and <Highlight color="#B8341C">Firefight</Highlight> (action). Let's begin.
+          A game lasts <Highlight>4 Turning Points</Highlight>. Each TP has two phases: <Highlight>Strategy</Highlight> (planning) and <Highlight color="#B8341C">Firefight</Highlight> (action).
         </Narrator>
         <NextBtn onClick={() => setStep(1)} label="Start Turning Point 1 \u25B6" />
       </Section>
@@ -4752,10 +4752,10 @@ function Tutorial() {
         <div style={{ background: "#262A33", borderRadius: 4, padding: 12, border: "1px solid #262A33", marginBottom: 12 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: "#C9772E", marginBottom: 6 }}>KEY CONCEPTS:</div>
           <div style={{ fontSize: 11, color: "#F1F2F5", lineHeight: 1.6 }}>
-            <Highlight>Engage Order</Highlight> — Operative can be targeted and can Shoot freely. Normal combat mode.{"\n"}
+            <Highlight>Engage Order</Highlight>: the operative can be targeted and can Shoot.{"\n"}
           </div>
           <div style={{ fontSize: 11, color: "#F1F2F5", lineHeight: 1.6, marginTop: 4 }}>
-            <Highlight>Conceal Order</Highlight> — Operative hides. Cannot be targeted if in cover (behind terrain). But cannot Shoot.
+            <Highlight>Conceal Order</Highlight>: the operative hides. It can't be targeted while in cover behind terrain, but it can't Shoot.
           </div>
         </div>
         <Narrator>
@@ -4767,19 +4767,19 @@ function Tutorial() {
 
     // 3: Firefight - First Activation
     () => (
-      <Section title="Firefight Phase — Your Activation" phase="Firefight">
+      <Section title="Firefight Phase: Your Activation" phase="Firefight">
         <Battlefield />
         <Narrator>
-          Players alternate activating one operative each. Since you have initiative, <Highlight>you go first</Highlight>. Each operative has <Highlight>Action Points (APL)</Highlight> — your Marines have APL 3, so 3 actions each.
+          Players alternate activating one operative each. Since you have initiative, <Highlight>you go first</Highlight>. Each operative has <Highlight>Action Points (APL)</Highlight>. Your Marines have APL 3, so 3 actions each.
         </Narrator>
         <div style={{ background: "#262A33", borderRadius: 4, padding: 12, border: "1px solid #3D6B3F30", marginBottom: 12 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#3D6B3F", marginBottom: 4 }}>INTERCESSOR SGT — 3 APL</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#3D6B3F", marginBottom: 4 }}>INTERCESSOR SGT: 3 APL</div>
           <div style={{ fontSize: 11, color: "#9AA5B1", lineHeight: 1.5 }}>
             Available actions: <Highlight>Move</Highlight> (1AP), <Highlight>Shoot</Highlight> (1AP), <Highlight>Fight</Highlight> (1AP), <Highlight>Dash</Highlight> (1AP), <Highlight>Charge</Highlight> (1AP)
           </div>
         </div>
         <Narrator>
-          Let's spend our 3 APL: <Highlight>Move</Highlight> (1AP) into firing position, then <Highlight>Shoot</Highlight> (1AP) at the Ork Boy, then <Highlight>Dash</Highlight> (1AP) behind cover.
+          Spend the Sergeant's 3 APL: <Highlight>Move</Highlight> (1AP) into firing position, then <Highlight>Shoot</Highlight> (1AP) at the Ork Boy, then <Highlight>Dash</Highlight> (1AP) behind cover.
         </Narrator>
         <NextBtn onClick={() => setStep(4)} label="Move into Position \u25B6" />
       </Section>
@@ -4826,7 +4826,7 @@ function Tutorial() {
               <Narrator>
                 {crits + hits > 0
                   ? <span>You scored <Highlight>{crits + hits} success{crits + hits !== 1 ? "es" : ""}</Highlight>! Now the defender rolls. The Ork has a <Highlight color="#B8341C">5+ Save</Highlight> (only 5 and 6 succeed) and rolls <Highlight>3 defence dice</Highlight>.</span>
-                  : <span>All misses! The attack whiffs entirely. In a real game you'd move on. Let's pretend you hit and continue the tutorial.</span>
+                  : <span>All misses. In a real game you'd move on; here the tutorial carries on as if you hit.</span>
                 }
               </Narrator>
               <NextBtn onClick={() => setStep(5)} label="Roll Defence Dice \u25B6" />
@@ -4920,7 +4920,7 @@ function Tutorial() {
           After your operative finishes, the <Highlight color="#B8341C">enemy activates one of theirs</Highlight>. Players alternate: you activate one, they activate one, until all operatives are expended.
         </Narrator>
         <Narrator>
-          The <Highlight color="#B8341C">Ork Boy Nob</Highlight> uses <Highlight>Charge</Highlight> (1AP) — a special move that adds 2" to their movement and lets them engage in melee. He reaches your <Highlight color="#3D6B3F">Intercessor</Highlight> and will now <Highlight color="#B8341C">Fight</Highlight> (1AP).
+          The <Highlight color="#B8341C">Ork Boy Nob</Highlight> uses <Highlight>Charge</Highlight> (1AP): a move with 2" extra that ends in melee range. He reaches your <Highlight color="#3D6B3F">Intercessor</Highlight> and will now <Highlight color="#B8341C">Fight</Highlight> (1AP).
         </Narrator>
         <div style={{ background: "#B8341C10", borderRadius: 4, padding: 12, border: "1px solid #B8341C30", marginBottom: 12 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: "#B8341C", marginBottom: 4 }}>CHARGE + FIGHT</div>
@@ -4934,17 +4934,17 @@ function Tutorial() {
 
     // 7: Melee - Roll
     () => (
-      <Section title="Fight — Roll Attack Dice" phase="Fighting">
+      <Section title="Fight: Roll Attack Dice" phase="Fighting">
         <Narrator>
           In melee, <Highlight>both operatives roll simultaneously</Highlight> using their melee weapon. Then they <Highlight>alternate: Strike or Block</Highlight>. The attacker (who initiated) goes first.
         </Narrator>
         <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
           <div style={{ flex: 1, background: "#B8341C10", borderRadius: 4, padding: 10, border: "1px solid #B8341C30", minWidth: 140 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#B8341C" }}>Ork Nob — Choppa</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#B8341C" }}>Ork Nob: Choppa</div>
             <div style={{ fontSize: 10, color: "#9AA5B1" }}>ATK 4 \u2022 HIT 3+ \u2022 DMG 4/5</div>
           </div>
           <div style={{ flex: 1, background: "#3D6B3F10", borderRadius: 4, padding: 10, border: "1px solid #3D6B3F30", minWidth: 140 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#3D6B3F" }}>Intercessor — Fists</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#3D6B3F" }}>Intercessor: Fists</div>
             <div style={{ fontSize: 10, color: "#9AA5B1" }}>ATK 3 \u2022 HIT 3+ \u2022 DMG 3/4</div>
           </div>
         </div>
@@ -5014,7 +5014,7 @@ function Tutorial() {
           </div>
         </div>
         <Narrator>
-          After resolving all strikes, the Ork deals damage to your Marine and your Marine deals damage back. {orkDmg > 0 ? "Your Marine takes a beating!" : "The Ork whiffed!"} This is why melee is <Highlight color="#B8341C">dangerous</Highlight> — both fighters get hurt.
+          After resolving all strikes, the Ork deals damage to your Marine and your Marine deals damage back. {orkDmg > 0 ? "Your Marine takes a beating!" : "The Ork whiffed!"} Melee is <Highlight color="#B8341C">dangerous</Highlight> because both fighters can get hurt.
         </Narrator>
         <NextBtn onClick={() => {
           setPlayerHP(prev => ({ ...prev, marine2: Math.max(0, prev.marine2 - Math.max(0, orkDmg - marineDmg)) }));
@@ -5038,12 +5038,12 @@ function Tutorial() {
         <div style={{ background: "#262A33", borderRadius: 4, padding: 12, border: "1px solid #262A33", marginBottom: 12 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: "#C9772E", marginBottom: 6 }}>COMMON ACTIONS (1 APL EACH):</div>
           <div style={{ fontSize: 11, color: "#F1F2F5", lineHeight: 1.8 }}>
-            <Highlight>Move</Highlight> — Move up to Movement stat{"\n"}
-            <Highlight>Shoot</Highlight> — Fire a ranged weapon at a valid target{"\n"}
-            <Highlight>Fight</Highlight> — Melee attack an enemy in Control Range{"\n"}
-            <Highlight>Charge</Highlight> — Move + 2" and engage enemy{"\n"}
-            <Highlight>Dash</Highlight> — Move up to 3"{"\n"}
-            <Highlight>Pick Up</Highlight> — Interact with objectives
+            <Highlight>Move</Highlight>: Move up to Movement stat{"\n"}
+            <Highlight>Shoot</Highlight>: Fire a ranged weapon at a valid target{"\n"}
+            <Highlight>Fight</Highlight>: Melee attack an enemy in Control Range{"\n"}
+            <Highlight>Charge</Highlight>: Move + 2" and engage enemy{"\n"}
+            <Highlight>Dash</Highlight>: Move up to 3"{"\n"}
+            <Highlight>Pick Up</Highlight>: Interact with objectives
           </div>
         </div>
         <NextBtn onClick={() => setStep(10)} label="End of Firefight Phase \u25B6" />
@@ -5060,9 +5060,9 @@ function Tutorial() {
         <div style={{ background: "#262A33", borderRadius: 4, padding: 12, border: "1px solid #9B59B630", marginBottom: 12 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: "#9B59B6", marginBottom: 6 }}>SCORING:</div>
           <div style={{ fontSize: 11, color: "#F1F2F5", lineHeight: 1.8 }}>
-            <Highlight color="#9B59B6">Primary Mission</Highlight> — Control objectives. More = 2VP, equal = 1VP, fewer = 0VP.{"\n"}
-            <Highlight color="#9B59B6">Tac Ops</Highlight> — Secret objectives you chose pre-game. Each has 2 scoring conditions worth 1VP each.{"\n"}
-            <Highlight color="#9B59B6">Total</Highlight> — Max ~18VP across 4 TPs. Highest VP wins.
+            <Highlight color="#9B59B6">Primary Mission</Highlight>: Control objectives. More = 2VP, equal = 1VP, fewer = 0VP.{"\n"}
+            <Highlight color="#9B59B6">Tac Ops</Highlight>: Secret objectives you chose pre-game. Each has 2 scoring conditions worth 1VP each.{"\n"}
+            <Highlight color="#9B59B6">Total</Highlight>: Max ~18VP across 4 TPs. Highest VP wins.
           </div>
         </div>
         <Narrator>
@@ -5077,20 +5077,20 @@ function Tutorial() {
       <Section title="You've Completed a Turning Point!" phase="Setup">
         <Battlefield />
         <Narrator>
-          Congratulations! You've played through all the core mechanics:
+          You've now played every core step:
         </Narrator>
         <div style={{ background: "#262A33", borderRadius: 4, padding: 12, border: "1px solid #C9772E30", marginBottom: 12 }}>
           <div style={{ fontSize: 12, color: "#F1F2F5", lineHeight: 2 }}>
-            {"\u2714"} <Highlight>Initiative</Highlight> — Roll D6, highest chooses{"\n"}
-            {"\u2714"} <Highlight>Strategy Phase</Highlight> — Orders, CP, ploys{"\n"}
-            {"\u2714"} <Highlight>Firefight Phase</Highlight> — Alternate activations{"\n"}
-            {"\u2714"} <Highlight color="#C9772E">Shooting</Highlight> — ATK dice vs Defence dice{"\n"}
-            {"\u2714"} <Highlight color="#B8341C">Melee</Highlight> — Both roll, alternate Strike/Block{"\n"}
-            {"\u2714"} <Highlight color="#9B59B6">Scoring</Highlight> — Primary + Tac Ops = VP
+            {"\u2714"} <Highlight>Initiative</Highlight>: Roll D6, highest chooses{"\n"}
+            {"\u2714"} <Highlight>Strategy Phase</Highlight>: Orders, CP, ploys{"\n"}
+            {"\u2714"} <Highlight>Firefight Phase</Highlight>: Alternate activations{"\n"}
+            {"\u2714"} <Highlight color="#C9772E">Shooting</Highlight>: ATK dice vs Defence dice{"\n"}
+            {"\u2714"} <Highlight color="#B8341C">Melee</Highlight>: Both roll, alternate Strike/Block{"\n"}
+            {"\u2714"} <Highlight color="#9B59B6">Scoring</Highlight>: Primary + Tac Ops = VP
           </div>
         </div>
         <Narrator>
-          A full game repeats this for <Highlight>4 Turning Points</Highlight>. Use the <Highlight>Builder</Highlight> tab to build your real army, and the <Highlight>Sequence</Highlight> tab as a phase-by-phase checklist during play.
+          A full game repeats this for <Highlight>4 Turning Points</Highlight>. Use the <Highlight>Builder</Highlight> tab to build your real army, and the <Highlight>Rules</Highlight> tab to look things up during play.
         </Narrator>
         <div style={{ display: "flex", gap: 8 }}>
           <ActionBtn onClick={restart} color="#9AA5B1">{"\u21BA"} Play Again</ActionBtn>
@@ -5105,20 +5105,20 @@ function Tutorial() {
         <div style={{ fontSize: 22, fontWeight: 700, color: "#C9772E", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.04em", textShadow: "0 1px 8px rgba(255,215,0,0.2)" }}>Tutorial</div>
         {step > 0 && <button onClick={restart} style={{ ...bs("#9AA5B1"), fontSize: 9, padding: "4px 10px" }}>{"\u21BA"} Restart</button>}
       </div>
-      <p style={{ ...mu, marginBottom: 10 }}>Interactive walkthrough — play through a full Turning Point against a bot.</p>
+      <p style={{ ...mu, marginBottom: 10 }}>Play through a full Turning Point against a bot.</p>
       <Progress />
       {steps[Math.min(step, steps.length - 1)]()}
     </div>
   );
 }
 
-/* ═══ COMMUNITY ROSTERS (placeholder — backend coming next session) ═══ */
+/* ═══ COMMUNITY ROSTERS (placeholder: backend coming next session) ═══ */
 function CommunityRosters() {
   const factions = Object.values(FACTIONS).map(f => ({ id: f.id, name: f.name, color: f.color }));
   const exampleBuilds = [
-    { name: "Mortis Spam", faction: "angels", votes: 0, author: "—" },
-    { name: "Choppa Heavy Aggression", faction: "kommandos", votes: 0, author: "—" },
-    { name: "Bilesword Plague", faction: "plaguemarines", votes: 0, author: "—" },
+    { name: "Mortis Spam", faction: "angels", votes: 0, author: "KillSheet" },
+    { name: "Choppa Heavy Aggression", faction: "kommandos", votes: 0, author: "KillSheet" },
+    { name: "Bilesword Plague", faction: "plaguemarines", votes: 0, author: "KillSheet" },
   ];
 
   return (
@@ -5127,7 +5127,7 @@ function CommunityRosters() {
       <div style={{ marginBottom: 28 }}>
         <div style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 28, fontWeight: 700, color: "#F1F2F5", letterSpacing: "0.02em", marginBottom: 6 }}>Community Rosters</div>
         <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 14, color: "#9AA5B1", lineHeight: 1.5, maxWidth: 720 }}>
-          Browse, share, and vote on Kill Team rosters from other players. Find proven loadouts for your faction, or post your own and see how the community ranks it.
+          Browse, share and vote on other players' rosters. Filter by faction, or post your own and see how it ranks.
         </div>
       </div>
 
@@ -5136,7 +5136,7 @@ function CommunityRosters() {
         <div style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 12, fontWeight: 600, color: "#C9772E", letterSpacing: "0.16em", textTransform: "uppercase", flexShrink: 0 }}>Coming Soon</div>
         <div style={{ width: 1, height: 24, background: "#3A4150" }} />
         <div style={{ fontSize: 13, color: "#F1F2F5", lineHeight: 1.5 }}>
-          The community board is being built. The preview below shows the layout — actual posting and voting will be live in the next update.
+          The community board isn't live yet. Below is a preview of the layout; posting and voting come in a later update.
         </div>
       </div>
 
@@ -5195,7 +5195,7 @@ function CommunityRosters() {
       {/* Footer note */}
       <div style={{ marginTop: 32, padding: "16px 20px", background: "#1A1D24", borderRadius: 6, fontSize: 12, color: "#9AA5B1", lineHeight: 1.6 }}>
         <div style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 11, fontWeight: 600, color: "#9AA5B1", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 8 }}>What's coming</div>
-        Post a roster from your Builder with a name and short description. Anyone can browse, filter by faction, sort by votes, and upvote builds they like. No account needed — your post is associated with your browser. Featured builds will rotate weekly.
+        Post a roster from your Builder with a name and short description. Anyone can browse, filter by faction, sort by votes, and upvote builds they like. You don't need an account: your browser keeps track of your posts.
       </div>
     </div>
   );
@@ -5237,9 +5237,9 @@ function App() {
               {mp.status === "connected" ? "\u25CF" : mp.status === "error" ? "\u26A0" : "\u25CB"}
             </span>
             <span style={{ color: "#F1F2F5" }}>
-              {mp.status === "hosting" && (mobile ? "Hosting" : "Hosting \u2014 waiting for opponent")}
+              {mp.status === "hosting" && (mobile ? "Hosting" : "Hosting, waiting for opponent")}
               {mp.status === "joining" && "Connecting..."}
-              {mp.status === "connected" && (mobile ? "Live" : "Connected \u2014 " + mp.role)}
+              {mp.status === "connected" && (mobile ? "Live" : "Connected as " + mp.role)}
               {mp.status === "error" && (mp.peerError || "Error")}
             </span>
             {mp.roomCode && (
@@ -5279,7 +5279,7 @@ function App() {
         ))}
       </nav>
 
-      {/* CONTENT — all tabs stay mounted, hidden with display:none to preserve state */}
+      {/* CONTENT: all tabs stay mounted, hidden with display:none to preserve state */}
       <div style={{ display: tab === "rules" ? "block" : "none" }}><Rules /></div>
       <div style={{ display: tab === "builder" ? "block" : "none" }}><Builder tp={tp} setTp={setTp} mp={mp} mpHandlerRef={mpHandlerRef} showMP={showMP} setShowMP={setShowMP} /></div>
       <div style={{ display: tab === "tutorial" ? "block" : "none" }}><Tutorial /></div>
