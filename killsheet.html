@@ -6045,6 +6045,10 @@ function DiceRoller({ w, wtype, onClose, cp, setCp, requestDamageApply, applySel
   const [isObscured, setIsObscured] = useState(false);
   const [editedDamage, setEditedDamage] = useState(null); // user-overridden damage; null = use estimate
   const [hotRoll, setHotRoll] = useState(null); // d6 result if Hot weapon was fired
+  const [history, setHistory] = useLocalStorage("rollHistory", []);
+  const [showHistory, setShowHistory] = useState(false);
+  const attackKind = React.useRef("Attack");
+  const defenceKind = React.useRef("Defence");
 
   // Parse weapon rules
   const wr = w.wr || "";
@@ -6080,6 +6084,7 @@ function DiceRoller({ w, wtype, onClose, cp, setCp, requestDamageApply, applySel
   };
 
   const doAttackRoll = () => {
+    attackKind.current = "Attack";
     const numDice = parseInt(w.atk);
     const rolls = rollMultiple(numDice);
     setAttackDice(rolls);
@@ -6157,6 +6162,7 @@ function DiceRoller({ w, wtype, onClose, cp, setCp, requestDamageApply, applySel
     const results = getAttackResults();
     if (piercing === "pcrits1" && results && results.crits > 0) numDice = 2;
     const rolls = rollMultiple(numDice);
+    defenceKind.current = "Defence";
     setDefenceDice(rolls);
     setEditedDamage(null);
   };
@@ -6175,6 +6181,23 @@ function DiceRoller({ w, wtype, onClose, cp, setCp, requestDamageApply, applySel
     if (hasCover && !hasSaturate) saves++;
     return { crits, saves, fails, coverSave: hasCover && !hasSaturate };
   };
+
+  // Log every roll (first rolls and re-rolls) to the shared history, newest first, last 10.
+  const logRoll = (kind, dice, classify) => {
+    const n = (c) => dice.filter(d => classify(d) === c).length;
+    const parts = [[n("crit"), "crit"], [n("hit"), kind.startsWith("Defence") ? "save" : "hit"], [n("fail"), kind.startsWith("Defence") ? "fail" : "miss"]].filter(([c]) => c > 0).map(([c, l]) => c + " " + l);
+    setHistory(prev => [{ t: Date.now(), weapon: w.name, kind, dice, summary: parts.join(", ") }, ...prev].slice(0, 10));
+  };
+  React.useEffect(() => {
+    if (!attackDice) return;
+    logRoll(attackKind.current, attackDice, classifyAttack);
+    attackKind.current = "Attack re-roll";
+  }, [attackDice]);
+  React.useEffect(() => {
+    if (!defenceDice) return;
+    logRoll(defenceKind.current + " (save " + defSave + "+)", defenceDice, classifyDefence);
+    defenceKind.current = "Defence re-roll";
+  }, [defenceDice]);
 
   const dieColor = (val, classify) => {
     const c = classify(val);
@@ -6372,6 +6395,29 @@ function DiceRoller({ w, wtype, onClose, cp, setCp, requestDamageApply, applySel
               })()}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Recent rolls */}
+      {history.length > 0 && (
+        <div style={{ marginTop: 10, borderTop: "1px solid #262A33", paddingTop: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button onClick={() => setShowHistory(!showHistory)} style={{ flex: 1, background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, color: "#9AA5B1", fontSize: 12, fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.08em", textTransform: "uppercase", textAlign: "left" }}>
+              <Arrow open={showHistory} /> Recent rolls ({history.length})
+            </button>
+            {showHistory && <button onClick={() => setHistory([])} style={{ ...bs("#9AA5B1"), fontSize: 10, padding: "2px 8px" }}>Clear</button>}
+          </div>
+          {showHistory && history.map((h, i) => (
+            <div key={h.t + "-" + i} style={{ padding: "6px 0", borderTop: i ? "1px solid #262A33" : "none", marginTop: i ? 0 : 6 }}>
+              <div style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
+                <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: "#F1F2F5", fontWeight: 600 }}>{h.weapon} <span style={{ color: h.kind.startsWith("Defence") ? "#6B9BF7" : "#C9772E", fontWeight: 500 }}>{h.kind}</span></span>
+                <span style={{ fontSize: 11, color: "#9AA5B1", whiteSpace: "nowrap" }}>{new Date(h.t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</span>
+              </div>
+              <div style={{ fontSize: 12, color: "#C8CDD3", marginTop: 2 }}>
+                <span style={{ fontFamily: "monospace", letterSpacing: "0.1em", color: "#F1F2F5" }}>{h.dice.join(" ")}</span>{h.summary ? " \u00b7 " + h.summary : ""}
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -7146,6 +7192,25 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
     }).catch(() => {
       prompt("Copy this roster code:", code);
     });
+  };
+
+  // Once-per-battle ploys: one box, or a chip per operative for "each operative once per battle".
+  const ployUses = (type, i, p) => {
+    if (!isOncePerBattle(p.desc)) return null;
+    const base = "ploy|" + type + "-" + i;
+    if (/each operative once per battle/i.test(p.desc)) {
+      return (
+        <div onClick={e => e.stopPropagation()} style={{ display: "flex", flexWrap: "wrap", gap: 4, alignItems: "center", marginTop: 4 }}>
+          <span style={{ fontSize: 10, color: "#9AA5B1", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.06em" }}>USED ON:</span>
+          {roster.map(op => {
+            const k = base + "|" + op.id;
+            const on = !!battleUses[k];
+            return <button key={op.id} onClick={() => setBattleUses(prev => ({ ...prev, [k]: on ? 0 : 1 }))} style={{ fontSize: 10, padding: "2px 6px", borderRadius: 3, border: "1px solid " + (on ? "#B8341C" : "#3A4150"), background: on ? "#B8341C25" : "transparent", color: on ? "#B8341C" : "#9AA5B1", textDecoration: on ? "line-through" : "none", cursor: "pointer" }}>{op.name}</button>;
+          })}
+        </div>
+      );
+    }
+    return <div style={{ marginTop: 4 }}><UsePips label="Once per battle" used={battleUses[base] || 0} max={1} onSet={(n) => setBattleUses(prev => ({ ...prev, [base]: n }))} /></div>;
   };
 
   // ── Saved rosters (this device only) ──
@@ -8127,6 +8192,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 10, fontWeight: 700, color: used ? "#9AA5B1" : "#F1F2F5", fontFamily: "'Rajdhani', sans-serif", textDecoration: used ? "line-through" : "none" }}>{p.name}</div>
                         <div style={{ fontSize: 9, color: "#8494A4", lineHeight: 1.3 }}>{p.desc}</div>
+                        {ployUses("strategy", i, p)}
                       </div>
                     </div>
                   </div>
@@ -8144,6 +8210,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 10, fontWeight: 700, color: used ? "#9AA5B1" : "#F1F2F5", fontFamily: "'Rajdhani', sans-serif", textDecoration: used ? "line-through" : "none" }}>{p.name}</div>
                         <div style={{ fontSize: 9, color: "#8494A4", lineHeight: 1.3 }}>{p.desc}</div>
+                        {ployUses("firefight", i, p)}
                       </div>
                     </div>
                   </div>
