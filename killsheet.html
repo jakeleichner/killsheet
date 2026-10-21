@@ -6444,6 +6444,7 @@ const ICON_PATHS = {
   check: <path d="M5 12.5l4.5 4.5L19 7.5" />,
   chevronDown: <path d="M6 9l6 6 6-6" />,
   chevronUp: <path d="M6 15l6-6 6 6" />,
+  chevronRight: <path d="M9 6l6 6-6 6" />,
   heart: <path d="M12 20s-7.5-4.6-7.5-10.2A4.2 4.2 0 0 1 12 7.3a4.2 4.2 0 0 1 7.5 2.5C19.5 15.4 12 20 12 20z" />,
   download: <path d="M12 4v11M7 10.5l5 4.5 5-4.5M5 20h14" />,
   warning: <><path d="M12 3.5l9 16H3z" /><path d="M12 10v4.5" /><circle cx="12" cy="17" r="0.6" fill="currentColor" /></>,
@@ -6604,7 +6605,7 @@ function Datacard({ op, fc, equipWeapons, equipEffects, curWounds, onWound, coll
             </div>
             {!mobile && readyChip}
             {!mobile && onOrder && <OrderChip order={order} onToggle={onOrder} />}
-            <span style={{ color: DS.textSecondary, marginTop: 3 }}><Icon name={collapsed ? "chevronDown" : "chevronUp"} size={16} /></span>
+            <span style={{ color: DS.textSecondary, marginTop: 3 }}><Icon name={collapsed ? "chevronDown" : "chevronUp"} size={22} /></span>
           </div>
           {mobile && (readyChip || onOrder || collapsed) && (
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
@@ -7774,15 +7775,15 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
     <div style={{ maxWidth: 1200, margin: "0 auto", padding: "20px 16px", position: "relative" }}>
       {/* Undo toast */}
       {undo && (
-        <div role="status" style={{ position: "fixed", bottom: 20, left: "50%", transform: "translateX(-50%)", zIndex: 9999, display: "flex", alignItems: "center", gap: 14, padding: "10px 12px 10px 16px", borderRadius: 8, background: "#262A33", border: "1px solid #3A4150", boxShadow: "0 8px 24px rgba(0,0,0,0.6)", maxWidth: "calc(100vw - 32px)" }}>
-          <span style={{ fontSize: 14, color: "#F1F2F5" }}>{undo.label}</span>
-          <button onClick={() => { restoreKillSheetStorage(undo.snap); window.location.reload(); }} style={{ ...bs("#FFB627"), padding: "8px 14px", fontSize: 13 }}>Undo</button>
-          <button onClick={() => setUndo(null)} aria-label="Dismiss" style={{ background: "none", border: "none", color: "#9AA5B1", cursor: "pointer", padding: 4 }}><Icon name="x" size={14} /></button>
+        <div role="status" style={{ position: "fixed", bottom: "calc(16px + env(safe-area-inset-bottom))", left: 16, right: 16, margin: "0 auto", width: "fit-content", maxWidth: 560, boxSizing: "border-box", zIndex: 9999, display: "flex", alignItems: "center", gap: 10, padding: "8px 8px 8px 16px", borderRadius: 8, background: "#262A33", border: "1px solid #3A4150", boxShadow: "0 8px 24px rgba(0,0,0,0.6)" }}>
+          <span style={{ flex: 1, minWidth: 0, fontSize: 14, color: "#F1F2F5", lineHeight: 1.35 }}>{undo.label}</span>
+          <button onClick={() => { restoreKillSheetStorage(undo.snap); window.location.reload(); }} style={{ ...bs("#FFB627"), padding: "8px 14px", fontSize: 13, flexShrink: 0 }}>Undo</button>
+          <button onClick={() => setUndo(null)} aria-label="Dismiss" style={{ background: "none", border: "none", color: "#9AA5B1", cursor: "pointer", padding: 0, width: 40, height: 40, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name="x" size={20} /></button>
         </div>
       )}
       {/* Toast notification */}
       {toast && (
-        <div style={{ position: "fixed", top: 80, left: "50%", transform: "translateX(-50%)", zIndex: 9999, background: "#3D6B3F", color: "white", padding: "10px 20px", borderRadius: 4, fontSize: 12, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.06em", boxShadow: "0 4px 20px rgba(0,0,0,0.6)", animation: "fadeIn 0.2s ease" }}>{toast}</div>
+        <div style={{ position: "fixed", top: 80, left: 16, right: 16, margin: "0 auto", width: "fit-content", maxWidth: 560, textAlign: "center", zIndex: 9999, background: "#3D6B3F", color: "white", padding: "10px 20px", borderRadius: 4, fontSize: 12, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.06em", boxShadow: "0 4px 20px rgba(0,0,0,0.6)", animation: "fadeIn 0.2s ease" }}>{toast}</div>
       )}
       {/* Damage target picker */}
       {damageRequest && f && (
@@ -8241,7 +8242,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
               <div style={{ ...cd, padding: 10, borderColor: showRules ? f.color + "40" : "#3A4150" }}>
                 <div role="button" tabIndex={0} onClick={() => setShowRules(!showRules)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
                   <div style={{ ...h3, color: "#C9772E", marginBottom: 0 }}>TEAM COMPOSITION</div>
-                  <span style={{ color: "#9AA5B1" }}><Icon name={showRules ? "chevronUp" : "chevronDown"} size={16} /></span>
+                  <span style={{ color: "#9AA5B1" }}><Icon name={showRules ? "chevronUp" : "chevronDown"} size={22} /></span>
                 </div>
                 {/* Quick summary always visible */}
                 {f.composition.groups.filter(g => g.desc).map((g, i) => (
@@ -8565,7 +8566,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
                     <div style={{ display: "flex", gap: mobile ? 6 : 3, alignItems: "center" }}>
                       {(() => {
                         const allCollapsed = roster.length > 0 && roster.every(op => cardCollapsed[op.id]);
-                        return <button onClick={allCollapsed ? expandAll : collapseAll} title={allCollapsed ? "Expand all" : "Collapse all"} style={{ ...bs("#9AA5B1"), fontSize: 11, padding: mobile ? "6px 8px" : "2px 5px" }}><Icon name={allCollapsed ? "chevronDown" : "chevronUp"} size={14} /></button>;
+                        return <button onClick={allCollapsed ? expandAll : collapseAll} title={allCollapsed ? "Expand all" : "Collapse all"} style={{ ...bs("#9AA5B1"), fontSize: 11, padding: mobile ? "6px 8px" : "2px 5px" }}><Icon name={allCollapsed ? "chevronDown" : "chevronUp"} size={20} /></button>;
                       })()}
                       <button onClick={saveRoster} title="Save to My Rosters on this device" style={{ ...bs("#5A9C3A"), fontSize: 11, padding: mobile ? "5px 8px" : "2px 7px", display: "flex", alignItems: "center", gap: 4 }}>
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }}><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" /></svg>Save
@@ -8635,7 +8636,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
                       <div style={{ display: "flex", gap: 4 }}>
                         {(() => {
                           const allOppCollapsed = oppRoster.operatives.every(op => oppCollapsed[op.id]);
-                          return <button onClick={() => { if (allOppCollapsed) setOppCollapsed({}); else { const c = {}; oppRoster.operatives.forEach(op => { c[op.id] = true; }); setOppCollapsed(c); } }} style={{ ...bs("#9AA5B1"), fontSize: 13, padding: "8px 12px" }}><Icon name={allOppCollapsed ? "chevronDown" : "chevronUp"} size={14} /></button>;
+                          return <button onClick={() => { if (allOppCollapsed) setOppCollapsed({}); else { const c = {}; oppRoster.operatives.forEach(op => { c[op.id] = true; }); setOppCollapsed(c); } }} style={{ ...bs("#9AA5B1"), fontSize: 13, padding: "8px 12px" }}><Icon name={allOppCollapsed ? "chevronDown" : "chevronUp"} size={20} /></button>;
                         })()}
                         <button onClick={() => setOppWounds({})} style={{ ...bs("#9AA5B1"), fontSize: 13, padding: "8px 12px" }} title="Heal all"><Icon name="heart" size={13} /></button>
                         <button onClick={() => { setOppRoster(null); setShowImport(false); }} style={{ ...bs("#B8341C"), fontSize: 13, padding: "8px 12px" }} title="Remove opponent"><Icon name="x" size={13} /></button>
@@ -8661,7 +8662,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
                     <div style={{ fontSize: 13, fontWeight: 700, color: oppRoster ? "#B8341C" : "#6B9BF7", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.08em" }}>
                       {oppRoster ? "Opponent: " + oppRoster.faction.name + " (" + oppRoster.operatives.length + ")" : "Import a roster"}
                     </div>
-                    <span style={{ color: "#9AA5B1" }}><Icon name={showImport ? "chevronUp" : "chevronDown"} size={16} /></span>
+                    <span style={{ color: "#9AA5B1" }}><Icon name={showImport ? "chevronUp" : "chevronDown"} size={22} /></span>
                   </div>
 
                   {showImport && !oppRoster && (
@@ -8697,7 +8698,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
                         <div style={{ display: "flex", gap: 6 }}>
                           {(() => {
                             const allOppCollapsed = oppRoster.operatives.length > 0 && oppRoster.operatives.every(op => oppCollapsed[op.id]);
-                            return <button onClick={() => { if (allOppCollapsed) setOppCollapsed({}); else { const c = {}; oppRoster.operatives.forEach(op => { c[op.id] = true; }); setOppCollapsed(c); } }} style={{ ...bs("#9AA5B1"), fontSize: 13, padding: "8px 12px" }}><Icon name={allOppCollapsed ? "chevronDown" : "chevronUp"} size={14} /></button>;
+                            return <button onClick={() => { if (allOppCollapsed) setOppCollapsed({}); else { const c = {}; oppRoster.operatives.forEach(op => { c[op.id] = true; }); setOppCollapsed(c); } }} style={{ ...bs("#9AA5B1"), fontSize: 13, padding: "8px 12px" }}><Icon name={allOppCollapsed ? "chevronDown" : "chevronUp"} size={20} /></button>;
                           })()}
                           <button onClick={() => setOppWounds({})} style={{ ...bs("#9AA5B1"), fontSize: 13, padding: "8px 12px" }} title="Heal all"><Icon name="heart" size={13} /></button>
                           <button onClick={() => { setOppRoster(null); setShowImport(false); }} style={{ ...bs("#B8341C"), fontSize: 13, padding: "8px 12px" }} title="Remove opponent"><Icon name="x" size={13} /></button>
@@ -13580,7 +13581,7 @@ function RuleItem({ item, open, onToggle }) {
         {item.swatch && <div style={{ width: 10, height: 10, borderRadius: 2, background: item.swatch, flexShrink: 0 }} />}
         <span style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.03em", color: open ? "#C9772E" : "#F1F2F5" }}>{item.name}</span>
         {item.tag && <span style={bg(item.tagColor || "#B8341C")}>{item.tag}</span>}
-        {more && <span aria-hidden="true" style={{ color: open ? "#C9772E" : "#9AA5B1", fontSize: 12, width: 14, textAlign: "center", transform: open ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>{"▸"}</span>}
+        {more && <Arrow open={open} />}
       </div>
       {item.summary && <div style={{ ...mu, marginTop: 4 }}>{item.summary}</div>}
       {item.steps && <StepList items={item.steps} />}
@@ -13647,7 +13648,7 @@ function Rules() {
   return (
     <div style={{ maxWidth: 900, margin: "0 auto", padding: "20px 16px" }}>
       <div style={{ fontSize: 22, fontWeight: 700, color: "#C9772E", fontFamily: "'Rajdhani', sans-serif", marginBottom: 4, letterSpacing: "0.04em" }}>Rules Reference</div>
-      <p style={mu}>Cards with an arrow ({"▸"}) open for more detail.</p>
+      <p style={mu}>Cards with an arrow open for more detail.</p>
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "12px 0 8px" }}>
         {RULE_SECTIONS.map(sc => {
           const on = !q && sec === sc.id;
@@ -13672,7 +13673,7 @@ function Rules() {
 /* ═══ MISSIONS ═══ */
 const modeColor = (m) => m.startsWith("Co-op") ? "#5A9C3A" : m.startsWith("Head") ? "#C9772E" : "#9AA5B1";
 const missionLabel = (m) => typeof m.num === "number" ? "Mission " + m.num : m.num === "AO" ? "Head-to-head rules" : "Maps";
-const Arrow = ({ open }) => <span aria-hidden="true" style={{ color: open ? "#C9772E" : "#9AA5B1", fontSize: 12, width: 14, textAlign: "center", transform: open ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>{"▸"}</span>;
+const Arrow = ({ open }) => <span aria-hidden="true" style={{ display: "inline-flex", flexShrink: 0, color: open ? "#C9772E" : "#9AA5B1", transform: open ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}><Icon name="chevronRight" size={20} /></span>;
 const sectionHead = (text) => <div style={{ ...h3, color: "#C9772E", margin: "20px 0 8px" }}>{text}</div>;
 
 function MapImages({ ids }) {
