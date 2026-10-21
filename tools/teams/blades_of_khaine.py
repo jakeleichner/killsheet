@@ -1,9 +1,9 @@
 PISTOL = ("Shuriken pistol", 4, "3+", "3/4", 'Range 8", Rending')
 CATAPULT = ("Shuriken catapult", 4, "3+", "3/4", "Rending")
-EXARCH = "Exarch: Can do two Shoot or two Fight actions per activation."
-DEFENCE_TACTICS = "Defence Tactics: While contesting an objective or your mission marker, or shooting an enemy that does, weapons gain Balanced."
-BANSHEE_MASK = "Banshee Mask: When it fights, the enemy's melee Hit is worsened by 1 (not with injury)."
-MANDIBLASTERS = "Mandiblasters: On a Fight, at the start of Roll Attack Dice: inflict 2 damage on that enemy."
+EXARCH = "Exarch: It can make two Shoot or two Fight actions in each activation."
+DEFENCE_TACTICS = "Defence Tactics: While it contests an objective or one of your mission markers, or shoots an enemy that does, its weapons gain Balanced."
+BANSHEE_MASK = "Banshee Mask: When it fights, the enemy's melee weapons get a worse Hit by 1. This isn't affected by being injured."
+MANDIBLASTERS = "Mandiblasters: When it Fights, at the start of the Roll Attack Dice step, inflict 2 damage on that enemy."
 
 def asp(oid, name, ranged, melee, abilities, kw, apl=3, save="4+", wounds=8):
     return {"id": oid, "name": name, "apl": apl, "move": '7"', "save": save, "wounds": wounds, "pts": 28,
@@ -26,46 +26,46 @@ TEAM = {
         ],
     },
     "factionRules": [
-        ("Aspect Techniques", "Each technique works only for operatives of its Aspect. Max one per activation/counteraction and each once per turning point (twice per turning point if every operative shares the same Aspect)."),
-        ("Dire Avenger techniques", "Vigilance of the Avenger: shuriken catapults gain Lethal 5+ for a Shoot. Unstinting, Immovable: being shot with 2+ fails, discard one to retain another as normal. The Slicing Hurricane: Shoot partway through a Reposition (catapult or pistol). Death of a Thousand Blades: catapult gains Torrent 2\" (one secondary target). Raging Heat of the Dying Flame: ignore injury until its next activation."),
-        ("Howling Banshee techniques", "The Woe: after Charging and killing in a Fight (now clear of enemies), a free Charge with the remaining move. Scream-That-Steals: resolve one success early, as a block. Shriek-That-Kills: use the shriek weapon for a Shoot (5 3+ 1/2, Range 6\", Saturate, Seek Light, Stun, Torrent 1\"). Rain of Tears: after a crit strike against a survivor, end the fight and Fall Back up to 3\". Acrobatic: ignore climb/drop height and move through enemies (Charge capped at its Move)."),
-        ("Striking Scorpion techniques", "Strike and Fade: after killing in a fight and being more than 3\" from enemies, go Conceal and Dash. Scorpion's Eye: shuriken pistol gains Seek Light. Patient Stalk, Sudden Blow: Concealed Reposition can pass through enemy control range, then D3+2 damage to one enemy it passed. Merciless Strikes: after the first crit strike, its melee weapon gains Shock. One with the Gloom: until its next activation, Concealed and in cover it can't be targeted (except within 2\")."),
+        ("Aspect Techniques", "Each technique only works for operatives of its Aspect. Use at most one per activation or counteraction, and each one once per turning point (twice if every operative in your team is the same Aspect)."),
+        ("Dire Avenger techniques", "Vigilance of the Avenger: shuriken catapults gain Lethal 5+ for one Shoot. Unstinting, Immovable: when shot and you fail two or more defence dice, discard one failure to retain another as a normal success. The Slicing Hurricane: Shoot with a catapult or pistol partway through a Reposition. Death of a Thousand Blades: the catapult gains Torrent 2\" (one secondary target). Raging Heat of the Dying Flame: ignore injury until its next activation."),
+        ("Howling Banshee techniques", "The Woe: after it Charges and kills an enemy in the Fight, and is clear of enemies, it makes a free Charge with its remaining move. Scream-That-Steals: resolve one of your successes early, as a block. Shriek-That-Kills: Shoot with the shriek weapon (5 Atk, 3+, 1/2 Dmg, Range 6\", Saturate, Seek Light, Stun, Torrent 1\"). Rain of Tears: after a critical strike on an enemy that survives, end the fight and Fall Back up to 3\". Acrobatic: for one move, ignore climb and drop heights and move through enemies (a Charge still can't go past its Move)."),
+        ("Striking Scorpion techniques", "Strike and Fade: after it kills an enemy in a fight and is more than 3\" from enemies, change its order to Conceal and make a free Dash. Scorpion's Eye: the shuriken pistol gains Seek Light. Patient Stalk, Sudden Blow: a Reposition with a Conceal order can pass through enemy control range, then inflict D3+2 damage on one enemy it passed. Merciless Strikes: after its first critical strike, its melee weapon gains Shock. One with the Gloom: until its next activation, while it has a Conceal order and is in cover, enemies more than 2\" away can't target it."),
     ],
     "ploys": {
         "strategy": [
-            ("Forewarned", "Ready operative being shot: re-roll defence dice of one result."),
-            ("Dance of Death", "Two operatives visible within 6\" of each other swap places."),
-            ("Ruthless Poise", "Fighting a ready enemy: melee weapons gain Ceaseless."),
-            ("Khaine's Vengeance", "Shooting an expended enemy: ranged weapons gain Ceaseless."),
+            ("Forewarned", "When a ready operative is shot, re-roll any defence dice showing one result of your choice."),
+            ("Dance of Death", "Pick two operatives visible within 6\" of each other. They swap places."),
+            ("Ruthless Poise", "When fighting a ready enemy, melee weapons gain Ceaseless."),
+            ("Khaine's Vengeance", "When shooting an expended enemy, ranged weapons gain Ceaseless."),
         ],
         "firefight": [
-            ("Bladewind", "This activation, the operative can Fight twice."),
-            ("Contempt", "Retaliating or being shot, after the opponent rolls attack dice: they can't re-roll (any re-roll ploy is cancelled and refunded)."),
-            ("Starfall", "This activation, the operative can Shoot twice."),
-            ("Fading Light", "This activation, Fall Back costs 1 less AP."),
+            ("Bladewind", "The operative can Fight twice this activation."),
+            ("Contempt", "Use when one retaliates or is shot, after your opponent rolls attack dice. They can't re-roll those dice. Any re-roll ploy they declared is cancelled and its CP refunded."),
+            ("Starfall", "The operative can Shoot twice this activation."),
+            ("Fading Light", "Fall Back costs 1 less AP for the operative this activation."),
         ],
     },
     "equipment": [
-        {"id": "rune_prophecy", "name": "Rune of Prophecy", "desc": "Once per battle after the initiative roll-off: add or subtract D3 from your result."},
-        {"id": "wraithbone_talisman", "name": "Wraithbone Talisman", "desc": "Once per turning point attacking: with 2+ fails, discard one to retain another as a normal success."},
-        {"id": "rune_shielding", "name": "Rune of Shielding", "desc": "Once per battle, ignore the Normal Dmg from one attack dice."},
-        {"id": "rune_foresight", "name": "Rune of Foresight", "desc": "Roll D3 when revealed: +1CP in that turning point's Strategy phase."},
+        {"id": "rune_prophecy", "name": "Rune of Prophecy", "desc": "Once per battle, after the initiative roll-off, add or subtract D3 from your result."},
+        {"id": "wraithbone_talisman", "name": "Wraithbone Talisman", "desc": "Once per turning point when attacking, if you fail two or more attack dice, discard one failure to retain another as a normal success."},
+        {"id": "rune_shielding", "name": "Rune of Shielding", "desc": "Once per battle, ignore the Normal Dmg from one attack die."},
+        {"id": "rune_foresight", "name": "Rune of Foresight", "desc": "When you reveal this, roll a D3. Gain 1 extra CP in the Strategy phase of that turning point."},
     ],
     "operatives": [
         asp("da_exarch", "Dire Avenger Exarch", [CATAPULT, PISTOL, ("Twin shuriken catapult", 4, "3+", "3/4", "Ceaseless, Rending")],
             [("Diresword", 5, "3+", "4/5", "Lethal 5+, Rending"), ("Fists", 4, "3+", "2/4", "-"), ("Gun butts", 3, "4+", "2/3", "-"), ("Power weapon", 5, "3+", "4/6", "Lethal 5+")],
-            ["Loadout: shuriken catapult + fists, twin shuriken catapult + gun butts, or (diresword or power weapon) + (shuriken pistol or shimmershield).",
+            ["Loadout: a shuriken catapult and fists, twin shuriken catapults and gun butts, or a diresword or power weapon plus a shuriken pistol or shimmershield.",
              DEFENCE_TACTICS, EXARCH,
-             "Shimmershield (if taken): friendlies visible within 2\" of it ignore Piercing when shot."],
+             "Shimmershield (if taken): Friendly operatives visible within 2\" of it ignore Piercing when shot."],
             "LEADER, DIRE AVENGER, EXARCH", save="3+", wounds=9),
         asp("hb_exarch", "Howling Banshee Exarch", [PISTOL, ("Triskele (throw)", 4, "3+", "2/3", 'Range 8", Rending, Torrent 2"')],
             [("Executioner", 5, "3+", "3/7", "Lethal 5+"), ("Mirrorswords", 5, "3+", "4/6", "Ceaseless, Lethal 5+"), ("Power weapon", 5, "3+", "4/6", "Lethal 5+"), ("Triskele (slice)", 5, "3+", "4/5", "Rending")],
-            ["Loadout: mirrorswords; or shuriken pistol + executioner, power weapon or triskele; or triskele + power weapon.",
+            ["Loadout: mirrorswords; a shuriken pistol plus an executioner, power weapon or triskele; or a triskele and a power weapon.",
              BANSHEE_MASK, EXARCH],
             "LEADER, HOWLING BANSHEE, EXARCH", save="3+", wounds=9),
         asp("ss_exarch", "Striking Scorpion Exarch", [PISTOL, ("Twin shuriken pistols", 4, "4+", "3/4", 'Range 8", Ceaseless, Rending')],
             [("Biting blade", 5, "3+", "5/6", "Rending"), ("Scorpion's claw and chainsword", 5, "3+", "4/6", "Brutal, Lethal 5+"), ("Twin chainswords", 5, "3+", "4/5", "Ceaseless, Rending")],
-            ["Loadout: shuriken pistol + biting blade, shuriken pistol + scorpion's claw and chainsword, or twin shuriken pistols + twin chainswords.",
+            ["Loadout: a shuriken pistol and biting blade, a shuriken pistol with a scorpion's claw and chainsword, or twin shuriken pistols and twin chainswords.",
              MANDIBLASTERS, EXARCH],
             "LEADER, STRIKING SCORPION, EXARCH", save="3+", wounds=9),
         asp("da_warrior", "Dire Avenger Warrior", [CATAPULT], [("Fists", 4, "3+", "2/4", "-")], [DEFENCE_TACTICS], "DIRE AVENGER, WARRIOR"),
