@@ -6870,6 +6870,8 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
   const [wounds, setWounds] = useLocalStorage("wounds", {});
   const [validate, setValidate] = useLocalStorage("validate", true);
   const [rosterLocked, setRosterLocked] = useLocalStorage("rosterLocked", false);
+  // On a phone, building starts on the operative list; playing starts on the datacards.
+  React.useEffect(() => { setMobilePanel(rosterLocked ? "cards" : "roster"); }, [rosterLocked, fid]);
   const [cardCollapsed, setCardCollapsed] = useLocalStorage("cardCollapsed", {});
   const [usedPloys, setUsedPloys] = useLocalStorage("usedPloys", {});
   const [cp, setCp] = useLocalStorage("cp", 3); // 2 to start + 1 for the first Strategy phase
@@ -8197,11 +8199,11 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
             )}
           </div>
 
-        {!(mobile && rosterLocked) && roster.length > 0 && <TurnGuide tp={tp} numTPs={gc.numTPs} setTp={setTp} hasInitiative={hasInitiative} onInitiative={handleInitiativeToggle} cp={cp} f={f} roster={roster} getWounds={getWounds} activated={activated} orders={orders} counteracted={counteracted} setCounteracted={setCounteracted} checks={guideChecks} setChecks={setGuideChecks} />}
+        {!mobile && roster.length > 0 && <TurnGuide tp={tp} numTPs={gc.numTPs} setTp={setTp} hasInitiative={hasInitiative} onInitiative={handleInitiativeToggle} cp={cp} f={f} roster={roster} getWounds={getWounds} activated={activated} orders={orders} counteracted={counteracted} setCounteracted={setCounteracted} checks={guideChecks} setChecks={setGuideChecks} />}
         {!(mobile && rosterLocked) && gc.mission && <MissionPanel mref={gc.mission} npoUnits={npoUnits} setNpoUnits={setNpoUnits} />}
 
         {/* Mobile panel toggle: building has two panels, playing has three */}
-        {mobile && roster.length > 0 && (
+        {mobile && (!rosterLocked || roster.length > 0) && (
           <div style={{ display: "flex", gap: 4, marginBottom: 10 }}>
             {(rosterLocked ? [["cards", "Datacards"], ["roster", "Ploys & rules"], ["turn", "Turn & mission"]] : [["roster", "Build roster"], ["cards", "Datacards"]]).map(([id, label]) => (
               <button key={id} onClick={() => setMobilePanel(id)} style={{ flex: 1, padding: "10px 4px", border: "1px solid " + (mobilePanel === id ? f.color + "70" : "#3A4150"), borderRadius: 6, background: mobilePanel === id ? f.color + "18" : "transparent", color: mobilePanel === id ? "#F1F2F5" : "#9AA5B1", cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.04em" }}>{label}</button>
@@ -8217,7 +8219,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
 
         <div style={{ display: "flex", gap: 14, flexWrap: mobile ? "wrap" : "nowrap", alignItems: "flex-start" }}>
           {/* LEFT PANEL */}
-          <div style={{ width: mobile ? "100%" : 260, flexShrink: 0, display: mobile && roster.length > 0 && mobilePanel !== "roster" ? "none" : "block", position: mobile ? "static" : "sticky", top: mobile ? "auto" : navH + BAR_H, maxHeight: mobile ? "none" : "calc(100vh - " + (navH + BAR_H + 10) + "px)", overflowY: mobile ? "visible" : "auto", overflowX: "hidden" }}>
+          <div style={{ width: mobile ? "100%" : 260, flexShrink: 0, display: mobile && mobilePanel !== "roster" ? "none" : "block", position: mobile ? "static" : "sticky", top: mobile ? "auto" : navH + BAR_H, maxHeight: mobile ? "none" : "calc(100vh - " + (navH + BAR_H + 10) + "px)", overflowY: mobile ? "visible" : "auto", overflowX: "hidden" }}>
 
             {/* Roster Section: collapsible when locked */}
             {rosterLocked ? (
@@ -8233,7 +8235,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
                 </div>
               </div>
             ) : (
-              <div>
+              <div style={{ display: "flex", flexDirection: "column" }}>
             {/* Composition Rules */}
             {f.composition && (
               <div style={{ ...cd, padding: 10, borderColor: showRules ? f.color + "40" : "#3A4150" }}>
@@ -8263,7 +8265,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
 
             {/* Validation Status */}
             {validate && roster.length > 0 && (
-              <div style={{ ...cd, padding: 10, borderColor: isComplete ? "#3D6B3F40" : v.errors.length > 0 ? "#B8341C40" : "#C9772E40" }}>
+              <div style={{ ...cd, padding: 10, order: mobile ? 2 : 0, borderColor: isComplete ? "#3D6B3F40" : v.errors.length > 0 ? "#B8341C40" : "#C9772E40" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
                   <div style={{ width: 8, height: 8, borderRadius: "50%", background: isComplete ? "#3D6B3F" : v.errors.length > 0 ? "#B8341C" : "#C9772E" }} />
                   <div style={{ fontSize: 11, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", color: isComplete ? "#3D6B3F" : v.errors.length > 0 ? "#B8341C" : "#C9772E" }}>
@@ -8285,7 +8287,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
             )}
 
             {/* Operatives, one section per composition group */}
-            <div style={{ ...cd, padding: 10 }}>
+            <div style={{ ...cd, padding: 10, order: mobile ? 1 : 0 }}>
               {f.composition.groups.map((g, gi) => {
                 const gated = g.equip && !eq[g.equip];
                 const used = compGroupUsed(f.composition, roster, g);
@@ -8305,16 +8307,16 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
                     const nameEl = (
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                          <span style={{ fontSize: 11, fontWeight: n ? 700 : 400, color: n ? "#F1F2F5" : "#9AA5B1", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: n ? "'Rajdhani', sans-serif" : "inherit" }}>{op.name}</span>
+                          <span style={{ fontSize: mobile ? 15 : 11, lineHeight: mobile ? "20px" : "15px", fontWeight: n ? 700 : 400, color: n ? "#F1F2F5" : "#C8CDD3", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: n ? "'Rajdhani', sans-serif" : "inherit" }}>{op.name}</span>
                           {cost !== 1 && (<span style={{ fontSize: 11, color: "#C9772E", background: "#C9772E15", padding: "0 4px", borderRadius: 2, border: "1px solid #C9772E20" }}>{cost === 0.5 ? "\u00BD" : "\u00D7" + cost}</span>)}
                         </div>
-                        <div style={{ fontSize: 11, color: "#9AA5B1" }}>{op.wounds}W {"\u2022"} {op.save} {"\u2022"} APL {op.apl}</div>
+                        <div style={{ fontSize: mobile ? 12 : 11, color: "#9AA5B1" }}>{op.wounds}W {"\u2022"} {op.save} {"\u2022"} APL {op.apl}</div>
                       </div>
                     );
                     if (multi) {
-                      const btn = (on) => ({ width: 26, height: 26, border: "1px solid #3A4150", borderRadius: 4, background: "#1A1D24", cursor: on ? "pointer" : "not-allowed", opacity: on ? 1 : 0.3, fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, flexShrink: 0 });
+                      const btn = (on) => ({ width: mobile ? 40 : 26, height: mobile ? 40 : 26, border: "1px solid #3A4150", borderRadius: 4, background: "#1A1D24", cursor: on ? "pointer" : "not-allowed", opacity: on ? 1 : 0.3, fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, flexShrink: 0 });
                       return (
-                        <div key={op.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 2px", borderBottom: "1px solid #1A2430", opacity: !n && blocked ? 0.3 : 1 }}>
+                        <div key={op.id} style={{ display: "flex", alignItems: "center", gap: mobile ? 10 : 6, padding: mobile ? "6px 2px" : "4px 2px", borderBottom: "1px solid #1A2430", opacity: !n && blocked ? 0.3 : 1 }}>
                           {nameEl}
                           <button onClick={() => n && removeOp(op.id)} disabled={!n} aria-label={"Remove " + op.name} style={{ ...btn(!!n), color: "#E0664A" }}>{"\u2212"}</button>
                           <div style={{ minWidth: 18, textAlign: "center", fontSize: 13, fontWeight: 700, color: n ? f.color : "#5A6470", fontFamily: "'Rajdhani', sans-serif" }}>{n}</div>
@@ -8324,8 +8326,8 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
                     }
                     const off = !n && blocked;
                     return (
-                      <div key={op.id} role="button" tabIndex={off ? -1 : 0} aria-disabled={off} onClick={() => !off && toggleOp(op.id)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 2px", cursor: off ? "not-allowed" : "pointer", borderBottom: "1px solid #1A2430", opacity: off ? 0.3 : 1 }}>
-                        <div style={{ width: 14, height: 14, borderRadius: 2, border: "1.5px solid " + (n ? f.color : "#262A33"), background: n ? f.color + "20" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: f.color, flexShrink: 0 }}>{n ? <Icon name="check" size={10} /> : ""}</div>
+                      <div key={op.id} role="button" tabIndex={off ? -1 : 0} aria-disabled={off} onClick={() => !off && toggleOp(op.id)} style={{ display: "flex", alignItems: "center", gap: mobile ? 12 : 6, padding: mobile ? "12px 4px" : "5px 2px", minHeight: mobile ? 52 : 0, cursor: off ? "not-allowed" : "pointer", borderBottom: "1px solid #1A2430", opacity: off ? 0.3 : 1 }}>
+                        <div style={{ width: mobile ? 22 : 14, height: mobile ? 22 : 14, borderRadius: mobile ? 4 : 2, border: "1.5px solid " + (n ? f.color : "#262A33"), background: n ? f.color + "20" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: f.color, flexShrink: 0 }}>{n ? <Icon name="check" size={mobile ? 15 : 10} /> : ""}</div>
                         {nameEl}
                       </div>
                     );
