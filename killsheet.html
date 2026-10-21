@@ -6446,6 +6446,7 @@ const ICON_PATHS = {
   chevronUp: <path d="M6 15l6-6 6 6" />,
   chevronRight: <path d="M9 6l6 6-6 6" />,
   chevronLeft: <path d="M15 6l-6 6 6 6" />,
+  play: <path d="M7 4l12 8-12 8z" />,
   heart: <path d="M12 20s-7.5-4.6-7.5-10.2A4.2 4.2 0 0 1 12 7.3a4.2 4.2 0 0 1 7.5 2.5C19.5 15.4 12 20 12 20z" />,
   download: <path d="M12 4v11M7 10.5l5 4.5 5-4.5M5 20h14" />,
   warning: <><path d="M12 3.5l9 16H3z" /><path d="M12 10v4.5" /><circle cx="12" cy="17" r="0.6" fill="currentColor" /></>,
@@ -6860,7 +6861,7 @@ function TurnGuide({ tp, numTPs, setTp, hasInitiative, onInitiative, cp, f, rost
   );
 }
 
-function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
+function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen, setTutorialSeen, openTutorial }) {
   const mobile = useIsMobile();
   const navH = mobile ? 54 : 52; // height of the sticky tab bar
   // Persisted game state
@@ -8019,6 +8020,16 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
         };
         return (
           <div className="ks-appear" style={{ marginBottom: 14 }}>
+            {!f && !tutorialSeen && (
+              <div style={{ ...cd, display: "flex", alignItems: "center", gap: 10, padding: "10px 8px 10px 14px", borderLeft: "3px solid #FFB627" }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: "#F1F2F5", fontFamily: "'Rajdhani', sans-serif" }}>First game?</div>
+                  <div style={{ fontSize: 13, color: "#C8CDD3" }}>Learn the basics in a 5-minute tutorial.</div>
+                </div>
+                <button onClick={openTutorial} style={{ ...bs("#FFB627"), padding: "8px 12px", fontSize: 13, flexShrink: 0 }}>Try it <Fwd /></button>
+                <button onClick={() => setTutorialSeen(true)} aria-label="Dismiss" style={{ background: "none", border: "none", color: "#9AA5B1", cursor: "pointer", padding: 0, width: 40, height: 40, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name="x" size={20} /></button>
+              </div>
+            )}
             {f && (
               <button onClick={() => { setPickerOpen(false); setPickerSearch(""); setTeamIntro(false); }} style={{ ...cd, width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", marginBottom: 10, cursor: "pointer", textAlign: "left", borderTop: "2px solid " + f.color }}>
                 <div style={bg(f.color)}>{f.badge}</div>
@@ -13612,7 +13623,7 @@ function RuleItem({ item, open, onToggle }) {
   );
 }
 
-function Rules() {
+function Rules({ tutorialOpen, openTutorial, closeTutorial }) {
   const [sec, setSec] = useState("play");
   const [open, setOpen] = useState({});
   const [query, setQuery] = useState("");
@@ -13646,10 +13657,21 @@ function Rules() {
   const glossHits = q ? GLOSSARY.filter(g => (g.term + " " + g.def).toLowerCase().includes(q)) : [];
   const current = RULE_SECTIONS.find(sc => sc.id === sec);
 
+  if (tutorialOpen) return <Tutorial onExit={closeTutorial} />;
   return (
     <div style={{ maxWidth: 900, margin: "0 auto", padding: "20px 16px" }}>
       <div style={{ fontSize: 22, fontWeight: 700, color: "#C9772E", fontFamily: "'Rajdhani', sans-serif", marginBottom: 4, letterSpacing: "0.04em" }}>Rules Reference</div>
       <p style={mu}>Cards with an arrow open for more detail.</p>
+      {sec === "play" && !q && (
+        <button onClick={openTutorial} style={{ ...cd, width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", margin: "12px 0 0", cursor: "pointer", textAlign: "left", borderLeft: "3px solid #FFB627" }}>
+          <span style={{ color: "#FFB627", display: "inline-flex" }}><Icon name="play" size={20} /></span>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ display: "block", fontSize: 16, fontWeight: 700, color: "#F1F2F5", fontFamily: "'Rajdhani', sans-serif" }}>New to Kill Team? Play the tutorial</span>
+            <span style={{ display: "block", fontSize: 13, color: "#C8CDD3" }}>Five minutes, one turning point against a bot, real dice.</span>
+          </span>
+          <span style={{ color: "#9AA5B1", display: "inline-flex" }}><Fwd size={20} /></span>
+        </button>
+      )}
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "12px 0 8px" }}>
         {RULE_SECTIONS.map(sc => {
           const on = !q && sec === sc.id;
@@ -14108,7 +14130,7 @@ function tutBlock(crits, normals, critSaves, normSaves, n, c) {
   return { crits, normals, damage: crits * c + normals * n };
 }
 
-function Tutorial() {
+function Tutorial({ onExit }) {
   const mobile = useIsMobile();
   const [step, setStep] = useState(0);
   const [init, setInit] = useState(null);           // { you, opp, youHave }
@@ -14404,6 +14426,7 @@ function Tutorial() {
 
   return (
     <div style={{ maxWidth: 760, margin: "0 auto", padding: "20px 16px" }}>
+      {onExit && <button onClick={onExit} style={{ ...bs("#9AA5B1"), padding: "6px 12px", fontSize: 12, marginBottom: 12 }}><Back /> Rules</button>}
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <div style={{ flex: 1, fontSize: 22, fontWeight: 700, color: "#C9772E", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.04em" }}>Tutorial</div>
         {step > 0 && <button onClick={restart} style={{ ...bs("#9AA5B1"), padding: "8px 12px", fontSize: 12, display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="reset" size={13} /> Restart</button>}
@@ -14509,15 +14532,21 @@ const TAB_ICONS = {
   missions: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAyNCAyNCcgd2lkdGg9JzI0JyBoZWlnaHQ9JzI0Jz48cG9seWdvbiBwb2ludHM9JzMsNiA5LDMgMTUsNiAyMSwzIDIxLDE4IDE1LDIxIDksMTggMywyMScgZmlsbD0nbm9uZScgc3Ryb2tlPSd3aGl0ZScgc3Ryb2tlLXdpZHRoPScxLjUnIHN0cm9rZS1saW5lam9pbj0ncm91bmQnLz48bGluZSB4MT0nOScgeTE9JzMnIHgyPSc5JyB5Mj0nMTgnIHN0cm9rZT0nd2hpdGUnIHN0cm9rZS13aWR0aD0nMS41Jy8+PGxpbmUgeDE9JzE1JyB5MT0nNicgeDI9JzE1JyB5Mj0nMjEnIHN0cm9rZT0nd2hpdGUnIHN0cm9rZS13aWR0aD0nMS41Jy8+PC9zdmc+",
   rules: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAyNCAyNCcgd2lkdGg9JzI0JyBoZWlnaHQ9JzI0Jz48cmVjdCB4PSc1JyB5PScyJyB3aWR0aD0nMTQnIGhlaWdodD0nMjAnIHJ4PScxLjUnIGZpbGw9J25vbmUnIHN0cm9rZT0nd2hpdGUnIHN0cm9rZS13aWR0aD0nMS41Jy8+PGxpbmUgeDE9JzgnIHkxPSc4JyB4Mj0nMTYnIHkyPSc4JyBzdHJva2U9J3doaXRlJyBzdHJva2Utd2lkdGg9JzEuNScgc3Ryb2tlLWxpbmVjYXA9J3JvdW5kJy8+PGxpbmUgeDE9JzgnIHkxPScxMicgeDI9JzE2JyB5Mj0nMTInIHN0cm9rZT0nd2hpdGUnIHN0cm9rZS13aWR0aD0nMS41JyBzdHJva2UtbGluZWNhcD0ncm91bmQnLz48bGluZSB4MT0nOCcgeTE9JzE2JyB4Mj0nMTMnIHkyPScxNicgc3Ryb2tlPSd3aGl0ZScgc3Ryb2tlLXdpZHRoPScxLjUnIHN0cm9rZS1saW5lY2FwPSdyb3VuZCcvPjwvc3ZnPg==",
   builder: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAyNCAyNCcgd2lkdGg9JzI0JyBoZWlnaHQ9JzI0Jz48bGluZSB4MT0nMTknIHkxPSczJyB4Mj0nNScgeTI9JzIxJyBzdHJva2U9J3doaXRlJyBzdHJva2Utd2lkdGg9JzEuNScgc3Ryb2tlLWxpbmVjYXA9J3JvdW5kJy8+PGxpbmUgeDE9JzEzJyB5MT0nNScgeDI9JzE5JyB5Mj0nMTEnIHN0cm9rZT0nd2hpdGUnIHN0cm9rZS13aWR0aD0nMS41JyBzdHJva2UtbGluZWNhcD0ncm91bmQnLz48bGluZSB4MT0nNScgeTE9JzMnIHgyPScxOScgeTI9JzIxJyBzdHJva2U9J3doaXRlJyBzdHJva2Utd2lkdGg9JzEuNScgc3Ryb2tlLWxpbmVjYXA9J3JvdW5kJy8+PGxpbmUgeDE9JzUnIHkxPScxMScgeDI9JzExJyB5Mj0nNScgc3Ryb2tlPSd3aGl0ZScgc3Ryb2tlLXdpZHRoPScxLjUnIHN0cm9rZS1saW5lY2FwPSdyb3VuZCcvPjwvc3ZnPg==",
-  tutorial: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAyNCAyNCcgd2lkdGg9JzI0JyBoZWlnaHQ9JzI0Jz48cG9seWdvbiBwb2ludHM9JzUsMiAxOSwxMiA1LDIyJyBmaWxsPSdub25lJyBzdHJva2U9J3doaXRlJyBzdHJva2Utd2lkdGg9JzEuNScgc3Ryb2tlLWxpbmVqb2luPSdyb3VuZCcvPjwvc3ZnPg==",
   community: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAyNCAyNCcgd2lkdGg9JzI0JyBoZWlnaHQ9JzI0Jz48Y2lyY2xlIGN4PScxMicgY3k9JzEyJyByPSc3LjUnIGZpbGw9J25vbmUnIHN0cm9rZT0nd2hpdGUnIHN0cm9rZS13aWR0aD0nMS41Jy8+PGNpcmNsZSBjeD0nMTInIGN5PScxMicgcj0nMS41JyBmaWxsPSd3aGl0ZScvPjxsaW5lIHgxPScxMicgeTE9JzInIHgyPScxMicgeTI9JzcnIHN0cm9rZT0nd2hpdGUnIHN0cm9rZS13aWR0aD0nMS41JyBzdHJva2UtbGluZWNhcD0ncm91bmQnLz48bGluZSB4MT0nMTInIHkxPScxNycgeDI9JzEyJyB5Mj0nMjInIHN0cm9rZT0nd2hpdGUnIHN0cm9rZS13aWR0aD0nMS41JyBzdHJva2UtbGluZWNhcD0ncm91bmQnLz48bGluZSB4MT0nMicgeTE9JzEyJyB4Mj0nNycgeTI9JzEyJyBzdHJva2U9J3doaXRlJyBzdHJva2Utd2lkdGg9JzEuNScgc3Ryb2tlLWxpbmVjYXA9J3JvdW5kJy8+PGxpbmUgeDE9JzE3JyB5MT0nMTInIHgyPScyMicgeTI9JzEyJyBzdHJva2U9J3doaXRlJyBzdHJva2Utd2lkdGg9JzEuNScgc3Ryb2tlLWxpbmVjYXA9J3JvdW5kJy8+PC9zdmc+",
 };
 
 /* ═══ APP ═══ */
 function App() {
   const [tab, setTab] = useLocalStorage("tab", "builder");
-  // Migration: anyone whose persisted tab is "sequence" (now deleted) gets bounced to Builder
-  React.useEffect(() => { if (tab === "sequence") setTab("builder"); }, [tab]);
+  // The tutorial lives inside Rules; the Builder shows new players a one-time banner pointing to it.
+  const [tutorialOpen, setTutorialOpen] = useState(false);
+  const [tutorialSeen, setTutorialSeen] = useLocalStorage("tutorialSeen", false);
+  const openTutorial = () => { setTab("rules"); setTutorialOpen(true); setTutorialSeen(true); window.scrollTo(0, 0); };
+  // Migration: old persisted tabs ("sequence" was deleted, "tutorial" moved into Rules)
+  React.useEffect(() => {
+    if (tab === "sequence") setTab("builder");
+    if (tab === "tutorial") { setTab("rules"); setTutorialOpen(true); }
+  }, [tab]);
   const [tp, setTp] = useLocalStorage("tp", 1);
   const mobile = useIsMobile();
   // Enter or Space on a focused role="button" element acts like a click (buttons do this already).
@@ -14529,7 +14558,7 @@ function App() {
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, []);
-  const tabs = [["rules", "Rules"], ["missions", "Missions"], ["builder", "Builder"], ["tutorial", "Tutorial"], ["community", mobile ? "Community" : "Community Rosters"]];
+  const tabs = [["rules", "Rules"], ["missions", "Missions"], ["builder", "Builder"], ["community", mobile ? "Community" : "Community Rosters"]];
   // Multiplayer hosted at App level so banner is visible across tabs
   const mpHandlerRef = React.useRef(null);
   const mp = useMultiplayer((msg) => { if (mpHandlerRef.current) mpHandlerRef.current(msg); });
@@ -14599,10 +14628,9 @@ function App() {
       </nav>
 
       {/* CONTENT: all tabs stay mounted, hidden with display:none to preserve state */}
-      <div className="ks-appear" style={{ display: tab === "rules" ? "block" : "none" }}><Rules /></div>
+      <div className="ks-appear" style={{ display: tab === "rules" ? "block" : "none" }}><Rules tutorialOpen={tutorialOpen} openTutorial={openTutorial} closeTutorial={() => { setTutorialOpen(false); window.scrollTo(0, 0); }} /></div>
       <div className="ks-appear" style={{ display: tab === "missions" ? "block" : "none" }}><Missions /></div>
-      <div className="ks-appear" style={{ display: tab === "builder" ? "block" : "none" }}><Builder tp={tp} setTp={setTp} mp={mp} mpHandlerRef={mpHandlerRef} showMP={showMP} setShowMP={setShowMP} /></div>
-      <div className="ks-appear" style={{ display: tab === "tutorial" ? "block" : "none" }}><Tutorial /></div>
+      <div className="ks-appear" style={{ display: tab === "builder" ? "block" : "none" }}><Builder tp={tp} setTp={setTp} mp={mp} mpHandlerRef={mpHandlerRef} showMP={showMP} setShowMP={setShowMP} tutorialSeen={tutorialSeen} setTutorialSeen={setTutorialSeen} openTutorial={openTutorial} /></div>
       <div className="ks-appear" style={{ display: tab === "community" ? "block" : "none" }}><CommunityRosters /></div>
 
       {/* FOOTER */}
