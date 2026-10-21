@@ -5901,7 +5901,7 @@ function clearKillSheetStorage() {
     const keys = [];
     for (let i = 0; i < window.localStorage.length; i++) {
       const k = window.localStorage.key(i);
-      if (k && k.indexOf(LS_PREFIX) === 0 && k !== LS_PREFIX + "savedRosters") keys.push(k);
+      if (k && k.indexOf(LS_PREFIX) === 0 && k !== LS_PREFIX + "savedRosters" && k !== LS_PREFIX + "gameHistory") keys.push(k);
     }
     keys.forEach(k => window.localStorage.removeItem(k));
   } catch (e) { /* ignore */ }
@@ -6807,7 +6807,7 @@ function Stepper({ label, value, color, onMinus, onPlus, compact }) {
 
 // Builder: step-by-step checklist for the current turning point.
 const STRATEGY_HINT = /strategic gambit|strategy phase|ready step|initiative step|initiative roll/i;
-function TurnGuide({ tp, numTPs, setTp, hasInitiative, onInitiative, cp, f, roster, getWounds, activated, orders, counteracted, setCounteracted, checks, setChecks }) {
+function TurnGuide({ tp, numTPs, setTp, hasInitiative, onInitiative, cp, f, roster, getWounds, activated, orders, counteracted, setCounteracted, checks, setChecks, onEndGame }) {
   const [open, setOpen] = useLocalStorage("guideOpen", false);
   const alive = roster.filter(op => getWounds(op.id, op.wounds) > 0);
   const expended = alive.filter(op => activated[op.id]);
@@ -6882,7 +6882,7 @@ function TurnGuide({ tp, numTPs, setTp, hasInitiative, onInitiative, cp, f, rost
             <div style={{ marginTop: 6 }}>
               {tp < numTPs
                 ? <button onClick={() => setTp(tp + 1)} style={{ ...bs("#FFB627"), padding: "6px 12px", fontSize: 12 }}>Start turning point {tp + 1}</button>
-                : <span style={{ color: "#FFB627" }}>This is the last turning point. The battle ends after it; most VP wins.</span>}
+                : <span style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}><span style={{ color: "#FFB627" }}>This is the last turning point. The battle ends after it, and the most VP wins.</span>{onEndGame && <button onClick={onEndGame} style={{ ...bs("#5A9C3A"), background: "#5A9C3A20", padding: "6px 12px", fontSize: 12 }}>End game</button>}</span>}
             </div>
           </Step>
         </div>
@@ -6967,6 +6967,9 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   // Back up and restore: everything KillSheet stores on this device, as one file.
   const restoreInput = React.useRef(null);
   const [pendingRestore, setPendingRestore] = useState(null);
+  const [gameHistory, setGameHistory] = useLocalStorage("gameHistory", []);
+  const [endGame, setEndGame] = useState(null); // the End game card: { you, them, opp }
+  const [showGames, setShowGames] = useState(false);
   const backUp = () => {
     const payload = { app: "KillSheet", kind: "backup", version: 1, savedAt: new Date().toISOString(), data: snapshotKillSheetStorage() };
     const d = new Date();
@@ -7259,7 +7262,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
         {(fid || (roster && roster.length > 0)) && (
           <div style={{ textAlign: "center", marginTop: 14 }}>
             <button onClick={() => {
-              if (confirm("Clear the current game? This clears your roster, team, equipment, wounds, CP, VP and game state. Your saved rosters are kept. This can't be undone.")) {
+              if (confirm("Clear the current game? This clears your roster, team, equipment, wounds, CP, VP and game state. Your saved rosters and game history are kept. This can't be undone.")) {
                 clearKillSheetStorage();
                 if (typeof window !== "undefined") window.location.reload();
               }
@@ -7311,6 +7314,27 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
     setTacOps(tacOps.map((t, i) => i === opIdx ? { ...t, name } : t));
   };
   const computedVpYou = primaryYou.reduce((s, v) => s + v, 0) + tacOps.reduce((s, t) => s + t.checks.filter(Boolean).length, 0);
+  // Game history: one record per finished game (kept by "Clear current game data" and in backups).
+  const resetGame = () => { setWounds({}); setCp(3); setVpYou(0); setVpOpp(0); setUsedPloys({}); setActivated({}); setHasInitiative(true); setLastCpTp(1); setTp(1); setPrimaryYou(Array(gc.numTPs).fill(0)); setPrimaryOpp(Array(gc.numTPs).fill(0)); setTacOps(Array.from({ length: gc.numTacOps }, () => ({ name: "", checks: [false, false] }))); setOppWounds({}); setNpoUnits([]); setOrders({}); setBattleUses({}); setCounteracted({}); setGuideChecks({}); };
+  const openEndGame = () => {
+    setEndGame({ you: vpYou + computedVpYou, them: vpOpp + computedVpOpp, opp: oppRoster ? oppRoster.factionId || (oppRoster.faction && oppRoster.faction.id) || "" : "" });
+    window.scrollTo(0, 0);
+  };
+  const saveGame = () => {
+    const e = endGame;
+    const oppF = e.opp && FACTIONS[e.opp];
+    const rec = {
+      id: Date.now(), date: new Date().toISOString(), f: fid, team: f.name,
+      opp: oppF ? oppF.name : "", oppId: oppF ? e.opp : "",
+      mission: gc.mission ? gc.missionName : (gc.missionName || "Standard game"),
+      you: e.you, them: e.them, result: e.you > e.them ? "win" : e.you < e.them ? "loss" : "draw",
+      survivors: roster.filter(o => getWounds(o.id, o.wounds) > 0).length, size: roster.length,
+    };
+    setGameHistory(h => [rec, ...h]);
+    setEndGame(null);
+    resetGame();
+    showToast("Game saved to your history");
+  };
   const computedVpOpp = primaryOpp.reduce((s, v) => s + v, 0);
 
   const toggleEq = (id) => {
@@ -8040,7 +8064,8 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                   ["Back up", "Save your rosters, game and settings to a file", backUp, "#F1F2F5"],
                   ["Restore from backup", "Load a backup file onto this device", () => restoreInput.current && restoreInput.current.click(), "#F1F2F5"],
                   [validate ? "Turn validation off" : "Turn validation on", "Checks your roster against the team's rules", () => setValidate(!validate), "#F1F2F5"],
-                  f ? ["Reset game", "Clears wounds, CP, VP, orders and tracking", () => withUndo("Game reset", () => { setWounds({}); setCp(3); setVpYou(0); setVpOpp(0); setUsedPloys({}); setActivated({}); setHasInitiative(true); setLastCpTp(1); setTp(1); setPrimaryYou(Array(gc.numTPs).fill(0)); setPrimaryOpp(Array(gc.numTPs).fill(0)); setTacOps(Array.from({ length: gc.numTacOps }, () => ({ name: "", checks: [false, false] }))); setOppWounds({}); setNpoUnits([]); setOrders({}); setBattleUses({}); setCounteracted({}); setGuideChecks({}); }), "#B8341C"] : null,
+                  f && rosterLocked ? ["End game", "Record the result in your game history", openEndGame, "#5A9C3A"] : null,
+                  f ? ["Reset game", "Clears wounds, CP, VP, orders and tracking", () => withUndo("Game reset", resetGame), "#B8341C"] : null,
                 ].filter(Boolean).map(([label, hint, run, color]) => (
                   <button key={label} onClick={() => { setGameMenu(false); run(); }} style={{ display: "block", width: "100%", textAlign: "left", background: "none", border: "none", borderRadius: 4, padding: "10px 10px", cursor: "pointer" }}>
                     <div style={{ fontSize: 14, fontWeight: 600, color, fontFamily: "'Inter', sans-serif" }}>{label}</div>
@@ -8067,6 +8092,32 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
           </div>
         </div>
       )}
+
+      {endGame && f && (() => {
+        const res = endGame.you > endGame.them ? ["Win", "#5A9C3A"] : endGame.you < endGame.them ? ["Loss", "#E0664A"] : ["Draw", "#FFB627"];
+        return (
+          <div role="dialog" aria-label="End game" className="ks-appear" style={{ ...cd, padding: 14, borderLeft: "3px solid #5A9C3A" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ flex: 1, fontSize: 18, fontWeight: 700, color: "#F1F2F5", fontFamily: "'Rajdhani', sans-serif" }}>End game</div>
+              <span style={bg(res[1])}>{res[0]}</span>
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 14, alignItems: "center", margin: "10px 0" }}>
+              <Stepper label="Your VP" value={endGame.you} color="#5A9C3A" onMinus={() => setEndGame({ ...endGame, you: Math.max(0, endGame.you - 1) })} onPlus={() => setEndGame({ ...endGame, you: endGame.you + 1 })} />
+              <Stepper label="Their VP" value={endGame.them} color="#E0664A" onMinus={() => setEndGame({ ...endGame, them: Math.max(0, endGame.them - 1) })} onPlus={() => setEndGame({ ...endGame, them: endGame.them + 1 })} />
+            </div>
+            <label style={{ display: "block", fontSize: 13, color: "#C8CDD3", marginBottom: 4 }}>Opponent's team</label>
+            <select value={endGame.opp} onChange={e => setEndGame({ ...endGame, opp: e.target.value })} style={{ width: "100%", maxWidth: 360, background: "#1A1D24", border: "1px solid #3A4150", borderRadius: 6, color: "#F1F2F5", padding: "9px 10px", fontSize: 14 }}>
+              <option value="">Not recorded</option>
+              {Object.values(FACTIONS).sort((a, b) => a.name.localeCompare(b.name)).map(fc => <option key={fc.id} value={fc.id}>{fc.name}</option>)}
+            </select>
+            <div style={{ fontSize: 13, color: "#9AA5B1", lineHeight: 1.5, marginTop: 10 }}>Saving clears wounds, CP, VP and orders for your next game. Your roster stays.</div>
+            <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+              <button onClick={saveGame} style={{ ...bs("#5A9C3A"), background: "#5A9C3A20", padding: "10px 18px", fontSize: 14 }}>Save result</button>
+              <button onClick={() => setEndGame(null)} style={{ ...bs("#9AA5B1"), padding: "10px 16px", fontSize: 13 }}>Cancel</button>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Faction select: collapses to one bar once a team is picked */}
       {f && !pickerOpen ? (rosterLocked ? null :
@@ -8099,6 +8150,12 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                 <span style={{ fontSize: 18, fontWeight: 700, color: "#F1F2F5", fontFamily: "'Rajdhani', sans-serif", marginRight: 4 }}>{fc.name}</span>
                 {fc.archetypes && fc.archetypes.split(/,\s*/).map(a => <span key={a} style={{ fontSize: 12, padding: "3px 8px", borderRadius: 6, background: "#262A33", color: "#C8CDD3" }}>{a}</span>)}
                 <span style={{ fontSize: 12, padding: "3px 8px", borderRadius: 6, background: "#262A33", color: "#C8CDD3" }}>{fc.operatives.length} operative types</span>
+                {(() => {
+                  const mine = gameHistory.filter(g => g.f === fc.id);
+                  if (!mine.length) return null;
+                  const n = (r) => mine.filter(g => g.result === r).length;
+                  return <span style={{ fontSize: 12, padding: "3px 8px", borderRadius: 6, background: "#5A9C3A20", color: "#C8CDD3" }}>Your record: {n("win")}W {n("loss")}L {n("draw")}D</span>;
+                })()}
               </div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                 {rules.map((r, i) => (
@@ -8167,6 +8224,49 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                 })}
               </div>
             )}
+            {gameHistory.length > 0 && (() => {
+              const tally = (games) => games.reduce((t, g) => ({ ...t, [g.result]: t[g.result] + 1 }), { win: 0, loss: 0, draw: 0 });
+              const all = tally(gameHistory);
+              const byTeam = Object.values(gameHistory.reduce((m, g) => { (m[g.f] = m[g.f] || { f: g.f, team: g.team, games: [] }).games.push(g); return m; }, {})).sort((a, b) => b.games.length - a.games.length);
+              const resColor = { win: "#5A9C3A", loss: "#E0664A", draw: "#FFB627" };
+              return (
+                <div style={{ ...cd, padding: 0, marginBottom: 12, overflow: "hidden" }}>
+                  <div role="button" tabIndex={0} aria-expanded={showGames} onClick={() => setShowGames(!showGames)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", cursor: "pointer" }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: "#F1F2F5", fontFamily: "'Rajdhani', sans-serif" }}>Game history</div>
+                      <div style={{ fontSize: 12, color: "#9AA5B1" }}>{gameHistory.length} game{gameHistory.length === 1 ? "" : "s"} {"\u00b7"} {all.win}W {all.loss}L {all.draw}D</div>
+                    </div>
+                    <Arrow open={showGames} />
+                  </div>
+                  {showGames && (
+                    <div style={{ padding: "0 12px 12px" }}>
+                      {byTeam.map(t => {
+                        const r = tally(t.games); const fc = FACTIONS[t.f];
+                        return (
+                          <div key={t.f} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderTop: "1px solid #262A33" }}>
+                            <span style={{ width: 8, height: 8, borderRadius: "50%", background: fc ? fc.color : "#3A4150", flexShrink: 0 }} />
+                            <span style={{ flex: 1, minWidth: 0, fontSize: 14, color: "#F1F2F5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.team}</span>
+                            <span style={{ fontSize: 13, color: "#C8CDD3", fontFamily: "'Rajdhani', sans-serif", fontWeight: 700 }}>{r.win}W {r.loss}L {r.draw}D</span>
+                          </div>
+                        );
+                      })}
+                      <div style={{ ...h3, margin: "12px 0 4px" }}>Recent games</div>
+                      {gameHistory.slice(0, 10).map(g => (
+                        <div key={g.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderTop: "1px solid #262A33" }}>
+                          <span style={{ ...bg(resColor[g.result]), flexShrink: 0 }}>{g.result === "win" ? "W" : g.result === "loss" ? "L" : "D"}</span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 13, color: "#F1F2F5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.team}{g.opp ? " vs " + g.opp : ""}</div>
+                            <div style={{ fontSize: 12, color: "#9AA5B1", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{new Date(g.date).toLocaleDateString()} {"\u00b7"} {g.mission}</div>
+                          </div>
+                          <span style={{ flexShrink: 0, fontSize: 15, fontWeight: 700, color: "#F1F2F5", fontFamily: "'Rajdhani', sans-serif" }}>{g.you}{"\u2013"}{g.them}</span>
+                          <button className="compact-btn" onClick={() => withUndo("Game removed from history", () => setGameHistory(h => h.filter(x => x.id !== g.id)))} aria-label="Remove this game" style={{ background: "none", border: "none", color: "#9AA5B1", cursor: "pointer", padding: 0, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon name="x" size={16} /></button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
             <div style={{ ...h3, marginBottom: 6 }}>{f ? "Or pick another team" : "Pick a team"}</div>
             <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 8, flexWrap: "wrap" }}>
               {FACTION_GROUPS.map(g => {
@@ -8310,7 +8410,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
             )}
           </div>
 
-        {!mobile && rosterLocked && roster.length > 0 && <TurnGuide tp={tp} numTPs={gc.numTPs} setTp={setTp} hasInitiative={hasInitiative} onInitiative={handleInitiativeToggle} cp={cp} f={f} roster={roster} getWounds={getWounds} activated={activated} orders={orders} counteracted={counteracted} setCounteracted={setCounteracted} checks={guideChecks} setChecks={setGuideChecks} />}
+        {!mobile && rosterLocked && roster.length > 0 && <TurnGuide tp={tp} numTPs={gc.numTPs} setTp={setTp} hasInitiative={hasInitiative} onInitiative={handleInitiativeToggle} cp={cp} f={f} roster={roster} getWounds={getWounds} activated={activated} orders={orders} counteracted={counteracted} setCounteracted={setCounteracted} checks={guideChecks} setChecks={setGuideChecks} onEndGame={openEndGame} />}
         {!(mobile && rosterLocked) && gc.mission && <MissionPanel mref={gc.mission} npoUnits={npoUnits} setNpoUnits={setNpoUnits} />}
 
         {/* Mobile panel toggle: building has two panels, playing has three */}
@@ -8323,7 +8423,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
         )}
         {mobile && rosterLocked && mobilePanel === "turn" && (
           <div>
-            <TurnGuide tp={tp} numTPs={gc.numTPs} setTp={setTp} hasInitiative={hasInitiative} onInitiative={handleInitiativeToggle} cp={cp} f={f} roster={roster} getWounds={getWounds} activated={activated} orders={orders} counteracted={counteracted} setCounteracted={setCounteracted} checks={guideChecks} setChecks={setGuideChecks} />
+            <TurnGuide tp={tp} numTPs={gc.numTPs} setTp={setTp} hasInitiative={hasInitiative} onInitiative={handleInitiativeToggle} cp={cp} f={f} roster={roster} getWounds={getWounds} activated={activated} orders={orders} counteracted={counteracted} setCounteracted={setCounteracted} checks={guideChecks} setChecks={setGuideChecks} onEndGame={openEndGame} />
             {gc.mission && <MissionPanel mref={gc.mission} npoUnits={npoUnits} setNpoUnits={setNpoUnits} />}
           </div>
         )}
