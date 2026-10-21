@@ -19,7 +19,8 @@
     :focus-visible { outline: 2px solid #FFB627; outline-offset: 2px; border-radius: 4px; }
     /* Short fade-and-rise when a screen appears. Restarts whenever a tab panel goes from hidden to shown. */
     @keyframes ksAppear { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-    .ks-appear { animation: ksAppear 0.24s ease-out both; }
+    /* "backwards", not "both": a finished animation that keeps a transform would trap position: fixed overlays inside the panel */
+    .ks-appear { animation: ksAppear 0.24s ease-out backwards; }
     @media (prefers-reduced-motion: reduce) { .ks-appear { animation: none; } }
     [role="button"] { cursor: pointer; }
     @media (max-width: 600px) {
@@ -13699,7 +13700,7 @@ function MapImages({ ids }) {
         ))}
       </div>
       <div style={{ ...mu, fontSize: 12, marginTop: 6 }}>Tap a page to enlarge it.</div>
-      {view != null && (
+      {view != null && ReactDOM.createPortal(
         <div onClick={() => setView(null)} style={{ position: "fixed", inset: 0, zIndex: 10000, background: "rgba(8,9,12,0.94)", display: "flex", flexDirection: "column" }}>
           <div onClick={e => e.stopPropagation()} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px" }}>
             <span style={{ flex: 1, ...mu, fontSize: 12 }}>{ids.length > 1 ? "Page " + (view + 1) + " of " + ids.length + " · " : ""}{zoom ? "Tap to fit" : "Tap to zoom"}</span>
@@ -13707,11 +13708,12 @@ function MapImages({ ids }) {
             {ids.length > 1 && <button onClick={() => show((view + 1) % ids.length)} aria-label="Next page" style={navBtn}>{"›"}</button>}
             <button onClick={() => setView(null)} aria-label="Close" style={navBtn}>{"✕"}</button>
           </div>
-          <div onClick={e => e.stopPropagation()} style={{ flex: 1, overflow: "auto", display: "flex", alignItems: zoom ? "flex-start" : "center", justifyContent: zoom ? "flex-start" : "center", padding: zoom ? 0 : "0 12px 12px" }}>
+          <div onClick={e => e.stopPropagation()} style={{ flex: 1, minHeight: 0, overflow: "auto", display: "flex", alignItems: zoom ? "flex-start" : "center", justifyContent: zoom ? "flex-start" : "center", padding: zoom ? 0 : "0 12px 12px" }}>
             <img src={"maps/" + ids[view] + ".jpg"} alt="Mission map page" onClick={() => setZoom(!zoom)}
-              style={zoom ? { width: "max(100%, 1100px)", maxWidth: "none", flexShrink: 0, cursor: "zoom-out" } : { maxWidth: "100%", maxHeight: "100%", objectFit: "contain", cursor: "zoom-in" }} />
+              style={zoom ? { width: "max(100%, 1100px)", maxWidth: "none", flexShrink: 0, cursor: "zoom-out" } : { maxWidth: "100%", maxHeight: "calc(100vh - 76px)", objectFit: "contain", cursor: "zoom-in" }} />
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
