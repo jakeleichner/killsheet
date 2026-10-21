@@ -6964,6 +6964,44 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
     undoTimer.current = setTimeout(() => setUndo(null), 8000);
   };
   const [gameMenu, setGameMenu] = useState(false);
+  // Back up and restore: everything KillSheet stores on this device, as one file.
+  const restoreInput = React.useRef(null);
+  const [pendingRestore, setPendingRestore] = useState(null);
+  const backUp = () => {
+    const payload = { app: "KillSheet", kind: "backup", version: 1, savedAt: new Date().toISOString(), data: snapshotKillSheetStorage() };
+    const d = new Date();
+    const name = "killsheet-backup-" + d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0") + ".json";
+    const file = new File([JSON.stringify(payload)], name, { type: "application/json" });
+    // Phones: the share sheet (Save to Files, AirDrop, Drive). Elsewhere: a normal download.
+    if (mobile && navigator.canShare && navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file], title: "KillSheet backup" }).catch(() => {});
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    const a = document.createElement("a");
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    showToast("Backup saved as " + name, 4000);
+  };
+  const readBackup = (file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const b = JSON.parse(reader.result);
+        const keys = b && b.data ? Object.keys(b.data) : [];
+        if (b.app !== "KillSheet" || keys.length === 0 || !keys.every(k => k.indexOf(LS_PREFIX) === 0)) throw new Error("not a backup");
+        let rosters = 0;
+        try { rosters = JSON.parse(b.data[LS_PREFIX + "savedRosters"] || "[]").length; } catch (e) { /* older backup */ }
+        setPendingRestore({ data: b.data, savedAt: b.savedAt, rosters });
+        window.scrollTo(0, 0);
+      } catch (e) {
+        showToast("That file isn't a KillSheet backup.", 4000);
+      }
+    };
+    reader.readAsText(file);
+  };
   // First visit: start a standard game straight away; settings live in the game menu.
   React.useEffect(() => {
     if (gameConfig) return;
@@ -7999,6 +8037,8 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                   window.__ksInstall ? ["Install app", "Add KillSheet to this device. Works offline.", () => { const p = window.__ksInstall; window.__ksInstall = null; p.prompt(); }, "#F1F2F5"]
                     : /iPhone|iPad|iPod/.test(navigator.userAgent) && !navigator.standalone ? ["Add to Home Screen", "Works offline once added", () => showToast("In Safari, tap Share, then Add to Home Screen", 6000), "#F1F2F5"] : null,
                   ["Game settings", "Mission, equipment, turning points", () => setShowSetup(true), "#F1F2F5"],
+                  ["Back up", "Save your rosters, game and settings to a file", backUp, "#F1F2F5"],
+                  ["Restore from backup", "Load a backup file onto this device", () => restoreInput.current && restoreInput.current.click(), "#F1F2F5"],
                   [validate ? "Turn validation off" : "Turn validation on", "Checks your roster against the team's rules", () => setValidate(!validate), "#F1F2F5"],
                   f ? ["Reset game", "Clears wounds, CP, VP, orders and tracking", () => withUndo("Game reset", () => { setWounds({}); setCp(3); setVpYou(0); setVpOpp(0); setUsedPloys({}); setActivated({}); setHasInitiative(true); setLastCpTp(1); setTp(1); setPrimaryYou(Array(gc.numTPs).fill(0)); setPrimaryOpp(Array(gc.numTPs).fill(0)); setTacOps(Array.from({ length: gc.numTacOps }, () => ({ name: "", checks: [false, false] }))); setOppWounds({}); setNpoUnits([]); setOrders({}); setBattleUses({}); setCounteracted({}); setGuideChecks({}); }), "#B8341C"] : null,
                 ].filter(Boolean).map(([label, hint, run, color]) => (
@@ -8012,6 +8052,21 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
           )}
         </div>
       </div>
+
+      <input ref={restoreInput} type="file" accept=".json,application/json" style={{ display: "none" }} onChange={e => { readBackup(e.target.files[0]); e.target.value = ""; }} />
+      {pendingRestore && (
+        <div role="alertdialog" aria-label="Restore backup" className="ks-appear" style={{ ...cd, padding: 14, borderLeft: "3px solid #FFB627" }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: "#F1F2F5", fontFamily: "'Rajdhani', sans-serif" }}>Restore this backup?</div>
+          <div style={{ fontSize: 13, color: "#C8CDD3", lineHeight: 1.5, marginTop: 4 }}>
+            Saved {pendingRestore.savedAt ? new Date(pendingRestore.savedAt).toLocaleString() : "at an unknown time"}, with {pendingRestore.rosters} saved roster{pendingRestore.rosters === 1 ? "" : "s"}. It replaces the rosters, game and settings on this device. To keep what's here, back it up first.
+          </div>
+          <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+            <button onClick={() => { restoreKillSheetStorage(pendingRestore.data); window.location.reload(); }} style={{ ...bs("#FFB627"), padding: "8px 16px", fontSize: 13 }}>Restore</button>
+            <button onClick={backUp} style={{ ...bs("#9AA5B1"), padding: "8px 16px", fontSize: 13 }}>Back up this device first</button>
+            <button onClick={() => setPendingRestore(null)} style={{ ...bs("#9AA5B1"), padding: "8px 16px", fontSize: 13 }}>Cancel</button>
+          </div>
+        </div>
+      )}
 
       {/* Faction select: collapses to one bar once a team is picked */}
       {f && !pickerOpen ? (rosterLocked ? null :
