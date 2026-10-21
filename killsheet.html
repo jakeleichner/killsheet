@@ -1336,7 +1336,7 @@ const FACTIONS = {
     equipment: [
       { id: "mutated_symptoms", name: "Mutated Symptoms", desc: "Once per battle when activating, that operative gains a second Techno-curse until the end of the turning point.", gw: null, mod: null, ex: [] },
       { id: "plague_bellows", name: "Plague Bellows", desc: "When a Hulk is shot from more than 6\" away, retain one defence roll of 3 as a normal success.", gw: null, mod: null, ex: [] },
-      { id: "mutoid_vermin", name: "Mutoid Vermin", desc: "Add 4 Mutoid Vermin operatives to the team (pick them in the Builder).", gw: null, mod: null, ex: [] },
+      { id: "mutoid_vermin", name: "Mutoid Vermin", desc: "Add 4 Mutoid Vermin operatives to the team (pick them in the Battle tab).", gw: null, mod: null, ex: [] },
       { id: "polluted_stockpile", name: "Polluted Stockpile", desc: "Roll 2D6. On a 7+, remove one of your opponent's equipment. Otherwise, they remove one of their own. It can't be selected again.", gw: null, mod: null, ex: [] },
     ],
     operatives: [
@@ -7942,7 +7942,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
       )}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 12 }}>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 22, fontWeight: 700, color: "#C9772E", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.04em" }}>Army Builder</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: "#C9772E", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.04em" }}>{f && rosterLocked ? f.name : "Your kill team"}</div>
           <button onClick={() => setShowSetup(true)} className="link-btn" style={{ background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", ...mu, fontSize: 13 }}>{[gc.mission ? gc.missionName : gc.auto || (!gc.missionName && gc.equipSlots === 3 && gc.numTacOps === 3 && gc.numTPs === 4) ? "Standard game" : (gc.missionName || "Custom game"), gc.killzone !== "open" ? killzoneNames[gc.killzone] : null, gc.equipSlots + " equipment", gc.numTPs + " turning points", validate ? null : "validation off"].filter(Boolean).join(" \u00b7 ")} <span style={{ color: "#C9772E", textDecoration: "underline" }}>Change</span></button>
         </div>
         <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0, position: "relative" }}>
@@ -13569,7 +13569,7 @@ const RULE_SECTIONS = [
     { title: "Weapon rules", items: Object.entries(WR).map(([k, v]) => ({ name: k, ...splitRule(v) })) },
   ] },
   { id: "equipment", label: "Equipment", groups: [
-    { title: "Universal equipment", intro: "Any kill team can take these. Each option can be selected once per game. Your team's own equipment is listed in the Builder.", items: UNIV_EQUIPMENT.map(e => ({ name: e.name, tag: e.type, tagColor: EQUIP_TYPE_COLOR[e.type], summary: e.desc, stats: e.stats, detail: e.note })) },
+    { title: "Universal equipment", intro: "Any kill team can take these. Each option can be selected once per game. Your team's own equipment is listed in the Battle tab.", items: UNIV_EQUIPMENT.map(e => ({ name: e.name, tag: e.type, tagColor: EQUIP_TYPE_COLOR[e.type], summary: e.desc, stats: e.stats, detail: e.note })) },
   ] },
   { id: "glossary", label: "Glossary", glossary: true },
 ];
@@ -14418,7 +14418,7 @@ function Tutorial({ onExit }) {
             <div key={i} style={{ display: "flex", gap: 8, alignItems: "baseline" }}><span style={{ color: "#5A9C3A" }}><Icon name="check" size={14} /></span>{t}</div>
           ))}
         </Box>
-        <Say>Next, build a real team in the <B>Builder</B>, look things up in <B>Rules</B>, or try a co-op mission from <B>Missions</B>.</Say>
+        <Say>Next, build a real team in <B>Battle</B>, look things up in <B>Rules</B>, or try a co-op mission from <B>Missions</B>.</Say>
         <button onClick={restart} style={{ ...bs("#9AA5B1"), padding: "12px 18px", fontSize: 14, display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="reset" size={14} /> Play again</button>
       </div>
     ),
@@ -14458,10 +14458,10 @@ const COMMUNITY_EXAMPLES = [
 function CommunityRosters() {
   const mobile = useIsMobile();
   const steps = [
-    ["Save your roster", "In the Builder, tap Save on your datacards bar and give it a name."],
+    ["Save your roster", "In the Battle tab, tap Save on your datacards bar and give it a name."],
     ["Copy its code", "In the team list under My saved rosters, tap ⋯ then Copy code."],
     ["Send the code", "Paste it into a message to your friend."],
-    ["They import it", "In their Builder: Import a roster, choose My roster or Opponent, and paste."],
+    ["They import it", "In their Battle tab: Import a roster, choose My roster or Opponent, and paste."],
   ];
   return (
     <div style={{ maxWidth: 900, margin: "0 auto", padding: "20px 16px" }}>
@@ -14558,7 +14558,7 @@ function App() {
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, []);
-  const tabs = [["rules", "Rules"], ["missions", "Missions"], ["builder", "Builder"], ["community", mobile ? "Community" : "Community Rosters"]];
+  const tabs = [["rules", "Rules"], ["missions", "Missions"], ["builder", "Battle"], ["community", mobile ? "Community" : "Community Rosters"]];
   // Multiplayer hosted at App level so banner is visible across tabs
   const mpHandlerRef = React.useRef(null);
   const mp = useMultiplayer((msg) => { if (mpHandlerRef.current) mpHandlerRef.current(msg); });
