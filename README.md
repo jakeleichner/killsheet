@@ -172,6 +172,7 @@ Planned implementation:
 Estimated 2-3 hours. Should be its own focused session with its own QA pass (mixing infra + UI changes tends to combine bugs confusingly).
 
 ### Done recently
+- Nav tab icons are now line icons from `ICON_PATHS` (rulebook, map, swords, people), drawn with `Icon` at 18px so they take the tab's colour (rust when selected). They replace the white base64 images shown at half opacity. `TAB_ICONS` maps each tab id to an icon name. Community uses two people instead of the crosshair, which now belongs to the logo. The tab is "Community" at every width; "Community Rosters" wrapped to two lines and pulled away from its icon.
 - New logo and favicon: a die showing five with a crosshair for the centre pip, plus the Rajdhani wordmark (`Logo` component), replacing the 3D image (`LOGO_SRC` removed, about 17 KB smaller). Tab icon: SVG inline in `<head>` plus `icons/favicon-32.png`; iPhone home screen: `icons/apple-touch-icon.png`. The deploy build now copies `icons/`.
 - Datacards in play: Start game collapses every card (`collapseAll`). Opening a card closes the others (`toggleCardCollapse`), while collapse all and expand all still work. Collapsed cards have wound −/+ (`woundsInline`; on the name row on phones, next to the stats on desktop) and are tighter (101px on phones, keyword line hidden). APL, Move and Save stay unlabelled when collapsed, since their formats tell them apart (5+, 6", bare number).
 - Battle tab decluttered (each control shows when it's useful; nothing removed). While building: no score bar, turning point guide or ploys (all appear at Start game; sticky offsets use `barH`, which is 0 while building). Universal equipment folds into one section (`showUniv`), with picked items still shown. Play online moved into the ⋯ game menu while not connected. Share code, Print and Import a roster are in a labelled ⋯ menu on the datacards bar (`cardsMenu`), and on phones the import section only shows when opened or when an opponent is loaded. "Pick weapons" is an inline link, not an orange box. Below 1000px wide the score bar uses the compact layout (`compactBar`); the full bar overflowed at laptop widths. Fixed a leftover `setTeamIntro` call on the Continue button, and `tools/check.py` now flags any `setX(...)` call with no matching definition.
@@ -211,7 +212,6 @@ Estimated 2-3 hours. Should be its own focused session with its own QA pass (mix
 - Fixed: multiplayer never showed the opponent's roster (`FACTIONS.find` on an object).
 - Print sheet now labels the base size as "mm base" (it said "pts").
 - Gold restored for CP/TP signal indicators.
-- All four tab icons replaced with a matching SVG line set (Rules: document, Builder: crossed swords, Tutorial: play, Community: reticle).
 - Locked roster now shows only the selected faction/universal equipment, with a "LOCKED — N SELECTED" header.
 - Community tab label shortens to "Community" on phones (under 700px) so the nav stays on one line.
 - Pre-ship checker added: `python3 tools/check.py` (hooks before early returns, every tab has an icon and panel, unique localStorage keys, no direct localStorage use, print class, JSX script tag).
