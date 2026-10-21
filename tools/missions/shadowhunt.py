@@ -1,4 +1,4 @@
-from _lib import R, A, W, NPO, M, BEHAVIOUR, COOP_TEAM
+from _lib import R, A, W, NPO, M, S, BEHAVIOUR, COOP_TEAM
 from tombworld import PACK as TOMB
 
 BRAWL_PRI = [
@@ -145,7 +145,9 @@ PACK = dict(
           actions=[A("Secure", 1, "Secure an objective marker you control. It stays yours until your opponent secures it.",
                      "Not in the first turning point, or within an enemy's control range.")],
           victory=["Score 1VP for each objective your team has secured.", "Score 1VP for each objective your operatives control.",
-                   "At the end of any turning point from the fourth on, a player who has scored VP can end the battle. It also ends if every player operative is incapacitated."]),
+                   "At the end of any turning point from the fourth on, a player who has scored VP can end the battle. It also ends if every player operative is incapacitated."],
+          scoring=[S("secured", "Each objective marker your team has secured"), S("control", "Each objective marker your operatives control")],
+          scoringNote="The pack doesn't say when these score. Agree it with your opponent before you start."),
         M(5, "Unlock the Vault", "Head-to-head", "Break into the vault at the heart of the tomb while holding the routes down to it.",
           maps=["shadowhunt-p25"],
           rules=[
@@ -157,7 +159,10 @@ PACK = dict(
           actions=[A("Unlock Vault", 1, "Roll a D3 and add the turning point number. 6+: a locked objective you control is unlocked. 5 or less, with fewer than 4 NPOs below: your opponent sets up one ready NPO with Conceal within 3\" of the right-hand top or bottom corner of the lower board.",
                      "Not in the first turning point, or within an enemy's control range.")],
           victory=["Score 1VP if your operative unlocks the objective.", "At the end, score 1VP if your operatives control the unlocked objective.",
-                   "At the end, score 1VP for each Entryway pair you control (your total APL contesting both matching markers is higher)."]),
+                   "At the end, score 1VP for each Entryway pair you control (your total APL contesting both matching markers is higher)."],
+          scoring=[S("unlock", "Your operative unlocks the objective marker", when="any", most=1),
+                   S("vault", "Your operatives control the unlocked objective marker", when="end", most=1),
+                   S("entry", "Each Entryway pair your operatives control", when="end")]),
         M(6, "Awakening", "Head-to-head", "Grab the relic from the open vault and escape before the C'tan Shard catches you.",
           maps=["shadowhunt-p27"],
           rules=[

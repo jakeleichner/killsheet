@@ -38,6 +38,22 @@ def NPO(name, apl, move, save, wounds, weapons, behaviour, priorities, rules=(),
     return d
 
 
+def S(key, text, vp=1, when="tp", most=None, side="both", start=1, note=None):
+    """One line of a mission's scoring checklist (the Battle tab's scoring panel). Ticking it adds VP.
+    when: "tp" = scored in each turning point from `start` on; "any" = scored when it happens;
+    "end" = scored at the end of the battle. most: how many times it can score (per turning point
+    for "tp", in the whole battle otherwise); 1 makes it a tick box, otherwise a counter.
+    side: "both" (each player scores it), "you", or "opp" (the opponent, or the NPOs in co-op)."""
+    d = {"key": key, "text": text, "vp": vp, "when": when, "side": side}
+    if most:
+        d["most"] = most
+    if start > 1:
+        d["start"] = start
+    if note:
+        d["note"] = note
+    return d
+
+
 def M(num, name, mode, summary, maps=(), rules=(), actions=(), victory=(), cards=(), cards_title="NPO activation cards", extra=(), next_win=None, next_lose=None, **setup):
     """A mission. cards = [(result, effect)] for the NPO activation table."""
     d = {"num": num, "name": name, "mode": mode, "summary": summary, "maps": list(maps),

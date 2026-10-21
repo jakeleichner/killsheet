@@ -6808,6 +6808,78 @@ function Stepper({ label, value, color, onMinus, onPlus, compact }) {
   );
 }
 
+// Mission scoring checklist, for missions whose data has `scoring` lines (see S() in tools/missions/_lib.py).
+// score: { "<turning point | any | end>|<line key>": { you, opp } }. Each tick or count adds that line's VP.
+const missionScoreVp = (defs, score, side) => !defs ? 0 : Object.keys(score).reduce((sum, k) => {
+  const d = defs.find(x => x.key === k.split("|")[1]);
+  return sum + (d ? (score[k][side] || 0) * d.vp : 0);
+}, 0);
+
+function MissionScoring({ mission, numTPs, tp, score, setScore }) {
+  const [at, setAt] = useState(tp);
+  React.useEffect(() => { setAt(tp); }, [tp]);
+  const defs = mission.scoring;
+  const sides = [["you", "You", "#5A9C3A"], ["opp", mission.mode === "Co-op" ? "NPOs" : "Opp", "#E0664A"]];
+  const slot = (d) => d.when === "tp" ? at : d.when;
+  const get = (d, side) => (score[slot(d) + "|" + d.key] || {})[side] || 0;
+  const put = (d, side, n) => {
+    const k = slot(d) + "|" + d.key;
+    setScore(sc => ({ ...sc, [k]: { ...(sc[k] || {}), [side]: Math.max(0, Math.min(n, d.most || 9)) } }));
+  };
+  const small = { width: 32, height: 32, border: "1px solid #3A4150", borderRadius: 6, background: "#1A1D24", cursor: "pointer", fontSize: 17, fontWeight: 700, padding: 0, display: "flex", alignItems: "center", justifyContent: "center" };
+  const control = (d, [side, , color]) => {
+    if (d.side !== "both" && d.side !== side) return <span key={side} style={{ width: 96, textAlign: "center", color: "#3A4150" }}>{"–"}</span>;
+    const n = get(d, side);
+    const off = d.when === "tp" && at < (d.start || 1);
+    if (d.most === 1) return (
+      <span key={side} style={{ width: 96, display: "flex", justifyContent: "center" }}>
+        <button className="compact-btn" disabled={off} onClick={() => put(d, side, n ? 0 : 1)} aria-pressed={!!n} aria-label={(side === "you" ? "You: " : "Opponent: ") + d.text}
+          style={{ ...small, width: 40, height: 34, border: "1.5px solid " + (n ? color : "#3A4150"), background: n ? color + "22" : "transparent", color, opacity: off ? 0.35 : 1, cursor: off ? "default" : "pointer" }}>{n ? <Icon name="check" size={16} /> : ""}</button>
+      </span>
+    );
+    return (
+      <span key={side} style={{ width: 96, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, opacity: off ? 0.35 : 1 }}>
+        <button className="compact-btn" disabled={off || !n} onClick={() => put(d, side, n - 1)} aria-label={"One fewer: " + d.text} style={{ ...small, color: "#9AA5B1" }}>{"−"}</button>
+        <span style={{ minWidth: 18, textAlign: "center", fontSize: 18, fontWeight: 700, color: n ? color : "#5A6270", fontFamily: "'Rajdhani', sans-serif" }}>{n}</span>
+        <button className="compact-btn" disabled={off || n >= (d.most || 9)} onClick={() => put(d, side, n + 1)} aria-label={"One more: " + d.text} style={{ ...small, color }}>+</button>
+      </span>
+    );
+  };
+  const groups = [["tp", "Turning point " + at], ["any", "When it happens"], ["end", "At the end of the battle"]].filter(([w]) => defs.some(d => d.when === w));
+  const head = { fontSize: 11, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.1em", textTransform: "uppercase" };
+  return (
+    <div style={{ marginBottom: 8 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 6 }}>
+        <span style={{ ...head, color: "#C9772E", flex: 1 }}>Mission scoring</span>
+        {defs.some(d => d.when === "tp") && Array.from({ length: numTPs }, (_, i) => i + 1).map(t => (
+          <button key={t} className="compact-btn" onClick={() => setAt(t)} aria-label={"Turning point " + t} aria-pressed={at === t}
+            style={{ ...small, width: 30, height: 30, fontSize: 14, border: "1.5px solid " + (at === t ? "#FFB627" : "#3A4150"), background: at === t ? "#FFB62720" : "#1A1D24", color: at === t ? "#FFB627" : "#9AA5B1", fontFamily: "'Rajdhani', sans-serif" }}>{t}</button>
+        ))}
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 0 4px" }}>
+        <span style={{ flex: 1 }} />
+        {sides.map(([side, name, color]) => <span key={side} style={{ ...head, width: 96, textAlign: "center", color }}>{name}</span>)}
+      </div>
+      {groups.map(([w, title]) => (
+        <div key={w} style={{ marginBottom: 6 }}>
+          <div style={{ ...head, color: "#9AA5B1", fontSize: 10, margin: "2px 0 4px" }}>{title}</div>
+          {defs.filter(d => d.when === w).map(d => (
+            <div key={d.key} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 0", borderTop: "1px solid #262A33" }}>
+              <div style={{ flex: 1, minWidth: 0, fontSize: 13, color: "#C8CDD3", lineHeight: 1.35 }}>
+                {d.text} <span style={{ color: "#C9772E", fontWeight: 700, whiteSpace: "nowrap" }}>+{d.vp}VP{d.most === 1 ? "" : " each"}</span>
+                {d.when === "tp" && d.most > 1 && <span style={{ ...mu, fontSize: 11 }}> (up to {d.most} a turning point)</span>}
+                {d.when === "tp" && at < (d.start || 1) && <div style={{ ...mu, fontSize: 11 }}>Scores from turning point {d.start}.</div>}
+              </div>
+              {sides.map(sd => control(d, sd))}
+            </div>
+          ))}
+        </div>
+      ))}
+      {mission.scoringNote && <div style={{ ...mu, fontSize: 12 }}>{mission.scoringNote}</div>}
+    </div>
+  );
+}
+
 // Builder: step-by-step checklist for the current turning point.
 const STRATEGY_HINT = /strategic gambit|strategy phase|ready step|initiative step|initiative roll/i;
 function TurnGuide({ tp, numTPs, setTp, hasInitiative, onInitiative, cp, f, roster, getWounds, activated, orders, counteracted, setCounteracted, checks, setChecks, onEndGame }) {
@@ -6920,6 +6992,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   const [primaryYou, setPrimaryYou] = useLocalStorage("primaryYou", []);
   const [primaryOpp, setPrimaryOpp] = useLocalStorage("primaryOpp", []);
   const [tacOps, setTacOps] = useLocalStorage("tacOps", []);
+  const [missionScore, setMissionScore] = useLocalStorage("missionScore", {}); // MissionScoring ticks and counts
   const [oppRoster, setOppRoster] = useLocalStorage("oppRoster", null);
   const [oppWounds, setOppWounds] = useLocalStorage("oppWounds", {});
   const [oppCollapsed, setOppCollapsed] = useLocalStorage("oppCollapsed", {});
@@ -7133,7 +7206,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
     setGameConfig(cfg);
     setShowSetup(false);
     setNpoUnits([]);
-    setOrders({}); setBattleUses({}); setCounteracted({}); setGuideChecks({});
+    setOrders({}); setBattleUses({}); setCounteracted({}); setGuideChecks({}); setMissionScore({});
     setPrimaryYou(Array(cfg.numTPs).fill(0));
     setPrimaryOpp(Array(cfg.numTPs).fill(0));
     setTacOps(Array.from({ length: cfg.numTacOps }, () => ({ name: "", checks: [false, false] })));
@@ -7316,9 +7389,15 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   const setTacOpName = (opIdx, name) => {
     setTacOps(tacOps.map((t, i) => i === opIdx ? { ...t, name } : t));
   };
-  const computedVpYou = primaryYou.reduce((s, v) => s + v, 0) + tacOps.reduce((s, t) => s + t.checks.filter(Boolean).length, 0);
+  // A mission with its own scoring lines replaces the primary-op rows.
+  const scoreMission = gc.mission ? (MISSION_PACKS.find(p => p.id === gc.mission.pack) || { missions: [] }).missions[gc.mission.idx] : null;
+  const scoreDefs = (scoreMission && scoreMission.scoring) || null;
+  const primarySumYou = scoreDefs ? missionScoreVp(scoreDefs, missionScore, "you") : primaryYou.reduce((s, v) => s + v, 0);
+  const primarySumOpp = scoreDefs ? missionScoreVp(scoreDefs, missionScore, "opp") : primaryOpp.reduce((s, v) => s + v, 0);
+  const tacSum = tacOps.reduce((s, t) => s + t.checks.filter(Boolean).length, 0);
+  const computedVpYou = primarySumYou + tacSum;
   // Game history: one record per finished game (kept by "Clear current game data" and in backups).
-  const resetGame = () => { setWounds({}); setCp(3); setVpYou(0); setVpOpp(0); setUsedPloys({}); setActivated({}); setHasInitiative(true); setLastCpTp(1); setTp(1); setPrimaryYou(Array(gc.numTPs).fill(0)); setPrimaryOpp(Array(gc.numTPs).fill(0)); setTacOps(Array.from({ length: gc.numTacOps }, () => ({ name: "", checks: [false, false] }))); setOppWounds({}); setNpoUnits([]); setOrders({}); setBattleUses({}); setCounteracted({}); setGuideChecks({}); };
+  const resetGame = () => { setWounds({}); setCp(3); setVpYou(0); setVpOpp(0); setUsedPloys({}); setActivated({}); setHasInitiative(true); setLastCpTp(1); setTp(1); setPrimaryYou(Array(gc.numTPs).fill(0)); setPrimaryOpp(Array(gc.numTPs).fill(0)); setTacOps(Array.from({ length: gc.numTacOps }, () => ({ name: "", checks: [false, false] }))); setOppWounds({}); setNpoUnits([]); setOrders({}); setBattleUses({}); setCounteracted({}); setGuideChecks({}); setMissionScore({}); };
   const openEndGame = () => {
     setEndGame({ you: vpYou + computedVpYou, them: vpOpp + computedVpOpp, opp: oppRoster ? oppRoster.factionId || (oppRoster.faction && oppRoster.faction.id) || "" : "" });
     window.scrollTo(0, 0);
@@ -7339,7 +7418,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
     resetGame();
     showToast("Game saved to your history");
   };
-  const computedVpOpp = primaryOpp.reduce((s, v) => s + v, 0);
+  const computedVpOpp = primarySumOpp;
 
   const toggleEq = (id) => {
     if (rosterLocked) return;
@@ -7402,7 +7481,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
     }
     return getEquipSlotCount() < gc.equipSlots;
   };
-  const selectFaction = (id) => { setFid(id); setRoster([]); setEq({}); setUEq({}); setWounds({}); setCardCollapsed({}); setUsedPloys({}); setCp(3); setVpYou(0); setVpOpp(0); setHasInitiative(true); setLastCpTp(1); setTp(1); setPrimaryYou(Array(gc.numTPs).fill(0)); setPrimaryOpp(Array(gc.numTPs).fill(0)); setTacOps(Array.from({ length: gc.numTacOps }, () => ({ name: "", checks: [false, false] }))); setOppRoster(null); setOppWounds({}); setShowImport(false); setActivated({}); setChapterPrimary(""); setChapterSecondary(""); setChapterVeteran({}); setRosterLocked(false); setNpoUnits([]); setCarried({}); setOrders({}); setBattleUses({}); setCounteracted({}); setGuideChecks({}); };
+  const selectFaction = (id) => { setFid(id); setRoster([]); setEq({}); setUEq({}); setWounds({}); setCardCollapsed({}); setUsedPloys({}); setCp(3); setVpYou(0); setVpOpp(0); setHasInitiative(true); setLastCpTp(1); setTp(1); setPrimaryYou(Array(gc.numTPs).fill(0)); setPrimaryOpp(Array(gc.numTPs).fill(0)); setTacOps(Array.from({ length: gc.numTacOps }, () => ({ name: "", checks: [false, false] }))); setOppRoster(null); setOppWounds({}); setShowImport(false); setActivated({}); setChapterPrimary(""); setChapterSecondary(""); setChapterVeteran({}); setRosterLocked(false); setNpoUnits([]); setCarried({}); setOrders({}); setBattleUses({}); setCounteracted({}); setGuideChecks({}); setMissionScore({}); };
 
   const getWounds = (opId, maxW) => wounds[opId] !== undefined ? wounds[opId] : maxW;
   const setOpWounds = (opId, maxW, delta) => {
@@ -8332,8 +8411,8 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                 </div>
               )}
               <Stepper label="CP" value={cp} color={cp > 0 ? "#FFB627" : "#B8341C"} onMinus={() => setCp(Math.max(0, cp - 1))} onPlus={() => setCp(cp + 1)} compact={compactBar} />
-              {!compactBar && <Stepper label="You" value={vpYou + computedVpYou} color="#5A9C3A" onMinus={() => setVpYou(Math.max(0, vpYou - 1))} onPlus={() => setVpYou(vpYou + 1)} />}
-              {!compactBar && <Stepper label="Opp" value={vpOpp + computedVpOpp} color="#B8341C" onMinus={() => setVpOpp(Math.max(0, vpOpp - 1))} onPlus={() => setVpOpp(vpOpp + 1)} />}
+              {!compactBar && <Stepper label="You" value={vpYou + computedVpYou} color="#5A9C3A" onMinus={() => setVpYou(v => (v + computedVpYou > 0 ? v - 1 : v))} onPlus={() => setVpYou(vpYou + 1)} />}
+              {!compactBar && <Stepper label="Opp" value={vpOpp + computedVpOpp} color="#B8341C" onMinus={() => setVpOpp(v => (v + computedVpOpp > 0 ? v - 1 : v))} onPlus={() => setVpOpp(vpOpp + 1)} />}
               <button className="compact-btn" onClick={() => setShowScoring(!showScoring)} aria-label={showScoring ? "Hide scoring" : "Show scoring"} style={{ display: "flex", alignItems: "center", gap: 6, height: 38, padding: "0 10px", borderRadius: 6, border: "1px solid " + (showScoring ? "#C9772E60" : "#3A4150"), background: showScoring ? "#C9772E14" : "transparent", cursor: "pointer", flexShrink: 0 }}>
                 {compactBar && <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 20 }}><span style={{ color: "#5A9C3A" }}>{vpYou + computedVpYou}</span><span style={{ color: "#8B95A1" }}>{"–"}</span><span style={{ color: "#E0664A" }}>{vpOpp + computedVpOpp}</span></span>}
                 <span style={{ fontSize: 11, color: "#9AA5B1", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.08em", fontWeight: 700 }}>{compactBar ? "VP" : "SCORING"}</span>
@@ -8346,8 +8425,8 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
           <div style={{ ...cd, padding: 12, marginBottom: 10, display: showScoring && rosterLocked ? "block" : "none" }}>
             {compactBar && (
               <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 8 }}>
-                <Stepper label="Your VP" value={vpYou + computedVpYou} color="#5A9C3A" onMinus={() => setVpYou(Math.max(0, vpYou - 1))} onPlus={() => setVpYou(vpYou + 1)} />
-                <Stepper label="Opp VP" value={vpOpp + computedVpOpp} color="#B8341C" onMinus={() => setVpOpp(Math.max(0, vpOpp - 1))} onPlus={() => setVpOpp(vpOpp + 1)} />
+                <Stepper label="Your VP" value={vpYou + computedVpYou} color="#5A9C3A" onMinus={() => setVpYou(v => (v + computedVpYou > 0 ? v - 1 : v))} onPlus={() => setVpYou(vpYou + 1)} />
+                <Stepper label="Opp VP" value={vpOpp + computedVpOpp} color="#B8341C" onMinus={() => setVpOpp(v => (v + computedVpOpp > 0 ? v - 1 : v))} onPlus={() => setVpOpp(vpOpp + 1)} />
                 <button onClick={handleInitiativeToggle} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 10px", borderRadius: 6, cursor: "pointer", background: hasInitiative ? "#C9772E14" : "#6B9BF714", border: "1px solid " + (hasInitiative ? "#C9772E40" : "#6B9BF740"), color: hasInitiative ? "#C9772E" : "#6B9BF7", fontFamily: "'Rajdhani', sans-serif", fontSize: 13, fontWeight: 700 }}>
                   <span style={{ width: 8, height: 8, borderRadius: "50%", background: hasInitiative ? "#C9772E" : "#6B9BF7" }} />{hasInitiative ? "You have initiative" : "Opponent has initiative"} {"·"} switch
                 </button>
@@ -8357,6 +8436,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
             {/* Scoring panel */}
             {showScoring && (
               <div style={{ marginTop: 6, paddingTop: 4 }}>
+                {scoreDefs ? <MissionScoring mission={scoreMission} numTPs={gc.numTPs} tp={tp} score={missionScore} setScore={setMissionScore} /> : (<>
                 {/* Primary: You */}
                 <div style={{ marginBottom: 8 }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: "#5A9C3A", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.1em", marginBottom: 4 }}>YOUR PRIMARY (tap to cycle: 0 → 1 → 2VP)</div>
@@ -8390,9 +8470,10 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                     </div>
                   </div>
                 </div>
+                </>)}
 
                 {/* Tac Ops: You */}
-                <div>
+                {tacOps.length > 0 && <div>
                   <div style={{ fontSize: 11, fontWeight: 700, color: "#C9772E", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.1em", marginBottom: 4 }}>YOUR TAC OPS (1VP each checkbox)</div>
                   {tacOps.map((t, opIdx) => (
                     <div key={opIdx} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, padding: "4px 6px", background: "#1A1D24", borderRadius: 2, border: "1px solid #262A33" }}>
@@ -8407,15 +8488,15 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                       <div style={{ fontSize: 11, fontWeight: 700, color: t.checks.filter(Boolean).length > 0 ? "#C9772E" : "#3A4150", fontFamily: "monospace", width: 16, textAlign: "center", flexShrink: 0 }}>{t.checks.filter(Boolean).length}</div>
                     </div>
                   ))}
-                </div>
+                </div>}
 
                 {/* Summary */}
                 <div style={{ marginTop: 8, padding: "6px 8px", background: "#262A33", borderRadius: 2, border: "1px solid #262A33", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div style={{ fontSize: 11, color: "#9AA5B1" }}>
-                    You: {primaryYou.reduce((s,v)=>s+v,0)} primary + {tacOps.reduce((s,t)=>s+t.checks.filter(Boolean).length,0)} tac ops{vpYou > 0 ? " + " + vpYou + " manual" : ""} = <span style={{ color: "#5A9C3A", fontWeight: 700 }}>{vpYou + computedVpYou}VP</span>
+                    You: {[primarySumYou + (scoreDefs ? " mission" : " primary"), tacOps.length ? tacSum + " tac ops" : null].filter(Boolean).join(" + ")}{vpYou ? (vpYou > 0 ? " + " : " − ") + Math.abs(vpYou) + " by hand" : ""} = <span style={{ color: "#5A9C3A", fontWeight: 700 }}>{vpYou + computedVpYou}VP</span>
                   </div>
                   <div style={{ fontSize: 11, color: "#9AA5B1" }}>
-                    Opp: {primaryOpp.reduce((s,v)=>s+v,0)} primary{vpOpp > 0 ? " + " + vpOpp + " manual" : ""} = <span style={{ color: "#E0664A", fontWeight: 700 }}>{vpOpp + computedVpOpp}VP</span>
+                    {scoreMission && scoreMission.mode === "Co-op" && scoreDefs ? "NPOs" : "Opp"}: {primarySumOpp}{scoreDefs ? " mission" : " primary"}{vpOpp ? (vpOpp > 0 ? " + " : " − ") + Math.abs(vpOpp) + " by hand" : ""} = <span style={{ color: "#E0664A", fontWeight: 700 }}>{vpOpp + computedVpOpp}VP</span>
                   </div>
                 </div>
               </div>
@@ -11708,7 +11789,24 @@ const MISSION_PACKS = [
      "Score 1VP for each objective your team has secured.",
      "Score 1VP for each objective your operatives control.",
      "At the end of any turning point from the fourth on, a player who has scored VP can end the battle. It also ends if every player operative is incapacitated."
-    ]
+    ],
+    "scoring": [
+     {
+      "key": "secured",
+      "text": "Each objective marker your team has secured",
+      "vp": 1,
+      "when": "tp",
+      "side": "both"
+     },
+     {
+      "key": "control",
+      "text": "Each objective marker your operatives control",
+      "vp": 1,
+      "when": "tp",
+      "side": "both"
+     }
+    ],
+    "scoringNote": "The pack doesn't say when these score. Agree it with your opponent before you start."
    },
    {
     "num": 5,
@@ -11745,6 +11843,31 @@ const MISSION_PACKS = [
      "Score 1VP if your operative unlocks the objective.",
      "At the end, score 1VP if your operatives control the unlocked objective.",
      "At the end, score 1VP for each Entryway pair you control (your total APL contesting both matching markers is higher)."
+    ],
+    "scoring": [
+     {
+      "key": "unlock",
+      "text": "Your operative unlocks the objective marker",
+      "vp": 1,
+      "when": "any",
+      "side": "both",
+      "most": 1
+     },
+     {
+      "key": "vault",
+      "text": "Your operatives control the unlocked objective marker",
+      "vp": 1,
+      "when": "end",
+      "side": "both",
+      "most": 1
+     },
+     {
+      "key": "entry",
+      "text": "Each Entryway pair your operatives control",
+      "vp": 1,
+      "when": "end",
+      "side": "both"
+     }
     ]
    },
    {
@@ -12380,6 +12503,30 @@ const MISSION_PACKS = [
      "The battle ends when all your operatives have escaped or been incapacitated.",
      "You score 1VP for each objective removed. The NPOs score 1VP for each one left, and 1VP for each third of your starting operatives incapacitated.",
      "Most VP wins. A tie is a draw."
+    ],
+    "scoring": [
+     {
+      "key": "removed",
+      "text": "Each objective marker removed from the killzone",
+      "vp": 1,
+      "when": "end",
+      "side": "you"
+     },
+     {
+      "key": "left",
+      "text": "Each objective marker still in the killzone",
+      "vp": 1,
+      "when": "end",
+      "side": "opp"
+     },
+     {
+      "key": "thirds",
+      "text": "Each third of your starting operatives incapacitated",
+      "vp": 1,
+      "when": "end",
+      "side": "opp",
+      "most": 3
+     }
     ]
    },
    {
@@ -12421,6 +12568,32 @@ const MISSION_PACKS = [
      "1VP each time your operative Siphons Power (max 2VP per turning point).",
      "2VP if your operative incapacitates the Ambull.",
      "When a Borewyrm dies, leave a Borewyrm marker. Operatives can pick these up. At the end, score 1VP for each one your operatives carry."
+    ],
+    "scoring": [
+     {
+      "key": "siphon",
+      "text": "Each Siphon Power action by your operatives",
+      "vp": 1,
+      "when": "tp",
+      "side": "both",
+      "most": 2,
+      "start": 2
+     },
+     {
+      "key": "ambull",
+      "text": "Your operative incapacitates the Ambull",
+      "vp": 2,
+      "when": "any",
+      "side": "both"
+     },
+     {
+      "key": "borewyrm",
+      "text": "Each Borewyrm marker your operatives carry",
+      "vp": 1,
+      "when": "end",
+      "side": "both",
+      "most": 2
+     }
     ]
    }
   ]
@@ -12639,6 +12812,22 @@ const MISSION_PACKS = [
      }
     ],
     "cardsTitle": "NPO activation cards",
+    "scoring": [
+     {
+      "key": "archivist",
+      "text": "Your operative incapacitates the Archivist",
+      "vp": 1,
+      "when": "any",
+      "side": "both"
+     },
+     {
+      "key": "infocore",
+      "text": "Each Infocore your operatives control",
+      "vp": 1,
+      "when": "end",
+      "side": "both"
+     }
+    ],
     "kz": "volkus"
    }
   ]
@@ -13446,6 +13635,26 @@ const MISSION_PACKS = [
     "victory": [
      "The battle ends after four turning points.",
      "At the end of each turning point after the first: 1VP if your operatives control any transmitting objective markers, and 1VP more if they control more of them than the enemy does."
+    ],
+    "scoring": [
+     {
+      "key": "any",
+      "text": "Your operatives control a transmitting objective marker",
+      "vp": 1,
+      "when": "tp",
+      "side": "both",
+      "most": 1,
+      "start": 2
+     },
+     {
+      "key": "more",
+      "text": "You control more transmitting objective markers than the enemy",
+      "vp": 1,
+      "when": "tp",
+      "side": "both",
+      "most": 1,
+      "start": 2
+     }
     ]
    }
   ]
@@ -15552,7 +15761,9 @@ async function runSelfTest() {
     await nav("Missions");
     await click(btn("Start a campaign") || btn("Continue your campaign"), "Start a campaign");
     const hexes = () => [...document.querySelectorAll("g[role=button]")].filter(g => g.closest("svg").getBoundingClientRect().width > 0);
+    for (let w = 0; w < 40 && !hexes().length; w++) await wait(25);
     const base = hexes().find(g => / surface/.test(g.getAttribute("aria-label")));
+    if (!base) throw new Error("campaign map didn't appear (" + document.querySelectorAll("g[role=button]").length + " hexes in the page)");
     base.dispatchEvent(new MouseEvent("click", { bubbles: true })); await settle();
     await click(btn("Start campaign", true), "Start campaign");
     const target = hexes().find(g => [...g.querySelectorAll("text")].some(t => / SP$/.test(t.textContent)));
@@ -15564,6 +15775,29 @@ async function runSelfTest() {
     const c = store("campaign");
     if (!c || c.round !== 2) throw new Error("campaign didn't reach round 2");
     return "round 2, " + c.stats.explored + " hex(es) explored";
+  });
+
+  // Runs last: it leaves a game in progress, which shrinks the campaign card on the Battle tab.
+  await step("Mission scoring checklist", async () => {
+    await nav("Battle");
+    const change = btn("Change team", true); if (change) await click(change, "Change team");
+    await typeInto(all("input").find(i => i.placeholder === "Search teams or factions"), "Kasrkin");
+    await click(all("[role=button]").find(e => e.textContent.trim().endsWith("Kasrkin")), "Kasrkin");
+    await click(btn("Build my roster") || btn("Continue with this team"), "Build my roster");
+    for (const r of all("[role=button]").filter(e => /W\s*•/.test(e.textContent) && e.textContent.length < 120).slice(0, 3)) { r.click(); await settle(); }
+    await click(btn("Start game"), "Start game");
+    await click(all("button").find(b => /turning points/.test(b.textContent) && /Change/.test(b.textContent)), "game setup");
+    const pick = async (i, v) => { const sel = all("select")[i]; Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set.call(sel, v); sel.dispatchEvent(new Event("change", { bubbles: true })); await settle(); };
+    await pick(0, "hivestorm"); await pick(1, "0");
+    await click(btn("Use these settings", true), "Use these settings");
+    const show = all("button[aria-label='Show scoring']")[0]; if (show) await click(show, "scoring panel");
+    await click(all("button[aria-label='Turning point 2']")[0], "turning point 2");
+    await click(all("button[aria-label='You: Your operatives control a transmitting objective marker']")[0], "first scoring tick");
+    await click(all("button[aria-label='Opponent: You control more transmitting objective markers than the enemy']")[0], "second scoring tick");
+    const sc = store("missionScore") || {};
+    if (!(sc["2|any"] && sc["2|any"].you === 1 && sc["2|more"] && sc["2|more"].opp === 1)) throw new Error("ticks weren't saved: " + JSON.stringify(sc));
+    if (!/You: 1 mission/.test(document.body.innerText)) throw new Error("ticks didn't add VP");
+    return "2 ticks, 1VP each side";
   });
 
   // Put everything back the way it was, and stop the app saving its test state over it until reload.

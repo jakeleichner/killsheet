@@ -1,4 +1,4 @@
-from _lib import R, A, M
+from _lib import R, A, M, S
 
 PACK = dict(
     id="hivestorm",
@@ -29,6 +29,8 @@ PACK = dict(
           actions=[A("Initiate Transmission", 1, "An objective marker you control is transmitting until the start of the next turning point.",
                      "Not in the first turning point, or within an enemy's control range.")],
           victory=["The battle ends after four turning points.",
-                   "At the end of each turning point after the first: 1VP if your operatives control any transmitting objective markers, and 1VP more if they control more of them than the enemy does."]),
+                   "At the end of each turning point after the first: 1VP if your operatives control any transmitting objective markers, and 1VP more if they control more of them than the enemy does."],
+          scoring=[S("any", "Your operatives control a transmitting objective marker", most=1, start=2),
+                   S("more", "You control more transmitting objective markers than the enemy", most=1, start=2)]),
     ],
 )

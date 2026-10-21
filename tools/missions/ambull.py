@@ -1,4 +1,4 @@
-from _lib import R, A, W, NPO, M, BEHAVIOUR, THREAT_PRINCIPLE
+from _lib import R, A, W, NPO, M, S, BEHAVIOUR, THREAT_PRINCIPLE
 
 BRAWLER = [
     "Fight.",
@@ -73,7 +73,10 @@ PACK = dict(
                      "Not in the first turning point, or within an enemy's control range.")],
           victory=["The battle ends when all your operatives have escaped or been incapacitated.",
                    "You score 1VP for each objective removed. The NPOs score 1VP for each one left, and 1VP for each third of your starting operatives incapacitated.",
-                   "Most VP wins. A tie is a draw."]),
+                   "Most VP wins. A tie is a draw."],
+          scoring=[S("removed", "Each objective marker removed from the killzone", when="end", side="you"),
+                   S("left", "Each objective marker still in the killzone", when="end", side="opp"),
+                   S("thirds", "Each third of your starting operatives incapacitated", when="end", most=3, side="opp")]),
         M(2, "Decaying Generatorium", "Head-to-head", "Two teams race to drain power cells in a failing generator room while the Ambull that broke it comes back for more.",
           maps=["ambull-p07"],
           rules=[
@@ -87,6 +90,9 @@ PACK = dict(
           victory=["The battle ends after four turning points. Most VP wins; a tie is a draw.",
                    "1VP each time your operative Siphons Power (max 2VP per turning point).",
                    "2VP if your operative incapacitates the Ambull.",
-                   "When a Borewyrm dies, leave a Borewyrm marker. Operatives can pick these up. At the end, score 1VP for each one your operatives carry."]),
+                   "When a Borewyrm dies, leave a Borewyrm marker. Operatives can pick these up. At the end, score 1VP for each one your operatives carry."],
+          scoring=[S("siphon", "Each Siphon Power action by your operatives", most=2, start=2),
+                   S("ambull", "Your operative incapacitates the Ambull", vp=2, when="any"),
+                   S("borewyrm", "Each Borewyrm marker your operatives carry", when="end", most=2)]),
     ],
 )

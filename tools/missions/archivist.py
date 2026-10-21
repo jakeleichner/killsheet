@@ -1,4 +1,4 @@
-from _lib import R, A, W, NPO, M, BEHAVIOUR, THREAT_PRINCIPLE
+from _lib import R, A, W, NPO, M, S, BEHAVIOUR, THREAT_PRINCIPLE
 
 PACK = dict(
     id="archivist",
@@ -81,6 +81,8 @@ PACK = dict(
           victory=["The battle ends after four turning points. Most VP wins; a tie is a draw.",
                    "1VP if your operative incapacitates the Archivist.",
                    "At the end, 1VP for each Infocore your operatives control."],
+          scoring=[S("archivist", "Your operative incapacitates the Archivist", when="any"),
+                   S("infocore", "Each Infocore your operatives control", when="end")],
           kz="volkus",
           cards=[("1-8", "Skip this activation."),
                  ("9-11", "Activate the Archivist NPO with APL 2 (max twice and 12\" of movement per turning point)."),
