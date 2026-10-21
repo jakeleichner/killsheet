@@ -218,6 +218,7 @@ Estimated 2-3 hours. Should be its own focused session with its own QA pass (mix
 - Pre-ship checker added: `python3 tools/check.py` (hooks before early returns, every tab has an icon and panel, unique localStorage keys, no direct localStorage use, print class, JSX script tag).
 
 ### Other open tasks (rough priority order)
+- **Back up and restore**: a game menu option that saves all `ks_` storage (saved rosters, current game, settings, and game history once it exists) to one downloadable file, plus Restore to load that file on any device or browser. Covers moving between Safari and the iPhone home-screen app (separate storage), switching devices, and clearing browser data. Do this before or with game history. Reuse `snapshotKillSheetStorage` / `restoreKillSheetStorage`.
 - **Game history**: at the end of a game, save team, opponent team, mission, VP and result; a simple stats page per team.
 - **Legion of the Damned**: previewed in the Big Autumn Preview; add once its rules are published.
 - **Campaign tracking (Ctesiphus Expedition)**: track a map-based campaign across games. Needs the campaign PDF from the owner first, to see what it tracks (map territory, requisition points, operative experience, injuries and so on). Likely a new tab with its own saved state, and it may later need the same backend as Community Rosters if players want to share one campaign.
