@@ -230,6 +230,7 @@ Estimated 2-3 hours. Should be its own focused session with its own QA pass (mix
 - **Legion of the Damned**: previewed in the Big Autumn Preview; add once its rules are published.
 
 ### Lower-priority backlog
+- **Maybe: leaderboard and friends (needs logins first).** Once the Community backend has sign-in, add a Community leaderboard built from game history (`ks_gameHistory`: wins, losses, draws, per team and overall), plus adding friends to compare records and a friends-only board. Depends on accounts and on syncing history to the server. Owner flagged this as a maybe; confirm before building.
 - More factions: see convention 11. Add `tools/teams/<team>.py`, list it in `ORDER.txt`, run the build, then `python3 tools/check.py` and build a full roster in the preview.
 - Functional mission scoring (primary objectives, tac-op tracking).
 - Make killzone rules functional (currently cosmetic).
