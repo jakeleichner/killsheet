@@ -6909,7 +6909,10 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
   const [setupRef, setSetupRef] = useState({ pack: "", idx: "" });
   const [savedMenu, setSavedMenu] = useState(null);
   const [showSetup, setShowSetup] = useState(false);
-  const [teamIntro, setTeamIntro] = useState(false);
+  const [peek, setPeek] = useState(null); // team opened inline in the picker
+  const [peekRule, setPeekRule] = useState(null);
+  const peekScrolled = React.useRef(null);
+  const peekRuleScrolled = React.useRef(null);
   const [undo, setUndo] = useState(null);
   const undoTimer = React.useRef(null);
   // Run a big change (reset, switch team, load or delete a roster) and offer Undo for a few seconds.
@@ -7375,7 +7378,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
     const u = {}; (entry.ue || []).forEach(id => { u[id] = true; }); setUEq(u);
     setChapterPrimary(entry.cp || ""); setChapterSecondary(entry.cs || ""); setChapterVeteran(entry.cv || {}); setCarried(entry.cw || {});
     });
-    setPickerOpen(false); setPickerSearch(""); setSavedMenu(null); setTeamIntro(false);
+    setPickerOpen(false); setPickerSearch(""); setSavedMenu(null); setPeek(null);
   };
   const renameSaved = (entry) => {
     const typed = prompt("Rename roster:", entry.name);
@@ -7962,44 +7965,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
       </div>
 
       {/* Faction select: collapses to one bar once a team is picked */}
-      {f && !pickerOpen && teamIntro ? (
-        <div className="ks-appear" style={{ ...cd, padding: 0, overflow: "hidden", marginBottom: 14, borderTop: "3px solid " + f.color }}>
-          <div style={{ padding: mobile ? 16 : 22, background: "linear-gradient(135deg, " + f.color + "22, transparent 60%)" }}>
-            <span style={bg(f.color)}>{f.badge}</span>
-            <div style={{ fontSize: mobile ? 28 : 34, fontWeight: 700, color: "#F1F2F5", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.02em", marginTop: 8, lineHeight: 1.1 }}>{f.name}</div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
-              {f.archetypes && f.archetypes.split(/,\s*/).map(a => <span key={a} style={{ fontSize: 13, padding: "4px 10px", borderRadius: 6, background: "#262A33", color: "#C8CDD3" }}>{a}</span>)}
-              {f.composition && f.composition.total && <span style={{ fontSize: 13, padding: "4px 10px", borderRadius: 6, background: "#262A33", color: "#C8CDD3" }}>{f.composition.total} selections</span>}
-              <span style={{ fontSize: 13, padding: "4px 10px", borderRadius: 6, background: "#262A33", color: "#C8CDD3" }}>{f.operatives.length} operative types</span>
-            </div>
-          </div>
-          <div style={{ padding: mobile ? "4px 16px 16px" : "4px 22px 22px" }}>
-            {(f.factionRules || []).length > 0 && (
-              <div>
-                <div style={{ ...h3, color: "#C9772E", margin: "14px 0 8px" }}>How this team plays</div>
-                {f.factionRules.map((r, i) => {
-                  return (
-                    <div key={i} style={{ padding: "10px 12px", marginBottom: 6, borderRadius: 6, background: "#0E0F13", border: "1px solid #262A33", borderLeft: "3px solid " + f.color }}>
-                      <div style={{ fontSize: 15, fontWeight: 700, color: "#F1F2F5", fontFamily: "'Rajdhani', sans-serif" }}>{r.name}</div>
-                      <div style={{ fontSize: 13, color: "#C8CDD3", lineHeight: 1.55, marginTop: 3 }}>{r.desc}</div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-            {f.composition && f.composition.rules && f.composition.rules.length > 0 && (
-              <div>
-                <div style={{ ...h3, color: "#C9772E", margin: "14px 0 8px" }}>Building the team</div>
-                {f.composition.rules.map((t, i) => <div key={i} style={{ display: "flex", gap: 8, ...mu, fontSize: 13, marginBottom: 4 }}><span style={{ color: f.color }}>{"\u2022"}</span><span>{t}</span></div>)}
-              </div>
-            )}
-            <div style={{ display: "flex", gap: 8, marginTop: 18, flexWrap: "wrap" }}>
-              <button onClick={() => { setTeamIntro(false); window.scrollTo(0, 0); }} style={{ ...bs("#C9772E"), background: "#C9772E20", padding: "12px 20px", fontSize: 15, flex: mobile ? "1 1 100%" : "0 0 auto" }}>Build my roster {"\u203A"}</button>
-              <button onClick={() => { setTeamIntro(false); setPickerGroup(factionGroup(f)); setPickerOpen(true); }} style={{ ...bs("#9AA5B1"), padding: "12px 16px", fontSize: 13, flex: mobile ? "1 1 100%" : "0 0 auto" }}>Pick a different team</button>
-            </div>
-          </div>
-        </div>
-      ) : f && !pickerOpen ? (rosterLocked ? null :
+      {f && !pickerOpen ? (rosterLocked ? null :
         <div style={{ ...cd, display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", marginBottom: 14, borderTop: "2px solid " + f.color }}>
           <div style={bg(f.color)}>{f.badge}</div>
           <div style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", color: f.color, letterSpacing: "0.04em" }}>{f.name}</div>
@@ -8010,10 +7976,41 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
         const q = searchNorm(pickerSearch.trim());
         const all = Object.values(FACTIONS).sort((x, y) => x.name.localeCompare(y.name));
         const shown = q ? all.filter(fc => factionSearchText(fc).includes(q)) : all.filter(fc => factionGroup(fc) === group);
-        const pick = (fc) => {
+        const choose = (fc) => {
+          setPeek(null);
           if (fid === fc.id) { setPickerOpen(false); return; }
           if (roster.length > 0) withUndo("Switched to " + fc.name, () => selectFaction(fc.id)); else selectFaction(fc.id);
-          setPickerOpen(false); setPickerSearch(""); setTeamIntro(true); window.scrollTo(0, 0);
+          setPickerOpen(false); setPickerSearch(""); window.scrollTo(0, 0);
+        };
+        const pick = (fc) => { setPeekRule(null); setPeek(peek === fc.id ? null : fc.id); };
+        const chip = (on, color) => ({ padding: "8px 12px", borderRadius: 6, fontSize: 13, fontWeight: 600, fontFamily: "'Inter', sans-serif", cursor: "pointer", textAlign: "left", border: "1px solid " + (on ? color : "#3A4150"), background: on ? color + "25" : "#1A1D24", color: on ? "#F1F2F5" : "#C8CDD3" });
+        const panel = (fc) => {
+          const rules = [...(fc.factionRules || []).map(r => ({ name: r.name, desc: r.desc })),
+            ...(fc.composition && fc.composition.rules && fc.composition.rules.length ? [{ name: "Building the team", list: fc.composition.rules }] : [])];
+          const open = peekRule !== null ? rules[peekRule] : null;
+          return (
+            <div key={"peek-" + fc.id} className="ks-appear" ref={el => { if (el && peekScrolled.current !== fc.id) { peekScrolled.current = fc.id; el.scrollIntoView({ block: "nearest", behavior: "smooth" }); } }}
+              style={{ gridColumn: "1 / -1", ...cd, padding: mobile ? 12 : 16, borderTop: "3px solid " + fc.color, background: "linear-gradient(135deg, " + fc.color + "1A, transparent 55%), #14161B" }}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center", marginBottom: 10 }}>
+                <span style={{ fontSize: 18, fontWeight: 700, color: "#F1F2F5", fontFamily: "'Rajdhani', sans-serif", marginRight: 4 }}>{fc.name}</span>
+                {fc.archetypes && fc.archetypes.split(/,\s*/).map(a => <span key={a} style={{ fontSize: 12, padding: "3px 8px", borderRadius: 6, background: "#262A33", color: "#C8CDD3" }}>{a}</span>)}
+                <span style={{ fontSize: 12, padding: "3px 8px", borderRadius: 6, background: "#262A33", color: "#C8CDD3" }}>{fc.operatives.length} operative types</span>
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {rules.map((r, i) => (
+                  <button key={i} aria-expanded={peekRule === i} onClick={() => setPeekRule(peekRule === i ? null : i)} style={chip(peekRule === i, r.list ? "#9AA5B1" : fc.color)}>{r.name}</button>
+                ))}
+              </div>
+              {open && (
+                <div className="ks-appear" ref={el => { const k = fc.id + "|" + peekRule; if (el && peekRuleScrolled.current !== k) { peekRuleScrolled.current = k; el.scrollIntoView({ block: "nearest", behavior: "smooth" }); } }} style={{ marginTop: 8, padding: "10px 12px", borderRadius: 6, background: "#0E0F13", borderLeft: "3px solid " + (open.list ? "#9AA5B1" : fc.color), fontSize: 13, color: "#C8CDD3", lineHeight: 1.55 }}>
+                  {open.list ? open.list.map((t, i) => <div key={i} style={{ marginBottom: i < open.list.length - 1 ? 4 : 0 }}>{t}</div>) : open.desc}
+                </div>
+              )}
+              <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+                <button onClick={() => choose(fc)} style={{ ...bs("#C9772E"), background: "#C9772E20", padding: "10px 18px", fontSize: 14, flex: mobile ? "1 1 auto" : "0 0 auto" }}>{fid === fc.id ? "Continue with this team" : "Build my roster"} {"\u203A"}</button>
+              </div>
+            </div>
+          );
         };
         return (
           <div className="ks-appear" style={{ marginBottom: 14 }}>
@@ -8069,19 +8066,21 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
               <input value={pickerSearch} onChange={e => setPickerSearch(e.target.value)} placeholder="Search teams or factions" style={{ flex: "1 1 140px", minWidth: 0, background: "#1A1D24", border: "1px solid #3A4150", borderRadius: 6, color: "#F1F2F5", padding: "7px 10px", fontSize: 13, fontFamily: "'Inter', sans-serif" }} />
             </div>
             {shown.length === 0 && <p style={{ ...mu, margin: "8px 0" }}>No team matches "{pickerSearch}".</p>}
-            <div style={{ display: "grid", gridTemplateColumns: mobile ? "repeat(2, minmax(0, 1fr))" : "repeat(auto-fill, minmax(150px, 1fr))", gap: 8 }}>
-              {shown.map(fc => (
-                <div key={fc.id} role="button" tabIndex={0} onClick={() => pick(fc)} style={{ ...cd, cursor: "pointer", borderColor: fid === fc.id ? fc.color : "#3A4150", textAlign: "center", padding: 10, minWidth: 0, overflowWrap: "anywhere", borderTop: "2px solid " + (fid === fc.id ? fc.color : fc.color + "60"), boxShadow: fid === fc.id ? "0 0 16px " + fc.color + "20, 0 2px 8px rgba(0,0,0,0.4)" : cd.boxShadow }}>
+            {/* dense packing pulls the rest of a row up, so the opened panel lands right under its row */}
+            <div style={{ display: "grid", gridAutoFlow: "row dense", gridTemplateColumns: mobile ? "repeat(2, minmax(0, 1fr))" : "repeat(auto-fill, minmax(150px, 1fr))", gap: 8 }}>
+              {shown.flatMap(fc => [
+                <div key={fc.id} role="button" tabIndex={0} aria-expanded={peek === fc.id} onClick={() => pick(fc)} style={{ ...cd, cursor: "pointer", borderColor: peek === fc.id || fid === fc.id ? fc.color : "#3A4150", background: peek === fc.id ? fc.color + "18" : cd.background, textAlign: "center", padding: 10, minWidth: 0, overflowWrap: "anywhere", borderTop: "2px solid " + (fid === fc.id ? fc.color : fc.color + "60"), boxShadow: fid === fc.id ? "0 0 16px " + fc.color + "20, 0 2px 8px rgba(0,0,0,0.4)" : cd.boxShadow }}>
                   <div style={bg(fc.color)}>{fc.badge}</div>
                   <div style={{ fontSize: 13, fontWeight: 700, marginTop: 6, fontFamily: "'Rajdhani', sans-serif", color: fid === fc.id ? fc.color : "#F1F2F5", letterSpacing: "0.04em" }}>{fc.name}</div>
-                </div>
-              ))}
+                </div>,
+                peek === fc.id ? panel(fc) : null,
+              ])}
             </div>
           </div>
         );
       })()}
 
-      {f && !pickerOpen && !teamIntro && (
+      {f && !pickerOpen && (
         <div className="ks-appear">
           {/* Score bar: slim, stays under the nav while you scroll */}
           <div style={{ position: "sticky", top: navH, zIndex: 9, background: "#0E0F13", padding: "6px 0", marginBottom: 6 }}>
