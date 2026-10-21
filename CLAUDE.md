@@ -27,5 +27,8 @@ After every push, rebuild it: `python3 tools/build_deploy.py`. That pre-compiles
 ## Offline mode
 The service worker only runs on the live https site, or locally with `?sw=1`. To test it, serve `deploy/` (not killsheet.html), load `?sw=1`, then stop the server and reload. Unregister it in the preview browser afterwards so it doesn't serve stale files.
 
+## Mission map diagrams
+`maps/*.svg` are generated: `python3 -I tools/missions/draw_maps.py ~/Downloads <pypdf lib dir>` (about 2.5 minutes for all). Don't hand-edit them. After regenerating, open the preview with `?maps` and look at every diagram beside its original page.
+
 ## Bulk edits
 Long base64 strings (TAB_ICONS, logos) are easier to replace with a Python regex script than with Edit.

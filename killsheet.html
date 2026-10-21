@@ -38,6 +38,9 @@
     .ks-appear { animation: ksAppear 0.24s ease-out backwards; }
     @media (prefers-reduced-motion: reduce) { .ks-appear { animation: none; } }
     [role="button"] { cursor: pointer; }
+    /* Mission map diagrams (maps/*.svg) are dropped in as markup; size the svg to its box. */
+    .km-tile > svg { display: block; width: 100%; height: auto; }
+    .km-fit > svg { display: block; width: 100%; height: 100%; }
     @media (max-width: 600px) {
       #root { font-size: 13px; }
     }
@@ -13923,44 +13926,133 @@ const Fwd = ({ size = 16 }) => <Icon name="chevronRight" size={size} style={{ ve
 const Back = ({ size = 16 }) => <Icon name="chevronLeft" size={size} style={{ verticalAlign: "-0.2em" }} />;
 const sectionHead = (text) => <div style={{ ...h3, color: "#C9772E", margin: "20px 0 8px" }}>{text}</div>;
 
-function MapImages({ ids }) {
+// Mission maps are redrawn as diagrams (maps/<id>.svg, made by tools/missions/draw_maps.py) in the
+// app's colours. The original PDF page (maps/<id>.jpg) stays one tap away. Map key pages stay as pages.
+const MAP_SVGS = {};
+function useMapSvgs(ids, on) {
+  const key = ids.join(",");
+  const [, setTick] = useState(0);
+  React.useEffect(() => {
+    if (!on) return;
+    let live = true;
+    ids.filter(id => !(id in MAP_SVGS)).forEach(id => {
+      MAP_SVGS[id] = null;
+      fetch("maps/" + id + ".svg").then(r => r.ok ? r.text() : Promise.reject(r.status))
+        .then(t => { MAP_SVGS[id] = t; }, () => { MAP_SVGS[id] = false; })
+        .then(() => { if (live) setTick(n => n + 1); });
+    });
+    return () => { live = false; };
+  }, [key, on]);
+  return ids.map(id => !on ? false : id in MAP_SVGS ? MAP_SVGS[id] : null);
+}
+
+// Legend rows: [class in the drawing, label, swatch]. Labels depend on who the sides are.
+const sideNames = (mode) => mode === "Co-op" ? ["Your", "NPO"] : mode === "Head-to-head" ? ["Player A", "Player B"] : ["Player A / your", "Player B / NPO"];
+const mapLegend = (mode) => {
+  const [a, b] = sideNames(mode);
+  const box = (cls) => <rect className={cls} x="1" y="1" width="18" height="12" rx="1" />;
+  const line = (cls, extra) => <path className={cls} d="M2 7H18" strokeWidth={extra || 2} />;
+  return [
+    ["z-dz_a", a + " drop zone", box("z-dz_a")], ["z-terr_a", a + " territory", box("z-terr_a")],
+    ["z-dz_b", b + " drop zone", box("z-dz_b")], ["z-terr_b", b + " territory", box("z-terr_b")],
+    ["ring", b + " drop zone (ring)", <circle className="ring" cx="10" cy="7" r="5" strokeWidth="1.2" />],
+    ["ter", "Terrain", box("ter")], ["inf", "Tyranid infestation", <ellipse className="inf" cx="10" cy="7" rx="7" ry="5" />],
+    ["wall", "Wall", line("wall", 2.5)], ["door", "Door", <path className="door" d="M2 7H18" strokeWidth="3" strokeDasharray="3 2" />],
+    ["breach", "Breach point", <path className="breach" d="M2 7H18" strokeWidth="3" strokeDasharray="3 2" />],
+    ["vant", "Under Vantage terrain", <rect className="vant" x="3" y="2" width="14" height="10" strokeDasharray="2 1.5" strokeWidth="1" />],
+    ["pillar", "Pillar", <rect className="pillar" x="6" y="3" width="8" height="8" />], ["access", "Access point", <rect className="access" x="3" y="5" width="14" height="4" rx="2" />],
+    ["xmark", "Wall end", <g><rect className="pillar" x="6" y="3" width="8" height="8" /><path className="xmark" d="M7 4L13 10M13 4L7 10" strokeWidth="1.2" /></g>],
+    ["nside", "Necron side of wall", <path className="nside" d="M2 7H18" strokeWidth="3" strokeDasharray="3 2" />],
+    ["obj", "Objective marker", <circle className="obj" cx="10" cy="7" r="5.5" fill="#C9772E" stroke="#0E0F13" />],
+    ["objn", "Objective marker", <circle cx="10" cy="7" r="5.5" fill="#C9772E" stroke="#0E0F13" />],
+    ["entry", "Entryway marker", <g className="entry"><circle cx="10" cy="7" r="5" /><path d="M5 7A5 5 0 0 1 15 7Z" /></g>],
+    ["mark", "Mission marker", <circle className="mark" cx="10" cy="7" r="4" />],
+    ["edge-p", a + " killzone edge", <g><path className="edge-p" d="M2 5.5H18M2 8.5H18" strokeWidth="1" /></g>],
+    ["edge-b", "Player B killzone edge", <g><path className="edge-b" d="M2 5.5H18M2 8.5H18" strokeWidth="1" /></g>],
+    ["edge-o", b + " killzone edge", <g><path className="edge-o" d="M2 5.5H18M2 8.5H18" strokeWidth="1" /></g>],
+    ["edge-n", "Neutral killzone edge", <path d="M3 7H18" stroke="#5A6270" strokeWidth="2.2" strokeDasharray="0 4" strokeLinecap="round" />],
+  ];
+};
+
+function MapLegend({ svgs, mode }) {
+  const used = new Set();
+  svgs.forEach(t => { if (t) (t.match(/class="[^"]+"/g) || []).forEach(c => used.add(c.slice(7, -1))); });
+  const seen = new Set();
+  const rows = mapLegend(mode).filter(([cls, label]) => {
+    if (!used.has(cls) && !used.has(cls.replace("z-", "b-"))) return false;
+    if (seen.has(label)) return false;
+    seen.add(label); return true;
+  });
+  if (!rows.length) return null;
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 12px", marginTop: 8 }}>
+      {rows.map(([cls, label, sw]) => (
+        <span key={cls} style={{ display: "inline-flex", alignItems: "center", gap: 6, ...mu, fontSize: 12 }}>
+          <svg className="km" width="20" height="14" viewBox="0 0 20 14" aria-hidden="true">{sw}</svg>{label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function MapImages({ ids, diagram, mode }) {
   const [view, setView] = useState(null);
   const [zoom, setZoom] = useState(false);
-  const show = (i) => { setView(i); setZoom(false); };
+  const [original, setOriginal] = useState(false);
+  const [turned, setTurned] = useState(false);
+  const svgs = useMapSvgs(ids, !!diagram);
+  const show = (i, orig) => { setView(i); setZoom(false); setOriginal(!!orig); };
   React.useEffect(() => {
     if (view == null) return;
     const onKey = (e) => {
       if (e.key === "Escape") setView(null);
-      if (e.key === "ArrowRight") show((view + 1) % ids.length);
-      if (e.key === "ArrowLeft") show((view - 1 + ids.length) % ids.length);
+      if (e.key === "ArrowRight") show((view + 1) % ids.length, original);
+      if (e.key === "ArrowLeft") show((view - 1 + ids.length) % ids.length, original);
     };
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     window.addEventListener("keydown", onKey);
     return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = prev; };
-  }, [view, ids.length]);
+  }, [view, ids.length, original]);
   const navBtn = { ...bs("#F1F2F5"), background: "#1A1D24E0", padding: "8px 14px", fontSize: 16 };
+  const page = (id, style, onClick) => <img src={"maps/" + id + ".jpg"} alt="Mission map page" loading="lazy" onClick={onClick} style={style} />;
+  const drawn = view != null && !original && svgs[view];
+  // Wide maps on an upright phone can turn sideways to fill the screen.
+  const box = drawn && (drawn.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/) || []).slice(1).map(Number);
+  const canTurn = !!box && box[0] > box[1] && window.innerHeight > window.innerWidth;
   return (
     <div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 10 }}>
+      <div style={{ display: "grid", gridTemplateColumns: diagram ? "repeat(auto-fill, minmax(300px, 1fr))" : "repeat(auto-fill, minmax(240px, 1fr))", gap: 10 }}>
         {ids.map((id, i) => (
-          <button key={id} onClick={() => show(i)} style={{ ...cd, display: "block", width: "100%", padding: 6, marginBottom: 0, cursor: "zoom-in" }}>
-            <img src={"maps/" + id + ".jpg"} alt="Mission map page" loading="lazy" style={{ width: "100%", display: "block", borderRadius: 4 }} />
-          </button>
+          <div key={id}>
+            <button onClick={() => show(i)} aria-label={svgs[i] ? "Enlarge map" : "Enlarge map page"} style={{ ...cd, display: "block", width: "100%", padding: 6, marginBottom: 0, cursor: "zoom-in" }}>
+              {svgs[i] ? <div className="km-tile" role="img" aria-label="Mission map" dangerouslySetInnerHTML={{ __html: svgs[i] }} />
+                : svgs[i] === null ? <div style={{ aspectRatio: "30 / 22" }} />
+                : page(id, { width: "100%", display: "block", borderRadius: 4 })}
+            </button>
+            {svgs[i] && <button className="link-btn" onClick={() => show(i, true)} style={{ background: "none", border: "none", padding: "6px 0 0", color: "#9AA5B1", fontSize: 12, cursor: "pointer", textDecoration: "underline", fontFamily: "'Inter', sans-serif" }}>View original page</button>}
+          </div>
         ))}
       </div>
-      <div style={{ ...mu, fontSize: 12, marginTop: 6 }}>Tap a page to enlarge it.</div>
+      {diagram && <MapLegend svgs={svgs} mode={mode} />}
+      <div style={{ ...mu, fontSize: 12, marginTop: 6 }}>{diagram ? "Tap a map to enlarge it." : "Tap a page to enlarge it."}</div>
       {view != null && ReactDOM.createPortal(
         <div onClick={() => setView(null)} style={{ position: "fixed", inset: 0, zIndex: 10000, background: "rgba(8,9,12,0.94)", display: "flex", flexDirection: "column" }}>
           <div onClick={e => e.stopPropagation()} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px" }}>
-            <span style={{ flex: 1, ...mu, fontSize: 12 }}>{ids.length > 1 ? "Page " + (view + 1) + " of " + ids.length + " · " : ""}{zoom ? "Tap to fit" : "Tap to zoom"}</span>
-            {ids.length > 1 && <button onClick={() => show((view - 1 + ids.length) % ids.length)} aria-label="Previous page" style={navBtn}><Back size={20} /></button>}
-            {ids.length > 1 && <button onClick={() => show((view + 1) % ids.length)} aria-label="Next page" style={navBtn}><Fwd size={20} /></button>}
+            <span style={{ flex: 1, ...mu, fontSize: 12 }}>{ids.length > 1 ? (diagram ? "Map " : "Page ") + (view + 1) + " of " + ids.length + " · " : ""}{zoom ? "Tap to fit" : "Tap to zoom"}</span>
+            {canTurn && !zoom && <button onClick={() => setTurned(!turned)} aria-pressed={turned} style={{ ...navBtn, fontSize: 12 }}>Rotate</button>}
+            {svgs[view] && <button onClick={() => { setOriginal(!original); setZoom(false); }} style={{ ...navBtn, fontSize: 12 }}>{original ? "Diagram" : "Original"}</button>}
+            {ids.length > 1 && <button onClick={() => show((view - 1 + ids.length) % ids.length, original)} aria-label="Previous map" style={navBtn}><Back size={20} /></button>}
+            {ids.length > 1 && <button onClick={() => show((view + 1) % ids.length, original)} aria-label="Next map" style={navBtn}><Fwd size={20} /></button>}
             <button onClick={() => setView(null)} aria-label="Close" style={navBtn}>{"✕"}</button>
           </div>
           <div onClick={e => e.stopPropagation()} style={{ flex: 1, minHeight: 0, overflow: "auto", display: "flex", alignItems: zoom ? "flex-start" : "center", justifyContent: zoom ? "flex-start" : "center", padding: zoom ? 0 : "0 12px 12px" }}>
-            <img src={"maps/" + ids[view] + ".jpg"} alt="Mission map page" onClick={() => setZoom(!zoom)}
-              style={zoom ? { width: "max(100%, 1100px)", maxWidth: "none", flexShrink: 0, cursor: "zoom-out" } : { maxWidth: "100%", maxHeight: "calc(100vh - 76px)", objectFit: "contain", cursor: "zoom-in" }} />
+            {drawn
+              ? <div className="km-fit" role="img" aria-label="Mission map" onClick={() => setZoom(!zoom)} dangerouslySetInnerHTML={{ __html: drawn }}
+                  style={zoom ? { width: "max(100%, 1100px)", flexShrink: 0, cursor: "zoom-out" }
+                    : turned && canTurn ? { width: "calc(100vh - 76px)", height: "calc(100vw - 24px)", flexShrink: 0, transform: "rotate(90deg)", cursor: "zoom-in" }
+                    : { width: "100%", height: "100%", cursor: "zoom-in" }} />
+              : page(ids[view], zoom ? { width: "max(100%, 1100px)", maxWidth: "none", flexShrink: 0, cursor: "zoom-out" } : { maxWidth: "100%", maxHeight: "calc(100vh - 76px)", objectFit: "contain", cursor: "zoom-in" }, () => setZoom(!zoom))}
           </div>
         </div>,
         document.body
@@ -14102,8 +14194,8 @@ function MissionBody({ pack, mission, idx, onGoMission }) {
   };
   return (
     <div>
-      {mission.maps.length > 0 && (<div>{sectionHead(mission.maps.length > 1 ? "Maps" : "Map")}<MapImages ids={mission.maps} /></div>)}
-      {mission.maps.length === 0 && pack.maps && (<div>{sectionHead("Maps")}{pack.mapsNote && <p style={{ ...mu, marginBottom: 8 }}>{pack.mapsNote}</p>}<MapImages ids={pack.maps} /></div>)}
+      {mission.maps.length > 0 && (<div>{sectionHead(mission.maps.length > 1 ? "Maps" : "Map")}<MapImages ids={mission.maps} diagram mode={mission.mode} /></div>)}
+      {mission.maps.length === 0 && pack.maps && (<div>{sectionHead("Maps")}{pack.mapsNote && <p style={{ ...mu, marginBottom: 8 }}>{pack.mapsNote}</p>}<MapImages ids={pack.maps} diagram /></div>)}
       {mission.rules.length > 0 && (<div>{sectionHead("Mission rules")}{rules(mission.rules, "r/")}</div>)}
       {mission.actions.length > 0 && (<div>{sectionHead("Mission actions")}{rules(mission.actions, "a/")}</div>)}
       {mission.victory.length > 0 && (
@@ -14300,7 +14392,7 @@ function Missions({ campaign, startCampaign }) {
             </div>
           ))}
 
-          {pack.maps && pack.maps.length > 0 && (<div>{sectionHead("Maps")}{pack.mapsNote && <p style={{ ...mu, marginBottom: 8 }}>{pack.mapsNote}</p>}<MapImages ids={pack.maps} /></div>)}
+          {pack.maps && pack.maps.length > 0 && (<div>{sectionHead("Maps")}{pack.mapsNote && <p style={{ ...mu, marginBottom: 8 }}>{pack.mapsNote}</p>}<MapImages ids={pack.maps} diagram /></div>)}
 
           {pack.rules.length > 0 && (<div>{sectionHead(pack.missions.length ? "Pack rules" : "Rules")}{rules(pack.rules, pack.id + "/r/")}</div>)}
           {pack.actions && pack.actions.length > 0 && (<div>{sectionHead("Actions")}{rules(pack.actions, pack.id + "/a/")}</div>)}
@@ -15398,8 +15490,15 @@ async function runSelfTest() {
         const card = all("[role=button],button").find(e => e.textContent.includes(m.name));
         if (!card) continue;
         card.click(); await settle(); missions++;
-        const thumb = all("button").find(b => b.querySelector("img[alt='Mission map page']"));
-        if (thumb) { thumb.click(); await settle(); maps++; document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })); window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })); await settle(); }
+        for (let w = 0; w < 40 && all("[aria-label='Mission map']").length < m.maps.length && m.maps.length; w++) await wait(25);
+        const thumb = all("button[aria-label='Enlarge map']")[0] || all("button").find(b => b.querySelector("img[alt='Mission map page']"));
+        if (thumb) {
+          thumb.click(); await settle(); maps++;
+          if (m.maps.length && !document.querySelector(".km-fit svg")) throw new Error(p.name + " " + m.name + ": map didn't draw");
+          const orig = all("button").find(b => b.textContent.trim() === "Original");
+          if (orig) { orig.click(); await settle(); if (!document.querySelector("img[alt='Mission map page']")) throw new Error(m.name + ": original page missing"); }
+          window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })); await settle();
+        }
         const back = all("button").find(b => b.textContent.trim() === p.name); if (back) { back.click(); await settle(); }
       }
       const toPacks = all("button").find(b => b.textContent.trim() === "All packs"); if (toPacks) { toPacks.click(); await settle(); }
@@ -15604,9 +15703,38 @@ function App() {
   );
 }
 
+/* ═══ MAP CHECK (open the app with ?maps) ═══ */
+// Every redrawn mission map next to the page it came from, to check them by eye.
+function MapCompare() {
+  const list = [];
+  MISSION_PACKS.forEach(p => {
+    const where = {};
+    p.missions.forEach(m => m.maps.forEach(id => { (where[id] = where[id] || []).push(missionLabel(m) + ": " + m.name); }));
+    (p.maps || []).forEach(id => { where[id] = where[id] || ["Pack maps"]; });
+    Object.keys(where).forEach(id => list.push({ id, pack: p.name, used: where[id] }));
+  });
+  const svgs = useMapSvgs(list.map(x => x.id), true);
+  return (
+    <div style={{ padding: 16, maxWidth: 1400, margin: "0 auto", color: "#F1F2F5" }}>
+      <h1 style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 24, marginBottom: 4 }}>Mission maps: new diagram and original page</h1>
+      <p style={{ ...mu, marginBottom: 16 }}>{list.length} map pages. <a href="./" style={{ color: "#C9772E" }}>Back to the app</a></p>
+      {list.map((x, i) => (
+        <div key={x.id} style={{ ...cd, padding: 12 }}>
+          <div style={{ ...h3, color: "#C9772E", marginBottom: 2 }}>{x.pack}</div>
+          <div style={{ ...mu, marginBottom: 8 }}>{x.used.join(" · ")} <span style={{ color: "#5A6270" }}>({x.id})</span></div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 12, alignItems: "start" }}>
+            {svgs[i] ? <div className="km-tile" dangerouslySetInnerHTML={{ __html: svgs[i] }} /> : <div style={mu}>{svgs[i] === false ? "No diagram for this page." : "Loading..."}</div>}
+            <img src={"maps/" + x.id + ".jpg"} alt="Original map page" loading="lazy" style={{ width: "100%", borderRadius: 4 }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ═══ RENDER ═══
 const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(React.createElement(App));
+root.render(React.createElement(/[?&]maps\b/.test(window.location.search) ? MapCompare : App));
   </script>
 </body>
 </html>

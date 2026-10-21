@@ -130,7 +130,7 @@ def check_setters(text):
     """Every setX(...) call has something that defines setX (catches leftovers after removing state)."""
     code = text.split('<script type="text/babel">', 1)[1] if '<script type="text/babel">' in text else text
     used = set(re.findall(r"\b(set[A-Z]\w*)\(", code))
-    defined = set(re.findall(r"\[\w+,\s*(set[A-Z]\w*)\]", code))
+    defined = set(re.findall(r"\[\w*,\s*(set[A-Z]\w*)\]", code))
     defined |= set(re.findall(r"(?:const|let|var|function)\s+(set[A-Z]\w*)\b", code))
     for params in re.findall(r"function\s+\w+\s*\(\{([^}]*)\}", code):
         defined |= set(re.findall(r"\b(set[A-Z]\w*)\b", params))
