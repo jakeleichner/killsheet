@@ -5,7 +5,8 @@ Usage: python3 tools/build_deploy.py
 killsheet.html stays the source (its JSX is compiled in the browser by Babel, which is
 handy for previewing edits). For the live site this compiles the JSX once, here, with
 macOS's built-in JavaScriptCore (`jsc`) and the vendored tools/vendor/babel.min.js, then
-writes deploy/index.html without the 2.8 MB Babel download or the in-browser compile.
+writes deploy/index.html without the 2.8 MB Babel download or the in-browser compile,
+and copies maps/ and icons/ beside it.
 """
 import os
 import shutil
@@ -53,9 +54,10 @@ def main():
     deploy = os.path.join(ROOT, "deploy")
     os.makedirs(deploy, exist_ok=True)
     open(os.path.join(deploy, "index.html"), "w").write(out)
-    shutil.rmtree(os.path.join(deploy, "maps"), ignore_errors=True)
-    shutil.copytree(os.path.join(ROOT, "maps"), os.path.join(deploy, "maps"))
-    print("Built deploy/index.html (%d KB) and deploy/maps in %.1fs." % (len(out.encode()) // 1024, time.time() - started))
+    for folder in ("maps", "icons"):
+        shutil.rmtree(os.path.join(deploy, folder), ignore_errors=True)
+        shutil.copytree(os.path.join(ROOT, folder), os.path.join(deploy, folder))
+    print("Built deploy/index.html (%d KB), deploy/maps and deploy/icons in %.1fs." % (len(out.encode()) // 1024, time.time() - started))
 
 
 if __name__ == "__main__":

@@ -67,7 +67,7 @@ A full visual redesign was completed recently. The app moved from a gold-gilded,
 - 8px spacing base; 6px corner radius; 44px min tap targets on mobile.
 
 ### Logo / brand
-A proper logo package exists (targeting reticle mark + "KILLSHEET" wordmark, rust + white on dark). Variants: app icon, horizontal lockup, stacked lockup, mark-only SVG, favicon. **These are NOT yet wired into the app** — the header still uses an older embedded base64 logo. Wiring in the new logo package (header lockup + favicon + apple-touch-icon) is an open task.
+The logo is a die showing five with a crosshair for the centre pip, beside a "KILLSHEET" wordmark in Rajdhani Bold (KILL in white, SHEET in rust #C9772E), on dark. It's drawn in code by the `Logo` component (`<Logo size={...} />`; below 28px it drops the crosshair ticks). Icons live in `icons/`: `favicon.svg` (the source, also inlined as the SVG favicon in `<head>`), `favicon-32.png`, `apple-touch-icon.svg` and `apple-touch-icon.png` (180px). `tools/build_deploy.py` copies `icons/` into `deploy/`. To redraw the PNGs after editing an SVG: `qlmanage -t -s 180 -o <dir> icons/apple-touch-icon.svg` (and `-s 128` for the favicon, then `sips -z 32 32`). Avoid Games Workshop marks (aquila, their skulls, Kill Team lettering).
 
 ### IMPORTANT design caveat
 The gold→rust bulk swap was done globally, which flattened the "look here" signal moments to rust. Gold (`#FFB627`) has since been restored for the TURNING POINT label, active TP box, and COMMAND POINTS label/value. VP panels stay green (you) / red (opponent) on purpose.
@@ -172,6 +172,7 @@ Planned implementation:
 Estimated 2-3 hours. Should be its own focused session with its own QA pass (mixing infra + UI changes tends to combine bugs confusingly).
 
 ### Done recently
+- New logo and favicon: a die showing five with a crosshair for the centre pip, plus the Rajdhani wordmark (`Logo` component), replacing the 3D image (`LOGO_SRC` removed, about 17 KB smaller). Tab icon: SVG inline in `<head>` plus `icons/favicon-32.png`; iPhone home screen: `icons/apple-touch-icon.png`. The deploy build now copies `icons/`.
 - Datacards in play: Start game collapses every card (`collapseAll`). Opening a card closes the others (`toggleCardCollapse`), while collapse all and expand all still work. Collapsed cards have wound −/+ (`woundsInline`; on the name row on phones, next to the stats on desktop) and are tighter (101px on phones, keyword line hidden). APL, Move and Save stay unlabelled when collapsed, since their formats tell them apart (5+, 6", bare number).
 - Battle tab decluttered (each control shows when it's useful; nothing removed). While building: no score bar, turning point guide or ploys (all appear at Start game; sticky offsets use `barH`, which is 0 while building). Universal equipment folds into one section (`showUniv`), with picked items still shown. Play online moved into the ⋯ game menu while not connected. Share code, Print and Import a roster are in a labelled ⋯ menu on the datacards bar (`cardsMenu`), and on phones the import section only shows when opened or when an opponent is loaded. "Pick weapons" is an inline link, not an orange box. Below 1000px wide the score bar uses the compact layout (`compactBar`); the full bar overflowed at laptop widths. Fixed a leftover `setTeamIntro` call on the Continue button, and `tools/check.py` now flags any `setX(...)` call with no matching definition.
 - The Builder tab is now called **Battle** in the app (the code and the saved `tab` value still say `builder`). Its heading reads "Your kill team" while building and the team's name once the game starts (it said "Army Builder"; Kill Team doesn't use "army"). App text that pointed to "the Builder" now says "the Battle tab". In this README, "Builder" still means that tab.
@@ -216,11 +217,10 @@ Estimated 2-3 hours. Should be its own focused session with its own QA pass (mix
 - Pre-ship checker added: `python3 tools/check.py` (hooks before early returns, every tab has an icon and panel, unique localStorage keys, no direct localStorage use, print class, JSX script tag).
 
 ### Other open tasks (rough priority order)
-- **Install on phone + offline mode (PWA)**: web app manifest, service worker caching the page and `maps/`, home-screen icon (use the logo package once it's in the repo).
+- **Install on phone + offline mode (PWA)**: web app manifest, service worker caching the page and `maps/`, home-screen icon (use `icons/apple-touch-icon.png`; a manifest needs 192px and 512px versions too).
 - **Game history**: at the end of a game, save team, opponent team, mission, VP and result; a simple stats page per team.
 - **Legion of the Damned**: previewed in the Big Autumn Preview; add once its rules are published.
 - **Campaign tracking (Ctesiphus Expedition)**: track a map-based campaign across games. Needs the campaign PDF from the owner first, to see what it tracks (map territory, requisition points, operative experience, injuries and so on). Likely a new tab with its own saved state, and it may later need the same backend as Community Rosters if players want to share one campaign.
-- **Wire in the new logo package**: swap `LOGO_SRC` for the new wordmark (reticle mark + KILLSHEET, rust and white), and add favicon and apple-touch-icon. Needs the files from the owner.
 
 ### Lower-priority backlog
 - More factions: see convention 11. Add `tools/teams/<team>.py`, list it in `ORDER.txt`, run the build, then `python3 tools/check.py` and build a full roster in the preview.
