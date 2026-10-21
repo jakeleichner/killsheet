@@ -9,6 +9,19 @@
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23C9772E'/><rect x='4' y='4' width='24' height='24' rx='5' fill='%230E0F13'/><circle cx='10' cy='10' r='2.6' fill='%23F1F2F5'/><circle cx='22' cy='10' r='2.6' fill='%23F1F2F5'/><circle cx='10' cy='22' r='2.6' fill='%23F1F2F5'/><circle cx='22' cy='22' r='2.6' fill='%23F1F2F5'/><circle cx='16' cy='16' r='3.4' fill='none' stroke='%23C9772E' stroke-width='2.4'/></svg>">
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="KillSheet">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <script>
+    // Offline mode: the service worker runs on the live site (https), or locally with ?sw=1 for testing.
+    window.__ksInstall = null; // Chrome's "install app" prompt, offered from the game menu
+    addEventListener("beforeinstallprompt", function (e) { e.preventDefault(); window.__ksInstall = e; });
+    if ("serviceWorker" in navigator && (location.protocol === "https:" || /[?&]sw=1/.test(location.search))) {
+      addEventListener("load", function () { navigator.serviceWorker.register("sw.js").catch(function () {}); });
+    }
+  </script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body, #root { min-height: 100vh; }
@@ -33,7 +46,6 @@
       button:not(.compact-btn):not(.link-btn) { min-height: 40px; min-width: 40px; }
     }
   </style>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;800;900&family=Cinzel+Decorative:wght@700;900&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
@@ -7344,9 +7356,9 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   const expandAll = () => setCardCollapsed({});
 
   // ── Export/Import ──
-  const showToast = (msg) => {
+  const showToast = (msg, ms = 2500) => {
     setToast(msg);
-    setTimeout(() => setToast(""), 2500);
+    setTimeout(() => setToast(""), ms);
   };
 
   const exportRoster = () => {
@@ -7984,6 +7996,8 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
               <div style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", zIndex: 41, minWidth: 230, background: "#262A33", border: "1px solid #3A4150", borderRadius: 6, boxShadow: "0 8px 24px rgba(0,0,0,0.5)", padding: 6 }}>
                 {[
                   mp.status === "idle" ? ["Play online", "Link up with a friend on another device", () => setShowMP(true), "#6B9BF7"] : null,
+                  window.__ksInstall ? ["Install app", "Add KillSheet to this device. Works offline.", () => { const p = window.__ksInstall; window.__ksInstall = null; p.prompt(); }, "#F1F2F5"]
+                    : /iPhone|iPad|iPod/.test(navigator.userAgent) && !navigator.standalone ? ["Add to Home Screen", "Works offline once added", () => showToast("In Safari, tap Share, then Add to Home Screen", 6000), "#F1F2F5"] : null,
                   ["Game settings", "Mission, equipment, turning points", () => setShowSetup(true), "#F1F2F5"],
                   [validate ? "Turn validation off" : "Turn validation on", "Checks your roster against the team's rules", () => setValidate(!validate), "#F1F2F5"],
                   f ? ["Reset game", "Clears wounds, CP, VP, orders and tracking", () => withUndo("Game reset", () => { setWounds({}); setCp(3); setVpYou(0); setVpOpp(0); setUsedPloys({}); setActivated({}); setHasInitiative(true); setLastCpTp(1); setTp(1); setPrimaryYou(Array(gc.numTPs).fill(0)); setPrimaryOpp(Array(gc.numTPs).fill(0)); setTacOps(Array.from({ length: gc.numTacOps }, () => ({ name: "", checks: [false, false] }))); setOppWounds({}); setNpoUnits([]); setOrders({}); setBattleUses({}); setCounteracted({}); setGuideChecks({}); }), "#B8341C"] : null,

@@ -15,13 +15,16 @@ Read `README.md` first: it has the project context, design system, gotchas, and 
 
 ## Previewing changes
 The repo lives in iCloud Drive, which the sandboxed Python server can't read. To preview:
-1. Copy `killsheet.html` to `/tmp/killsheet-preview/index.html`. Also copy the `maps/` folder to `/tmp/killsheet-preview/maps/` (the Missions tab loads its map images from there).
+1. Copy `killsheet.html` to `/tmp/killsheet-preview/index.html`. Also copy `maps/`, `icons/` and `manifest.webmanifest` into `/tmp/killsheet-preview/` (the Missions tab loads its map images from there).
 2. Serve that folder with `python3 -m http.server 3456` (via `.claude/launch.json`).
 3. Re-copy after every edit, then load a new URL (e.g. `?v=2`, `?v=3`). A plain reload can show a cached old copy.
 
 ## Deploying
 Deploys are manual: the owner drags the `deploy/` folder into Cloudflare Pages (`killsheet.pages.dev`). Pushing to GitHub does not deploy.
-After every push, rebuild it: `python3 tools/build_deploy.py`. That pre-compiles `killsheet.html` (with macOS's built-in `jsc` and the vendored `tools/vendor/babel.min.js`) into a fast-loading `deploy/index.html` and copies `maps/` beside it. Never copy `killsheet.html` into `deploy/` directly: it works, but loads about 13x slower. `deploy/` is git-ignored.
+After every push, rebuild it: `python3 tools/build_deploy.py`. That pre-compiles `killsheet.html` (with macOS's built-in `jsc` and the vendored `tools/vendor/babel.min.js`) into a fast-loading `deploy/index.html` and copies `maps/`, `icons/` and the manifest beside it, and writes `deploy/sw.js` (offline mode) from `tools/sw.js`. Never copy `killsheet.html` into `deploy/` directly: it works, but loads about 13x slower. `deploy/` is git-ignored.
+
+## Offline mode
+The service worker only runs on the live https site, or locally with `?sw=1`. To test it, serve `deploy/` (not killsheet.html), load `?sw=1`, then stop the server and reload. Unregister it in the preview browser afterwards so it doesn't serve stale files.
 
 ## Bulk edits
 Long base64 strings (TAB_ICONS, logos) are easier to replace with a Python regex script than with Edit.

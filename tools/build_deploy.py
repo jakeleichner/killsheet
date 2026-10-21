@@ -6,9 +6,13 @@ killsheet.html stays the source (its JSX is compiled in the browser by Babel, wh
 handy for previewing edits). For the live site this compiles the JSX once, here, with
 macOS's built-in JavaScriptCore (`jsc`) and the vendored tools/vendor/babel.min.js, then
 writes deploy/index.html without the 2.8 MB Babel download or the in-browser compile,
-and copies maps/ and icons/ beside it.
+and copies maps/, icons/ and the manifest beside it. It also writes deploy/sw.js, the
+offline service worker, from tools/sw.js.
 """
+import hashlib
+import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -57,7 +61,22 @@ def main():
     for folder in ("maps", "icons"):
         shutil.rmtree(os.path.join(deploy, folder), ignore_errors=True)
         shutil.copytree(os.path.join(ROOT, folder), os.path.join(deploy, folder))
-    print("Built deploy/index.html (%d KB), deploy/maps and deploy/icons in %.1fs." % (len(out.encode()) // 1024, time.time() - started))
+    shutil.copy(os.path.join(ROOT, "manifest.webmanifest"), os.path.join(deploy, "manifest.webmanifest"))
+    write_service_worker(deploy, out)
+    print("Built deploy/index.html (%d KB), sw.js, manifest, maps and icons in %.1fs." % (len(out.encode()) // 1024, time.time() - started))
+
+
+def write_service_worker(deploy, html):
+    """deploy/sw.js from tools/sw.js: the offline file list plus a version that changes with every build."""
+    local = ["./", "manifest.webmanifest"]
+    for folder in ("icons", "maps"):
+        local += [folder + "/" + n for n in sorted(os.listdir(os.path.join(deploy, folder))) if not n.startswith(".")]
+    remote = re.findall(r'<script[^>]*src="(https://[^"]+)"', html)
+    fonts = sorted(set(re.findall(r'href="(https://fonts\.googleapis\.com/[^"]+)"', html)))
+    version = hashlib.sha256((html + json.dumps(local)).encode()).hexdigest()[:10]
+    sw = open(os.path.join(ROOT, "tools", "sw.js")).read()
+    sw = sw.replace("__VERSION__", version).replace("__LOCAL__", json.dumps(local)).replace("__REMOTE__", json.dumps(remote)).replace("__FONTS__", json.dumps(fonts))
+    open(os.path.join(deploy, "sw.js"), "w").write(sw)
 
 
 if __name__ == "__main__":
