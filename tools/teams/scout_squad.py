@@ -55,7 +55,7 @@ TEAM = {
     "equipment": [
         {"id": "camo_cloak", "name": "Camo Cloak", "desc": "When a Scout (not the Sniper) is shot and retains cover saves, it can retain one extra. Not with Vantage terrain."},
         {"id": "targeting_oculars", "name": "Targeting Oculars", "desc": "Up to twice per turning point, as one picks a Shoot target, its ranged weapon gains Lethal 5+ and Saturate for that action."},
-        {"id": "combat_blades", "name": "Combat Blades", "desc": "Scouts get a combat blade (if they already have one, use the better one).", "gw": ("melee", "Combat blade", 3, "3+", "4/5", "-")},
+        {"id": "combat_blades", "name": "Combat Blades", "desc": "Scouts get a combat blade (3 Atk, 3+, 4/5). Some already carry a better one; they keep theirs. Hunters and Warriors with a combat blade get a combat knife (4 Atk, 3+, 4/5) instead, which matches the blade they already have.", "gw": ("melee", "Combat blade", 3, "3+", "4/5", "-")},
         {"id": "tactical_vox_link", "name": "Tactical Vox-link", "desc": "Once per turning point, Astartes Training or Emboldened Aspirant costs 0CP if your Sergeant is in the killzone."},
     ],
     "operatives": [
