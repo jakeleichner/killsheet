@@ -6445,6 +6445,7 @@ const ICON_PATHS = {
   chevronDown: <path d="M6 9l6 6 6-6" />,
   chevronUp: <path d="M6 15l6-6 6 6" />,
   chevronRight: <path d="M9 6l6 6-6 6" />,
+  chevronLeft: <path d="M15 6l-6 6 6 6" />,
   heart: <path d="M12 20s-7.5-4.6-7.5-10.2A4.2 4.2 0 0 1 12 7.3a4.2 4.2 0 0 1 7.5 2.5C19.5 15.4 12 20 12 20z" />,
   download: <path d="M12 4v11M7 10.5l5 4.5 5-4.5M5 20h14" />,
   warning: <><path d="M12 3.5l9 16H3z" /><path d="M12 10v4.5" /><circle cx="12" cy="17" r="0.6" fill="currentColor" /></>,
@@ -6605,7 +6606,7 @@ function Datacard({ op, fc, equipWeapons, equipEffects, curWounds, onWound, coll
             </div>
             {!mobile && readyChip}
             {!mobile && onOrder && <OrderChip order={order} onToggle={onOrder} />}
-            <span style={{ color: DS.textSecondary, marginTop: 3 }}><Icon name={collapsed ? "chevronDown" : "chevronUp"} size={22} /></span>
+            <span style={{ display: "inline-flex", marginTop: 1 }}><Arrow open={!collapsed} /></span>
           </div>
           {mobile && (readyChip || onOrder || collapsed) && (
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
@@ -8011,7 +8012,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
                 </div>
               )}
               <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-                <button onClick={() => choose(fc)} style={{ ...bs("#C9772E"), background: "#C9772E20", padding: "10px 18px", fontSize: 14, flex: mobile ? "1 1 auto" : "0 0 auto" }}>{fid === fc.id ? "Continue with this team" : "Build my roster"} {"\u203A"}</button>
+                <button onClick={() => choose(fc)} style={{ ...bs("#C9772E"), background: "#C9772E20", padding: "10px 18px", fontSize: 14, flex: mobile ? "1 1 auto" : "0 0 auto" }}>{fid === fc.id ? "Continue with this team" : "Build my roster"} <Fwd /></button>
               </div>
             </div>
           );
@@ -8025,7 +8026,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
                   <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", color: f.color, letterSpacing: "0.04em" }}>Continue with {f.name}</div>
                   <div style={{ fontSize: 12, color: "#9AA5B1", fontFamily: "'Inter', sans-serif" }}>{roster.length > 0 ? roster.length + " operative" + (roster.length === 1 ? "" : "s") + " picked" + (rosterLocked ? ", roster locked" : "") : "No operatives picked yet"}</div>
                 </div>
-                <span style={{ color: f.color, fontSize: 18 }}>{"\u203A"}</span>
+                <span style={{ color: f.color, display: "inline-flex" }}><Fwd size={20} /></span>
               </button>
             )}
             {savedRosters.length > 0 && (
@@ -8091,12 +8092,12 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
             <div style={{ ...cd, marginBottom: 0, padding: mobile ? "8px 8px" : "8px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: mobile ? 6 : 14 }}>
               {mobile ? (
                 <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
-                  <button className="compact-btn" onClick={() => setTp(Math.max(1, tp - 1))} disabled={tp <= 1} aria-label="Previous turning point" style={{ width: 30, height: 34, border: "1px solid #3A4150", borderRadius: 6, background: "#1A1D24", color: "#FFB627", cursor: tp <= 1 ? "default" : "pointer", opacity: tp <= 1 ? 0.35 : 1, fontSize: 16, padding: 0 }}>{"‹"}</button>
+                  <button className="compact-btn" onClick={() => setTp(Math.max(1, tp - 1))} disabled={tp <= 1} aria-label="Previous turning point" style={{ width: 30, height: 34, border: "1px solid #3A4150", borderRadius: 6, background: "#1A1D24", color: "#FFB627", cursor: tp <= 1 ? "default" : "pointer", opacity: tp <= 1 ? 0.35 : 1, fontSize: 16, padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><Back size={20} /></button>
                   <div style={{ textAlign: "center", minWidth: 30 }}>
                     <div style={{ fontSize: 11, color: "#FFB627", fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, letterSpacing: "0.08em", lineHeight: 1 }}>TP</div>
                     <div style={{ fontSize: 22, color: "#FFB627", fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, lineHeight: 1 }}>{tp}</div>
                   </div>
-                  <button className="compact-btn" onClick={() => setTp(Math.min(gc.numTPs, tp + 1))} disabled={tp >= gc.numTPs} aria-label="Next turning point" style={{ width: 30, height: 34, border: "1px solid #3A4150", borderRadius: 6, background: "#1A1D24", color: "#FFB627", cursor: tp >= gc.numTPs ? "default" : "pointer", opacity: tp >= gc.numTPs ? 0.35 : 1, fontSize: 16, padding: 0 }}>{"›"}</button>
+                  <button className="compact-btn" onClick={() => setTp(Math.min(gc.numTPs, tp + 1))} disabled={tp >= gc.numTPs} aria-label="Next turning point" style={{ width: 30, height: 34, border: "1px solid #3A4150", borderRadius: 6, background: "#1A1D24", color: "#FFB627", cursor: tp >= gc.numTPs ? "default" : "pointer", opacity: tp >= gc.numTPs ? 0.35 : 1, fontSize: 16, padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><Fwd size={20} /></button>
                 </div>
               ) : (
                 <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
@@ -8242,7 +8243,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
               <div style={{ ...cd, padding: 10, borderColor: showRules ? f.color + "40" : "#3A4150" }}>
                 <div role="button" tabIndex={0} onClick={() => setShowRules(!showRules)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
                   <div style={{ ...h3, color: "#C9772E", marginBottom: 0 }}>TEAM COMPOSITION</div>
-                  <span style={{ color: "#9AA5B1" }}><Icon name={showRules ? "chevronUp" : "chevronDown"} size={22} /></span>
+                  <span style={{ display: "inline-flex", marginTop: 1 }}><Arrow open={showRules} /></span>
                 </div>
                 {/* Quick summary always visible */}
                 {f.composition.groups.filter(g => g.desc).map((g, i) => (
@@ -8344,7 +8345,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
                     {v.selections}{f.composition ? "/" + f.composition.total : ""} selected {"\u2022"} {roster.reduce((s, o) => s + o.wounds, 0)}W
                   </div>
                   {roster.length > 0 && (
-                    <button onClick={() => { setRosterLocked(true); setMobilePanel("cards"); window.scrollTo(0, 0); }} style={{ ...bs("#5A9C3A"), fontSize: 13, padding: "8px 14px" }}>Start game {"\u203A"}</button>
+                    <button onClick={() => { setRosterLocked(true); setMobilePanel("cards"); window.scrollTo(0, 0); }} style={{ ...bs("#5A9C3A"), fontSize: 13, padding: "8px 14px" }}>Start game <Fwd /></button>
                   )}
                 </div>
                 {isComplete && (
@@ -8662,7 +8663,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP }) {
                     <div style={{ fontSize: 13, fontWeight: 700, color: oppRoster ? "#B8341C" : "#6B9BF7", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.08em" }}>
                       {oppRoster ? "Opponent: " + oppRoster.faction.name + " (" + oppRoster.operatives.length + ")" : "Import a roster"}
                     </div>
-                    <span style={{ color: "#9AA5B1" }}><Icon name={showImport ? "chevronUp" : "chevronDown"} size={22} /></span>
+                    <span style={{ display: "inline-flex", marginTop: 1 }}><Arrow open={showImport} /></span>
                   </div>
 
                   {showImport && !oppRoster && (
@@ -13673,7 +13674,10 @@ function Rules() {
 /* ═══ MISSIONS ═══ */
 const modeColor = (m) => m.startsWith("Co-op") ? "#5A9C3A" : m.startsWith("Head") ? "#C9772E" : "#9AA5B1";
 const missionLabel = (m) => typeof m.num === "number" ? "Mission " + m.num : m.num === "AO" ? "Head-to-head rules" : "Maps";
-const Arrow = ({ open }) => <span aria-hidden="true" style={{ display: "inline-flex", flexShrink: 0, color: open ? "#C9772E" : "#9AA5B1", transform: open ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}><Icon name="chevronRight" size={20} /></span>;
+// Arrows: Arrow (down, flips up) = opens in place; Fwd (right) = goes forward; Back (left) = goes back.
+const Arrow = ({ open }) => <span aria-hidden="true" style={{ display: "inline-flex", flexShrink: 0, color: open ? "#C9772E" : "#9AA5B1", transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}><Icon name="chevronDown" size={20} /></span>;
+const Fwd = ({ size = 16 }) => <Icon name="chevronRight" size={size} style={{ verticalAlign: "-0.2em" }} />;
+const Back = ({ size = 16 }) => <Icon name="chevronLeft" size={size} style={{ verticalAlign: "-0.2em" }} />;
 const sectionHead = (text) => <div style={{ ...h3, color: "#C9772E", margin: "20px 0 8px" }}>{text}</div>;
 
 function MapImages({ ids }) {
@@ -13707,8 +13711,8 @@ function MapImages({ ids }) {
         <div onClick={() => setView(null)} style={{ position: "fixed", inset: 0, zIndex: 10000, background: "rgba(8,9,12,0.94)", display: "flex", flexDirection: "column" }}>
           <div onClick={e => e.stopPropagation()} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px" }}>
             <span style={{ flex: 1, ...mu, fontSize: 12 }}>{ids.length > 1 ? "Page " + (view + 1) + " of " + ids.length + " · " : ""}{zoom ? "Tap to fit" : "Tap to zoom"}</span>
-            {ids.length > 1 && <button onClick={() => show((view - 1 + ids.length) % ids.length)} aria-label="Previous page" style={navBtn}>{"‹"}</button>}
-            {ids.length > 1 && <button onClick={() => show((view + 1) % ids.length)} aria-label="Next page" style={navBtn}>{"›"}</button>}
+            {ids.length > 1 && <button onClick={() => show((view - 1 + ids.length) % ids.length)} aria-label="Previous page" style={navBtn}><Back size={20} /></button>}
+            {ids.length > 1 && <button onClick={() => show((view + 1) % ids.length)} aria-label="Next page" style={navBtn}><Fwd size={20} /></button>}
             <button onClick={() => setView(null)} aria-label="Close" style={navBtn}>{"✕"}</button>
           </div>
           <div onClick={e => e.stopPropagation()} style={{ flex: 1, minHeight: 0, overflow: "auto", display: "flex", alignItems: zoom ? "flex-start" : "center", justifyContent: zoom ? "flex-start" : "center", padding: zoom ? 0 : "0 12px 12px" }}>
@@ -13992,7 +13996,7 @@ function Missions() {
   const pack = MISSION_PACKS.find(p => p.id === packId);
   const mission = pack && missionIdx != null ? pack.missions[missionIdx] : null;
   const go = (pid, mi) => { setPackId(pid); setMissionIdx(mi); window.scrollTo(0, 0); };
-  const back = (label, onClick) => <button onClick={onClick} style={{ ...bs("#9AA5B1"), padding: "6px 12px", fontSize: 12, marginBottom: 12 }}>{"←"} {label}</button>;
+  const back = (label, onClick) => <button onClick={onClick} style={{ ...bs("#9AA5B1"), padding: "6px 12px", fontSize: 12, marginBottom: 12 }}><Back /> {label}</button>;
   const rules = (items, prefix) => items.map(it => <RuleItem key={prefix + it.name} item={it} open={!!open[prefix + it.name]} onToggle={() => toggle(prefix + it.name)} />);
   const filters = ["All", "Co-op / solo", "Head-to-head"];
   const shown = MISSION_PACKS.filter(p => filter === "All" || p.modes.some(m => m.startsWith(filter.slice(0, 5))));
@@ -14123,7 +14127,7 @@ function Tutorial() {
   const Say = ({ children }) => <p style={{ fontSize: 15, color: "#E4E7EB", lineHeight: 1.65, marginBottom: 12 }}>{children}</p>;
   const B = ({ children, color }) => <strong style={{ color: color || "#C9772E", fontWeight: 700 }}>{children}</strong>;
   const Next = ({ to, label }) => (
-    <button onClick={() => go(to)} style={{ ...bs("#C9772E"), background: "#C9772E18", padding: "12px 18px", fontSize: 14, marginTop: 6, display: "inline-flex", alignItems: "center", gap: 6 }}>{label || "Continue"} {"›"}</button>
+    <button onClick={() => go(to)} style={{ ...bs("#C9772E"), background: "#C9772E18", padding: "12px 18px", fontSize: 14, marginTop: 6, display: "inline-flex", alignItems: "center", gap: 6 }}>{label || "Continue"} <Fwd /></button>
   );
   const Act = ({ children, onClick, color, disabled }) => (
     <button onClick={onClick} disabled={disabled} style={{ ...bs(color || "#C9772E"), background: (color || "#C9772E") + "18", padding: "12px 16px", fontSize: 14, width: "100%", marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: disabled ? 0.4 : 1, cursor: disabled ? "default" : "pointer" }}>{children}</button>
@@ -14311,7 +14315,7 @@ function Tutorial() {
               The Ork saves {d.crits + d.normals} and blocks as well as he can. <B>{shot.crits} crit{shot.crits === 1 ? "" : "s"}</B> and <B>{shot.normals} normal hit{shot.normals === 1 ? "" : "s"}</B> get through: <B color="#D0573A">{shot.damage} damage</B>.
             </Box>
             <Say>{shot.damage >= 10 ? <>That's 10 or more: the Kommando Boy is <B color="#D0573A">incapacitated</B> and removed.</> : shot.damage >= 5 ? <>He drops below half his wounds, so he's <B color="#FFB627">injured</B>: -2" Move and his weapons hit 1 worse.</> : shot.damage > 0 ? <>He's hurt but still fighting.</> : <>All blocked. He shrugs it off.</>}</Say>
-            <button onClick={() => { setHp(h => ({ ...h, boy: 10 - shot.damage })); go(6); }} style={{ ...bs("#C9772E"), background: "#C9772E18", padding: "12px 18px", fontSize: 14 }}>Continue {"›"}</button>
+            <button onClick={() => { setHp(h => ({ ...h, boy: 10 - shot.damage })); go(6); }} style={{ ...bs("#C9772E"), background: "#C9772E18", padding: "12px 18px", fontSize: 14 }}>Continue <Fwd /></button>
           </div>
         )}
       </div>
@@ -14356,7 +14360,7 @@ function Tutorial() {
             <div style={{ marginBottom: 4 }}><B color="#D0573A">Nob left:</B> {chips(fight.opp, "#D0573A")}</div>
             <div><B color="#5A9C3A">You left:</B> {chips(fight.you, "#5A9C3A")}</div>
           </Box>
-          {!fightOver && fight.turn === "opp" && <Act onClick={oppResolves} color="#D0573A">Nob's turn: see what he does {"›"}</Act>}
+          {!fightOver && fight.turn === "opp" && <Act onClick={oppResolves} color="#D0573A">Nob's turn: see what he does <Fwd /></Act>}
           {!fightOver && fight.turn === "you" && (
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
               <button onClick={() => youResolve("strike")} style={{ ...bs("#5A9C3A"), background: "#5A9C3A18", padding: "12px", fontSize: 14 }}>Strike</button>
@@ -14416,7 +14420,7 @@ function Tutorial() {
         <div style={{ fontSize: 24, fontWeight: 700, color: "#F1F2F5", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.02em", marginBottom: 12 }}>{TUT_STEPS[step][1]}</div>
         {body[step]()}
       </div>
-      {step > 0 && step < TUT_STEPS.length - 1 && <button onClick={() => go(step - 1)} className="link-btn" style={{ background: "none", border: "none", color: "#9AA5B1", cursor: "pointer", fontSize: 13, marginTop: 10, padding: 0 }}>{"‹"} Back a step</button>}
+      {step > 0 && step < TUT_STEPS.length - 1 && <button onClick={() => go(step - 1)} className="link-btn" style={{ background: "none", border: "none", color: "#9AA5B1", cursor: "pointer", fontSize: 13, marginTop: 10, padding: 0 }}><Back /> Back a step</button>}
     </div>
   );
 }
