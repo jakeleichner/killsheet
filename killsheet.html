@@ -5867,7 +5867,7 @@ function useLocalStorage(key, initialValue) {
   });
   useEffect(() => {
     try {
-      if (typeof window === "undefined") return;
+      if (typeof window === "undefined" || window.__ksFrozen) return; // frozen: the self-test has put your data back
       window.localStorage.setItem(fullKey, JSON.stringify(value));
     } catch (e) { /* quota or serialization errors ignored */ }
   }, [fullKey, value]);
@@ -15328,6 +15328,173 @@ function CampaignCard({ c, setC, mobile, f, showToast, playing }) {
   );
 }
 
+/* ═══ SELF-TEST (open the app with ?selftest) ═══ */
+// Clicks through the whole app and reports anything that breaks. It saves your data first,
+// runs on a clean slate, then puts your data back. Results appear in a panel over the app.
+async function runSelfTest() {
+  const results = [];
+  const errors = [];
+  const saved = snapshotKillSheetStorage();
+  const orig = { prompt: window.prompt, confirm: window.confirm, alert: window.alert, error: console.error, createObjectURL: URL.createObjectURL, share: navigator.share, aClick: HTMLAnchorElement.prototype.click };
+  const onError = (e) => errors.push(String(e.message || e));
+  window.addEventListener("error", onError);
+  console.error = (...a) => { const t = a.map(String).join(" "); if (!/BABEL|Babel|deoptimised/.test(t)) errors.push(t.slice(0, 300)); orig.error.apply(console, a); };
+  window.prompt = (msg, def) => def || "Self-test";
+  window.confirm = () => true;
+  window.alert = () => {};
+  let lastBlob = null;
+  URL.createObjectURL = (b) => { lastBlob = b; return orig.createObjectURL.call(URL, b); };
+  HTMLAnchorElement.prototype.click = function () { if (!this.download) orig.aClick.call(this); };
+  try { navigator.share = undefined; } catch (e) { /* read-only in some browsers */ }
+
+  const tick = () => new Promise(r => { const ch = new MessageChannel(); ch.port1.onmessage = r; ch.port2.postMessage(0); });
+  const settle = async (n = 12) => { for (let i = 0; i < n; i++) await tick(); };
+  const wait = (ms) => new Promise(r => setTimeout(r, ms));
+  const vis = (e) => e && e.offsetParent !== null;
+  const all = (sel) => [...document.querySelectorAll(sel)].filter(vis);
+  const btn = (text, exact) => all("button,[role=button]").filter(e => !e.closest("nav")).find(e => exact ? e.textContent.trim() === text : e.textContent.trim().startsWith(text));
+  const click = async (el, what) => { if (!el) throw new Error("couldn't find " + what); el.click(); await settle(); };
+  const nav = async (label) => click([...document.querySelectorAll("nav button")].find(b => b.textContent.trim() === label), label + " tab");
+  const typeInto = async (el, text) => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, text); el.dispatchEvent(new Event("input", { bubbles: true })); await settle(); };
+  const store = (k) => { try { return JSON.parse(snapshotKillSheetStorage()[LS_PREFIX + k] || "null"); } catch (e) { return null; } };
+  const step = async (name, fn) => {
+    const before = errors.length, t0 = performance.now();
+    try { const note = await fn(); results.push({ name, ok: errors.length === before, note: errors.length > before ? errors.slice(before).join(" / ") : (note || ""), ms: Math.round(performance.now() - t0) }); }
+    catch (e) { results.push({ name, ok: false, note: String(e.message || e) + (errors.length > before ? " / " + errors.slice(before).join(" / ") : ""), ms: Math.round(performance.now() - t0) }); }
+  };
+  const panel = document.createElement("div");
+  panel.setAttribute("role", "status");
+  panel.style.cssText = "position:fixed;left:8px;right:8px;top:8px;z-index:100000;background:#14161B;border:1px solid #3A4150;border-radius:8px;padding:12px;color:#F1F2F5;font:13px Inter,sans-serif;max-height:85vh;overflow:auto;box-shadow:0 8px 24px rgba(0,0,0,.6)";
+  panel.textContent = "Self-test running...";
+  document.body.appendChild(panel);
+  const progress = (t) => { panel.textContent = "Self-test running: " + t; };
+
+  restoreKillSheetStorage({});
+  await settle(20);
+
+  await step("Every tab opens", async () => {
+    for (const t of ["Rules", "Missions", "Battle", "Community"]) { await nav(t); if (!all("h1,h2,div").length) throw new Error(t + " is empty"); }
+  });
+  await step("Rules: sections, search and tutorial", async () => {
+    await nav("Rules");
+    for (const s of ["How to Play", "Moving & Terrain", "Combat", "Equipment", "Glossary"]) await click(btn(s, true), s);
+    const search = all("input").find(i => /Search all rules/.test(i.placeholder));
+    await typeInto(search, "cover");
+    if (!/cover/i.test(document.body.innerText)) throw new Error("search found nothing for 'cover'");
+    await typeInto(search, "");
+    await click(btn("How to Play", true), "How to Play");
+    await click(btn("New to Kill Team"), "tutorial card");
+    for (let i = 0; i < 4; i++) { const b = all("button").find(x => /^(Start|Next|Continue|Roll)/.test(x.textContent.trim())); if (b) { b.click(); await settle(); } }
+    await click(btn("Rules", true), "tutorial back button");
+  });
+  await step("Missions: every pack, mission and map", async () => {
+    await nav("Missions");
+    const packs = MISSION_PACKS.length; let missions = 0, maps = 0;
+    for (const p of MISSION_PACKS) {
+      progress("mission pack " + p.name);
+      await click(all("[role=button]").find(e => e.textContent.trim().startsWith(p.name)), "pack " + p.name);
+      for (let mi = 0; mi < p.missions.length; mi++) {
+        const m = p.missions[mi];
+        const card = all("[role=button],button").find(e => e.textContent.includes(m.name));
+        if (!card) continue;
+        card.click(); await settle(); missions++;
+        const thumb = all("button").find(b => b.querySelector("img[alt='Mission map page']"));
+        if (thumb) { thumb.click(); await settle(); maps++; document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })); window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })); await settle(); }
+        const back = all("button").find(b => b.textContent.trim() === p.name); if (back) { back.click(); await settle(); }
+      }
+      const toPacks = all("button").find(b => b.textContent.trim() === "All packs"); if (toPacks) { toPacks.click(); await settle(); }
+    }
+    return packs + " packs, " + missions + " missions, " + maps + " maps opened";
+  });
+  await step("Every team: pick, build, play, end game", async () => {
+    await nav("Battle");
+    let done = 0; const problems = [];
+    for (const fc of Object.values(FACTIONS)) {
+      progress("team " + fc.name + " (" + (done + 1) + "/" + Object.keys(FACTIONS).length + ")");
+      try {
+        const change = btn("Change team", true); if (change) await click(change, "Change team");
+        const search = all("input").find(i => i.placeholder === "Search teams or factions");
+        await typeInto(search, fc.name);
+        await click(all("[role=button]").find(e => e.textContent.trim().endsWith(fc.name)), "team card");
+        await click(btn("Build my roster") || btn("Continue with this team"), "Build my roster");
+        const rows = all("[role=button]").filter(e => /W\s*•/.test(e.textContent) && e.textContent.length < 120).slice(0, 4);
+        for (const r of rows) { r.click(); await settle(); }
+        const plus = all("button[aria-label^='Add ']")[0]; if (plus) { plus.click(); await settle(); }
+        if (!(store("roster") || []).length) throw new Error("no operatives added");
+        await click(btn("Start game"), "Start game");
+        const cards = all(".datacard-print");
+        if (!cards.length) throw new Error("no datacards shown");
+        cards[0].querySelector("[role=button]").click(); await settle();
+        const minus = all("button[aria-label^='Remove a wound']")[0] || all("button").find(b => b.textContent.trim() === "−"); if (minus) { minus.click(); await settle(); }
+        await click(document.querySelector("[aria-label='Game menu']"), "game menu");
+        await click(btn("End game"), "End game");
+        await click(btn("Save result", true), "Save result");
+        await click(btn("Edit roster") || btn("Ploys & rules") , "back to roster");
+        const edit = btn("Edit roster"); if (edit) await click(edit, "Edit roster");
+      } catch (e) { problems.push(fc.name + ": " + e.message); }
+      done++;
+    }
+    const games = (store("gameHistory") || []).length;
+    if (problems.length) throw new Error(problems.join("; "));
+    return done + " teams played, " + games + " games recorded";
+  });
+  await step("Save a roster and back up", async () => {
+    await nav("Battle");
+    const dc = btn("Datacards", true); if (dc) await click(dc, "Datacards");
+    const save = btn("Save", true) || all("button").find(b => b.textContent.trim() === "Save"); if (save) await click(save, "Save");
+    await click(document.querySelector("[aria-label='Game menu']"), "game menu");
+    await click(btn("Back up"), "Back up");
+    if (!lastBlob) throw new Error("no backup file was made");
+    const data = JSON.parse(await lastBlob.text());
+    if (data.app !== "KillSheet" || !Object.keys(data.data || {}).length) throw new Error("backup file is empty");
+    return Object.keys(data.data).length + " items in the backup";
+  });
+  await step("Campaign: set up and play a round", async () => {
+    await nav("Missions");
+    await click(btn("Start a campaign") || btn("Continue your campaign"), "Start a campaign");
+    const hexes = () => [...document.querySelectorAll("g[role=button]")].filter(g => g.closest("svg").getBoundingClientRect().width > 0);
+    const base = hexes().find(g => / surface/.test(g.getAttribute("aria-label")));
+    base.dispatchEvent(new MouseEvent("click", { bubbles: true })); await settle();
+    await click(btn("Start campaign", true), "Start campaign");
+    const target = hexes().find(g => [...g.querySelectorAll("text")].some(t => / SP$/.test(t.textContent)));
+    target.dispatchEvent(new MouseEvent("click", { bubbles: true })); await settle();
+    await click(btn("Move here"), "Move here");
+    await click(btn("Won", true), "Won");
+    await click(btn("Skip", true), "Skip");
+    await click(btn("End round"), "End round");
+    const c = store("campaign");
+    if (!c || c.round !== 2) throw new Error("campaign didn't reach round 2");
+    return "round 2, " + c.stats.explored + " hex(es) explored";
+  });
+
+  // Put everything back the way it was, and stop the app saving its test state over it until reload.
+  window.__ksFrozen = true;
+  window.removeEventListener("error", onError);
+  console.error = orig.error; window.prompt = orig.prompt; window.confirm = orig.confirm; window.alert = orig.alert;
+  URL.createObjectURL = orig.createObjectURL; HTMLAnchorElement.prototype.click = orig.aClick;
+  try { navigator.share = orig.share; } catch (e) { /* ignore */ }
+  restoreKillSheetStorage(saved);
+
+  const passed = results.filter(r => r.ok).length;
+  window.__ksSelfTest = { passed, failed: results.length - passed, results };
+  panel.innerHTML = "";
+  const head = document.createElement("div");
+  head.style.cssText = "font:700 16px Rajdhani,sans-serif;margin-bottom:8px;color:" + (passed === results.length ? "#5A9C3A" : "#E0664A");
+  head.textContent = "Self-test: " + passed + " of " + results.length + " passed";
+  panel.appendChild(head);
+  results.forEach(r => {
+    const line = document.createElement("div");
+    line.style.cssText = "padding:4px 0;border-top:1px solid #262A33;color:" + (r.ok ? "#C8CDD3" : "#E0664A");
+    line.textContent = (r.ok ? "PASS  " : "FAIL  ") + r.name + (r.note ? ": " + r.note : "") + " (" + (r.ms / 1000).toFixed(1) + "s)";
+    panel.appendChild(line);
+  });
+  const back = document.createElement("button");
+  back.textContent = "Back to the app";
+  back.style.cssText = "margin-top:10px;padding:8px 14px;background:transparent;color:#C9772E;border:1px solid #C9772E60;border-radius:4px;cursor:pointer";
+  back.onclick = () => { window.location.href = window.location.pathname; };
+  panel.appendChild(back);
+}
+
 /* ═══ APP ═══ */
 function App() {
   const [tab, setTab] = useLocalStorage("tab", "builder");
@@ -15335,6 +15502,7 @@ function App() {
   const [tutorialOpen, setTutorialOpen] = useState(false);
   const [tutorialSeen, setTutorialSeen] = useLocalStorage("tutorialSeen", false);
   const [campaign, setCampaign] = useLocalStorage("campaign", null); // Ctesiphus Expedition, shared by Missions and Battle
+  React.useEffect(() => { if (/[?&]selftest\b/.test(window.location.search)) setTimeout(runSelfTest, 1000); }, []);
   const openTutorial = () => { setTab("rules"); setTutorialOpen(true); setTutorialSeen(true); window.scrollTo(0, 0); };
   // Migration: old persisted tabs ("sequence" was deleted, "tutorial" moved into Rules)
   React.useEffect(() => {
