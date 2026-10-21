@@ -16,10 +16,11 @@ The name and branding were deliberately kept generic ("KillSheet," not "Kill Tea
 
 ## Vision (check every feature against this)
 
-KillSheet is a companion for a game played on a real table. A beginner should be able to pick a team, build a legal roster and play a game with only the basics in front of them. An experienced player should be able to switch on more detail when they want it.
+KillSheet is a companion for a game played on a real table, designed around beginners. New players (the owner is one) should learn the game with it, and KillSheet should grow along with them: it starts with the basics, and more detail switches on as they're ready for it.
 
 - **Beginners see the basics by default:** team, roster, datacards, command points, victory points and the turning point. Rules are in plain words, one line each, with a tap for more.
-- **Experts switch on detail.** Extra tracking, mission tools and deeper rules sit behind a switch, a ⋯ menu or a tap, and stay out of a first-timer's way until someone opts in.
+- **Detail is switched on, never hidden away.** Extra tracking, mission tools and deeper rules each have a switch. A beginner can always see what's available and what each switch does, and turn it on when they want it.
+- **KillSheet grows with the player.** It can suggest the next piece of detail when the player is likely ready (for example after their first few games), one at a time, and it's easy to say no.
 - **Experts turn on detail; they don't add their own content.** No house rules, custom missions or personal notes. The app's rules and data come from GW's free downloads.
 - **The table comes first.** The app holds what's easy to forget (rules, numbers, what's been used). What the table already does well (the board, the models, measuring) stays on the table.
 - **Before building a feature,** say which side it serves (beginner basics or expert detail), what a first-timer sees of it by default, and whether it repeats something the table already does.
@@ -243,7 +244,7 @@ Estimated 2-3 hours. Should be its own focused session with its own QA pass (mix
 - Pre-ship checker added: `python3 tools/check.py` (hooks before early returns, every tab has an icon and panel, unique localStorage keys, no direct localStorage use, print class, JSX script tag).
 
 ### Other open tasks (rough priority order)
-- **Beginner walkthrough findings (Oct '26), waiting on the owner's decisions.** A fresh phone run (empty storage, build Kommandos, start a game, look at every panel) against the Vision section. Proposed: one "More detail" switch (off for new players) that hides or shows the expert parts. Off: VP is two +/- counters; on: the per-TP primary grid, opponent primary and tac op rows. Off: the turning point guide is open and easy to reach; collapsed datacards label APL/Move/Save; TP, CP, VP, W and APL get a one-line explanation. Other items: the "Standard game · 3 equipment · 4 turning points · Change" line stays on screen during play; the Missions tab opens with the campaign card above the packs; the Community tab is a placeholder taking a nav slot; the Killzone setting does nothing (free rules exist only for Tomb World, which also covers Gallowdark); Dynamite and Harpoon equipment text says "using the profile below" but the picker shows no profile; "Roster complete" and "Roster Valid" both show under the roster.
+- **Beginner walkthrough findings (Oct '26), waiting on the owner's decisions.** A fresh phone run (empty storage, build Kommandos, start a game, look at every panel) against the Vision section. Proposed (now superseded by the "grows with you" plan below, pending approval): beginner defaults. Beginner: VP is two +/- counters; detail on: the per-TP primary grid, opponent primary and tac op rows. Beginner: the turning point guide is open and easy to reach; collapsed datacards label APL/Move/Save; TP, CP, VP, W and APL get a one-line explanation. Other items: the "Standard game · 3 equipment · 4 turning points · Change" line stays on screen during play; the Missions tab opens with the campaign card above the packs; the Community tab is a placeholder taking a nav slot; the Killzone setting does nothing (free rules exist only for Tomb World, which also covers Gallowdark); Dynamite and Harpoon equipment text says "using the profile below" but the picker shows no profile; "Roster complete" and "Roster Valid" both show under the roster.
 - **Legion of the Damned**: previewed in the Big Autumn Preview; add once its rules are published.
 
 ### Lower-priority backlog
