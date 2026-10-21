@@ -6579,13 +6579,23 @@ function Datacard({ op, fc, equipWeapons, equipEffects, curWounds, onWound, coll
                   <span style={{ fontSize: 16, fontWeight: 600, color: DS.textPrimary }}>{op.apl}</span>
                   <span style={{ fontSize: 16, fontWeight: 600, color: injured ? DS.threat : DS.textPrimary }}>{moveDisplay}</span>
                   <span style={{ fontSize: 16, fontWeight: 600, color: DS.textPrimary }}>{op.save}</span>
-                  <span style={{ fontSize: 16, fontWeight: 700, color: woundColorTone }}>{cw}/{maxW}</span>
-                  {incapacitated && <Icon name="skull" size={14} color={DS.threat} />}
                 </div>
+  );
+  const woundBtn = (delta) => (
+    <button className="compact-btn" onClick={(e) => { e.stopPropagation(); onWound(delta); }} aria-label={(delta < 0 ? "Remove a wound from " : "Add a wound to ") + op.name}
+      style={{ width: 32, height: 32, border: "1px solid " + DS.divider, borderRadius: 4, background: DS.bgElevated, color: delta < 0 ? DS.threat : DS.success, cursor: "pointer", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, lineHeight: 1 }}>{delta < 0 ? "\u2212" : "+"}</button>
+  );
+  const woundsInline = (
+    <div onClick={e => e.stopPropagation()} style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, fontFamily: DS.fontDisplay, cursor: "default" }}>
+      {onWound && woundBtn(-1)}
+      <span style={{ fontSize: 16, fontWeight: 700, color: woundColorTone, minWidth: 34, textAlign: "center" }}>{cw}/{maxW}</span>
+      {onWound && woundBtn(1)}
+      {incapacitated && <Icon name="skull" size={14} color={DS.threat} />}
+    </div>
   );
 
   return (
-    <div className="datacard-print" style={{ background: DS.bgCard, borderRadius: 6, marginBottom: 12, boxShadow: "0 4px 16px rgba(0,0,0,0.35)", overflow: "hidden", opacity: cardOpacity, position: "relative", display: "flex", fontFamily: DS.fontBody }}>
+    <div className="datacard-print" style={{ background: DS.bgCard, borderRadius: 6, marginBottom: collapsed ? 8 : 12, boxShadow: "0 4px 16px rgba(0,0,0,0.35)", overflow: "hidden", opacity: cardOpacity, position: "relative", display: "flex", fontFamily: DS.fontBody }}>
       {/* Faction color accent stripe */}
       <div style={{ width: 4, background: incapacitated ? DS.textTertiary : fc, flexShrink: 0 }} />
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -6596,21 +6606,23 @@ function Datacard({ op, fc, equipWeapons, equipEffects, curWounds, onWound, coll
         )}
 
         {/* Header: clickable */}
-        <div role="button" tabIndex={0} onClick={onToggle} style={{ padding: "14px 16px 12px", cursor: "pointer", userSelect: "none", opacity: isActivated ? 0.55 : 1 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+        <div role="button" tabIndex={0} onClick={onToggle} style={{ padding: collapsed ? "10px 12px" : "14px 16px 12px", cursor: "pointer", userSelect: "none", opacity: isActivated ? 0.55 : 1 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: collapsed ? "center" : "flex-start", gap: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div style={{ fontFamily: DS.fontDisplay, fontSize: 18, fontWeight: 600, color: DS.textPrimary, lineHeight: 1.15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: isActivated ? "line-through" : "none" }}>{op.name}</div>
-                <div style={{ fontFamily: DS.fontDisplay, fontSize: 11, fontWeight: 500, color: fc, marginTop: 3, letterSpacing: "0.14em", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{op.kw || "OPERATIVE"}</div>
+                {!collapsed && <div style={{ fontFamily: DS.fontDisplay, fontSize: 11, fontWeight: 500, color: fc, marginTop: 3, letterSpacing: "0.14em", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{op.kw || "OPERATIVE"}</div>}
               </div>
               {collapsed && !mobile && statsInline}
+              {collapsed && !mobile && woundsInline}
             </div>
             {!mobile && readyChip}
             {!mobile && onOrder && <OrderChip order={order} onToggle={onOrder} />}
-            <span style={{ display: "inline-flex", marginTop: 1 }}><Arrow open={!collapsed} /></span>
+            {collapsed && mobile && woundsInline}
+            <span style={{ display: "inline-flex", alignSelf: "center" }}><Arrow open={!collapsed} /></span>
           </div>
           {mobile && (readyChip || onOrder || collapsed) && (
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: collapsed ? 6 : 8, flexWrap: "wrap" }}>
               {readyChip}
               {onOrder && <OrderChip order={order} onToggle={onOrder} />}
               {collapsed && <div style={{ marginLeft: "auto" }}>{statsInline}</div>}
@@ -7315,7 +7327,13 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
     setWounds(prev => ({ ...prev, [opId]: next }));
   };
   const resetAllWounds = () => setWounds({});
-  const toggleCardCollapse = (opId) => setCardCollapsed(prev => ({ ...prev, [opId]: !prev[opId] }));
+  // Opening a card closes the others, so the list stays short during a game.
+  const toggleCardCollapse = (opId) => setCardCollapsed(prev => {
+    if (!prev[opId]) return { ...prev, [opId]: true };
+    const next = {};
+    roster.forEach(op => { next[op.id] = op.id !== opId; });
+    return next;
+  });
   const collapseAll = () => { const c = {}; roster.forEach(op => { c[op.id] = true; }); setCardCollapsed(c); };
   const expandAll = () => setCardCollapsed({});
 
@@ -8361,7 +8379,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                     {v.selections}{f.composition ? "/" + f.composition.total : ""} selected {"\u2022"} {roster.reduce((s, o) => s + o.wounds, 0)}W
                   </div>
                   {roster.length > 0 && (
-                    <button onClick={() => { setRosterLocked(true); setMobilePanel("cards"); window.scrollTo(0, 0); }} style={{ ...bs("#5A9C3A"), fontSize: 13, padding: "8px 14px" }}>Start game <Fwd /></button>
+                    <button onClick={() => { setRosterLocked(true); setMobilePanel("cards"); collapseAll(); window.scrollTo(0, 0); }} style={{ ...bs("#5A9C3A"), fontSize: 13, padding: "8px 14px" }}>Start game <Fwd /></button>
                   )}
                 </div>
                 {isComplete && (
