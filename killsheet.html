@@ -6665,10 +6665,10 @@ function Datacard({ op, fc, equipWeapons, equipEffects, curWounds, onWound, coll
               )}
 
               {canPick && (
-                <div style={{ marginBottom: 14, padding: "8px 10px", borderRadius: 6, background: chosen ? "transparent" : "#FFB62710", border: "1px solid " + (chosen ? DS.divider : "#FFB62740") }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: chosen ? DS.textSecondary : "#FFB627" }}>{chosen ? "Carrying: " + [...chosen].join(", ") : "Showing every weapon option. Pick the ones this model carries."}</span>
-                    <button onClick={(e) => { e.stopPropagation(); setPickWeapons(!pickWeapons); }} style={{ ...bs(pickWeapons ? "#5A9C3A" : "#C9772E"), padding: "6px 12px", fontSize: 12, flexShrink: 0 }}>{pickWeapons ? "Done" : chosen ? "Change" : "Pick weapons"}</button>
+                <div style={{ marginBottom: 12, padding: pickWeapons ? "8px 10px" : 0, borderRadius: 6, border: pickWeapons ? "1px solid " + DS.divider : "none" }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap", fontSize: 13 }}>
+                    <span style={{ color: DS.textSecondary }}>{chosen ? "Carrying: " + [...chosen].join(", ") : "Showing every weapon option."}</span>
+                    <button className="link-btn" onClick={(e) => { e.stopPropagation(); setPickWeapons(!pickWeapons); }} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: pickWeapons ? "#5A9C3A" : "#C9772E", textDecoration: "underline", fontSize: 13, fontWeight: 600 }}>{pickWeapons ? "Done" : chosen ? "Change" : "Pick weapons"}</button>
                   </div>
                   {pickWeapons && (
                     <div onClick={e => e.stopPropagation()} style={{ marginTop: 8 }}>
@@ -6863,6 +6863,7 @@ function TurnGuide({ tp, numTPs, setTp, hasInitiative, onInitiative, cp, f, rost
 
 function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen, setTutorialSeen, openTutorial }) {
   const mobile = useIsMobile();
+  const compactBar = useIsMobile(1000); // the full score bar needs about 1000px; below that it uses the phone layout
   const navH = mobile ? 54 : 52; // height of the sticky tab bar
   // Persisted game state
   const [gameConfig, setGameConfig] = useLocalStorage("gameConfig", null);
@@ -6873,6 +6874,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   const [wounds, setWounds] = useLocalStorage("wounds", {});
   const [validate, setValidate] = useLocalStorage("validate", true);
   const [rosterLocked, setRosterLocked] = useLocalStorage("rosterLocked", false);
+  const barH = rosterLocked ? BAR_H : 0; // the score bar only shows once the game starts
   // On a phone, building starts on the operative list; playing starts on the datacards.
   React.useEffect(() => { setMobilePanel(rosterLocked ? "cards" : "roster"); }, [rosterLocked, fid]);
   const [cardCollapsed, setCardCollapsed] = useLocalStorage("cardCollapsed", {});
@@ -6910,11 +6912,13 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   const [mobilePanel, setMobilePanel] = useState("cards");
   const [showScoring, setShowScoring] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  const [cardsMenu, setCardsMenu] = useState(false); // ⋯ menu on the datacards bar
   const [importCode, setImportCode] = useState("");
   const [importError, setImportError] = useState("");
   const [setupRef, setSetupRef] = useState({ pack: "", idx: "" });
   const [savedMenu, setSavedMenu] = useState(null);
   const [showSetup, setShowSetup] = useState(false);
+  const [showUniv, setShowUniv] = useState(false); // universal equipment list, folded while building
   const [peek, setPeek] = useState(null); // team opened inline in the picker
   const [peekRule, setPeekRule] = useState(null);
   const peekScrolled = React.useRef(null);
@@ -7946,15 +7950,16 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
           <button onClick={() => setShowSetup(true)} className="link-btn" style={{ background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", ...mu, fontSize: 13 }}>{[gc.mission ? gc.missionName : gc.auto || (!gc.missionName && gc.equipSlots === 3 && gc.numTacOps === 3 && gc.numTPs === 4) ? "Standard game" : (gc.missionName || "Custom game"), gc.killzone !== "open" ? killzoneNames[gc.killzone] : null, gc.equipSlots + " equipment", gc.numTPs + " turning points", validate ? null : "validation off"].filter(Boolean).join(" \u00b7 ")} <span style={{ color: "#C9772E", textDecoration: "underline" }}>Change</span></button>
         </div>
         <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0, position: "relative" }}>
-          <button onClick={() => setShowMP(true)} title={mp.status === "connected" ? "Connected: " + mp.roomCode : mp.status === "hosting" ? "Hosting: " + mp.roomCode : "Multiplayer"} style={{ ...bs(mp.status === "connected" ? "#3D6B3F" : mp.status === "hosting" || mp.status === "joining" ? "#C9772E" : mp.status === "error" ? "#B8341C" : "#6B9BF7"), fontSize: 12, padding: "8px 12px", background: mp.status === "connected" ? "#3D6B3F20" : mp.status === "hosting" || mp.status === "joining" ? "#C9772E20" : "transparent" }}>
+          {mp.status !== "idle" && <button onClick={() => setShowMP(true)} title={mp.status === "connected" ? "Connected: " + mp.roomCode : mp.status === "hosting" ? "Hosting: " + mp.roomCode : "Multiplayer"} style={{ ...bs(mp.status === "connected" ? "#3D6B3F" : mp.status === "hosting" || mp.status === "joining" ? "#C9772E" : mp.status === "error" ? "#B8341C" : "#6B9BF7"), fontSize: 12, padding: "8px 12px", background: mp.status === "connected" ? "#3D6B3F20" : mp.status === "hosting" || mp.status === "joining" ? "#C9772E20" : "transparent" }}>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><MPIcon name={mpIconFor(mp.status)} size={14} />{mp.status === "connected" ? "Online" : mp.status === "hosting" ? "Hosting" : mp.status === "joining" ? "Joining" : "Play online"}</span>
-          </button>
+          </button>}
           <button onClick={() => setGameMenu(!gameMenu)} aria-label="Game menu" style={{ ...bs("#9AA5B1"), padding: "8px 12px", fontSize: 16, lineHeight: 1 }}>{"\u22EF"}</button>
           {gameMenu && (
             <div>
               <div onClick={() => setGameMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
               <div style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", zIndex: 41, minWidth: 230, background: "#262A33", border: "1px solid #3A4150", borderRadius: 6, boxShadow: "0 8px 24px rgba(0,0,0,0.5)", padding: 6 }}>
                 {[
+                  mp.status === "idle" ? ["Play online", "Link up with a friend on another device", () => setShowMP(true), "#6B9BF7"] : null,
                   ["Game settings", "Mission, equipment, turning points", () => setShowSetup(true), "#F1F2F5"],
                   [validate ? "Turn validation off" : "Turn validation on", "Checks your roster against the team's rules", () => setValidate(!validate), "#F1F2F5"],
                   f ? ["Reset game", "Clears wounds, CP, VP, orders and tracking", () => withUndo("Game reset", () => { setWounds({}); setCp(3); setVpYou(0); setVpOpp(0); setUsedPloys({}); setActivated({}); setHasInitiative(true); setLastCpTp(1); setTp(1); setPrimaryYou(Array(gc.numTPs).fill(0)); setPrimaryOpp(Array(gc.numTPs).fill(0)); setTacOps(Array.from({ length: gc.numTacOps }, () => ({ name: "", checks: [false, false] }))); setOppWounds({}); setNpoUnits([]); setOrders({}); setBattleUses({}); setCounteracted({}); setGuideChecks({}); }), "#B8341C"] : null,
@@ -8031,7 +8036,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
               </div>
             )}
             {f && (
-              <button onClick={() => { setPickerOpen(false); setPickerSearch(""); setTeamIntro(false); }} style={{ ...cd, width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", marginBottom: 10, cursor: "pointer", textAlign: "left", borderTop: "2px solid " + f.color }}>
+              <button onClick={() => { setPickerOpen(false); setPickerSearch(""); setPeek(null); }} style={{ ...cd, width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", marginBottom: 10, cursor: "pointer", textAlign: "left", borderTop: "2px solid " + f.color }}>
                 <div style={bg(f.color)}>{f.badge}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", color: f.color, letterSpacing: "0.04em" }}>Continue with {f.name}</div>
@@ -8098,10 +8103,10 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
 
       {f && !pickerOpen && (
         <div className="ks-appear">
-          {/* Score bar: slim, stays under the nav while you scroll */}
-          <div style={{ position: "sticky", top: navH, zIndex: 9, background: "#0E0F13", padding: "6px 0", marginBottom: 6 }}>
-            <div style={{ ...cd, marginBottom: 0, padding: mobile ? "8px 8px" : "8px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: mobile ? 6 : 14 }}>
-              {mobile ? (
+          {/* Score bar: slim, stays under the nav while you scroll. Only during a game. */}
+          <div style={{ position: "sticky", top: navH, zIndex: 9, background: "#0E0F13", padding: "6px 0", marginBottom: 6, display: rosterLocked ? "block" : "none" }}>
+            <div style={{ ...cd, marginBottom: 0, padding: mobile ? "8px 8px" : "8px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: compactBar ? 6 : 14 }}>
+              {compactBar ? (
                 <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
                   <button className="compact-btn" onClick={() => setTp(Math.max(1, tp - 1))} disabled={tp <= 1} aria-label="Previous turning point" style={{ width: 30, height: 34, border: "1px solid #3A4150", borderRadius: 6, background: "#1A1D24", color: "#FFB627", cursor: tp <= 1 ? "default" : "pointer", opacity: tp <= 1 ? 0.35 : 1, fontSize: 16, padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><Back size={20} /></button>
                   <div style={{ textAlign: "center", minWidth: 30 }}>
@@ -8117,24 +8122,24 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                     <button key={t} onClick={() => setTp(t)} style={{ width: 34, height: 34, borderRadius: 6, background: tp === t ? "#FFB62720" : "#262A33", border: "2px solid " + (tp === t ? "#FFB627" : "#3A4150"), fontSize: 16, fontWeight: 700, color: tp === t ? "#FFB627" : "#9AA5B1", fontFamily: "'Rajdhani', sans-serif", cursor: "pointer", padding: 0 }}>{t}</button>
                   ))}
                   <button onClick={handleInitiativeToggle} title="Tap to switch initiative" style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: 6, padding: "8px 10px", borderRadius: 6, cursor: "pointer", background: hasInitiative ? "#C9772E14" : "#6B9BF714", border: "1px solid " + (hasInitiative ? "#C9772E40" : "#6B9BF740"), color: hasInitiative ? "#C9772E" : "#6B9BF7", fontFamily: "'Rajdhani', sans-serif", fontSize: 12, fontWeight: 700, letterSpacing: "0.04em" }}>
-                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: hasInitiative ? "#C9772E" : "#6B9BF7" }} />{hasInitiative ? "You have initiative" : "Opponent has initiative"}
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: hasInitiative ? "#C9772E" : "#6B9BF7" }} />{hasInitiative ? "Your initiative" : "Their initiative"}
                   </button>
                 </div>
               )}
-              <Stepper label="CP" value={cp} color={cp > 0 ? "#FFB627" : "#B8341C"} onMinus={() => setCp(Math.max(0, cp - 1))} onPlus={() => setCp(cp + 1)} compact={mobile} />
-              {!mobile && <Stepper label="You" value={vpYou + computedVpYou} color="#5A9C3A" onMinus={() => setVpYou(Math.max(0, vpYou - 1))} onPlus={() => setVpYou(vpYou + 1)} />}
-              {!mobile && <Stepper label="Opp" value={vpOpp + computedVpOpp} color="#B8341C" onMinus={() => setVpOpp(Math.max(0, vpOpp - 1))} onPlus={() => setVpOpp(vpOpp + 1)} />}
+              <Stepper label="CP" value={cp} color={cp > 0 ? "#FFB627" : "#B8341C"} onMinus={() => setCp(Math.max(0, cp - 1))} onPlus={() => setCp(cp + 1)} compact={compactBar} />
+              {!compactBar && <Stepper label="You" value={vpYou + computedVpYou} color="#5A9C3A" onMinus={() => setVpYou(Math.max(0, vpYou - 1))} onPlus={() => setVpYou(vpYou + 1)} />}
+              {!compactBar && <Stepper label="Opp" value={vpOpp + computedVpOpp} color="#B8341C" onMinus={() => setVpOpp(Math.max(0, vpOpp - 1))} onPlus={() => setVpOpp(vpOpp + 1)} />}
               <button className="compact-btn" onClick={() => setShowScoring(!showScoring)} aria-label={showScoring ? "Hide scoring" : "Show scoring"} style={{ display: "flex", alignItems: "center", gap: 6, height: 38, padding: "0 10px", borderRadius: 6, border: "1px solid " + (showScoring ? "#C9772E60" : "#3A4150"), background: showScoring ? "#C9772E14" : "transparent", cursor: "pointer", flexShrink: 0 }}>
-                {mobile && <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 20 }}><span style={{ color: "#5A9C3A" }}>{vpYou + computedVpYou}</span><span style={{ color: "#8B95A1" }}>{"–"}</span><span style={{ color: "#E0664A" }}>{vpOpp + computedVpOpp}</span></span>}
-                <span style={{ fontSize: 11, color: "#9AA5B1", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.08em", fontWeight: 700 }}>{mobile ? "VP" : "SCORING"}</span>
+                {compactBar && <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 20 }}><span style={{ color: "#5A9C3A" }}>{vpYou + computedVpYou}</span><span style={{ color: "#8B95A1" }}>{"–"}</span><span style={{ color: "#E0664A" }}>{vpOpp + computedVpOpp}</span></span>}
+                <span style={{ fontSize: 11, color: "#9AA5B1", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.08em", fontWeight: 700 }}>{compactBar ? "VP" : "SCORING"}</span>
                 <Arrow open={showScoring} />
               </button>
             </div>
           </div>
 
           {/* Full scoring panel, opened from the score bar */}
-          <div style={{ ...cd, padding: 12, marginBottom: 10, display: showScoring ? "block" : "none" }}>
-            {mobile && (
+          <div style={{ ...cd, padding: 12, marginBottom: 10, display: showScoring && rosterLocked ? "block" : "none" }}>
+            {compactBar && (
               <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 8 }}>
                 <Stepper label="Your VP" value={vpYou + computedVpYou} color="#5A9C3A" onMinus={() => setVpYou(Math.max(0, vpYou - 1))} onPlus={() => setVpYou(vpYou + 1)} />
                 <Stepper label="Opp VP" value={vpOpp + computedVpOpp} color="#B8341C" onMinus={() => setVpOpp(Math.max(0, vpOpp - 1))} onPlus={() => setVpOpp(vpOpp + 1)} />
@@ -8212,7 +8217,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
             )}
           </div>
 
-        {!mobile && roster.length > 0 && <TurnGuide tp={tp} numTPs={gc.numTPs} setTp={setTp} hasInitiative={hasInitiative} onInitiative={handleInitiativeToggle} cp={cp} f={f} roster={roster} getWounds={getWounds} activated={activated} orders={orders} counteracted={counteracted} setCounteracted={setCounteracted} checks={guideChecks} setChecks={setGuideChecks} />}
+        {!mobile && rosterLocked && roster.length > 0 && <TurnGuide tp={tp} numTPs={gc.numTPs} setTp={setTp} hasInitiative={hasInitiative} onInitiative={handleInitiativeToggle} cp={cp} f={f} roster={roster} getWounds={getWounds} activated={activated} orders={orders} counteracted={counteracted} setCounteracted={setCounteracted} checks={guideChecks} setChecks={setGuideChecks} />}
         {!(mobile && rosterLocked) && gc.mission && <MissionPanel mref={gc.mission} npoUnits={npoUnits} setNpoUnits={setNpoUnits} />}
 
         {/* Mobile panel toggle: building has two panels, playing has three */}
@@ -8232,7 +8237,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
 
         <div style={{ display: "flex", gap: 14, flexWrap: mobile ? "wrap" : "nowrap", alignItems: "flex-start" }}>
           {/* LEFT PANEL */}
-          <div style={{ width: mobile ? "100%" : 260, flexShrink: 0, display: mobile && mobilePanel !== "roster" ? "none" : "block", position: mobile ? "static" : "sticky", top: mobile ? "auto" : navH + BAR_H, maxHeight: mobile ? "none" : "calc(100vh - " + (navH + BAR_H + 10) + "px)", overflowY: mobile ? "visible" : "auto", overflowX: "hidden" }}>
+          <div style={{ width: mobile ? "100%" : 260, flexShrink: 0, display: mobile && mobilePanel !== "roster" ? "none" : "block", position: mobile ? "static" : "sticky", top: mobile ? "auto" : navH + barH, maxHeight: mobile ? "none" : "calc(100vh - " + (navH + barH + 10) + "px)", overflowY: mobile ? "visible" : "auto", overflowX: "hidden" }}>
 
             {/* Roster Section: collapsible when locked */}
             {rosterLocked ? (
@@ -8367,8 +8372,8 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
               </div>
             )}
 
-            {/* Ploys */}
-            <div style={{ ...cd, padding: 10 }}>
+            {/* Ploys: only during a game (you can read them on the team panel before that) */}
+            {rosterLocked && <div style={{ ...cd, padding: 10 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div style={{ ...h3, color: "#C9772E", marginBottom: 0 }}>PLOYS</div>
                 <div style={{ fontSize: 11, fontWeight: 700, color: cp > 0 ? "#C9772E" : "#B8341C", fontFamily: "'Rajdhani', sans-serif" }}>{cp}CP {"\u2022"} TP{tp}</div>
@@ -8419,7 +8424,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
               {cp === 0 && (
                 <div style={{ marginTop: 4, fontSize: 11, color: "#E0664A", textAlign: "center", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.06em" }}><Icon name="warning" size={12} /> No command points left</div>
               )}
-            </div>
+            </div>}
 
 
             {/* Faction Equipment */}
@@ -8449,19 +8454,20 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
 
             {/* Universal Equipment */}
             <div style={{ ...cd, padding: 10 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ ...h3, color: "#9AA5B1", marginBottom: 0 }}>UNIVERSAL EQUIPMENT</div>
+              <div role={rosterLocked ? undefined : "button"} tabIndex={rosterLocked ? undefined : 0} aria-expanded={rosterLocked ? undefined : showUniv} onClick={() => !rosterLocked && setShowUniv(!showUniv)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, cursor: rosterLocked ? "default" : "pointer", minHeight: mobile && !rosterLocked ? 40 : 0 }}>
+                <div style={{ ...h3, color: "#9AA5B1", marginBottom: 0, flex: 1 }}>UNIVERSAL EQUIPMENT{!rosterLocked && <span style={{ color: "#8B95A1", fontWeight: 400 }}> ({UNIV_EQUIP.length})</span>}</div>
                 {rosterLocked ? (
                   <div style={{ fontSize: 11, color: "#9AA5B1", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.08em" }}><Icon name="lock" size={12} /> Locked: {UNIV_EQUIP.filter(q => uEq[q.id]).length} SELECTED</div>
                 ) : validate && f && f.composition && (
                   <div style={{ fontSize: 11, color: v.equipCount > gc.equipSlots ? "#C9772E" : "#9AA5B1", fontFamily: "monospace" }}>{v.equipCount}/{gc.equipSlots} slots</div>
                 )}
+                {!rosterLocked && <Arrow open={showUniv} />}
               </div>
-              {!rosterLocked && <div style={{ ...mu, fontSize: 11, marginBottom: 4, marginTop: 2 }}>Available to all kill teams. Grenades of same type share 1 slot. Each option once per game.</div>}
-              <div style={dv} />
+              {!rosterLocked && showUniv && <div style={{ ...mu, fontSize: 11, marginBottom: 4, marginTop: 2 }}>Available to all kill teams. Grenades of the same type share 1 slot. Each option once per game.</div>}
+              {(rosterLocked || showUniv || UNIV_EQUIP.some(q => uEq[q.id])) && <div style={dv} />}
               {rosterLocked && UNIV_EQUIP.filter(q => uEq[q.id]).length === 0 && <div style={{ ...mu, fontSize: 11 }}>No universal equipment selected.</div>}
               {["Explosive Grenades", "Utility Grenades", "Equipment", "Terrain"].map(cat => {
-                const items = UNIV_EQUIP.filter(q => q.category === cat && (!rosterLocked || uEq[q.id]));
+                const items = UNIV_EQUIP.filter(q => q.category === cat && ((!rosterLocked && showUniv) || uEq[q.id]));
                 if (items.length === 0) return null;
                 return (
                   <div key={cat}>
@@ -8564,7 +8570,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
             ) : (
               <div>
                 {/* Sticky faction bar */}
-                <div style={{ position: mobile ? "static" : "sticky", top: navH + BAR_H, zIndex: 8, background: "#0E0F13", paddingBottom: 6 }}>
+                <div style={{ position: mobile ? "static" : "sticky", top: navH + barH, zIndex: 8, background: "#0E0F13", paddingBottom: 6 }}>
                   <div style={{ background: "linear-gradient(135deg, " + f.color + "18, #1A1D24)", border: "1px solid " + f.color + "35", borderRadius: 4, padding: "8px 12px", display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "0 3px 12px rgba(0,0,0,0.6)" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
                       {!mobile && <div style={bg(f.color)}>{f.badge}</div>}
@@ -8583,20 +8589,33 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                       <button onClick={saveRoster} title="Save to My Rosters on this device" style={{ ...bs("#5A9C3A"), fontSize: 11, padding: mobile ? "5px 8px" : "2px 7px", display: "flex", alignItems: "center", gap: 4 }}>
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }}><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" /></svg>Save
                       </button>
-                      <button onClick={exportRoster} title="Share roster code" style={{ ...bs("#C9772E"), fontSize: 11, padding: mobile ? "6px 8px" : "2px 5px" }}>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }}><path d="M4 12v7a2 2 0 002 2h12a2 2 0 002-2v-7" /><polyline points="16 6 12 2 8 6" /><line x1="12" y1="2" x2="12" y2="15" /></svg>
-                      </button>
-                      <button onClick={printRoster} className="no-print" title="Print roster" style={{ ...bs("#9AA5B1"), fontSize: 11, padding: mobile ? "6px 8px" : "2px 5px" }}>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }}><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></svg>
-                      </button>
-                      {!mobile && !oppRoster && <button onClick={() => setShowImport(true)} title="Import opponent" style={{ ...bs("#6B9BF7"), fontSize: 12, padding: "6px 8px" }}><Icon name="download" size={14} /></button>}
+                      <div style={{ position: "relative" }}>
+                        <button onClick={() => setCardsMenu(!cardsMenu)} aria-label="More roster options" aria-expanded={cardsMenu} style={{ ...bs("#9AA5B1"), fontSize: 16, lineHeight: 1, padding: mobile ? "6px 10px" : "2px 8px" }}>{"\u22EF"}</button>
+                        {cardsMenu && (
+                          <div>
+                            <div onClick={() => setCardsMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
+                            <div style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", zIndex: 41, minWidth: 220, background: "#262A33", border: "1px solid #3A4150", borderRadius: 6, boxShadow: "0 8px 24px rgba(0,0,0,0.5)", padding: 6 }}>
+                              {[
+                                ["Share roster code", "Copy a code a friend can import", exportRoster],
+                                ["Print roster", "Datacards on paper", printRoster],
+                                !oppRoster ? ["Import a roster", "Load an opponent's or your own code", () => { setShowImport(true); setTimeout(() => { const el = document.getElementById("ks-import"); if (el) el.scrollIntoView({ behavior: "smooth", block: "nearest" }); }, 60); }] : null,
+                              ].filter(Boolean).map(([label, hint, run]) => (
+                                <button key={label} className={label === "Print roster" ? "no-print" : undefined} onClick={() => { setCardsMenu(false); run(); }} style={{ display: "block", width: "100%", textAlign: "left", background: "none", border: "none", borderRadius: 4, padding: "10px 10px", cursor: "pointer" }}>
+                                  <div style={{ fontSize: 14, fontWeight: 600, color: "#F1F2F5", fontFamily: "'Inter', sans-serif" }}>{label}</div>
+                                  <div style={{ fontSize: 12, color: "#9AA5B1", fontFamily: "'Inter', sans-serif" }}>{hint}</div>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                       {isComplete && <span title="Roster complete" style={{ color: "#5A9C3A" }}><Icon name="check" size={16} /></span>}
                     </div>
                   </div>
                 </div>
                 {/* Desktop import dialog */}
                 {!mobile && showImport && !oppRoster && (
-                  <div style={{ ...cd, padding: 12, marginBottom: 8, borderColor: "#6B9BF730" }}>
+                  <div id="ks-import" style={{ ...cd, padding: 12, marginBottom: 8, borderColor: "#6B9BF730" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                       <div style={{ display: "flex", gap: 4 }}>
                         {[["opponent", "Opponent"], ["mine", "My roster"]].map(([mode, label]) => (
@@ -8639,7 +8658,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
             <div style={{ width: oppRoster ? 320 : 0, flexShrink: 0, transition: "width 0.3s", overflow: "hidden" }}>
               {oppRoster ? (
                 <div style={{ width: 320 }}>
-                  <div style={{ position: "sticky", top: navH + BAR_H, maxHeight: "calc(100vh - " + (navH + BAR_H + 10) + "px)", overflowY: "auto", overflowX: "hidden" }}>
+                  <div style={{ position: "sticky", top: navH + barH, maxHeight: "calc(100vh - " + (navH + barH + 10) + "px)", overflowY: "auto", overflowX: "hidden" }}>
                     <div style={{ background: "linear-gradient(135deg, " + "#B8341C" + "18, #1A1D24)", border: "1px solid " + "#B8341C" + "35", borderRadius: 4, padding: "8px 12px", marginBottom: 6, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <div>
                         <div style={{ fontSize: 14, fontWeight: 700, color: "#E0664A", fontFamily: "'Rajdhani', sans-serif" }}>{oppRoster.faction.name}</div>
@@ -8666,10 +8685,10 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
           )}
 
           {/* Mobile: import + opponent below datacards */}
-          {mobile && roster.length > 0 && mobilePanel === "cards" && (
+          {mobile && roster.length > 0 && mobilePanel === "cards" && (showImport || oppRoster) && (
             <div style={{ width: "100%" }}>
                 {/* Import Opponent */}
-                <div style={{ marginTop: 12 }}>
+                <div id="ks-import" style={{ marginTop: 12 }}>
                   <div role="button" tabIndex={0} onClick={() => setShowImport(!showImport)} style={{ ...cd, padding: "8px 12px", cursor: "pointer", borderColor: oppRoster ? "#B8341C40" : showImport ? "#6B9BF740" : "#3A4150", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div style={{ fontSize: 13, fontWeight: 700, color: oppRoster ? "#B8341C" : "#6B9BF7", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.08em" }}>
                       {oppRoster ? "Opponent: " + oppRoster.faction.name + " (" + oppRoster.operatives.length + ")" : "Import a roster"}

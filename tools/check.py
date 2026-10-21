@@ -126,6 +126,18 @@ def check_babel_script(text):
     return [] if "</script>" in after else ["The text/babel script tag is never closed."]
 
 
+def check_setters(text):
+    """Every setX(...) call has something that defines setX (catches leftovers after removing state)."""
+    code = text.split('<script type="text/babel">', 1)[1] if '<script type="text/babel">' in text else text
+    used = set(re.findall(r"\b(set[A-Z]\w*)\(", code))
+    defined = set(re.findall(r"\[\w+,\s*(set[A-Z]\w*)\]", code))
+    defined |= set(re.findall(r"(?:const|let|var|function)\s+(set[A-Z]\w*)\b", code))
+    for params in re.findall(r"function\s+\w+\s*\(\{([^}]*)\}", code):
+        defined |= set(re.findall(r"\b(set[A-Z]\w*)\b", params))
+    defined |= {"setTimeout", "setInterval", "setItem", "setAttribute", "setProperty"}
+    return [f"`{name}(...)` is called but never defined (leftover from removed state?)." for name in sorted(used - defined)]
+
+
 def main():
     path = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).resolve().parent.parent / "killsheet.html"
     text = path.read_text(encoding="utf-8")
@@ -137,6 +149,7 @@ def main():
         ("localStorage only via useLocalStorage", check_direct_storage(lines)),
         ("Datacard print class present", check_print_class(text)),
         ("JSX script tag intact", check_babel_script(text)),
+        ("Every setX() call is defined", check_setters(text)),
     ]
     failed = 0
     for label, problems in checks:
