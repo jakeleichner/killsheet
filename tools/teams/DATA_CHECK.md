@@ -26,7 +26,6 @@ Inquisitorial Agents' requisitioned operatives were checked against their own te
   the text extraction ("KINL YNK", "ACOL YTE").
 
 ## Not checked
-- Rule and ability wording (it's rewritten in plain words on purpose), ploy CP costs, and
-  composition limits.
+- Ploy CP costs. Rule and ability wording was checked separately: see RULES_CHECK.md.
 
 Rerun with `python3 tools/teams/pdfcheck.py <folder>` (see its docstring) when GW updates a team.

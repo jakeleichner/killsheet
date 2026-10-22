@@ -41,7 +41,7 @@ TEAM = {
     "ploys": {
         "strategy": [
             ("Guerrilla Engagement", "When a Scout in cover, and more than 6\" from enemies it's visible to, is shot, re-roll one defence die."),
-            ("Ambush", "When one shoots or fights in an activation that started with a switch from Conceal to Engage, or while hidden from all enemies, its weapons gain Balanced (or Ceaseless instead against an expended target)."),
+            ("Ambush", "When one shoots or fights in an activation that started with a switch from Conceal to Engage, or that started with it hidden from all enemies, its weapons gain Balanced (or Ceaseless instead against an expended target)."),
             ("Adaptable Training", "Change the order of up to D3 Scouts more than 4\" from enemies."),
             ("Stealth Relocation", "Up to D3 Scouts with a Conceal order more than 4\" from enemies make a free Dash. You can't use this in the first turning point."),
         ],

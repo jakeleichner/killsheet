@@ -63,8 +63,8 @@ TEAM = {
     },
     "factionRules": [
         ("Doctrina Imperatives", "At the end of Select Operatives, pick one imperative as your Primary Mode. As a STRATEGIC GAMBIT, pick an imperative for your operatives until the Ready step of the next Strategy phase. Both its Optimisation and its Deprecation apply. Once per battle, when you pick your Primary Mode, ignore its Deprecation."),
-        ("Protector Imperative", "Ranged weapons gain Ceaseless. Deprecation: melee weapons get a worse Hit by 1."),
-        ("Conqueror Imperative", "Melee weapons gain Ceaseless. Deprecation: ranged weapons get a worse Hit by 1."),
+        ("Protector Imperative", "Ranged weapons gain Ceaseless. Deprecation: melee weapons get a worse Hit by 1 (doesn't stack with being injured)."),
+        ("Conqueror Imperative", "Melee weapons gain Ceaseless. Deprecation: ranged weapons get a worse Hit by 1 (doesn't stack with being injured)."),
         ("Bulwark Imperative", "Normal Dmg of 3 or more inflicts 1 less damage. Deprecation: -1\" Move."),
         ("Aggressor Imperative", "+1\" Move. Deprecation: Save gets worse by 1."),
         ("Neutral Imperative", "No effects."),
@@ -78,7 +78,7 @@ TEAM = {
         ],
         "firefight": [
             ("Control Edict", "On your turn to activate, a Leader and another ready operative visible within 3\" of it (only one Sicarian) activate one after the other before your opponent goes."),
-            ("Scrapcode Overload", "When an Infiltrator activates, or when it or an enemy within 3\" of it would Pick Up Marker or take a mission action (not Operate Hatch), use this. Until its next activation, enemies contesting a marker within 3\" of it count their total APL as 1 lower."),
+            ("Scrapcode Overload", "When an Infiltrator activates, or when it or an enemy within 3\" of it would Pick Up Marker or take a mission action (not Operate Hatch), use this. Until its next activation, when enemies contest a marker and at least one of them is within 3\" of it, their total APL counts as 1 lower."),
             ("Command Override", "When an operative activates, give it a different imperative until the next Ready step."),
             ("Omnissiah's Imperative", "Use during its activation, or when it's shot (at the end of the Roll Attack Dice step). Until the next Ready step, it gets a bonus based on its imperative. Protector: ranged weapons gain Severe. Conqueror: when fighting, after your first attack die, resolve another one straight away. Bulwark: improve Save by 1 and roll one extra defence die when shot. Aggressor: ignore the first 2\" of one climb. Neutral: nothing."),
         ],

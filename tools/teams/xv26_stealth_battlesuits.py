@@ -61,8 +61,8 @@ TEAM = {
         "strategy": [
             ("Prepare Ambush", "Place an Ambush marker wholly in your territory, more than 2\" from enemies. When an XV26 shoots an enemy within 2\" of it, the weapon can gain Seek for that action. Then remove the marker (or remove it at the next Ready step)."),
             ("Holowave Countermeasures", "When one is shot from more than 6\" away, the attacker discards one normal success (or a critical success if they have none). This doesn't stack with obscured."),
-            ("Patient Hunters", "When attacking an expended enemy, weapons gain Balanced, and ranged weapons also gain Saturate."),
-            ("Bonds of Unity", "When a non-Drone activates visible within 6\" of another non-Drone, ignore its APL changes, and ignore Move or Hit changes from being injured this activation."),
+            ("Patient Hunters", "When shooting or fighting an expended enemy (not retaliating), weapons gain Balanced, and ranged weapons also gain Saturate."),
+            ("Bonds of Unity", "When a non-Drone activates visible within 6\" of another non-Drone, ignore its APL changes, and pick one for this activation: ignore Move changes or weapon Hit changes from being injured."),
         ],
         "firefight": [
             ("Engage Jet Pack", "When a non-Drone activates or counteracts, ignore the vertical distance of one climb and one drop."),

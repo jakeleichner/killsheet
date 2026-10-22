@@ -38,7 +38,7 @@ TEAM = {
     "ploys": {
         "strategy": [
             ("Sudden Offensive", "Halve your surviving operatives (rounding up). That many operatives, the first ones you activate this turning point, gain Balanced for their activation."),
-            ("Maintain Momentum", "When attacking a ready enemy, weapons gain Severe."),
+            ("Maintain Momentum", "When shooting or fighting a ready enemy (not retaliating), weapons gain Severe."),
             ("Eye Above", "An enemy and others within 3\" of it gain Detected tokens this turning point. When they shoot an Aquilon, re-roll one defence die. When they fight one, one block can block two successes."),
             ("Drop and Secure", "Pick a marker. Until the next Ready step, your contesting operatives' total APL counts as 1 higher, and Aquilons within 3\" of it get +1 Atk on melee weapons (to a maximum of 4)."),
         ],

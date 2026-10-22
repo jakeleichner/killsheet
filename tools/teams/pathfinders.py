@@ -2,7 +2,7 @@ CARBINE = ("Pulse carbine", 4, "4+", "4/5", "-")
 GUN_BUTT = ("Gun butt", 3, "5+", "2/3", "-")
 RAM = ("Ram", 3, "5+", "2/3", "-")
 MARKERLIGHT = "Markerlight (1AP): See the Markerlights faction rule."
-DRONE_LOOK = "Its APL counts as 1 lower for marker control. Its head, for visibility, is the round disc on top."
+DRONE_LOOK = "Its APL counts as 1 lower for objective marker control. Its head, for visibility, is the round disc on top."
 
 def drone(oid, name, actions, ranged, abilities, kw, apl=2, wounds=7):
     return {"id": oid, "name": name, "apl": apl, "move": '6"', "save": "4+", "wounds": wounds, "pts": 32,
@@ -79,7 +79,7 @@ TEAM = {
            ["Inertial Dampener: It ignores changes to its rail rifle's Hit."],
            "MARKSMAN"),
         fw("medic", "Medical Technician", [CARBINE], [GUN_BUTT],
-           ["Medic!: The first time each turning point another non-Drone Pathfinder visible within 3\" would be incapacitated, and neither is in enemy control range, it stays on 1 wound and can't be incapacitated for the rest of that action. Then it makes a free Dash, ending in this operative's control range. Both get -1 APL until their next activations. If this happened during its activation, that activation ends.",
+           ["Medic!: The first time each turning point another non-Drone Pathfinder visible within 3\" would be incapacitated, and neither is in enemy control range, it stays on 1 wound and can't be incapacitated for the rest of that action. Then it makes a free Dash, ending in this operative's control range. Both get -1 APL until their next activations. If this happened during its activation, that activation ends. It can't be used if this operative is incapacitated, or if it's a Shoot action and this operative would be a primary or secondary target.",
             MARKERLIGHT, "Medikit (1AP): A non-Drone in its control range regains up to 2D3 wounds. Not one saved by Medic! this turning point. It can't do this within enemy control range."],
            "MEDIC, MEDICAL TECHNICIAN"),
         fw("shasla", "Shas'la Pathfinder", [CARBINE], [GUN_BUTT],

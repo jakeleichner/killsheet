@@ -16,7 +16,7 @@ OPERATIVES = [
          "Castigator's Arrest: If an enemy is the only one in its control range, that enemy can't Fall Back."],
         "CASTIGATOR"),
     arb("chirurgant", "Chirurgant", SHOTGUN, [BATON],
-        ["Medic!: The first time each turning point another friendly operative visible within 3\" would be incapacitated, and neither is in enemy control range, it stays on 1 wound and can't be incapacitated for the rest of that action. Then it makes a free Dash, ending in this operative's control range. Both get -1 APL until their next activations. If this happened during its activation, that activation ends.",
+        ["Medic!: The first time each turning point another friendly operative visible within 3\" would be incapacitated, and neither is in enemy control range, it stays on 1 wound and can't be incapacitated for the rest of that action. Then it makes a free Dash, ending in this operative's control range. Both get -1 APL until their next activations. If this happened during its activation, that activation ends. It can't be used if this operative is incapacitated, or if it's a Shoot action and this operative would be a primary or secondary target.",
          "Medikit (1AP): A friendly operative in its control range regains up to 2D3 wounds. Not one saved by Medic! this turning point. It can't do this within enemy control range."],
         "MEDIC, CHIRURGANT"),
     gunner("gunner_gl", "grenade launcher", [("Grenade launcher", 5, "4+", "4/5", "Piercing 1")]),

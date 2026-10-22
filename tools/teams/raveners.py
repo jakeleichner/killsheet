@@ -24,14 +24,14 @@ TEAM = {
         ],
     },
     "factionRules": [
-        ("Tunnel", "At the end of Set Up Operatives, place Tunnel marker 0 on the floor wholly in your drop zone, touching your edge. As a STRATEGIC GAMBIT in each turning point, place the next numbered marker wholly within 5\" of the previous one. Your markers, and the areas between markers with consecutive numbers, form your tunnel."),
+        ("Tunnel", "At the end of Set Up Operatives, place Tunnel marker 0 on the floor wholly in your drop zone, touching your edge. As a STRATEGIC GAMBIT in each of the first four turning points, place the next numbered marker (up to 4) on the floor wholly within 5\" of the previous one. Your markers, and the areas between markers with consecutive numbers, form your tunnel."),
         ("Burrow", "Your first two operatives set up normally. The rest can start underground (set aside). Underground operatives activate and counteract as normal, but can only Burrow. Any still underground at the end of the battle are incapacitated."),
         ("Burrow action (1AP)", "If it's underground, set it up on your tunnel (it can be in enemy control range), with -2\" Move this activation. If it's on your tunnel, remove it, and it's underground. It can't do this while carrying a marker."),
         ("Predatory Instincts", "A Ravener can Fight twice in each activation. Raveners can counteract whatever their order. You can change its order first or instead of an action, and if it doesn't take a mission action it can make a free Burrow."),
     ],
     "ploys": {
         "strategy": [
-            ("Death from Below", "When one fights, its weapons gain Balanced if it Burrowed this activation or counteraction, or Ceaseless if it's on your tunnel."),
+            ("Death from Below", "When one fights, its melee weapons gain Balanced if it Burrowed this activation or counteraction, or Ceaseless if it's on your tunnel."),
             ("Tunnel Lurkers", "A Ravener on your tunnel is in cover (as if from Light terrain), unless it's within 2\" of the active operative."),
             ("Whipcord Emergence", "When one is shot, re-roll one defence die if it Burrowed this turning point. If it's on your tunnel, re-roll any dice showing one result of your choice instead."),
             ("Writhe Out of Sight", "One Ravener in the killzone makes a free Burrow. If it's within 2\" of your tunnel, it can make a free Fall Back or Reposition first."),

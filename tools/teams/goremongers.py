@@ -22,7 +22,7 @@ TEAM = {
     },
     "factionRules": [
         ("Gore Tanks", "Each Goremonger has a gore tank that is empty, half or full (it starts at half). When it incapacitates an operative in its control range or visible within 2\", you can raise its tank one level. Using a Sanguavitae rule lowers it one level."),
-        ("Sanguavitae", "Spend a level to use one of these. Each once per activation, two per activation at most, and not Mania with Fury. Mania: +1 APL until its next activation. Fury: Fight twice, and the second is free. Rejuvenate: regain D3+1 wounds. Rage: +1 Atk on melee weapons for a Fight. Rake: after a Charge, inflict D3 damage on an enemy in its control range. Surge: +1\" Move for a Charge or Reposition."),
+        ("Sanguavitae", "Spend a level to use one of these. Each once per activation, two per activation at most, and not Mania with Fury. Mania: +1 APL until its next activation. Fury: Fight twice, and the second is free. Rejuvenate: regain D3+1 wounds. Rage: +1 Atk on melee weapons for a Fight. Rake: after a Charge in its own activation, inflict D3 damage on an enemy in its control range. Surge: +1\" Move for a Charge or Reposition."),
         ("Runes of Khorne", "A Goremonger can't lose more than 8 wounds from a single Shoot action."),
     ],
     "ploys": {

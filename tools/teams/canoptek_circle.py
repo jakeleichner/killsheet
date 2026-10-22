@@ -36,7 +36,7 @@ TEAM = {
         ],
     },
     "factionRules": [
-        ("Obelisk Node Matrix", "STRATEGIC GAMBIT in the first turning point: place three Obelisk Node markers wholly in your territory. In later turning points, move each one up to 3\". Nodes control uncontested markers within 1\" (none if both players' nodes would). Nodes within 6\" of each other horizontally form a matrix with the area between them. Friendly operatives in your matrix get Accurate 1 on datacard weapons and +1 APL (to a maximum of 3)."),
+        ("Obelisk Node Matrix", "STRATEGIC GAMBIT in the first turning point: place three Obelisk Node markers wholly in your territory. In later turning points, move each one up to 3\". Nodes control uncontested markers within 1\" (none if both players' nodes would). Nodes within 6\" of each other horizontally form a matrix: the nodes and the 20mm-wide lines between them (not the whole triangle), at any height, and not through walls. Friendly operatives in your matrix get Accurate 1 on datacard weapons and +1 APL (to a maximum of 3)."),
     ],
     "ploys": {
         "strategy": [
@@ -74,7 +74,7 @@ TEAM = {
                "Cranial Overload (1AP): An enemy visible within 3\" (or any in your matrix, if this one is in it) gets -1 APL until the end of its next activation. It can't do this within enemy control range."],
               "ACCELERATOR"),
         macro("reanimator", "Reanimator", [("Atomiser beam", 4, "4+", "3/4", 'Range 6", Lethal 5+')], [("Claws & tail", 4, "4+", "3/4", "-")],
-              ["Reanimate: Once per turning point, when another friendly operative visible within 6\" (or with both in your matrix) would be incapacitated, and neither is in enemy control range, it stays on 1 wound and can't be incapacitated for the rest of that action. Then it makes a free Dash, ending in this operative's control range or your matrix. Both get -1 APL until their next activations. If this happened during its activation, that activation ends.",
+              ["Reanimate: Once per turning point, when another friendly operative visible within 6\" (or with both in your matrix) would be incapacitated, and neither is in enemy control range, it stays on 1 wound and can't be incapacitated for the rest of that action. Then it makes a free Dash, ending in this operative's control range or your matrix. Both get -1 APL until their next activations. If this happened during its activation, that activation ends. It can't be used if this operative is incapacitated, or if it's a Shoot action and this operative would be a primary or secondary target.",
                "Nanoscarab Beam (1AP): A friendly operative visible within 6\" (or in your matrix) regains up to 3D3 wounds. Not one saved by Reanimate this turning point. Once per turning point, and not within enemy control range."],
               "MEDIC, REANIMATOR"),
         macro("warrior_scalpel", "Warrior (gauss scalpel)", [("Gauss scalpel", 4, "4+", "2/3", "Piercing 1")], [CLAWS_TAIL], WARRIOR_ABILITIES, "WARRIOR"),

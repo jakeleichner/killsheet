@@ -23,7 +23,7 @@ TEAM = {
         ],
     },
     "factionRules": [
-        ("Communion", "In the Ready step, gain D3 Communion points (1 more if the Oversight Drone is in the killzone). Vespids (not the Drone) must spend 1 to: shoot anything other than the closest enemy within 8\" (ignoring enemies in other Vespids' control range); end a Charge anywhere other than the closest enemy's control range; or Pick Up Marker or take a mission action (not Operate Hatch). When shooting, spend 1 to re-roll one attack die."),
+        ("Communion", "In the Ready step, gain D3 Communion points (1 more if the Oversight Drone is in the killzone). Vespids (not the Drone) must spend 1 to: shoot anything other than the closest enemy within 8\" (ignoring enemies in other Vespids' control range; with no enemy within 8\", any target costs a point; for Blast and Torrent only the first target counts); end a Charge anywhere other than the closest enemy's control range; or Pick Up Marker or take a mission action (not Operate Hatch). When shooting, spend 1 to re-roll one attack die."),
         ("Neutron Charge", "Weapons with \"neutron\" in their name gain Piercing 1 until the end of the turning point once the Vespid moves or uses Fly."),
         ("FLY", "When an action moves it, it can fly instead: set it up wholly within its Move (3\" for a Dash) horizontally, somewhere it can be placed, and not in enemy control range unless it's Charging. It gets no extra Charge distance. In close quarters killzones, it can't fly through walls or open hatchways."),
     ],

@@ -47,7 +47,7 @@ TEAM = {
         "strategy": [
             ("Reckless Aspirant", "When it's wholly in your opponent's territory, its weapons gain Accurate 1 when it shoots or fights, or Punishing if it holds a token."),
             ("Malevolent Grit", "When one holding a token, or wholly in your opponent's territory, is shot, re-roll one defence die."),
-            ("Glory Kill", "Pick an enemy. Until the end of the turning point, weapons attacking it gain Ceaseless, or Relentless if the attacker holds a token."),
+            ("Glory Kill", "Pick an enemy visible to one of your Blooded operatives. Until the end of the turning point, weapons attacking it gain Ceaseless, or Relentless if the attacker holds a token."),
             ("Bitter Demise", "When a Blooded operative is incapacitated, roll a D3. On a 3 (or 2+ if it held a token), inflict that much damage on an enemy visible within 2\" of it."),
         ],
         "firefight": [

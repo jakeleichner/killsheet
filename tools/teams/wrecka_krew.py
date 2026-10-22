@@ -43,7 +43,7 @@ TEAM = {
             ("Proppa Scrap", "A Breaka Boy or the Boss Nob can Fight twice this activation."),
             ("Kaboom!", "When shooting a Blast weapon, it gets 1\" more Blast and gains Severe against the primary target for that action. Not with Drill Rokkits."),
             ("Just a Scratch", "When an attack die inflicts Normal Dmg on an operative (not a Bomb Squig), ignore that damage."),
-            ("Demolition Job", "After a Shoot or Fight (before removing anything), place a Demolition marker in the target's control range. Until the next Ready step, when attacking an operative within 3\" of it, you can spend one Wrecka point for free."),
+            ("Demolition Job", "After a Shoot or Fight (before removing anything), place a Demolition marker in the target's control range. Until the next Ready step, when one (not a Bomb Squig) attacks an operative within 3\" of it, you can spend one Wrecka point for free, even if you have none."),
         ],
     },
     "equipment": [

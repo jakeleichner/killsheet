@@ -30,7 +30,7 @@ CORE = [
     {"id": "autosavant", "name": "Autosavant", "apl": 2, "move": '6"', "save": "4+", "wounds": 7, "pts": 25,
      "ranged": [], "melee": [("Mechanical appendages", 3, "5+", "1/2", "-")],
      "abilities": ["Scrivener: While it's in the killzone, each time your opponent uses one of their ploys again (not Command Re-roll), gain 1CP (2CP per turning point at most).",
-                   "Irrefutable Report: It always controls objective and mission markers it contests. This overrides every other rule.",
+                   "Irrefutable Report: It always controls objective markers and your mission markers that it contests. This overrides every other rule.",
                    "Lightly Armed: It can only use its datacard weapons and has no unique actions."],
      "kw": "AUTOSAVANT", "ex": ["combat_daggers"]},
     {"id": "questkeeper", "name": "Questkeeper", "apl": 2, "move": '6"', "save": "5+", "wounds": 7, "pts": 25,
@@ -69,7 +69,7 @@ CORE = [
                 ("Suppressed autopistol", 4, "3+", "2/3", 'Range 8", Silent')],
      "melee": [FISTS],
      "abilities": ["Pistolier: It ignores changes to its ranged weapons' Hit.",
-                   "Pistol Barrage (1AP): Make two free Shoots, one with each pistol. It can't do this with a Conceal order or in an activation where it already Shot."],
+                   "Pistol Barrage (1AP): Make two free Shoots, one with each pistol. It can't do this with a Conceal order or in an activation where it Shoots (before or after)."],
      "kw": "PISTOLIER"},
     servitor("gs_heavy_bolter", "Gun Servitor (heavy bolter)", [("Heavy bolter (focused)", 5, "4+", "4/5", "Heavy (Dash only), Piercing Crits 1"), ("Heavy bolter (sweeping)", 4, "4+", "4/5", 'Heavy (Dash only), Piercing Crits 1, Torrent 1"')]),
     servitor("gs_multi_melta", "Gun Servitor (multi-melta)", [("Multi-melta", 4, "4+", "6/3", "Devastating 4, Heavy (Dash only), Piercing 2")]),
@@ -80,7 +80,7 @@ SERVITORS = ["gs_heavy_bolter", "gs_multi_melta", "gs_plasma_cannon"]
 
 SCIONS = [
     scion("sc_trooper", "Trooper", [LASGUN], ["Adaptive Equipment: Once per turning point, one Scion Trooper can take the Smoke Grenade action and one Scion Trooper the Stun Grenade action. Neither uses up equipment."], "TROOPER"),
-    scion("sc_medic", "Medic", [LASGUN], ["Medic!: The first time each turning point another friendly Agent visible within 3\" would be incapacitated, and neither is in enemy control range, it stays on 1 wound and can't be incapacitated for the rest of that action. Then it makes a free Dash, ending in this operative's control range. Both get -1 APL until their next activations. If this happened during that operative's activation, the activation ends.",
+    scion("sc_medic", "Medic", [LASGUN], ["Medic!: The first time each turning point another friendly Agent visible within 3\" would be incapacitated, and neither is in enemy control range, it stays on 1 wound and can't be incapacitated for the rest of that action. Then it makes a free Dash, ending in this operative's control range. Both get -1 APL until their next activations. If this happened during that operative's activation, the activation ends. It can't be used if this operative is incapacitated, or if it's a Shoot action and this operative would be a primary or secondary target.",
                                          "Medikit (1AP): A friendly Agent in its control range regains up to 2D3 wounds. Not one saved by Medic! this turning point. It can't do this within enemy control range."], "MEDIC"),
     scion("sc_vox", "Vox-operator", [LASGUN], ["Signal (1AP): SUPPORT. Another friendly Agent gets +1 APL until the end of its next activation. It can do this twice per activation, but not within enemy control range."], "VOX-OPERATOR"),
     scion("sc_gunner_flamer", "Gunner (flamer)", [("Flamer", 4, "2+", "3/3", 'Range 8", Saturate, Torrent 2"')], [], "GUNNER"),
@@ -198,7 +198,7 @@ TEAM = {
         "strategy": [
             ("Denounce", "Pick an enemy and roll a D3. In the Firefight phase, it can't activate or act until your opponent has activated that many operatives, or it's their last one. Costs 1 extra CP for each earlier use."),
             ("Intense Scrutiny", "When an Agent picks targets, enemies within 4\" (instead of 2\") can't be in cover. They only lose their cover save within 2\"."),
-            ("Quarry", "Pick an enemy as your quarry. Agents attacking it gain Ceaseless. When it's incapacitated, pick a new quarry."),
+            ("Quarry", "Pick an enemy as your quarry for the turning point. Agents shooting, fighting or retaliating against it gain Ceaseless. When it's incapacitated, pick a new quarry."),
             ("Irrefutable Jurisdiction", "When an Agent within 3\" of an objective is shot, re-roll one defence die. If it's contesting the objective, re-roll any dice showing one result of your choice instead."),
         ],
         "firefight": [

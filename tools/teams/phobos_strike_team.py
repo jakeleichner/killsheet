@@ -64,7 +64,7 @@ TEAM = {
             "Comms Array: Once per turning point, during a friendly activation or counteraction, if it's in the killzone, swap one strategy ploy you used this turning point for another, at no CP cost."],
            "INFILTRATOR, COMMSMAN"),
         ph("helix_adept", "Infiltrator Helix Adept", [MARKSMAN], [FISTS],
-           ["Medic!: The first time each turning point another operative visible within 3\" would be incapacitated, and neither is in enemy control range (and this isn't a target of that Shoot), it stays on D3 wounds and can't be incapacitated for the rest of that action. Then it makes a free Dash, ending in this operative's control range. Both get -1 APL until their next activations. If this happened during its activation, that activation ends.",
+           ["Medic!: The first time each turning point another operative visible within 3\" would be incapacitated, and neither is in enemy control range, it stays on D3 wounds and can't be incapacitated for the rest of that action. Then it makes a free Dash, ending in this operative's control range. Both get -1 APL until their next activations. If this happened during its activation, that activation ends. It can't be used if this operative is incapacitated, or if it's a Shoot action and this operative would be a primary or secondary target.",
             "Helix Gauntlet (1AP): An operative in its control range regains up to D3+3 wounds. Not one saved by Medic! this turning point. It can't do this within enemy control range."],
            "MEDIC, INFILTRATOR, HELIX ADEPT"),
         ph("saboteur", "Infiltrator Saboteur", [MARKSMAN, ("Remote detonator", 4, "2+", "5/6", "Heavy (Dash only), Limited 1, Piercing 1, Silent, Detonate")], [FISTS],

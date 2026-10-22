@@ -1,6 +1,6 @@
 LASGUN = ("Lasgun", 4, "4+", "2/3", "-")
 BAYONET = ("Bayonet", 3, "4+", "2/3", "-")
-MEDIC = "Medic!: The first time each turning point another friendly operative visible within 3\" would be incapacitated, and neither is in enemy control range, it stays on 1 wound and can't be incapacitated for the rest of that action. Then it makes a free Dash, ending in this operative's control range. Both get -1 APL until their next activations. If this happened during its activation, that activation ends."
+MEDIC = "Medic!: The first time each turning point another friendly operative visible within 3\" would be incapacitated, and neither is in enemy control range, it stays on 1 wound and can't be incapacitated for the rest of that action. Then it makes a free Dash, ending in this operative's control range. Both get -1 APL until their next activations. If this happened during its activation, that activation ends. It can't be used if this operative is incapacitated, or if it's a Shoot action and this operative would be a primary or secondary target."
 
 def dk(oid, name, ranged, melee, abilities, kw, wounds=7):
     return {"id": oid, "name": "Death Korps " + name, "apl": 2, "move": '6"', "save": "5+", "wounds": wounds, "pts": 25,

@@ -35,7 +35,7 @@ TEAM = {
             ("In Position", "While Yaegirs have a Conceal order and are in cover, enemies more than 2\" away can't target them. This overrides every other rule."),
         ],
         "firefight": [
-            ("Bonds That Bind", "When one is activated, pick another ready Yaegir visible within 3\" and activate it next. Not a Bombast that used Wroughtlock Negotiation this turning point."),
+            ("Bonds That Bind", "When one is activated, pick another ready Yaegir visible within 3\" and activate it next. Neither can be a Bombast that used Wroughtlock Negotiation this turning point."),
             ("No Kin Left Behind", "When a Yaegir is incapacitated, move your Fallen Kin marker to it. Yaegirs within 3\" of the marker can retain one fail as a normal success, or one normal success as a critical success, when attacking."),
             ("Sturdy", "When a Yaegir is shot, as you collect defence dice, the attacker's retained critical successes become normal successes."),
             ("Stalwart Defence", "When an enemy ends a Charge in a Yaegir's control range, another Yaegir visible within 6\" (and outside enemy control range) makes a free Shoot at that enemy only. No grenades, Blast or x\" Devastating."),

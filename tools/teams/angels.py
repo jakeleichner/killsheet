@@ -37,7 +37,7 @@ TEAM = {
     },
     "factionRules": [
         ("Astartes", "During each activation, an operative can take two Shoot actions or two Fight actions. If it shoots twice, at least one of those shots must use a bolt weapon, and the second Shoot costs 1 extra AP if both use a bolt sniper rifle or heavy bolter. These operatives can counteract whatever their order."),
-        ("Chapter Tactics", "Pick a primary and a secondary tactic for the battle (keep the same ones for a whole campaign or tournament). 1 Aggressive: melee weapons gain Rending. 2 Dueller: normal successes can block critical successes, except against Brutal. 3 Resolute: ignore APL changes and Shock. 4 Stealthy: retain one extra cover save, or one cover save as a critical success. 5 Mobile: Fall Back costs 1 less AP, and it can Charge while in enemy control range. 6 Hardy: when shot, defence results of 5+ are critical successes. 7 Sharpshooter: if it hasn't Charged, Fallen Back or Repositioned this activation, bolt weapons gain Accurate 1 and Severe. 8 Siege Specialist: ranged weapons gain Saturate, and enemies can't assist in fights against it."),
+        ("Chapter Tactics", "Pick a primary and a secondary tactic for the battle (keep the same ones for a whole campaign or tournament). 1 Aggressive: melee weapons gain Rending. 2 Dueller: normal successes can block critical successes, except against Brutal. 3 Resolute: ignore APL changes and Shock. 4 Stealthy: when shot, if it can retain a cover save, retain one extra cover save, or one cover save as a critical success (not on top of Vantage terrain's improved cover save). 5 Mobile: Fall Back costs 1 less AP, and it can Charge while in enemy control range. 6 Hardy: when shot, defence results of 5+ are critical successes. 7 Sharpshooter: if it hasn't Charged, Fallen Back or Repositioned this activation, bolt weapons gain Accurate 1 and Severe. 8 Siege Specialist: ranged weapons gain Saturate, and enemies can't assist in fights against it."),
     ],
     "ploys": {
         "strategy": [
@@ -57,7 +57,7 @@ TEAM = {
         {"id": "purity_seals", "name": "Purity Seals", "desc": "Once per turning point when attacking, if you fail two or more attack dice, discard one failure to retain another as a normal success."},
         {"id": "auspex", "name": "Auspex", "desc": "Once per turning point when one Shoots, enemies within 8\" of it can't be obscured until the end of that activation."},
         {"id": "chapter_reliq", "name": "Chapter Reliquaries", "desc": "Wrath of Vengeance costs 0CP for an operative with an Engage order."},
-        {"id": "tilting_shields", "name": "Tilting Shields", "desc": "Once per turning point, when one fights or retaliates, use this after your opponent rolls. They can't retain results below 6 as critical successes in that sequence."},
+        {"id": "tilting_shields", "name": "Tilting Shields", "desc": "Once per turning point, when one fights or retaliates, use this after your opponent rolls their attack dice but before re-rolls. They can't retain results below 6 as critical successes in that sequence."},
     ],
     "operatives": [
         marine("captain", "Space Marine Captain", PLASMA, [("Power fist", 5, "3+", "5/7", "Brutal")],

@@ -66,7 +66,7 @@ TEAM = {
             "Knux Smash (1AP): Move an enemy in its control range up to 3\", then inflict D3+1 damage on it (on a 3, it also gets -1 APL until the end of its next activation). Then this operative can make a free Charge of up to 3\"."],
            "DÔZR"),
         hk("field_medic", "Field Medic", [("Bolt revolver", 4, "4+", "3/5", 'Range 8"')], [("Plasma knife", 4, "4+", "3/5", "Lethal 5+")],
-           ["Medic!: The first time each turning point another Salvager visible within 3\" would be incapacitated, and neither is in enemy control range, it stays on 1 wound and can't be incapacitated for the rest of that action. Then it makes a free Dash, ending in this operative's control range. Both get -1 APL until their next activations. If this happened during its activation, that activation ends.",
+           ["Medic!: The first time each turning point another Salvager visible within 3\" would be incapacitated, and neither is in enemy control range, it stays on 1 wound and can't be incapacitated for the rest of that action. Then it makes a free Dash, ending in this operative's control range. Both get -1 APL until their next activations. If this happened during its activation, that activation ends. It can't be used if this operative is incapacitated, or if it's a Shoot action and this operative would be a primary or secondary target.",
             "Medikit (1AP): A Salvager in its control range regains up to 2D3 wounds. Not one saved by Medic! this turning point. It can't do this within enemy control range."],
            "MEDIC, FIELD MEDIC"),
         hk("grenadier", "Grenadier", [BOLT_PISTOL, ("C8 HX charge", 4, "3+", "4/6", 'Range 4", Blast 1", Heavy (Reposition only), Limited 1, Piercing 1, Saturate')], [FISTS],

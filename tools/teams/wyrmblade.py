@@ -51,7 +51,7 @@ TEAM = {
             ("The Day Is at Hand", "When one switches from Conceal to Engage as it activates, its ranged weapons gain Rending and its melee weapons get +1 Atk (to a maximum of 5) that activation."),
             ("Crossfire", "When shooting an enemy that another Wyrmblade operative shot this turning point, weapons gain Accurate 1."),
             ("One with the Shadows", "An operative with a Conceal order is obscured when shot with Light terrain intervening (unless it or the shooter is within 1\" of that terrain)."),
-            ("Divert and Disappear", "Up to three operatives make a free Dash or Charge of up to 3\". A Cult Agent counts as two, and can Fall Back up to 3\" instead, then gets -1 APL until the end of its next activation."),
+            ("Divert and Disappear", "Up to three operatives each make a free Dash, or a free Charge of up to 3\". A Cult Agent counts as two, and can Fall Back up to 3\" instead, then gets -1 APL until the end of its next activation."),
         ],
         "firefight": [
             ("Slink into Darkness", "At the end of an activation, an operative with an Engage order switches to Conceal. Each operative once per battle."),

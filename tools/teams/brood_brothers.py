@@ -40,7 +40,7 @@ TEAM = {
         ],
     },
     "factionRules": [
-        ("Crossfire", "After you resolve your attack dice against an enemy that survives, it gains one of your Crossfire tokens. When you attack an enemy with tokens, remove any number of them to re-roll one attack die for each."),
+        ("Crossfire", "When a Brood Brother shoots or fights an enemy (not when retaliating) and it survives, after your attack dice it gains one of your Crossfire tokens. When you attack an enemy with tokens, remove any number of them to re-roll one attack die for each."),
     ],
     "ploys": {
         "strategy": [
@@ -85,12 +85,12 @@ TEAM = {
             "Counterattack: When it fights or retaliates, each normal success your opponent resolves inflicts 1 damage on them."],
            GUARD + ", KNIFE FIGHTER"),
         bb("medic", "Brood Brother Medic", [LASGUN], [BAYONET, ("Gene-needler", 1, "4+", "5/7", "Lethal 5+, Limited 1")],
-           ["Medic!: The first time each turning point another Brood Brother (not the Patriarch) visible within 3\" would be incapacitated, and neither is in enemy control range, it stays on 1 wound and can't be incapacitated for the rest of that action. Then it makes a free Dash, ending in this operative's control range. Both get -1 APL until their next activations. If this happened during its activation, that activation ends.",
+           ["Medic!: The first time each turning point another Brood Brother (not the Patriarch) visible within 3\" would be incapacitated, and neither is in enemy control range, it stays on 1 wound and can't be incapacitated for the rest of that action. Then it makes a free Dash, ending in this operative's control range. Both get -1 APL until their next activations. If this happened during its activation, that activation ends. It can't be used if this operative is incapacitated, or if it's a Shoot action and this operative would be a primary or secondary target.",
             "Medikit (1AP): A Brood Brother (not the Patriarch) in its control range regains up to 2D3 wounds. Not one saved by Medic! this turning point. It can't do this within enemy control range."],
            GUARD + ", MEDIC"),
         bb("sapper", "Brood Brother Sapper", [("Demolition charge", 4, "3+", "4/6", 'Range 3", Blast 2", Heavy (Reposition only), Limited 1, Piercing 1, Saturate')], [BAYONET],
            ["Grenadier: It can use frag and krak grenades without using up equipment, and gets +1 to Hit with them.",
-            "Explosives (1AP): The first use places your Explosives marker in its control range. The second use inflicts 2D6 damage on each operative within 2\" of the marker, unless Heavy terrain wholly intervenes. Twice per battle at most. It can't do this within enemy control range, or in an activation where it Charged, Dashed or Fell Back.",
+            "Explosives (1AP): The first use places your Explosives marker in its control range. The second use inflicts 2D6 damage on each operative within 2\" of the marker, unless Heavy terrain wholly intervenes. Twice per battle at most. It can't do this within enemy control range, or in an activation where it Charges, Dashes or Falls Back (before or after).",
             "Final Defiance: When it's incapacitated, it can take a free Explosives action before it's removed."],
            GUARD + ", SAPPER"),
         bb("sniper", "Brood Brother Sniper", [("Sniper rifle (concealed)", 4, "2+", "3/3", "Devastating 3, Heavy, Silent, Concealed Position"), ("Sniper rifle (mobile)", 4, "3+", "3/4", "-"),
@@ -125,7 +125,7 @@ TEAM = {
            ["Alpha Predator: It ignores Piercing when shot. It can be activated twice per turning point while it has AP left, but no more than 9\" of movement and 4AP in total per turning point.",
             "Monster: It can only use its own weapons, and has no unique actions except Into Shadow and Mind Control. While it has a Conceal order, it can't use Light terrain for cover when it's targeted. It still keeps its cover save.",
             "Into Shadow (1AP): Change its order. It can't do this within enemy control range.",
-            "Mind Control (2AP): PSYCHIC. Pick an enemy visible within 2\". You each roll a D6 and add your operative's APL. If you win, you control it until the end of the activation: change its order and make one free action with it (the only move allowed is a Dash, and you pick where). Once per battle."],
+            "Mind Control (2AP): PSYCHIC. Pick an enemy visible within 2\". You each roll a D6 and add your operative's APL. If you win, you control it until the end of the activation: change its order and make one free action with it (the only move allowed is a Dash, and you pick where). Taking control works once per battle. It can't do this within enemy control range, unless the picked enemy is the only one there."],
            "BROODCOVEN, PSYKER, LEADER, PATRIARCH", apl=4, save="4+", wounds=21, pts=50, ex=NO_KNIVES),
     ],
 }

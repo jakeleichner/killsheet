@@ -11,12 +11,12 @@ def gunner(oid, label, ranged):
 
 OPERATIVES = [
     kas("combat_medic", "Combat Medic", [LASGUN], [GUN_BUTT],
-        ["Medic!: The first time each turning point another friendly operative visible within 3\" would be incapacitated, and neither is in enemy control range, it stays on 1 wound and can't be incapacitated for the rest of that action. Then it makes a free Dash, ending in this operative's control range. Both get -1 APL until their next activations. If this happened during its activation, that activation ends.",
+        ["Medic!: The first time each turning point another friendly operative visible within 3\" would be incapacitated, and neither is in enemy control range, it stays on 1 wound and can't be incapacitated for the rest of that action. Then it makes a free Dash, ending in this operative's control range. Both get -1 APL until their next activations. If this happened during its activation, that activation ends. It can't be used if this operative is incapacitated, or if it's a Shoot action and this operative would be a primary or secondary target.",
          "Medikit (0AP): A friendly operative in its control range regains up to 2D3 wounds. Not one saved by Medic! this turning point. It can't do this within enemy control range."],
         "MEDIC, COMBAT MEDIC"),
     kas("demo_trooper", "Demo-trooper", [LASPISTOL], [GUN_BUTT],
         ["Blast Padding: When it's shot by Blast or Torrent (but not a sweeping profile), re-roll one defence die. It isn't affected by x\" Devastating unless it's the target.",
-         "Melta Mine: It carries your Melta Mine marker and can pick it up. After placing it outside enemy control range, it gets a free Dash.",
+         "Melta Mine: It carries your Melta Mine marker and can pick it up, but can't place it in an enemy's control range. After placing it, it gets a free Dash.",
          "Proximity Mine: The first time the mine is in another operative's control range, remove it and inflict 2D6+3 damage on that operative. If it survives, its action ends. This operative never sets it off."],
         "DEMO-TROOPER"),
     gunner("gunner_flamer", "flamer", [("Flamer", 4, "2+", "3/3", 'Range 8", Saturate, Torrent 2"')]),

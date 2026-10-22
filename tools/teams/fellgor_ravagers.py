@@ -63,7 +63,7 @@ TEAM = {
            "FLUXBRAY"),
         fg("gnarlscar", "Gnarlscar", [AUTOPISTOL], [("Bionic fist", 4, "3+", "4/5", "Brutal")],
            ["Sagacious: At the end of its activation, you can change its order.",
-            "Uncompromising Attack (1AP): Make a free Fight and a free Shoot with the autopistol, in either order. The Shoot can target an enemy in its own control range."],
+            "Uncompromising Attack (1AP): Make a free Fight and a free Shoot with the autopistol, in either order. It can Shoot while in enemy control range, but then it must target an enemy in its own control range."],
            "GNARLSCAR"),
         fg("gorehorn", "Gorehorn", [AUTOPISTOL], [("Skullcleaver", 4, "3+", "4/5", "Lethal 5+, Headtaker")],
            ["Champion: It can Fight twice in each activation.",

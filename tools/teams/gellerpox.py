@@ -41,7 +41,7 @@ TEAM = {
     "ploys": {
         "strategy": [
             ("Drawn to the Hum", "Pick an objective. A Reposition or Charge gets +1\" Move, but must end within 2\" of it."),
-            ("Rust Emanations", "When a non-Vermin fights or retaliates, your opponent can't retain 3s as successes."),
+            ("Rust Emanations", "When a Nightmare Hulk fights or retaliates, your opponent can't retain 3s as successes."),
             ("Plagueridden Determination", "When a non-Vermin with an Engage order is shot, re-roll one defence die."),
             ("Blessings of Infection", "When one fights or retaliates and you fail three or more dice, discard one failure to retain another as a normal success. Or, with three or more successes, discard a failure to turn a normal success into a critical success."),
         ],

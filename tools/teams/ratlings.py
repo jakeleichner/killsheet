@@ -43,7 +43,7 @@ TEAM = {
         "firefight": [
             ("Larcenous", "During a Ratling's activation (not an Ogryn or Bullgryn), Pick Up Marker and mission actions only need it to contest the marker, even in enemy control range."),
             ("Shoot and Hide", "After a Ratling with an Engage order shoots with a rifle, if it's more than 3\" from enemies or hidden from all of them, it switches to Conceal."),
-            ("Survival Instincts", "When a Ratling (not an Ogryn or Bullgryn) blocks, a normal success can block a critical success, and a critical success can block two successes."),
+            ("Survival Instincts", "When an enemy shoots or fights a Ratling (not an Ogryn or Bullgryn) and you block, a normal success can block a critical success, and a critical success can block two successes."),
             ("Sharpshot", "When shooting with a rifle, friendly Ratlings in an enemy's control range don't stop you targeting it."),
         ],
     },
@@ -75,7 +75,7 @@ TEAM = {
             "HARDBIT"),
         rat("raider", "Raider", SUPPRESSED, [("Dagger", 3, "4+", "2/3", "-")],
             ["Grappling Hook: Climbing counts as 2\" vertically.",
-             "Slingshot (1AP): Pick a point on terrain visible within 6\". Set it up wholly within 6\" of that point horizontally, outside enemy control range, with the point visible. This counts as a Reposition. It can't do this within enemy control range, or in an activation where it Charged, Fell Back or Shot."],
+             "Slingshot (1AP): Pick a point on terrain visible within 6\". Set it up wholly within 6\" of that point horizontally, outside enemy control range, with the point visible. This counts as a Reposition. It can't do this within enemy control range, or in an activation where it Charges, Falls Back or Shoots (before or after)."],
             "RAIDER"),
         rat("sneak", "Sneak", SUPPRESSED, [FISTS],
             ["Evade: Once per turning point, after an enemy action, interrupt with a free Dash. It can't use Scarper.",

@@ -70,7 +70,7 @@ TEAM = {
     ],
     "operatives": [
         sc("confessor", "Confessor", [], [("Mace of Censure", 4, "3+", "5/5", "Brutal, Shock")],
-           ["Commanding Declamation: Once per battle, when an enemy visible within 6\" would take an action, roll a D6. If it beats that enemy's APL, it can't take that action this activation. Its AP isn't refunded, and a counteraction ends.",
+           ["Commanding Declamation: When an enemy visible within 6\" would take an action, roll a D6. If it beats that enemy's APL, it can't take that action this activation (its AP isn't refunded, and a counteraction ends), and you can't use this rule again in the battle.",
             "Lead the Procession: After the first turning point, when it's the Orator and it Charges, Falls Back or Repositions, Sanctifiers benefiting from the Sermon and visible to it can each make a free Charge, Fall Back or Reposition of up to 3\", ending still in the Sermon."],
            "LEADER, CONFESSOR", wounds=10, pts=32),
         sc("cherub", "Cherub", [], [("Incentiviser", 3, "5+", "1/3", "Shock")],

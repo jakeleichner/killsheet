@@ -36,8 +36,8 @@ TEAM = {
         "firefight": [
             ("Sickening Resilience", "When an attack die damages a Plague Marine, until the end of the activation Disgustingly Resilient always subtracts 1 (to a minimum of 2) without rolling."),
             ("Curse of Rot", "Use when attacking an enemy within 3\" (7\" if it's poisoned), after it rolls. Each 3 it rolled inflicts 1 damage on it, and that die can't be retained or re-rolled."),
-            ("Virulent Poison", "During a Plague Marine's activation, an enemy within 3\" of it, or visible within 7\", gains your Poison token."),
-            ("Poisonous Demise", "When a Plague Marine is incapacitated, enemies visible within 3\" gain your Poison token. Ones that are already poisoned take 1 damage instead."),
+            ("Virulent Poison", "During a Plague Marine's activation or counteraction, an enemy within 3\" of it, or visible within 7\", gains your Poison token."),
+            ("Poisonous Demise", "When a Plague Marine is incapacitated, before it's removed, enemies visible within 3\" of it gain your Poison token if they don't have one. Then each of them with your Poison token (including ones that just gained it) takes 1 damage."),
         ],
     },
     "equipment": [
@@ -50,7 +50,7 @@ TEAM = {
     "operatives": [
         pm("champion", "Plague Marine Champion", [("Plasma pistol (std)", 4, "3+", "3/5", 'Range 8", Piercing 1'), ("Plasma pistol (super)", 4, "3+", "4/5", 'Range 8", Hot, Lethal 5+, Piercing 1')],
            [("Plague sword", 5, "3+", "4/5", "Severe, Poison, Toxic")],
-           ["Grandfather's Blessing: When a poisoned enemy within 7\" loses wounds, it regains up to that many (3 per turning point at most).", TOXIC],
+           ["Grandfather's Blessing: When an enemy with your Poison token loses wounds within 7\" of it, this operative regains up to that many lost wounds (3 per turning point at most, and not if it's incapacitated).", TOXIC],
            "LEADER, CHAMPION", wounds=15),
         pm("bombardier", "Plague Marine Bombardier", [("Boltgun", 4, "3+", "3/4", "-")], [FISTS],
            ["Grenadier: It can use blight and krak grenades without using up equipment, and gets +1 to Hit with them. Its blight grenades gain Toxic.", TOXIC],

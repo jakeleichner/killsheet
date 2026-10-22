@@ -74,7 +74,7 @@ TEAM = {
         scout("skjald", "Rune Priest Skjald", [("Bolt pistol", 4, "3+", "3/4", 'Range 8"'), ("Jaws of the World Wolf", 4, "3+", "3/5", 'PSYCHIC, Blast 2", Severe'),
                                                ("Thunderclap", 5, "2+", "2/2", 'PSYCHIC, Range 6", Saturate, Seek Light, Stun, Torrent 2"')],
               [("Runic stave", 5, "3+", "4/6", "PSYCHIC, Shock")],
-              ["Cast the Runes: Before the battle, roll 3D6. For each result of 1 to 4, you get one 0CP Command Re-roll in the turning point with that number. For any 5 or 6, gain 1CP.",
+              ["Cast the Runes: Before the battle, roll 3D6. For each result of 1 to 4, you get one 0CP Command Re-roll in the turning point with that number. If one or more dice roll a 5 or 6, gain 1CP (just 1, however many).",
                "Call the Storm (1AP): PSYCHIC. Move your Storm marker, or pick a Wolf Scout. Until this operative's next activation, that Wolf Scout is obscured while it's wholly within your Storm and more than 3\" from the active operative. It can't do this within enemy control range."],
               "PSYKER, RUNE PRIEST SKJALD"),
         scout("hunter", "Hunter", PLASMA_PISTOL, [BLADE5],

@@ -76,7 +76,7 @@ TEAM = {
            "DENUNCIA"),
         ci("mortisanctus", "Mortisanctus", [], [("Blessed broadsword", 4, "3+", "4/6", "Lethal 5+, Brutal")],
            ["Bladed Stance: When it fights or retaliates, resolve one success early, as a block.",
-            "Zealous Ultimatum: STRATEGIC GAMBIT, once per battle. Challenge an enemy within 8\". If they accept, it gets +1 Atk against that enemy, and another +1 Atk for the battle once it kills it (to a maximum of 5). If they decline, that enemy gets -1 Atk against Insidiants."],
+            "Zealous Ultimatum: STRATEGIC GAMBIT, once per battle. Challenge an enemy within 8\". If they accept, it gets +1 Atk against that enemy, and another +1 Atk for the battle once it kills it (to a maximum of 5). If they decline, that enemy gets -1 Atk when fighting or retaliating against Insidiants."],
            "MORTISANCTUS"),
         ci("reliquarius", "Reliquarius", [BOLT_PISTOL, STAKE], [("Gun butt", 3, "3+", "2/3", "-")],
            ["Simulacrum Icon Bearer: For markers contested by an enemy within 3\" of it, the enemy's total APL counts as 1 lower.",
