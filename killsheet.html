@@ -6122,26 +6122,33 @@ const TIP_LINKS = [
   [/\b[Ss]econdary targets?\b/, "SecondaryTarget"],
 ];
 const TIP_LINK_RE = new RegExp(TIP_LINKS.map(([re]) => "(" + re.source + ")").join("|"), "g");
-const tipText = (text, skip, onOpen) => {
-  const out = []; const used = new Set(skip); let last = 0; let m;
+const termEntry = (k) => ({ key: k, term: TERM_TIPS[k][0], text: TERM_TIPS[k][1], link: TERM_TIPS[k][2] });
+// Text with its linked words as buttons: the TIP_LINKS words, then any rule names from refs (first mention of each).
+const tipText = (text, skip, onOpen, refs) => {
+  const found = [];
   TIP_LINK_RE.lastIndex = 0;
-  while ((m = TIP_LINK_RE.exec(text))) {
-    const k = TIP_LINKS[m.slice(1).findIndex(Boolean)][1];
-    if (used.has(k)) continue;
-    used.add(k);
-    out.push(text.slice(last, m.index));
-    out.push(<button key={m.index} className="link-btn" onClick={() => onOpen(k)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "#C9772E", fontWeight: 600, fontSize: "inherit", fontFamily: "inherit", textDecoration: "underline dotted", textUnderlineOffset: 3 }}>{m[0]}</button>);
-    last = m.index + m[0].length;
-  }
+  let m;
+  while ((m = TIP_LINK_RE.exec(text))) found.push({ s: m.index, e: m.index + m[0].length, m: m[0], entry: termEntry(TIP_LINKS[m.slice(1).findIndex(Boolean)][1]) });
+  refMatches(text, refs || coreRefs()).forEach(x => found.push(x));
+  found.sort((a, b) => a.s - b.s || (b.e - b.s) - (a.e - a.s));
+  const out = []; const used = new Set(skip); let last = 0;
+  found.forEach(x => {
+    if (x.s < last) return;
+    if (used.has(x.entry.key)) return;
+    used.add(x.entry.key);
+    out.push(text.slice(last, x.s));
+    out.push(<button key={x.s} className="link-btn" onClick={() => onOpen(x.entry)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "#C9772E", fontWeight: 600, fontSize: "inherit", fontFamily: "inherit", textDecoration: "underline dotted", textUnderlineOffset: 3 }}>{x.m}</button>);
+    last = x.e;
+  });
   out.push(text.slice(last));
   return out;
 };
 
 let closeOpenTip = null;
-function RuleTip({ term, text, link, children, style, label, tkey }) {
+function RuleTip({ term, text, link, children, style, label, tkey, refs }) {
   const { feat, openRule } = React.useContext(FeatureCtx);
   const [open, setOpen] = useState(false); // false, "hover" or "pinned"
-  const [trail, setTrail] = useState([]); // words opened from inside this tip, newest last
+  const [trail, setTrail] = useState([]); // entries opened from inside this tip ({ key, term, text, link }), newest last
   const ref = React.useRef(null);
   const cardRef = React.useRef(null);
   const timer = React.useRef(null);
@@ -6167,6 +6174,7 @@ function RuleTip({ term, text, link, children, style, label, tkey }) {
   if (!feat.tips || !text) return <span style={style}>{children || term}</span>;
   const leaveSoon = () => { clearTimeout(timer.current); timer.current = setTimeout(() => setOpen(o => (o === "hover" ? false : o)), 150); };
   let card = null;
+  const cur = trail.length ? trail[trail.length - 1] : { term, text, link };
   if (open && ref.current) {
     const r = ref.current.getBoundingClientRect();
     const width = Math.min(320, window.innerWidth - 16);
@@ -6180,16 +6188,12 @@ function RuleTip({ term, text, link, children, style, label, tkey }) {
           background: "#1A1D24", border: "1px solid #C9772E70", borderRadius: 6, padding: "10px 12px", boxShadow: "0 8px 24px rgba(0,0,0,0.6)",
           fontFamily: "'Inter', 'Segoe UI', sans-serif", fontSize: 13, fontWeight: 400, lineHeight: 1.45, color: "#F1F2F5", textAlign: "left", textTransform: "none", letterSpacing: "normal", whiteSpace: "normal" }}>
         {trail.length > 0 && (
-          <button className="link-btn" onClick={() => setTrail(t => t.slice(0, -1))} style={{ display: "block", background: "none", border: "none", padding: 0, marginBottom: 6, cursor: "pointer", color: "#9AA5B1", fontSize: 13 }}><Back size={13} /> Back to {trail.length > 1 ? TERM_TIPS[trail[trail.length - 2]][0] : term}</button>
+          <button className="link-btn" onClick={() => setTrail(t => t.slice(0, -1))} style={{ display: "block", background: "none", border: "none", padding: 0, marginBottom: 6, cursor: "pointer", color: "#9AA5B1", fontSize: 13 }}><Back size={13} /> Back to {trail.length > 1 ? trail[trail.length - 2].term : term}</button>
         )}
-        {(() => {
-          const k = trail[trail.length - 1];
-          const cur = k ? { term: TERM_TIPS[k][0], text: TERM_TIPS[k][1] } : { term, text };
-          return <React.Fragment><span style={{ fontWeight: 700, color: "#C9772E" }}>{cur.term}: </span>{tipText(cur.text, [tkey, ...trail], (nk) => { setOpen("pinned"); setTrail(t => [...t, nk]); })}</React.Fragment>;
-        })()}
-        {(trail.length ? TERM_TIPS[trail[trail.length - 1]][2] : link) && (
+        <span style={{ fontWeight: 700, color: "#C9772E" }}>{cur.term}: </span>{tipText(cur.text, [tkey, ...trail.map(t => t.key)], (entry) => { setOpen("pinned"); setTrail(t => [...t, entry]); }, refs)}
+        {cur.link && (
           <div style={{ marginTop: 6 }}>
-            <button className="link-btn" onClick={() => { const l = trail.length ? TERM_TIPS[trail[trail.length - 1]][2] : link; close(); openRule(l); }} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "#C9772E", fontSize: 13, fontWeight: 600, textDecoration: "underline" }}>Full rule in Rules <Fwd size={13} /></button>
+            <button className="link-btn" onClick={() => { const l = cur.link; close(); openRule(l); }} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "#C9772E", fontSize: 13, fontWeight: 600, textDecoration: "underline" }}>Full rule in Rules <Fwd size={13} /></button>
           </div>
         )}
       </div>,
@@ -6225,6 +6229,121 @@ function Tip({ k, children, local }) {
   const t = weaponRuleTip(k, local);
   if (!t) return <span>{children || k}</span>;
   return <RuleTip term={k} text={t[0]} link={t[1]}>{children || k}</RuleTip>;
+}
+
+// Rule names inside rule text open that rule as a tip: the team's own rules (faction rules, ploys,
+// equipment, abilities and unique actions), weapon rules, universal equipment and core actions.
+// Each ref: { id, re, term, text, link }; term and text can be functions of the matched words.
+const escapeRe = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const refEntry = (id, forms, term, text, link) => ({ id, re: new RegExp(forms, "g"), term, text, link: link || null });
+const ruleBody = (it) => [it.summary, ...[].concat(it.detail || [])].filter(Boolean).join(" ");
+let CORE_REFS = null;
+const coreRefs = () => {
+  if (CORE_REFS) return CORE_REFS;
+  const act = (name, forms) => { const a = CORE_ACTIONS.find(x => x.name === name); return refEntry("act:" + name, forms, name + " (" + a.tag + ")", ruleBody(a), name); };
+  const counter = GAME_SEQUENCE.find(x => x.name === "Counteract");
+  const reroll = CORE_CONCEPTS.find(x => x.name === "Command Re-roll");
+  const wrTip = (m) => (weaponRuleTip(m) || [""])[0];
+  const list = [
+    act("Reposition", "Reposition(?:s|ed|ing)?"),
+    act("Dash", "Dash(?:es|ed|ing)?"),
+    act("Fall Back", "(?:Fall(?:s|ing)?|Fell|Fallen) Back"),
+    act("Charge", "Charg(?:e|es|ed|ing)"),
+    act("Shoot", "Shoot(?:s|ing)?"),
+    act("Fight", "Fight(?:s|ing)?|Fought"),
+    act("Pick Up Marker", "Pick Up Marker"),
+    act("Place Marker", "Place Marker"),
+    refEntry("counteract", "[Cc]ounteract(?:s|ed|ing)?", "Counteract", ruleBody(counter), "Counteract"),
+    refEntry("reroll", "Command Re-roll", "Command Re-roll (1CP)", reroll.summary, "Command Re-roll"),
+    refEntry("gambit", "STRATEGIC GAMBIT|[Ss]trategic gambit", "Strategic gambit", "Used in the Gambits step of the Strategy phase, where players take turns using a strategy ploy or strategic gambit, or passing. A strategic gambit from a team rule costs no CP. Each one can be used once per turning point.", "Strategy phase"),
+    refEntry("support", "SUPPORT", "SUPPORT", "A rule that helps other friendly operatives. If it reaches them within a distance, a Comms Device (universal equipment) adds 3\" to that distance while this operative controls the device."),
+  ];
+  // Weapon rules: exact names, numbered ones ("Lethal 5+"), and bare names ("ignore Piercing").
+  Object.keys(WR).filter(k => !/^(Range|Poison|Toxic|PSYCHIC|Explosive)|\d/.test(k)).forEach(k => list.push(refEntry("wr:" + k, escapeRe(k) + (k === "Heavy" ? "(?! terrain| or Light| and Light| \\()" : ""), k, WR[k], k)));
+  [["Lethal", "Lethal \\d\\+"], ["Piercing Crits", "Piercing Crits \\d"], ["Piercing", "Piercing \\d"], ["Accurate", "Accurate \\d"], ["Devastating", "\\d\" Devastating \\d|Devastating \\d"], ["Blast", "Blast \\d\""], ["Torrent", "Torrent \\d\""], ["Limited", "Limited \\d"]].forEach(([name, forms]) => {
+    list.push(refEntry("wr:" + name, forms, (m) => m, (m) => wrTip(m) || WR[m] || "", name));
+  });
+  [["Lethal", "Lethal x+", "Attack rolls of x or more count as critical successes (normally only 6s do)."],
+   ["Piercing Crits", "Piercing Crits x", "If you retain at least one critical success, the defender rolls x fewer defence dice."],
+   ["Piercing", "Piercing x", "The defender rolls x fewer defence dice, whether or not you score crits."],
+   ["Accurate", "Accurate x", "Before rolling, you may set aside up to x attack dice and count them as automatic normal successes."],
+   ["Devastating", "Devastating x", "Each time you retain a critical success, deal x damage to the target right away."],
+   ["Limited", "Limited x", "This weapon can only be used x times per battle."]].forEach(([name, term, text]) => list.push(refEntry("wr:" + name, escapeRe(name), term, text, name)));
+  UNIV_EQUIPMENT.forEach(e => list.push(refEntry("eq:" + e.name, escapeRe(e.name.replace(/ \(x\d\)$/, "")) + "s?", e.name + " (universal equipment)", e.desc, e.name)));
+  CORE_REFS = { key: "core", list };
+  return CORE_REFS;
+};
+// A team's own rules first, then the core ones. Ability names that are also an operative's name ("Grenadier")
+// and names that are core actions ("Reposition" in Forward Scouting) aren't linked.
+const TEAM_REFS = {};
+const ABILITY_RE = /^([^:]{2,40}?)(?: \(([^)]*)\))?: ([\s\S]*)$/;
+const teamRefs = (f) => {
+  if (!f) return coreRefs();
+  if (TEAM_REFS[f.id]) return TEAM_REFS[f.id];
+  const core = coreRefs().list;
+  const opNames = (f.operatives || []).map(op => op.name.replace(/\s*\([^)]*\)\s*$/, ""));
+  const own = []; const seen = new Set();
+  const add = (name, term, text, isAbility) => {
+    const n = name.replace(/\s*\([^)]*\)\s*$/, "").replace(/ action$/, "").trim();
+    if (n.length < 3 || seen.has(n) || /^Loadout/.test(n) || !text || n === f.name) return;
+    if (core.some(r => { r.re.lastIndex = 0; const m = r.re.exec(n); return m && m[0] === n; })) return;
+    if (isAbility && opNames.some(o => o === n || o.endsWith(" " + n))) return;
+    seen.add(n);
+    own.push(refEntry("team:" + n, escapeRe(n) + "(?! (?:shotgun|boltgun|bolt|rifle|pistol|blade|knife)s?\\b)", term, text, null)); // not "Astartes shotgun"
+  };
+  (f.factionRules || []).forEach(r => { add(r.name, r.name, r.desc); if (r.name.includes(": ")) add(r.name.split(": ").pop(), r.name, r.desc); });
+  ["strategy", "firefight"].forEach(k => ((f.ploys || {})[k] || []).forEach(p => add(p.name, p.name + " (" + k + " ploy, 1CP)", p.desc)));
+  (f.equipment || []).forEach(q => add(q.name, q.name + " (equipment)", q.desc));
+  (f.operatives || []).forEach(op => (op.abilities || []).forEach(a => { const m = a.match(ABILITY_RE); if (m) add(m[1], m[1] + (m[2] ? " (" + m[2] + ")" : ""), m[3], true); }));
+  TEAM_REFS[f.id] = { key: f.id, list: [...own, ...core] };
+  return TEAM_REFS[f.id];
+};
+// Rule names found in a text: [{ s, e, m, entry }], first mention of each, longest match wins, never `skip` itself.
+const REF_CACHE = new Map();
+const refMatches = (text, refs, skip) => {
+  const ck = refs.key + "|" + (skip || "") + "|" + text;
+  if (REF_CACHE.has(ck)) return REF_CACHE.get(ck);
+  const found = [];
+  refs.list.forEach((r, order) => {
+    r.re.lastIndex = 0; let m;
+    while ((m = r.re.exec(text))) {
+      if (!m[0]) { r.re.lastIndex++; continue; }
+      const s = m.index, e = s + m[0].length;
+      if (/[A-Za-z0-9]/.test(text[s - 1] || "") || /[A-Za-z0-9-]/.test(text[e] || "")) continue;
+      found.push({ s, e, m: m[0], r, order });
+    }
+  });
+  found.sort((a, b) => a.s - b.s || (b.e - b.s) - (a.e - a.s) || a.order - b.order);
+  const out = []; const used = new Set(); let pos = 0;
+  const skipIds = skip ? ["team:" + skip, "act:" + skip, "wr:" + skip, "eq:" + skip] : [];
+  found.forEach(x => {
+    if (x.s < pos) return;
+    pos = x.e;
+    if (used.has(x.r.id) || skipIds.includes(x.r.id)) return;
+    used.add(x.r.id);
+    const term = typeof x.r.term === "function" ? x.r.term(x.m) : x.r.term;
+    const body = typeof x.r.text === "function" ? x.r.text(x.m) : x.r.text;
+    if (body) out.push({ s: x.s, e: x.e, m: x.m, entry: { key: x.r.id, term, text: body, link: x.r.link } });
+  });
+  if (REF_CACHE.size > 4000) REF_CACHE.clear();
+  REF_CACHE.set(ck, out);
+  return out;
+};
+// Rule text with the names of other rules as tips. `self` is the rule's own name, which isn't linked.
+function RefText({ text, f, self }) {
+  const { feat } = React.useContext(FeatureCtx);
+  if (!text || !feat.tips) return text || null;
+  const refs = teamRefs(f);
+  const found = refMatches(text, refs, self);
+  if (!found.length) return text;
+  const out = []; let last = 0;
+  found.forEach(x => {
+    out.push(text.slice(last, x.s));
+    out.push(<RuleTip key={x.s} term={x.entry.term} text={x.entry.text} link={x.entry.link} tkey={x.entry.key} refs={refs} style={{ fontWeight: 600 }}>{x.m}</RuleTip>);
+    last = x.e;
+  });
+  out.push(text.slice(last));
+  return <React.Fragment>{out}</React.Fragment>;
 }
 
 /* ═══ DICE ROLLER ═══ */
@@ -6713,11 +6832,11 @@ function OrderChip({ order, onToggle }) {
 
 const weaponBase = (name) => name.replace(/\s*\([^)]*\)\s*$/, "");
 // "Name: rule text" shows the name in bold so it can be found at a glance.
-const abilityText = (a) => {
+const abilityText = (a, f) => {
   const m = a.match(/^([^:.]{2,40}):\s(.*)$/s);
-  return m ? <React.Fragment><strong style={{ color: "#F1F2F5", fontWeight: 700 }}>{m[1]}:</strong> {m[2]}</React.Fragment> : a;
+  return m ? <React.Fragment><strong style={{ color: "#F1F2F5", fontWeight: 700 }}>{m[1]}:</strong> <RefText text={m[2]} f={f} self={m[1].replace(/\s*\([^)]*\)\s*$/, "")} /></React.Fragment> : <RefText text={a} f={f} />;
 };
-function Datacard({ op, fc, equipWeapons, equipEffects, curWounds, onWound, collapsed, onToggle, ignoreInjured, cp, setCp, isActivated, onActivate, requestDamageApply, applySelfDamage, order, onOrder, uses, setUse, carried, onCarried }) {
+function Datacard({ op, f, fc, equipWeapons, equipEffects, curWounds, onWound, collapsed, onToggle, ignoreInjured, cp, setCp, isActivated, onActivate, requestDamageApply, applySelfDamage, order, onOrder, uses, setUse, carried, onCarried }) {
   const [pickWeapons, setPickWeapons] = useState(false);
   const { feat } = React.useContext(FeatureCtx);
   const opRules = React.useMemo(() => opWeaponRules(op), [op]);
@@ -6903,7 +7022,7 @@ function Datacard({ op, fc, equipWeapons, equipEffects, curWounds, onWound, coll
                   <div style={{ fontFamily: DS.fontDisplay, fontSize: 11, fontWeight: 600, color: DS.textSecondary, letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 8 }}>Abilities</div>
                   {op.abilities.map((a, i) => (
                     <React.Fragment key={i}>
-                      <div style={{ fontSize: 13, color: DS.textPrimary, lineHeight: 1.5, paddingLeft: 12, borderLeft: "2px solid " + fc + "40", marginBottom: 6 }}>{abilityText(a)}</div>
+                      <div style={{ fontSize: 13, color: DS.textPrimary, lineHeight: 1.5, paddingLeft: 12, borderLeft: "2px solid " + fc + "40", marginBottom: 6 }}>{abilityText(a, f)}</div>
                       {uses && isOncePerBattle(a) && <UsePips label="Once per battle" used={uses[op.id + "|a|" + i] || 0} max={1} onSet={(n) => setUse(op.id + "|a|" + i, n)} />}
                     </React.Fragment>
                   ))}
@@ -7070,7 +7189,7 @@ function TurnGuide({ tp, numTPs, setTp, hasInitiative, onInitiative, cp, f, rost
   ].filter(h => h.name && h.name.length < 60 && !seen.has(h.name) && seen.add(h.name));
   // Each chip opens its ploy or rule text as a tip.
   const chip = (item, color, kind) => (
-    <RuleTip key={item.name} term={item.name + (kind ? " (" + kind + ")" : "")} text={item.desc} style={{ fontWeight: 400 }}>
+    <RuleTip key={item.name} term={item.name + (kind ? " (" + kind + ")" : "")} text={item.desc} tkey={"team:" + item.name} refs={teamRefs(f)} style={{ fontWeight: 400 }}>
       <span style={{ display: "inline-block", fontSize: 12, padding: "2px 8px", borderRadius: 4, background: (color || "#9AA5B1") + "18", border: "1px solid " + (color || "#9AA5B1") + "40", color: color || "#C8CDD3", margin: "4px 4px 0 0", textDecoration: feat.labels && feat.tips ? "underline dotted" : "none", textUnderlineOffset: 3 }}>{item.name}</span>
     </RuleTip>
   );
@@ -8430,7 +8549,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
               </div>
               {open && (
                 <div className="ks-appear" ref={el => { const k = fc.id + "|" + peekRule; if (el && peekRuleScrolled.current !== k) { peekRuleScrolled.current = k; el.scrollIntoView({ block: "nearest", behavior: "smooth" }); } }} style={{ marginTop: 8, padding: "10px 12px", borderRadius: 6, background: "#0E0F13", borderLeft: "3px solid " + (open.list ? "#9AA5B1" : fc.color), fontSize: 13, color: "#C8CDD3", lineHeight: 1.55 }}>
-                  {open.list ? open.list.map((t, i) => <div key={i} style={{ marginBottom: i < open.list.length - 1 ? 4 : 0 }}>{t}</div>) : open.desc}
+                  {open.list ? open.list.map((t, i) => <div key={i} style={{ marginBottom: i < open.list.length - 1 ? 4 : 0 }}><RefText text={t} f={fc} /></div>) : <RefText text={open.desc} f={fc} self={open.name} />}
                 </div>
               )}
               <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
@@ -8866,7 +8985,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                       <div style={{ width: 12, height: 12, borderRadius: 2, border: "1.5px solid " + (used ? "#C9772E" : "#262A33"), background: used ? "#C9772E20" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#C9772E", flexShrink: 0 }}>{used ? <Icon name="check" size={10} /> : ""}</div>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 15, fontWeight: 700, color: used ? "#9AA5B1" : "#F1F2F5", fontFamily: "'Rajdhani', sans-serif", textDecoration: used ? "line-through" : "none" }}>{p.name}</div>
-                        <div style={{ fontSize: 13, color: "#9AA5B1", lineHeight: 1.45 }}>{p.desc}</div>
+                        <div style={{ fontSize: 13, color: "#9AA5B1", lineHeight: 1.45 }}><RefText text={p.desc} f={f} self={p.name} /></div>
                         {ployUses("strategy", i, p)}
                       </div>
                     </div>
@@ -8884,7 +9003,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                       <div style={{ width: 12, height: 12, borderRadius: 2, border: "1.5px solid " + (used ? "#B8341C" : "#262A33"), background: used ? "#B8341C20" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#E0664A", flexShrink: 0 }}>{used ? <Icon name="check" size={10} /> : ""}</div>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 15, fontWeight: 700, color: used ? "#9AA5B1" : "#F1F2F5", fontFamily: "'Rajdhani', sans-serif", textDecoration: used ? "line-through" : "none" }}>{p.name}</div>
-                        <div style={{ fontSize: 13, color: "#9AA5B1", lineHeight: 1.45 }}>{p.desc}</div>
+                        <div style={{ fontSize: 13, color: "#9AA5B1", lineHeight: 1.45 }}><RefText text={p.desc} f={f} self={p.name} /></div>
                         {ployUses("firefight", i, p)}
                       </div>
                     </div>
@@ -8922,7 +9041,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                       <span style={{ fontSize: 11, fontWeight: 600, color: eq[q.id] ? "#C9772E" : "#9AA5B1", fontFamily: "'Rajdhani', sans-serif" }}>{q.name}</span>
                       {q.gw && (<span style={{ fontSize: 11, color: "#E0664A", background: "#B8341C10", padding: "0 4px", borderRadius: 2, border: "1px solid #B8341C20" }}>weapon</span>)}
                     </div>
-                    <div style={{ fontSize: 11, color: "#9AA5B1", lineHeight: 1.3 }}>{q.desc}</div>
+                    <div style={{ fontSize: 11, color: "#9AA5B1", lineHeight: 1.3 }}><RefText text={q.desc} f={f} self={q.name} /></div>
                     {q.gw && <div style={{ fontSize: 12, color: "#C8CDD3", lineHeight: 1.4, marginTop: 2, fontFamily: "'Rajdhani', sans-serif", fontWeight: 600 }}>{q.gw.name.replace(/ \(equip\)$/, "")}: ATK {q.gw.atk} {"·"} HIT {q.gw.hit} {"·"} DMG {q.gw.dmg}{q.gw.wr && q.gw.wr !== "-" ? " · " + q.gw.wr : ""}</div>}
                   </div>
                 </div>
@@ -8977,7 +9096,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
               {f.factionRules.map((r, i) => (
                 <div key={i} style={{ marginBottom: 6 }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: "#C9772E", fontFamily: "'Rajdhani', sans-serif" }}>{r.name}</div>
-                  <div style={{ fontSize: 11, color: "#9AA5B1", lineHeight: 1.4 }}>{r.desc}</div>
+                  <div style={{ fontSize: 11, color: "#9AA5B1", lineHeight: 1.4 }}><RefText text={r.desc} f={f} self={r.name} /></div>
                 </div>
               ))}
               {/* Chapter Tactics selector (Angels of Death only) */}
@@ -9124,7 +9243,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                   return aAlive - bAlive;
                 }).map(op => {
                   const result = getEquipForOp(op);
-                  return (<Datacard key={op.id} op={op} fc={f.color} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getWounds(op.id, op.wounds)} onWound={(delta) => setOpWounds(op.id, op.wounds, delta)} collapsed={cardCollapsed[op.id] || false} onToggle={() => toggleCardCollapse(op.id)} ignoreInjured={result.ignoreInjured} cp={cp} setCp={setCp} isActivated={activated[op.id] || false} onActivate={() => setActivated(prev => ({ ...prev, [op.id]: !prev[op.id] }))} requestDamageApply={requestDamageApply} applySelfDamage={(amount) => { setOpWounds(op.id, op.wounds, -amount); showToast(op.name + " took " + amount + " self-dmg"); }} order={orders[op.id] || "conceal"} onOrder={() => setOrders(prev => ({ ...prev, [op.id]: prev[op.id] === "engage" ? "conceal" : "engage" }))} uses={feat.uses ? battleUses : null} setUse={(k, n) => setBattleUses(prev => ({ ...prev, [k]: n }))} carried={carried[op.id]} onCarried={(list) => setCarried(prev => ({ ...prev, [op.id]: list }))} />);
+                  return (<Datacard key={op.id} op={op} f={f} fc={f.color} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getWounds(op.id, op.wounds)} onWound={(delta) => setOpWounds(op.id, op.wounds, delta)} collapsed={cardCollapsed[op.id] || false} onToggle={() => toggleCardCollapse(op.id)} ignoreInjured={result.ignoreInjured} cp={cp} setCp={setCp} isActivated={activated[op.id] || false} onActivate={() => setActivated(prev => ({ ...prev, [op.id]: !prev[op.id] }))} requestDamageApply={requestDamageApply} applySelfDamage={(amount) => { setOpWounds(op.id, op.wounds, -amount); showToast(op.name + " took " + amount + " self-dmg"); }} order={orders[op.id] || "conceal"} onOrder={() => setOrders(prev => ({ ...prev, [op.id]: prev[op.id] === "engage" ? "conceal" : "engage" }))} uses={feat.uses ? battleUses : null} setUse={(k, n) => setBattleUses(prev => ({ ...prev, [k]: n }))} carried={carried[op.id]} onCarried={(list) => setCarried(prev => ({ ...prev, [op.id]: list }))} />);
                 })}
 
               </div>
@@ -9154,7 +9273,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                     {oppRoster.operatives.map(op => {
                       const result = oppRoster.getEquip(op);
                       const oCollapsed = oppCollapsed[op.id] || false;
-                      return (<Datacard key={"opp-" + op.id} op={op} fc={oppRoster.factionColor || "#9AA5B1"} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getOppWounds(op.id, op.wounds)} onWound={(delta) => { if (mp && mp.status === "connected" && delta < 0) { mp.send({ type: "applyRemoteDamage", opId: op.id, amount: -delta }); } else if (mp && mp.status === "connected" && delta > 0) { mp.send({ type: "applyRemoteHeal", opId: op.id, amount: delta }); } else { setOppWound(op.id, op.wounds, delta); } }} collapsed={oCollapsed} onToggle={() => setOppCollapsed(prev => ({ ...prev, [op.id]: !oCollapsed }))} ignoreInjured={result.ignoreInjured} cp={0} setCp={() => {}} requestDamageApply={requestDamageApply} applySelfDamage={(amount) => { if (mp && mp.status === "connected") { mp.send({ type: "applyRemoteDamage", opId: op.id, amount }); showToast(op.name + " took " + amount + " self-dmg (sent)"); } else { setOppWound(op.id, op.wounds, -amount); showToast(op.name + " took " + amount + " self-dmg"); } }} />);
+                      return (<Datacard key={"opp-" + op.id} op={op} f={oppRoster.faction || FACTIONS[oppRoster.factionId]} fc={oppRoster.factionColor || "#9AA5B1"} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getOppWounds(op.id, op.wounds)} onWound={(delta) => { if (mp && mp.status === "connected" && delta < 0) { mp.send({ type: "applyRemoteDamage", opId: op.id, amount: -delta }); } else if (mp && mp.status === "connected" && delta > 0) { mp.send({ type: "applyRemoteHeal", opId: op.id, amount: delta }); } else { setOppWound(op.id, op.wounds, delta); } }} collapsed={oCollapsed} onToggle={() => setOppCollapsed(prev => ({ ...prev, [op.id]: !oCollapsed }))} ignoreInjured={result.ignoreInjured} cp={0} setCp={() => {}} requestDamageApply={requestDamageApply} applySelfDamage={(amount) => { if (mp && mp.status === "connected") { mp.send({ type: "applyRemoteDamage", opId: op.id, amount }); showToast(op.name + " took " + amount + " self-dmg (sent)"); } else { setOppWound(op.id, op.wounds, -amount); showToast(op.name + " took " + amount + " self-dmg"); } }} />);
                     })}
                   </div>
                 </div>
@@ -9216,7 +9335,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                       {oppRoster.operatives.map(op => {
                         const result = oppRoster.getEquip(op);
                         const oCollapsed = oppCollapsed[op.id] || false;
-                        return (<Datacard key={"opp-m-" + op.id} op={op} fc={oppRoster.factionColor || "#9AA5B1"} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getOppWounds(op.id, op.wounds)} onWound={(delta) => { if (mp && mp.status === "connected" && delta < 0) { mp.send({ type: "applyRemoteDamage", opId: op.id, amount: -delta }); } else if (mp && mp.status === "connected" && delta > 0) { mp.send({ type: "applyRemoteHeal", opId: op.id, amount: delta }); } else { setOppWound(op.id, op.wounds, delta); } }} collapsed={oCollapsed} onToggle={() => setOppCollapsed(prev => ({ ...prev, [op.id]: !oCollapsed }))} ignoreInjured={result.ignoreInjured} cp={0} setCp={() => {}} requestDamageApply={requestDamageApply} applySelfDamage={(amount) => { if (mp && mp.status === "connected") { mp.send({ type: "applyRemoteDamage", opId: op.id, amount }); showToast(op.name + " took " + amount + " self-dmg (sent)"); } else { setOppWound(op.id, op.wounds, -amount); showToast(op.name + " took " + amount + " self-dmg"); } }} />);
+                        return (<Datacard key={"opp-m-" + op.id} op={op} f={oppRoster.faction || FACTIONS[oppRoster.factionId]} fc={oppRoster.factionColor || "#9AA5B1"} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getOppWounds(op.id, op.wounds)} onWound={(delta) => { if (mp && mp.status === "connected" && delta < 0) { mp.send({ type: "applyRemoteDamage", opId: op.id, amount: -delta }); } else if (mp && mp.status === "connected" && delta > 0) { mp.send({ type: "applyRemoteHeal", opId: op.id, amount: delta }); } else { setOppWound(op.id, op.wounds, delta); } }} collapsed={oCollapsed} onToggle={() => setOppCollapsed(prev => ({ ...prev, [op.id]: !oCollapsed }))} ignoreInjured={result.ignoreInjured} cp={0} setCp={() => {}} requestDamageApply={requestDamageApply} applySelfDamage={(amount) => { if (mp && mp.status === "connected") { mp.send({ type: "applyRemoteDamage", opId: op.id, amount }); showToast(op.name + " took " + amount + " self-dmg (sent)"); } else { setOppWound(op.id, op.wounds, -amount); showToast(op.name + " took " + amount + " self-dmg"); } }} />);
                       })}
                     </div>
                   )}
@@ -14220,11 +14339,11 @@ function RuleItem({ item, open, onToggle }) {
         {item.tag && <span style={bg(item.tagColor || "#B8341C")}>{item.tag}</span>}
         {more && <Arrow open={open} />}
       </div>
-      {item.summary && <div style={{ ...mu, marginTop: 4 }}>{item.summary}</div>}
+      {item.summary && <div style={{ ...mu, marginTop: 4 }}><RefText text={item.summary} self={item.name} /></div>}
       {item.steps && <StepList items={item.steps} />}
       {more && open && (
         <div style={{ marginTop: 8, paddingLeft: 10, borderLeft: "2px solid #C9772E40" }}>
-          {lines.map((l, i) => <div key={i} style={{ ...mu, color: "#C8CDD3", marginBottom: 4 }}>{lines.length > 1 ? "• " : ""}{l}</div>)}
+          {lines.map((l, i) => <div key={i} style={{ ...mu, color: "#C8CDD3", marginBottom: 4 }}>{lines.length > 1 ? "• " : ""}<RefText text={l} self={item.name} /></div>)}
           {item.stats && (
             <div onClick={e => e.stopPropagation()} style={{ background: "#0E0F13", borderRadius: 5, padding: "8px 10px", marginTop: 6, border: "1px solid #262A33", cursor: "default" }}>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 4 }}>
@@ -16314,7 +16433,17 @@ async function runSelfTest(hooks) {
     await click(ploy, "ploy chip");
     if (!tip() || tip().textContent.length < 20) throw new Error("the ploy tip didn't open");
     document.body.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true })); await settle();
-    return "APL, " + rule.textContent.trim() + (more ? " with the Rules link" : "") + ", \"" + word + "\" inside a tip, and the " + ploy.textContent.trim() + " ploy";
+    // Rule names inside rule text are tips too (a ploy that says "Fall Back" or names another ploy).
+    const hc = refMatches("You can use Command Override for 0CP, then Fall Back.", teamRefs(FACTIONS.hunterclade));
+    if (hc.map(x => x.entry.key).join() !== "team:Command Override,act:Fall Back") throw new Error("rule names in text: found " + hc.map(x => x.m).join(", "));
+    if (refMatches("with Heavy or Light terrain intervening, or an Astartes shotgun", teamRefs(FACTIONS.scouts)).length) throw new Error("terrain or a weapon name was linked as a rule");
+    const ploysTab = btn("Ploys & rules", true); if (ploysTab) await click(ploysTab, "Ploys & rules");
+    const refTip = all("[aria-label^='What is ']").find(e => /\((\dAP|strategy ploy, 1CP|firefight ploy, 1CP|equipment|universal equipment)\)\?$|What is (Counteract|Strategic gambit|SUPPORT|Balanced|Ceaseless|Severe|Relentless)\?/.test(e.getAttribute("aria-label")));
+    if (!refTip) throw new Error("no rule names linked in the team's ploys and rules");
+    await click(refTip, "rule name in rule text");
+    if (!tip() || tip().textContent.length < 20) throw new Error(refTip.textContent + ": the linked rule's tip didn't open");
+    document.body.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true })); await settle();
+    return "APL, " + rule.textContent.trim() + (more ? " with the Rules link" : "") + ", \"" + word + "\" inside a tip, the " + ploy.textContent.trim() + " ploy, and \"" + refTip.textContent.trim() + "\" in rule text";
   });
 
   // Put everything back the way it was, and stop the app saving its test state over it until reload.
