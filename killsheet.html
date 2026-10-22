@@ -7447,6 +7447,8 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
             Use these settings
           </button>
         </div>
+        <FeatureHint k="missions" text="Mission packs are switched off." style={{ textAlign: "center", marginTop: 10 }} />
+        <FeatureHint k="scoring" text="Tac ops are part of detailed scoring, which is switched off." style={{ textAlign: "center", marginTop: 4 }} />
         <div style={{ ...mu, fontSize: 13, textAlign: "center", marginTop: 10 }}>Roster validation, mission packs and the other switches are in <button className="link-btn" onClick={openFeatures} style={{ background: "none", border: "none", padding: 0, color: "#C9772E", cursor: "pointer", fontSize: 13, textDecoration: "underline" }}>Your KillSheet</button>.</div>
         {gameConfig && (
           <div style={{ textAlign: "center", marginTop: 10 }}>
@@ -8553,6 +8555,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
               </div>
             )}
             <div style={{ fontSize: 12, color: "#9AA5B1", marginBottom: 4 }}>{hasInitiative ? "You gain 1CP next turning point." : "You gain 2CP next turning point."}</div>
+            {!detailScoring && <FeatureHint k="scoring" text="Detailed scoring is switched off." style={{ fontSize: 12 }} />}
             {/* Scoring panel */}
             {showScoring && detailScoring && (
               <div style={{ marginTop: 6, paddingTop: 4 }}>
@@ -8785,6 +8788,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                 <div style={{ fontSize: 11, fontWeight: 700, color: cp > 0 ? "#C9772E" : "#B8341C", fontFamily: "'Rajdhani', sans-serif" }}>{cp}CP {"\u2022"} TP{tp}</div>
               </div>
               <div style={dv} />
+              {([...f.ploys.strategy, ...f.ploys.firefight].some(p => isOncePerBattle(p.desc)) || roster.some(op => op.abilities.some(isOncePerBattle) || [...op.ranged, ...op.melee].some(w => limitedMax(w.wr)))) && <FeatureHint k="uses" text="Some of your team's rules can only be used once per battle, or a set number of times. Use tracking, which ticks them off, is switched off." style={{ fontSize: 12, marginBottom: 6 }} />}
               <div style={{ fontSize: 11, fontWeight: 700, color: "#C9772E", marginBottom: 4, letterSpacing: "0.1em", fontFamily: "'Rajdhani', sans-serif" }}>STRATEGY (1CP)</div>
               {f.ploys.strategy.map((p, i) => {
                 const used = isPloyUsed("strategy", i);
@@ -14691,13 +14695,16 @@ function Missions({ campaign, startCampaign }) {
       {heading}
       <div style={{ ...cd, padding: 14, borderLeft: "3px solid #C9772E", marginTop: 10 }}>
         <div style={{ fontSize: 17, fontWeight: 700, color: "#F1F2F5", fontFamily: "'Rajdhani', sans-serif" }}>Mission packs are switched off for now</div>
-        <div style={{ ...mu, fontSize: 14, marginTop: 4 }}>Games Workshop's free mission packs give you new maps, special rules, and solo or co-op games against computer-run enemies. A standard game doesn't need them, so they're off while you learn the basics. Nothing is lost: switch them on whenever you're ready.</div>
+        <div style={{ ...mu, fontSize: 14, marginTop: 4 }}>A standard game doesn't need them, so they're off while you learn the basics. Switch them on whenever you're ready.</div>
+        {[["What it is", FEATURE_EXPLAIN.missions.what], ["What you need", FEATURE_EXPLAIN.missions.need], ["How it changes your game", FEATURE_EXPLAIN.missions.changes]].map(([h, t]) => (
+          <p key={h} style={{ ...mu, fontSize: 14, margin: "8px 0 0" }}><strong style={{ color: "#F1F2F5" }}>{h}:</strong> {t}</p>
+        ))}
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
           <button onClick={() => setFeat("missions", true)} style={{ ...bs("#C9772E"), background: "#C9772E14", padding: "10px 16px", fontSize: 14 }}>Turn on mission packs</button>
           <button onClick={openFeatures} style={{ ...bs("#9AA5B1"), padding: "10px 16px", fontSize: 14 }}>All switches</button>
         </div>
       </div>
-      {campaignCard}
+      {campaignCard || <FeatureHint k="campaign" text="The Ctesiphus Expedition campaign is switched off." style={{ marginTop: 12 }} />}
     </div>
   );
 
@@ -14710,7 +14717,7 @@ function Missions({ campaign, startCampaign }) {
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "12px 0" }}>
             {filters.map(f => <button key={f} onClick={() => setFilter(f)} style={{ ...bs(filter === f ? "#C9772E" : "#9AA5B1"), background: filter === f ? "#C9772E20" : "transparent", padding: "7px 12px", fontSize: 12 }}>{f}</button>)}
           </div>
-          {campaignCard}
+          {campaignCard || <FeatureHint k="campaign" text="The Ctesiphus Expedition campaign is switched off." style={{ margin: "0 0 12px" }} />}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 10 }}>
             {shown.map(p => (
               <div key={p.id} role="button" tabIndex={0} onClick={() => go(p.id, null)} style={{ ...cd, padding: 14, marginBottom: 0, cursor: "pointer", minWidth: 0 }}>
@@ -15804,6 +15811,45 @@ const FEATURE_GROUPS = [
     { k: "online", name: "Play online", desc: "Link up with a friend on another device and see each other's teams live." },
   ] },
 ];
+// "What is this?" for each switch: what it is, what you need, and how it changes a standard game.
+// Written from Games Workshop's free downloads; anything that needs a paid product says so.
+const FEATURE_EXPLAIN = {
+  dice: {
+    what: "Each weapon gets a Roll button. KillSheet rolls the attack and defence dice, applies the weapon's rules, and works out the damage.",
+    need: "Nothing extra.",
+    changes: "The rules are the same as rolling real dice. It's there for when you'd rather tap than roll, or want help working out a big attack.",
+  },
+  uses: {
+    what: "Some abilities, ploys and weapons can only be used once per battle, or a set number of times (Limited weapons, explosive grenades). Use tracking adds tick boxes so you can mark them used.",
+    need: "Nothing extra.",
+    changes: "No rules change. It saves you remembering what's gone, which matters more once you play teams with several once-per-battle rules.",
+  },
+  scoring: {
+    what: "In Games Workshop's Approved Ops missions you score victory points in several ways: a kill op for taking out enemy operatives, a crit op for the objectives on the map, and a tac op you pick from your team's archetypes. You also choose one of them as your primary op. Detailed scoring lets you track points turning point by turning point, for you and your opponent, instead of keeping one total.",
+    need: "The Approved Ops mission pack and its cards, sold by Games Workshop. KillSheet can't list them, because they aren't free.",
+    changes: "Instead of one score, you keep an eye on several goals at once, and some only score at certain times. Your team's archetypes (shown when you pick a team) decide which tac ops you can choose.",
+  },
+  missions: {
+    what: "Games Workshop's free mission packs: 40 missions with their own maps, special rules and ways to win. Most are co-op or solo games against computer-run enemies (NPOs), and some are head-to-head.",
+    need: "Terrain for the pack's killzone (most use Killzone: Volkus or Killzone: Tomb World, but the packs say you can use your own), and models to stand in for the enemies in co-op missions. The rules are free and all in KillSheet.",
+    changes: "A mission replaces the standard game's setup and scoring: it sets the map, adds actions and rules, and says how you win. In co-op missions the enemies act by drawing cards, which KillSheet can draw for you, and you track their wounds here.",
+  },
+  campaign: {
+    what: "The Ctesiphus Expedition: a free campaign that links your games together on a hex map. Between battles you explore, gather Supply, set up camps and race a rising threat level. It works solo, co-op or with a group.",
+    need: "Time for several games. Each battle is a normal game of Kill Team. KillSheet keeps the map, the rolls and the records.",
+    changes: "Your games stop standing alone: where you are on the map decides each battle, and each result feeds back into the campaign.",
+  },
+  online: {
+    what: "Link KillSheet with a friend's device. You each see the other's team and datacards live, damage you apply shows on both, and there's a chat.",
+    need: "A friend with KillSheet open on another phone or computer, and an internet connection. You still play on a real table.",
+    changes: "The turning point and initiative stay in step on both devices. You each keep your own command points and victory points.",
+  },
+  validation: {
+    what: "Checks your roster against your team's building rules as you pick operatives: how many of each you can take, the leader, and equipment limits.",
+    need: "Nothing extra.",
+    changes: "With it off you can pick any operatives, for practice games or trying models out. Leave it on for a legal team.",
+  },
+};
 const featureMode = (feat) => Object.keys(FEATURE_PRESETS).find(m => Object.keys(FEATURE_PRESETS[m]).every(k => !!feat[k] === FEATURE_PRESETS[m][k])) || "custom";
 const FeatureCtx = React.createContext({ feat: FEATURE_PRESETS.expert, setFeat: () => {}, setMode: () => {}, validate: true, setValidate: () => {}, openFeatures: () => {}, openRule: () => {} });
 // Saved switches fill in any newer switch from the preset they match, so adding a switch doesn't turn a preset into Custom.
@@ -15813,6 +15859,17 @@ function isReturningPlayer() {
   const s = snapshotKillSheetStorage();
   const has = (k, empty) => s[LS_PREFIX + k] !== undefined && s[LS_PREFIX + k] !== empty;
   return has("fid", "null") || has("roster", "[]") || has("savedRosters", "[]") || has("gameHistory", "[]") || has("campaign", "null") || s[LS_PREFIX + "tutorialSeen"] === "true";
+}
+
+// "Detailed scoring is off. What is it?" where a switched-off feature would appear.
+function FeatureHint({ k, text, style }) {
+  const { feat, openFeatures } = React.useContext(FeatureCtx);
+  if (feat[k]) return null;
+  return (
+    <div style={{ fontSize: 13, color: "#9AA5B1", lineHeight: 1.45, ...style }}>
+      {text} <button className="link-btn" onClick={(e) => { e.stopPropagation(); openFeatures(k); }} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "#C9772E", fontSize: 13, textDecoration: "underline" }}>What is it?</button>
+    </div>
+  );
 }
 
 function Switch({ on, onChange, label }) {
@@ -15861,24 +15918,42 @@ function Welcome() {
 }
 
 // Every switch in one place, opened from the Battle tab's ⋯ menu and from the Rules tab.
-function FeaturesPage({ onClose }) {
+function FeaturesPage({ onClose, focus }) {
   const { feat, setFeat, setMode, validate, setValidate } = React.useContext(FeatureCtx);
   const mode = featureMode(feat);
+  const [explain, setExplain] = useState(typeof focus === "string" ? { [focus]: true } : {});
+  React.useEffect(() => {
+    const el = typeof focus === "string" && document.getElementById("feat-" + focus);
+    if (el) el.scrollIntoView({ block: "center" });
+  }, [focus]);
   React.useEffect(() => {
     const onKey = (e) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
-  const row = (key, name, desc, on, set) => (
-    <div key={key} style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "12px 0", borderTop: "1px solid #262A33" }}>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 16, fontWeight: 700, color: "#F1F2F5", fontFamily: "'Rajdhani', sans-serif" }}>{name}</div>
-        {!on && <div style={{ fontSize: 12, color: "#C9772E", fontWeight: 600, marginTop: 1 }}>Switched off for now</div>}
-        <div style={{ fontSize: 13, color: "#C8CDD3", lineHeight: 1.45, marginTop: 2 }}>{desc}</div>
+  const row = (key, name, desc, on, set) => {
+    const ex = FEATURE_EXPLAIN[key];
+    return (
+      <div key={key} id={"feat-" + key} style={{ padding: "12px 0", borderTop: "1px solid #262A33" }}>
+        <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: "#F1F2F5", fontFamily: "'Rajdhani', sans-serif" }}>{name}</div>
+            {!on && <div style={{ fontSize: 12, color: "#C9772E", fontWeight: 600, marginTop: 1 }}>Switched off for now</div>}
+            <div style={{ fontSize: 13, color: "#C8CDD3", lineHeight: 1.45, marginTop: 2 }}>{desc}</div>
+            {ex && <button className="link-btn" aria-expanded={!!explain[key]} onClick={() => setExplain(x => ({ ...x, [key]: !x[key] }))} style={{ background: "none", border: "none", padding: 0, marginTop: 4, cursor: "pointer", color: "#C9772E", fontSize: 13, fontWeight: 600, textDecoration: "underline" }}>{explain[key] ? "Hide" : "What is this?"}</button>}
+          </div>
+          <Switch on={on} onChange={set} label={name} />
+        </div>
+        {ex && explain[key] && (
+          <div className="ks-appear" style={{ marginTop: 8, padding: "10px 12px", background: "#1A1D24", borderRadius: 6, borderLeft: "3px solid #C9772E", fontSize: 13, color: "#C8CDD3", lineHeight: 1.5 }}>
+            {[["What it is", ex.what], ["What you need", ex.need], ["How it changes your game", ex.changes]].map(([h, t]) => (
+              <p key={h} style={{ margin: "0 0 6px" }}><strong style={{ color: "#F1F2F5" }}>{h}:</strong> {t}</p>
+            ))}
+          </div>
+        )}
       </div>
-      <Switch on={on} onChange={set} label={name} />
-    </div>
-  );
+    );
+  };
   return ReactDOM.createPortal(
     <div role="dialog" aria-modal="true" aria-label="Your KillSheet" style={{ position: "fixed", inset: 0, zIndex: 9000, background: "#0E0F13", overflowY: "auto", color: "#F1F2F5", fontFamily: "'Inter', 'Segoe UI', sans-serif" }}>
       <div className="ks-appear" style={{ maxWidth: 560, margin: "0 auto", padding: "16px 16px 40px" }}>
@@ -15910,7 +15985,7 @@ function FeaturesPage({ onClose }) {
 async function runSelfTest(hooks) {
   const results = [];
   const errors = [];
-  const saved = snapshotKillSheetStorage();
+  const saved = window.__ksSaved || snapshotKillSheetStorage();
   const orig = { prompt: window.prompt, confirm: window.confirm, alert: window.alert, error: console.error, createObjectURL: URL.createObjectURL, share: navigator.share, aClick: HTMLAnchorElement.prototype.click };
   const onError = (e) => errors.push(String(e.message || e));
   window.addEventListener("error", onError);
@@ -15960,12 +16035,19 @@ async function runSelfTest(hooks) {
     if (featureMode(f) !== "learning") throw new Error("Learning wasn't saved: " + JSON.stringify(f));
     await nav("Missions");
     if (!btn("Turn on mission packs")) throw new Error("the Missions tab doesn't say mission packs are off");
+    await click(all("button").find(b => b.textContent.trim() === "What is it?"), "campaign hint");
+    const hinted = document.querySelector("[role=dialog][aria-label='Your KillSheet']");
+    if (!hinted || !/What you need/.test((document.getElementById("feat-campaign") || {}).textContent || "")) throw new Error("the campaign hint didn't open its explainer");
+    await click(hinted.querySelector("[aria-label='Close']"), "close button");
     await nav("Battle");
     await click(document.querySelector("[aria-label='Game menu']"), "game menu");
     if (btn("Play online")) throw new Error("Play online shows while it's switched off");
     await click(btn("Your KillSheet"), "Your KillSheet");
     const page = document.querySelector("[role=dialog][aria-label='Your KillSheet']");
     if (!page) throw new Error("the Your KillSheet page didn't open");
+    const what = [...document.getElementById("feat-scoring").querySelectorAll("button")].find(b => b.textContent === "What is this?");
+    await click(what, "What is this? under Detailed scoring");
+    if (!/Approved Ops/.test(document.getElementById("feat-scoring").textContent)) throw new Error("the detailed scoring explainer didn't open");
     await click(page.querySelector("[role=switch][aria-label='Mission packs']"), "Mission packs switch");
     if (!(store("features") || {}).missions) throw new Error("the Mission packs switch didn't save");
     if (!/Custom/.test(page.innerText)) throw new Error("the page doesn't say Custom after changing one switch");
@@ -16179,7 +16261,7 @@ function App() {
     feat, validate, setValidate,
     setFeat: (k, v) => setFeatures(prev => ({ ...feat, ...(prev || {}), [k]: v })),
     setMode: (m) => setFeatures({ ...FEATURE_PRESETS[m] }),
-    openFeatures: () => setShowFeatures(true),
+    openFeatures: (k) => setShowFeatures(typeof k === "string" ? k : true),
     openRule: (q) => { setTutorialOpen(false); setTab("rules"); setRuleSearch({ q, n: Date.now() }); window.scrollTo(0, 0); },
   };
   React.useEffect(() => { if (/[?&]selftest\b/.test(window.location.search)) setTimeout(() => runSelfTest({ setFeatures, setReturning }), 1000); }, []);
@@ -16210,7 +16292,7 @@ function App() {
     <FeatureCtx.Provider value={featureCtx}>
     <div style={{ minHeight: "100vh", background: "#0E0F13", color: "#F1F2F5", fontFamily: "'Inter', 'Segoe UI', sans-serif", fontSize: 14 }}>
       {features === null && !returning && <Welcome />}
-      {showFeatures && <FeaturesPage onClose={() => setShowFeatures(false)} />}
+      {showFeatures && <FeaturesPage focus={showFeatures} onClose={() => setShowFeatures(false)} />}
 
       {/* CONNECTION BANNER (across all tabs) */}
       {mp.status !== "idle" && (
@@ -16319,6 +16401,8 @@ function MapCompare() {
 
 // ═══ RENDER ═══
 const root = ReactDOM.createRoot(document.getElementById('root'));
+// The self-test saves the player's data and clears it before the app starts, so the test begins from a clean slate.
+if (/[?&]selftest\b/.test(window.location.search)) { window.__ksSaved = snapshotKillSheetStorage(); restoreKillSheetStorage({}); }
 root.render(React.createElement(/[?&]maps\b/.test(window.location.search) ? MapCompare : App));
   </script>
 </body>
