@@ -5898,13 +5898,15 @@ function restoreKillSheetStorage(snap) {
     Object.keys(snap).forEach(k => window.localStorage.setItem(k, snap[k]));
   } catch (e) { /* storage unavailable */ }
 }
+// "Clear current game data" keeps saved rosters, game history and the Your KillSheet switches.
+const KEEP_ON_CLEAR = ["savedRosters", "gameHistory", "features", "validate"];
 function clearKillSheetStorage() {
   try {
     if (typeof window === "undefined") return;
     const keys = [];
     for (let i = 0; i < window.localStorage.length; i++) {
       const k = window.localStorage.key(i);
-      if (k && k.indexOf(LS_PREFIX) === 0 && k !== LS_PREFIX + "savedRosters" && k !== LS_PREFIX + "gameHistory") keys.push(k);
+      if (k && k.indexOf(LS_PREFIX) === 0 && !KEEP_ON_CLEAR.includes(k.slice(LS_PREFIX.length))) keys.push(k);
     }
     keys.forEach(k => window.localStorage.removeItem(k));
   } catch (e) { /* ignore */ }
@@ -7458,7 +7460,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
         {(fid || (roster && roster.length > 0)) && (
           <div style={{ textAlign: "center", marginTop: 14 }}>
             <button onClick={() => {
-              if (confirm("Clear the current game? This clears your roster, team, equipment, wounds, CP, VP and game state. Your saved rosters and game history are kept. This can't be undone.")) {
+              if (confirm("Clear the current game? This clears your roster, team, equipment, wounds, CP, VP and game state. Your saved rosters, game history and Your KillSheet switches are kept. This can't be undone.")) {
                 clearKillSheetStorage();
                 if (typeof window !== "undefined") window.location.reload();
               }
