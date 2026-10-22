@@ -88,6 +88,7 @@ const WR = {
   "Relentless": "After rolling your attack dice, re-roll any or all of them. Balanced re-rolls one die and Ceaseless re-rolls one result; this lets you pick every die.",
   "Rending": "If you retain at least one critical success, you can upgrade one normal success to a critical success, so one crit on the roll gives you two.",
   "Saturate": "The defender can't use their cover save (the free normal success for being in cover). The target still counts as in cover for everything else, e.g. whether a Concealed operative can be targeted.",
+  "Seek": "When picking a valid target, enemies on Conceal can't use any terrain for cover, so you can target Concealed operatives as long as they're visible. They keep their cover save if they're in cover.",
   "Seek Light": "When picking a valid target, enemies on Conceal can't use Light terrain for cover, so you can target Concealed operatives hiding behind it. They keep their cover save if other terrain still covers them.",
   "Severe": "If you rolled no critical successes, you can upgrade one normal success to a crit, so any roll with a hit gets at least one crit. It doesn't apply if you already have a crit (from a 6 or Lethal). Devastating and Piercing Crits work with the upgraded crit.",
   "Shock": "The first time you strike with a crit in a fight, your opponent also discards one of their unresolved normal successes (or a crit if they have no normals). That leaves them fewer dice to strike back with.",
@@ -6059,6 +6060,15 @@ const TERM_TIPS = {
   TP: ["Turning point", "One round of the game: a Strategy phase, then a Firefight phase. A battle lasts four unless the mission says otherwise.", "Turning points"],
   CP: ["CP (command points)", "Spend them on ploys, 1CP each. You start with 2 and gain more in every Strategy phase.", "Command Points"],
   VP: ["VP (victory points)", "Points you score from the mission. Whoever has the most at the end of the battle wins.", "Winning"],
+  Crit: ["Critical success", "A die that rolls a 6 (some rules, like Lethal, lower that). An attack crit deals the weapon's critical Dmg, the second number. A defence crit can block a normal or a critical success.", "Dice"],
+  Normal: ["Normal success", "A die that equals or beats the Hit stat (attack) or Save stat (defence) but isn't a critical success. An attack's normal success deals the first Dmg number.", "Dice"],
+  Retain: ["Retain", "Keep a die as a success. After rolling, dice that equal or beat the stat are retained and the rest are discarded as fails. Some rules let you retain a die without rolling it, like a cover save.", "Dice"],
+  Cover: ["Cover", "An operative is in cover if there's terrain between it and the shooter within 1\" of it, unless the shooter is within 2\". In cover it keeps one defence die as a normal success without rolling (its cover save), and on Conceal it can't be targeted.", "Cover"],
+  Obscured: ["Obscured", "A target is obscured if there's Heavy terrain between it and the shooter more than 1\" from both. The shooter discards one success, and all their critical successes become normal successes.", "Obscured"],
+  ValidTarget: ["Valid target", "An operative you're allowed to shoot. On Engage it's a valid target if it's visible. On Conceal it's only a valid target if it's visible and not in cover.", "Valid target"],
+  ControlRange: ["Control range", "Within 1\" of an operative and visible to it. It works both ways: if either operative is within the other's control range, both are.", "Control range"],
+  PrimaryTarget: ["Primary target", "The target you pick when shooting with a Blast or Torrent weapon. After it's shot, the weapon also shoots its secondary targets.", "Blast"],
+  SecondaryTarget: ["Secondary target", "Other operatives a Blast or Torrent weapon also shoots, picked by the rule's distance from the primary target. Each one is shot separately, with its own dice.", "Torrent"],
   Order: ["Ready and orders", "Ready means it hasn't activated yet this turning point. Tap it once it has, and it shows Expended. Conceal or Engage is its order, chosen when it activates (tap to switch). On Conceal it can't be targeted while in cover, but it can't Shoot or Charge. On Engage it acts normally.", "Orders"],
 };
 const NUMBERED_WR = [
@@ -6099,14 +6109,43 @@ const weaponRuleTip = (k, local) => {
   return t ? [t, null] : null;
 };
 
+// Words inside a tip that open their own explanation in the same card (first mention of each).
+const TIP_LINKS = [
+  [/[Cc]ritical success(?:es)?|\bcrits?\b/, "Crit"],
+  [/[Nn]ormal success(?:es)?/, "Normal"],
+  [/\b[Rr]etain(?:s|ed|ing)?\b/, "Retain"],
+  [/\b[Cc]over\b/, "Cover"],
+  [/\b[Oo]bscured\b/, "Obscured"],
+  [/\b[Vv]alid targets?\b/, "ValidTarget"],
+  [/\b[Cc]ontrol range\b/, "ControlRange"],
+  [/\b[Pp]rimary targets?\b/, "PrimaryTarget"],
+  [/\b[Ss]econdary targets?\b/, "SecondaryTarget"],
+];
+const TIP_LINK_RE = new RegExp(TIP_LINKS.map(([re]) => "(" + re.source + ")").join("|"), "g");
+const tipText = (text, skip, onOpen) => {
+  const out = []; const used = new Set(skip); let last = 0; let m;
+  TIP_LINK_RE.lastIndex = 0;
+  while ((m = TIP_LINK_RE.exec(text))) {
+    const k = TIP_LINKS[m.slice(1).findIndex(Boolean)][1];
+    if (used.has(k)) continue;
+    used.add(k);
+    out.push(text.slice(last, m.index));
+    out.push(<button key={m.index} className="link-btn" onClick={() => onOpen(k)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "#C9772E", fontWeight: 600, fontSize: "inherit", fontFamily: "inherit", textDecoration: "underline dotted", textUnderlineOffset: 3 }}>{m[0]}</button>);
+    last = m.index + m[0].length;
+  }
+  out.push(text.slice(last));
+  return out;
+};
+
 let closeOpenTip = null;
-function RuleTip({ term, text, link, children, style, label }) {
+function RuleTip({ term, text, link, children, style, label, tkey }) {
   const { feat, openRule } = React.useContext(FeatureCtx);
   const [open, setOpen] = useState(false); // false, "hover" or "pinned"
+  const [trail, setTrail] = useState([]); // words opened from inside this tip, newest last
   const ref = React.useRef(null);
   const cardRef = React.useRef(null);
   const timer = React.useRef(null);
-  const close = React.useCallback(() => { clearTimeout(timer.current); setOpen(false); }, []);
+  const close = React.useCallback(() => { clearTimeout(timer.current); setOpen(false); setTrail([]); }, []);
   const show = (how) => { clearTimeout(timer.current); if (closeOpenTip && closeOpenTip !== close) closeOpenTip(); closeOpenTip = close; setOpen(how); };
   React.useEffect(() => {
     if (!open) return;
@@ -6140,10 +6179,17 @@ function RuleTip({ term, text, link, children, style, label }) {
         style={{ position: "fixed", zIndex: 9600, left, width, boxSizing: "border-box", ...(above ? { bottom: window.innerHeight - r.top + 6 } : { top: r.bottom + 6 }),
           background: "#1A1D24", border: "1px solid #C9772E70", borderRadius: 6, padding: "10px 12px", boxShadow: "0 8px 24px rgba(0,0,0,0.6)",
           fontFamily: "'Inter', 'Segoe UI', sans-serif", fontSize: 13, fontWeight: 400, lineHeight: 1.45, color: "#F1F2F5", textAlign: "left", textTransform: "none", letterSpacing: "normal", whiteSpace: "normal" }}>
-        <span style={{ fontWeight: 700, color: "#C9772E" }}>{term}: </span>{text}
-        {link && (
+        {trail.length > 0 && (
+          <button className="link-btn" onClick={() => setTrail(t => t.slice(0, -1))} style={{ display: "block", background: "none", border: "none", padding: 0, marginBottom: 6, cursor: "pointer", color: "#9AA5B1", fontSize: 13 }}><Back size={13} /> Back to {trail.length > 1 ? TERM_TIPS[trail[trail.length - 2]][0] : term}</button>
+        )}
+        {(() => {
+          const k = trail[trail.length - 1];
+          const cur = k ? { term: TERM_TIPS[k][0], text: TERM_TIPS[k][1] } : { term, text };
+          return <React.Fragment><span style={{ fontWeight: 700, color: "#C9772E" }}>{cur.term}: </span>{tipText(cur.text, [tkey, ...trail], (nk) => { setOpen("pinned"); setTrail(t => [...t, nk]); })}</React.Fragment>;
+        })()}
+        {(trail.length ? TERM_TIPS[trail[trail.length - 1]][2] : link) && (
           <div style={{ marginTop: 6 }}>
-            <button className="link-btn" onClick={() => { close(); openRule(link); }} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "#C9772E", fontSize: 13, fontWeight: 600, textDecoration: "underline" }}>Full rule in Rules <Fwd size={13} /></button>
+            <button className="link-btn" onClick={() => { const l = trail.length ? TERM_TIPS[trail[trail.length - 1]][2] : link; close(); openRule(l); }} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "#C9772E", fontSize: 13, fontWeight: 600, textDecoration: "underline" }}>Full rule in Rules <Fwd size={13} /></button>
           </div>
         )}
       </div>,
@@ -6165,7 +6211,7 @@ function RuleTip({ term, text, link, children, style, label }) {
 // A word the app explains, by its key in TERM_TIPS.
 function Term({ k, children, style }) {
   const t = TERM_TIPS[k];
-  return <RuleTip term={t[0]} text={t[1]} link={t[2]} style={style}>{children || k}</RuleTip>;
+  return <RuleTip term={t[0]} text={t[1]} link={t[2]} style={style} tkey={k}>{children || k}</RuleTip>;
 }
 // A small (i) for words that are also buttons, like the order chips. Learning mode only.
 function TermInfo({ k }) {
@@ -16234,6 +16280,20 @@ async function runSelfTest(hooks) {
     if (!tip() || !/action points/.test(tip().textContent)) throw new Error("the APL tip didn't open");
     document.body.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true })); await settle();
     if (tip()) throw new Error("the tip didn't close when tapping elsewhere");
+    // A word inside a tip ("critical success", "cover"...) opens in the same card, with Back.
+    let inner = null;
+    for (const t of all(".datacard-print [aria-label^='What is ']").slice(0, 30)) {
+      await click(t, "a tip");
+      inner = tip() && [...tip().querySelectorAll("button")].find(b => !/Full rule|Back to/.test(b.textContent));
+      if (inner) break;
+    }
+    if (!inner) throw new Error("no tip with a linked word inside it");
+    const word = inner.textContent;
+    await click(inner, "linked word " + word);
+    if (!tip() || !/Back to/.test(tip().textContent)) throw new Error(word + " didn't open in the tip with a Back link");
+    await click([...tip().querySelectorAll("button")].find(b => /Back to/.test(b.textContent)), "Back");
+    if (/Back to/.test(tip().textContent)) throw new Error("Back didn't return to the first tip");
+    document.body.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true })); await settle();
     const rule = all(".datacard-print [aria-label^='What is ']").find(e => !statNames.has(e.getAttribute("aria-label")));
     if (!rule) throw new Error("no weapon rule tip on the datacard");
     await click(rule, "weapon rule tip");
@@ -16254,7 +16314,7 @@ async function runSelfTest(hooks) {
     await click(ploy, "ploy chip");
     if (!tip() || tip().textContent.length < 20) throw new Error("the ploy tip didn't open");
     document.body.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true })); await settle();
-    return "APL, " + rule.textContent.trim() + (more ? " with the Rules link" : "") + ", and the " + ploy.textContent.trim() + " ploy";
+    return "APL, " + rule.textContent.trim() + (more ? " with the Rules link" : "") + ", \"" + word + "\" inside a tip, and the " + ploy.textContent.trim() + " ploy";
   });
 
   // Put everything back the way it was, and stop the app saving its test state over it until reload.
