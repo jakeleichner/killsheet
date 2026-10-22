@@ -134,6 +134,8 @@ def check_setters(text):
     defined |= set(re.findall(r"(?:const|let|var|function)\s+(set[A-Z]\w*)\b", code))
     for params in re.findall(r"function\s+\w+\s*\(\{([^}]*)\}", code):
         defined |= set(re.findall(r"\b(set[A-Z]\w*)\b", params))
+    # Setters shared through a React context: defined as object keys ("setFeat: (k, v) => ...").
+    defined |= set(re.findall(r"\b(set[A-Z]\w*):\s*\(", code))
     defined |= {"setTimeout", "setInterval", "setItem", "setAttribute", "setProperty", "setState"}  # setState: React class components
     return [f"`{name}(...)` is called but never defined (leftover from removed state?)." for name in sorted(used - defined)]
 

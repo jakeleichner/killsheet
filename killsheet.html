@@ -6486,6 +6486,7 @@ function Icon({ name, size = 14, color, style }) {
 /* ═══ WEAPON DISPLAY ═══ */
 function WeaponBox({ w, tag, wtype, cp, setCp, requestDamageApply, applySelfDamage }) {
   const [rolling, setRolling] = useState(false);
+  const { feat } = React.useContext(FeatureCtx);
   const color = wtype === "melee" ? "#D0573A" : "#C9772E";
   return (
     <div style={{ background: "#262A33", borderRadius: 6, padding: "8px 10px", marginBottom: 6, borderLeft: "3px solid " + color + "70" }}>
@@ -6501,10 +6502,10 @@ function WeaponBox({ w, tag, wtype, cp, setCp, requestDamageApply, applySelfDama
               <span style={{ fontSize: 19, fontWeight: 700, color: "#F1F2F5", fontFamily: "'Rajdhani', sans-serif" }}>{val}</span>
             </span>
           ))}
-          <button onClick={(e) => { e.stopPropagation(); setRolling(!rolling); }} aria-label={rolling ? "Close dice roller" : "Roll dice for " + w.name}
+          {feat.dice && <button onClick={(e) => { e.stopPropagation(); setRolling(!rolling); }} aria-label={rolling ? "Close dice roller" : "Roll dice for " + w.name}
             style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, padding: "6px 10px", border: "1px solid " + (rolling ? color + "80" : "#3A4150"), borderRadius: 6, background: rolling ? color + "18" : "transparent", color: rolling ? color : "#C8CDD3", cursor: "pointer", fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, letterSpacing: "0.04em" }}>
             <Icon name={rolling ? "x" : "dice"} size={14} />{rolling ? "Close" : "Roll"}
-          </button>
+          </button>}
         </div>
       </div>
       {(tag || (w.wr && w.wr !== "-")) && (
@@ -6515,7 +6516,7 @@ function WeaponBox({ w, tag, wtype, cp, setCp, requestDamageApply, applySelfDama
           ))}
         </div>
       )}
-      {rolling && <DiceRoller w={w} wtype={wtype} onClose={() => setRolling(false)} cp={cp} setCp={setCp} requestDamageApply={requestDamageApply} applySelfDamage={applySelfDamage} />}
+      {rolling && feat.dice && <DiceRoller w={w} wtype={wtype} onClose={() => setRolling(false)} cp={cp} setCp={setCp} requestDamageApply={requestDamageApply} applySelfDamage={applySelfDamage} />}
     </div>
   );
 }
@@ -6884,6 +6885,8 @@ function MissionScoring({ mission, numTPs, tp, score, setScore }) {
 const STRATEGY_HINT = /strategic gambit|strategy phase|ready step|initiative step|initiative roll/i;
 function TurnGuide({ tp, numTPs, setTp, hasInitiative, onInitiative, cp, f, roster, getWounds, activated, orders, counteracted, setCounteracted, checks, setChecks, onEndGame }) {
   const [open, setOpen] = useLocalStorage("guideOpen", false);
+  const { feat } = React.useContext(FeatureCtx);
+  React.useEffect(() => { if (feat.guide) setOpen(true); }, [tp, feat.guide]);
   const alive = roster.filter(op => getWounds(op.id, op.wounds) > 0);
   const expended = alive.filter(op => activated[op.id]);
   const engaged = alive.filter(op => orders[op.id] === "engage");
@@ -6977,7 +6980,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   const [eq, setEq] = useLocalStorage("eq", {});
   const [uEq, setUEq] = useLocalStorage("uEq", {});
   const [wounds, setWounds] = useLocalStorage("wounds", {});
-  const [validate, setValidate] = useLocalStorage("validate", true);
+  const { feat, validate, openFeatures } = React.useContext(FeatureCtx);
   const [rosterLocked, setRosterLocked] = useLocalStorage("rosterLocked", false);
   const barH = rosterLocked ? BAR_H : 0; // the score bar only shows once the game starts
   // On a phone, building starts on the operative list; playing starts on the datacards.
@@ -7201,7 +7204,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   const killzoneNames = { open: "Open Play", volkus: "Volkus", gallowdark: "Gallowdark", tomb_world: "Tomb World", bheta_decima: "Bheta-Decima" };
 
   const confirmSetup = () => {
-    const mission = setupRef.pack && setupRef.idx !== "" ? { pack: setupRef.pack, idx: Number(setupRef.idx) } : null;
+    const mission = feat.missions && setupRef.pack && setupRef.idx !== "" ? { pack: setupRef.pack, idx: Number(setupRef.idx) } : null;
     const cfg = { missionName: setupMission, equipSlots: setupEquip, numTacOps: setupTacOps, numTPs: setupTPs, killzone: setupKZ, mission };
     setGameConfig(cfg);
     setShowSetup(false);
@@ -7254,14 +7257,14 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
           <div style={{ ...h3, color: "#C9772E" }}>GAME PARAMETERS</div>
           <div style={dv} />
 
-          <InputRow label="Mission pack">
+          {feat.missions && <InputRow label="Mission pack">
             <select value={setupRef.pack} onChange={(e) => { setSetupRef({ pack: e.target.value, idx: "" }); if (!e.target.value) setSetupMission(""); }} style={{ background: "#262A33", border: "1px solid #3A4150", borderRadius: 2, color: "#F1F2F5", fontSize: 11, padding: "4px 8px", fontFamily: "'Segoe UI', sans-serif", outline: "none", maxWidth: 190 }}>
               <option value="">None / custom</option>
               {MISSION_PACKS.filter(mp => mp.missions.length > 0).map(mp => <option key={mp.id} value={mp.id}>{mp.name}</option>)}
             </select>
-          </InputRow>
+          </InputRow>}
 
-          {setupRef.pack && (
+          {feat.missions && setupRef.pack && (
             <InputRow label="Mission">
               <select value={setupRef.idx} onChange={(e) => {
                 const idx = e.target.value;
@@ -7289,21 +7292,13 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
             <NumPicker value={setupEquip} onChange={setSetupEquip} min={0} max={6} />
           </InputRow>
 
-          <InputRow label="Tac Ops">
+          {feat.scoring && <InputRow label="Tac Ops">
             <NumPicker value={setupTacOps} onChange={setSetupTacOps} min={0} max={6} />
-          </InputRow>
+          </InputRow>}
 
           <InputRow label="Turning Points">
             <NumPicker value={setupTPs} onChange={setSetupTPs} min={1} max={6} />
           </InputRow>
-
-          <InputRow label="Roster validation">
-            <button onClick={() => setValidate(!validate)} aria-pressed={validate} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 12px", borderRadius: 6, cursor: "pointer", border: "1px solid " + (validate ? "#5A9C3A" : "#3A4150"), background: validate ? "#5A9C3A20" : "transparent", color: validate ? "#7CC05C" : "#9AA5B1", fontSize: 13, fontWeight: 600 }}>
-              <span style={{ width: 30, height: 16, borderRadius: 8, background: validate ? "#5A9C3A" : "#3A4150", position: "relative", display: "inline-block" }}><span style={{ position: "absolute", top: 2, left: validate ? 16 : 2, width: 12, height: 12, borderRadius: "50%", background: "#F1F2F5", transition: "left 0.15s" }} /></span>
-              {validate ? "On" : "Off"}
-            </button>
-          </InputRow>
-          <div style={{ fontSize: 12, color: "#9AA5B1", marginTop: -2, marginBottom: 4, textAlign: "right" }}>Validation applies right away. The other settings apply when you tap Use these settings.</div>
 
           <InputRow label="Killzone">
             <select value={setupKZ} onChange={(e) => setSetupKZ(e.target.value)} style={{ background: "#262A33", border: "1px solid #3A4150", borderRadius: 2, color: "#F1F2F5", fontSize: 11, padding: "4px 8px", fontFamily: "'Segoe UI', sans-serif", outline: "none" }}>
@@ -7318,7 +7313,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
 
         <div style={{ ...cd, padding: 12, background: "#262A33", marginTop: 4 }}>
           <div style={{ fontSize: 11, color: "#9AA5B1", lineHeight: 1.5 }}>
-            <span style={{ color: "#C9772E", fontWeight: 700 }}>Standard game:</span> 3 equipment slots, 3 Tac Ops, 4 turning points. Adjust for custom missions or narrative play.
+            <span style={{ color: "#C9772E", fontWeight: 700 }}>Standard game:</span> 3 equipment slots, {feat.scoring ? "3 Tac Ops, " : ""}4 turning points. Adjust for custom missions or narrative play.
           </div>
         </div>
 
@@ -7330,6 +7325,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
             Use these settings
           </button>
         </div>
+        <div style={{ ...mu, fontSize: 13, textAlign: "center", marginTop: 10 }}>Roster validation, mission packs and the other switches are in <button className="link-btn" onClick={openFeatures} style={{ background: "none", border: "none", padding: 0, color: "#C9772E", cursor: "pointer", fontSize: 13, textDecoration: "underline" }}>Your KillSheet</button>.</div>
         {gameConfig && (
           <div style={{ textAlign: "center", marginTop: 10 }}>
             <button onClick={() => setShowSetup(false)} style={{ ...bs("#9AA5B1"), padding: "8px 16px", fontSize: 12 }}>Cancel</button>
@@ -7390,8 +7386,10 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
     setTacOps(tacOps.map((t, i) => i === opIdx ? { ...t, name } : t));
   };
   // A mission with its own scoring lines replaces the primary-op rows.
-  const scoreMission = gc.mission ? (MISSION_PACKS.find(p => p.id === gc.mission.pack) || { missions: [] }).missions[gc.mission.idx] : null;
+  const activeMission = feat.missions ? gc.mission : null;
+  const scoreMission = activeMission ? (MISSION_PACKS.find(p => p.id === gc.mission.pack) || { missions: [] }).missions[gc.mission.idx] : null;
   const scoreDefs = (scoreMission && scoreMission.scoring) || null;
+  const detailScoring = !!scoreDefs || feat.scoring; // a VP-scored mission brings its own checklist
   const primarySumYou = scoreDefs ? missionScoreVp(scoreDefs, missionScore, "you") : primaryYou.reduce((s, v) => s + v, 0);
   const primarySumOpp = scoreDefs ? missionScoreVp(scoreDefs, missionScore, "opp") : primaryOpp.reduce((s, v) => s + v, 0);
   const tacSum = tacOps.reduce((s, t) => s + t.checks.filter(Boolean).length, 0);
@@ -7524,7 +7522,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
 
   // Once-per-battle ploys: one box, or a chip per operative for "each operative once per battle".
   const ployUses = (type, i, p) => {
-    if (!isOncePerBattle(p.desc)) return null;
+    if (!feat.uses || !isOncePerBattle(p.desc)) return null;
     const base = "ploy|" + type + "-" + i;
     if (/each operative once per battle/i.test(p.desc)) {
       return (
@@ -8140,13 +8138,13 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
               <div onClick={() => setGameMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
               <div style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", zIndex: 41, minWidth: 230, background: "#262A33", border: "1px solid #3A4150", borderRadius: 6, boxShadow: "0 8px 24px rgba(0,0,0,0.5)", padding: 6 }}>
                 {[
-                  mp.status === "idle" ? ["Play online", "Link up with a friend on another device", () => setShowMP(true), "#6B9BF7"] : null,
+                  ["Your KillSheet", FEATURE_MODE_NAMES[featureMode(feat)] + ". Choose what the app shows", openFeatures, "#FFB627"],
+                  mp.status === "idle" && feat.online ? ["Play online", "Link up with a friend on another device", () => setShowMP(true), "#6B9BF7"] : null,
                   window.__ksInstall ? ["Install app", "Add KillSheet to this device. Works offline.", () => { const p = window.__ksInstall; window.__ksInstall = null; p.prompt(); }, "#F1F2F5"]
                     : /iPhone|iPad|iPod/.test(navigator.userAgent) && !navigator.standalone ? ["Add to Home Screen", "Works offline once added", () => showToast("In Safari, tap Share, then Add to Home Screen", 6000), "#F1F2F5"] : null,
-                  ["Game settings", "Mission, equipment, turning points", () => setShowSetup(true), "#F1F2F5"],
+                  ["Game settings", feat.missions ? "Mission, equipment, turning points" : "Equipment and turning points", () => setShowSetup(true), "#F1F2F5"],
                   ["Back up", "Save your rosters, game and settings to a file", backUp, "#F1F2F5"],
                   ["Restore from backup", "Load a backup file onto this device", () => restoreInput.current && restoreInput.current.click(), "#F1F2F5"],
-                  [validate ? "Turn validation off" : "Turn validation on", "Checks your roster against the team's rules", () => setValidate(!validate), "#F1F2F5"],
                   f && rosterLocked ? ["End game", "Record the result in your game history", openEndGame, "#5A9C3A"] : null,
                   f ? ["Reset game", "Clears wounds, CP, VP, orders and tracking", () => withUndo("Game reset", resetGame), "#B8341C"] : null,
                 ].filter(Boolean).map(([label, hint, run, color]) => (
@@ -8161,7 +8159,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
         </div>
       </div>
 
-      {campaign && <CampaignBoundary><CampaignCard c={campaign} setC={setCampaign} mobile={mobile} f={f} showToast={showToast} playing={!!(f && rosterLocked && !pickerOpen)} /></CampaignBoundary>}
+      {campaign && feat.campaign && <CampaignBoundary><CampaignCard c={campaign} setC={setCampaign} mobile={mobile} f={f} showToast={showToast} playing={!!(f && rosterLocked && !pickerOpen)} /></CampaignBoundary>}
       <input ref={restoreInput} type="file" accept=".json,application/json" style={{ display: "none" }} onChange={e => { readBackup(e.target.files[0]); e.target.value = ""; }} />
       {pendingRestore && (
         <div role="alertdialog" aria-label="Restore backup" className="ks-appear" style={{ ...cd, padding: 14, borderLeft: "3px solid #FFB627" }}>
@@ -8413,16 +8411,16 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
               <Stepper label="CP" value={cp} color={cp > 0 ? "#FFB627" : "#B8341C"} onMinus={() => setCp(Math.max(0, cp - 1))} onPlus={() => setCp(cp + 1)} compact={compactBar} />
               {!compactBar && <Stepper label="You" value={vpYou + computedVpYou} color="#5A9C3A" onMinus={() => setVpYou(v => (v + computedVpYou > 0 ? v - 1 : v))} onPlus={() => setVpYou(vpYou + 1)} />}
               {!compactBar && <Stepper label="Opp" value={vpOpp + computedVpOpp} color="#B8341C" onMinus={() => setVpOpp(v => (v + computedVpOpp > 0 ? v - 1 : v))} onPlus={() => setVpOpp(vpOpp + 1)} />}
-              <button className="compact-btn" onClick={() => setShowScoring(!showScoring)} aria-label={showScoring ? "Hide scoring" : "Show scoring"} style={{ display: "flex", alignItems: "center", gap: 6, height: 38, padding: "0 10px", borderRadius: 6, border: "1px solid " + (showScoring ? "#C9772E60" : "#3A4150"), background: showScoring ? "#C9772E14" : "transparent", cursor: "pointer", flexShrink: 0 }}>
+              {(compactBar || detailScoring) && <button className="compact-btn" onClick={() => setShowScoring(!showScoring)} aria-label={showScoring ? "Hide scoring" : "Show scoring"} style={{ display: "flex", alignItems: "center", gap: 6, height: 38, padding: "0 10px", borderRadius: 6, border: "1px solid " + (showScoring ? "#C9772E60" : "#3A4150"), background: showScoring ? "#C9772E14" : "transparent", cursor: "pointer", flexShrink: 0 }}>
                 {compactBar && <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 20 }}><span style={{ color: "#5A9C3A" }}>{vpYou + computedVpYou}</span><span style={{ color: "#8B95A1" }}>{"–"}</span><span style={{ color: "#E0664A" }}>{vpOpp + computedVpOpp}</span></span>}
                 <span style={{ fontSize: 11, color: "#9AA5B1", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.08em", fontWeight: 700 }}>{compactBar ? "VP" : "SCORING"}</span>
                 <Arrow open={showScoring} />
-              </button>
+              </button>}
             </div>
           </div>
 
           {/* Full scoring panel, opened from the score bar */}
-          <div style={{ ...cd, padding: 12, marginBottom: 10, display: showScoring && rosterLocked ? "block" : "none" }}>
+          <div style={{ ...cd, padding: 12, marginBottom: 10, display: showScoring && rosterLocked && (compactBar || detailScoring) ? "block" : "none" }}>
             {compactBar && (
               <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 8 }}>
                 <Stepper label="Your VP" value={vpYou + computedVpYou} color="#5A9C3A" onMinus={() => setVpYou(v => (v + computedVpYou > 0 ? v - 1 : v))} onPlus={() => setVpYou(vpYou + 1)} />
@@ -8434,7 +8432,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
             )}
             <div style={{ fontSize: 12, color: "#9AA5B1", marginBottom: 4 }}>{hasInitiative ? "You gain 1CP next turning point." : "You gain 2CP next turning point."}</div>
             {/* Scoring panel */}
-            {showScoring && (
+            {showScoring && detailScoring && (
               <div style={{ marginTop: 6, paddingTop: 4 }}>
                 {scoreDefs ? <MissionScoring mission={scoreMission} numTPs={gc.numTPs} tp={tp} score={missionScore} setScore={setMissionScore} /> : (<>
                 {/* Primary: You */}
@@ -8504,7 +8502,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
           </div>
 
         {!mobile && rosterLocked && roster.length > 0 && <TurnGuide tp={tp} numTPs={gc.numTPs} setTp={setTp} hasInitiative={hasInitiative} onInitiative={handleInitiativeToggle} cp={cp} f={f} roster={roster} getWounds={getWounds} activated={activated} orders={orders} counteracted={counteracted} setCounteracted={setCounteracted} checks={guideChecks} setChecks={setGuideChecks} onEndGame={openEndGame} />}
-        {!(mobile && rosterLocked) && gc.mission && <MissionPanel mref={gc.mission} npoUnits={npoUnits} setNpoUnits={setNpoUnits} />}
+        {!(mobile && rosterLocked) && activeMission && <MissionPanel mref={activeMission} npoUnits={npoUnits} setNpoUnits={setNpoUnits} />}
 
         {/* Mobile panel toggle: building has two panels, playing has three */}
         {mobile && (!rosterLocked || roster.length > 0) && (
@@ -8517,7 +8515,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
         {mobile && rosterLocked && mobilePanel === "turn" && (
           <div>
             <TurnGuide tp={tp} numTPs={gc.numTPs} setTp={setTp} hasInitiative={hasInitiative} onInitiative={handleInitiativeToggle} cp={cp} f={f} roster={roster} getWounds={getWounds} activated={activated} orders={orders} counteracted={counteracted} setCounteracted={setCounteracted} checks={guideChecks} setChecks={setGuideChecks} onEndGame={openEndGame} />
-            {gc.mission && <MissionPanel mref={gc.mission} npoUnits={npoUnits} setNpoUnits={setNpoUnits} />}
+            {activeMission && <MissionPanel mref={activeMission} npoUnits={npoUnits} setNpoUnits={setNpoUnits} />}
           </div>
         )}
 
@@ -8573,7 +8571,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
                   <div style={{ width: 8, height: 8, borderRadius: "50%", background: isComplete ? "#3D6B3F" : v.errors.length > 0 ? "#B8341C" : "#C9772E" }} />
                   <div style={{ fontSize: 11, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", color: isComplete ? "#3D6B3F" : v.errors.length > 0 ? "#B8341C" : "#C9772E" }}>
-                    {isComplete ? "Roster Valid" : v.errors.length > 0 ? "Invalid Roster" : "Incomplete"}
+                    {isComplete ? "Roster complete" : v.errors.length > 0 ? "Roster has problems" : "Roster not finished"}
                   </div>
                 </div>
                 {v.errors.map((e, i) => (
@@ -8650,7 +8648,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                     <button onClick={() => { setRosterLocked(true); setMobilePanel("cards"); collapseAll(); window.scrollTo(0, 0); }} style={{ ...bs("#5A9C3A"), fontSize: 13, padding: "8px 14px" }}>Start game <Fwd /></button>
                   )}
                 </div>
-                {isComplete && (
+                {isComplete && !validate && (
                   <div style={{ textAlign: "center", fontSize: 11, color: "#5A9C3A", marginTop: 2, letterSpacing: "0.1em" }}><Icon name="check" size={12} /> Roster complete</div>
                 )}
               </div>
@@ -8732,6 +8730,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                       {q.gw && (<span style={{ fontSize: 11, color: "#E0664A", background: "#B8341C10", padding: "0 4px", borderRadius: 2, border: "1px solid #B8341C20" }}>weapon</span>)}
                     </div>
                     <div style={{ fontSize: 11, color: "#9AA5B1", lineHeight: 1.3 }}>{q.desc}</div>
+                    {q.gw && <div style={{ fontSize: 12, color: "#C8CDD3", lineHeight: 1.4, marginTop: 2, fontFamily: "'Rajdhani', sans-serif", fontWeight: 600 }}>{q.gw.name.replace(/ \(equip\)$/, "")}: ATK {q.gw.atk} {"·"} HIT {q.gw.hit} {"·"} DMG {q.gw.dmg}{q.gw.wr && q.gw.wr !== "-" ? " · " + q.gw.wr : ""}</div>}
                   </div>
                 </div>
                 );
@@ -8932,7 +8931,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                   return aAlive - bAlive;
                 }).map(op => {
                   const result = getEquipForOp(op);
-                  return (<Datacard key={op.id} op={op} fc={f.color} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getWounds(op.id, op.wounds)} onWound={(delta) => setOpWounds(op.id, op.wounds, delta)} collapsed={cardCollapsed[op.id] || false} onToggle={() => toggleCardCollapse(op.id)} ignoreInjured={result.ignoreInjured} cp={cp} setCp={setCp} isActivated={activated[op.id] || false} onActivate={() => setActivated(prev => ({ ...prev, [op.id]: !prev[op.id] }))} requestDamageApply={requestDamageApply} applySelfDamage={(amount) => { setOpWounds(op.id, op.wounds, -amount); showToast(op.name + " took " + amount + " self-dmg"); }} order={orders[op.id] || "conceal"} onOrder={() => setOrders(prev => ({ ...prev, [op.id]: prev[op.id] === "engage" ? "conceal" : "engage" }))} uses={battleUses} setUse={(k, n) => setBattleUses(prev => ({ ...prev, [k]: n }))} carried={carried[op.id]} onCarried={(list) => setCarried(prev => ({ ...prev, [op.id]: list }))} />);
+                  return (<Datacard key={op.id} op={op} fc={f.color} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getWounds(op.id, op.wounds)} onWound={(delta) => setOpWounds(op.id, op.wounds, delta)} collapsed={cardCollapsed[op.id] || false} onToggle={() => toggleCardCollapse(op.id)} ignoreInjured={result.ignoreInjured} cp={cp} setCp={setCp} isActivated={activated[op.id] || false} onActivate={() => setActivated(prev => ({ ...prev, [op.id]: !prev[op.id] }))} requestDamageApply={requestDamageApply} applySelfDamage={(amount) => { setOpWounds(op.id, op.wounds, -amount); showToast(op.name + " took " + amount + " self-dmg"); }} order={orders[op.id] || "conceal"} onOrder={() => setOrders(prev => ({ ...prev, [op.id]: prev[op.id] === "engage" ? "conceal" : "engage" }))} uses={feat.uses ? battleUses : null} setUse={(k, n) => setBattleUses(prev => ({ ...prev, [k]: n }))} carried={carried[op.id]} onCarried={(list) => setCarried(prev => ({ ...prev, [op.id]: list }))} />);
                 })}
 
               </div>
@@ -14057,6 +14056,7 @@ function RuleItem({ item, open, onToggle }) {
 }
 
 function Rules({ tutorialOpen, openTutorial, closeTutorial }) {
+  const { feat, openFeatures } = React.useContext(FeatureCtx);
   const [sec, setSec] = useState("play");
   const [open, setOpen] = useState({});
   const [query, setQuery] = useState("");
@@ -14103,6 +14103,11 @@ function Rules({ tutorialOpen, openTutorial, closeTutorial }) {
             <span style={{ display: "block", fontSize: 13, color: "#C8CDD3" }}>Five minutes, one turning point against a bot, real dice.</span>
           </span>
           <span style={{ color: "#9AA5B1", display: "inline-flex" }}><Fwd size={20} /></span>
+        </button>
+      )}
+      {sec === "play" && !q && (
+        <button className="link-btn" onClick={openFeatures} style={{ background: "none", border: "none", padding: "8px 0 0", cursor: "pointer", textAlign: "left", fontSize: 13, color: "#9AA5B1" }}>
+          Your KillSheet: {FEATURE_MODE_NAMES[featureMode(feat)]}. <span style={{ color: "#C9772E", textDecoration: "underline" }}>Change what's shown</span>
         </button>
       )}
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "12px 0 8px" }}>
@@ -14532,6 +14537,7 @@ function NpoTracker({ pack, units, setUnits }) {
 }
 
 function Missions({ campaign, startCampaign }) {
+  const { feat, setFeat, openFeatures } = React.useContext(FeatureCtx);
   const [packId, setPackId] = useState(null);
   const [missionIdx, setMissionIdx] = useState(null);
   const [filter, setFilter] = useState("All");
@@ -14545,22 +14551,43 @@ function Missions({ campaign, startCampaign }) {
   const filters = ["All", "Co-op / solo", "Head-to-head"];
   const shown = MISSION_PACKS.filter(p => filter === "All" || p.modes.some(m => m.startsWith(filter.slice(0, 5))));
 
+  const campaignCard = feat.campaign && (
+    <div style={{ ...cd, padding: 14, borderLeft: "3px solid #6B9BF7", display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+      <div style={{ flex: "1 1 240px", minWidth: 0 }}>
+        <div style={{ fontSize: 17, fontWeight: 700, color: "#F1F2F5", fontFamily: "'Rajdhani', sans-serif" }}>Ctesiphus Expedition campaign</div>
+        <div style={{ ...mu, fontSize: 13 }}>Link your games into a campaign on a hex map: explore, manage Supply, set up camps and race the threat level. Works solo, co-op or with a group.</div>
+      </div>
+      <button onClick={startCampaign} style={{ ...bs("#6B9BF7"), background: "#6B9BF720", padding: "10px 16px", fontSize: 14 }}>{campaign ? "Continue your campaign" : "Start a campaign"} <Fwd /></button>
+    </div>
+  );
+  const heading = <div style={{ fontSize: 22, fontWeight: 700, color: "#C9772E", fontFamily: "'Rajdhani', sans-serif", marginBottom: 4, letterSpacing: "0.04em" }}>Missions</div>;
+
+  // Switched off: say what mission packs are, and offer to turn them on.
+  if (!feat.missions) return (
+    <div style={{ maxWidth: 900, margin: "0 auto", padding: "20px 16px" }}>
+      {heading}
+      <div style={{ ...cd, padding: 14, borderLeft: "3px solid #C9772E", marginTop: 10 }}>
+        <div style={{ fontSize: 17, fontWeight: 700, color: "#F1F2F5", fontFamily: "'Rajdhani', sans-serif" }}>Mission packs are switched off for now</div>
+        <div style={{ ...mu, fontSize: 14, marginTop: 4 }}>Games Workshop's free mission packs give you new maps, special rules, and solo or co-op games against computer-run enemies. A standard game doesn't need them, so they're off while you learn the basics. Nothing is lost: switch them on whenever you're ready.</div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
+          <button onClick={() => setFeat("missions", true)} style={{ ...bs("#C9772E"), background: "#C9772E14", padding: "10px 16px", fontSize: 14 }}>Turn on mission packs</button>
+          <button onClick={openFeatures} style={{ ...bs("#9AA5B1"), padding: "10px 16px", fontSize: 14 }}>All switches</button>
+        </div>
+      </div>
+      {campaignCard}
+    </div>
+  );
+
   return (
     <div style={{ maxWidth: 900, margin: "0 auto", padding: "20px 16px" }}>
       {!pack && (
         <div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: "#C9772E", fontFamily: "'Rajdhani', sans-serif", marginBottom: 4, letterSpacing: "0.04em" }}>Missions</div>
+          {heading}
           <p style={mu}>Games Workshop's free mission packs. You still build your roster as normal; a mission sets the map, special rules and how you score. Co-op packs pit you (alone or with a friend) against computer-run enemies.</p>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "12px 0" }}>
             {filters.map(f => <button key={f} onClick={() => setFilter(f)} style={{ ...bs(filter === f ? "#C9772E" : "#9AA5B1"), background: filter === f ? "#C9772E20" : "transparent", padding: "7px 12px", fontSize: 12 }}>{f}</button>)}
           </div>
-          <div style={{ ...cd, padding: 14, borderLeft: "3px solid #6B9BF7", display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-            <div style={{ flex: "1 1 240px", minWidth: 0 }}>
-              <div style={{ fontSize: 17, fontWeight: 700, color: "#F1F2F5", fontFamily: "'Rajdhani', sans-serif" }}>Ctesiphus Expedition campaign</div>
-              <div style={{ ...mu, fontSize: 13 }}>Link your games into a campaign on a hex map: explore, manage Supply, set up camps and race the threat level. Works solo, co-op or with a group.</div>
-            </div>
-            <button onClick={startCampaign} style={{ ...bs("#6B9BF7"), background: "#6B9BF720", padding: "10px 16px", fontSize: 14 }}>{campaign ? "Continue your campaign" : "Start a campaign"} <Fwd /></button>
-          </div>
+          {campaignCard}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 10 }}>
             {shown.map(p => (
               <div key={p.id} role="button" tabIndex={0} onClick={() => go(p.id, null)} style={{ ...cd, padding: 14, marginBottom: 0, cursor: "pointer", minWidth: 0 }}>
@@ -15629,10 +15656,131 @@ function CampaignCard({ c, setC, mobile, f, showToast, playing }) {
   );
 }
 
+/* ═══ YOUR KILLSHEET (what the app shows) ═══ */
+// Parts of the app a player can switch on or off. "Learning" and "I know the game" set them all at once;
+// any switch can be changed after. Switching something off only hides it: nothing saved is lost.
+const FEATURE_PRESETS = {
+  learning: { guide: true, dice: true, uses: false, scoring: false, missions: false, campaign: false, online: false },
+  expert: { guide: false, dice: true, uses: true, scoring: true, missions: true, campaign: true, online: true },
+};
+const FEATURE_MODE_NAMES = { learning: "Learning", expert: "I know the game", custom: "Custom" };
+const FEATURE_GROUPS = [
+  { title: "While you play", items: [
+    { k: "guide", name: "Turning point guide opens by itself", desc: "The step-by-step guide opens at the start of every turning point, so you can follow along. With it off, the guide stays the way you left it." },
+    { k: "dice", name: "Dice roller", desc: "A Roll button on every weapon. It rolls the attack and defence dice and works out the damage." },
+    { k: "uses", name: "Use tracking", desc: "Tick boxes for once-per-battle abilities and ploys, limited weapons and grenades, so you know what's been used." },
+  ] },
+  { title: "Scoring", items: [
+    { k: "scoring", name: "Detailed scoring", desc: "Primary points for each turning point, your opponent's primary points, and tac ops. With it off, you keep a simple count of victory points." },
+  ] },
+  { title: "Beyond a standard game", items: [
+    { k: "missions", name: "Mission packs", desc: "Games Workshop's free missions: maps, special rules, and solo or co-op games against computer-run enemies, with trackers for them." },
+    { k: "campaign", name: "Campaign", desc: "The Ctesiphus Expedition: link your games into a campaign on a hex map." },
+    { k: "online", name: "Play online", desc: "Link up with a friend on another device and see each other's teams live." },
+  ] },
+];
+const featureMode = (feat) => Object.keys(FEATURE_PRESETS).find(m => Object.keys(FEATURE_PRESETS[m]).every(k => !!feat[k] === FEATURE_PRESETS[m][k])) || "custom";
+const FeatureCtx = React.createContext({ feat: FEATURE_PRESETS.expert, setFeat: () => {}, setMode: () => {}, validate: true, setValidate: () => {}, openFeatures: () => {} });
+// Players with KillSheet data from before these switches existed keep everything on and aren't asked.
+function isReturningPlayer() {
+  const s = snapshotKillSheetStorage();
+  const has = (k, empty) => s[LS_PREFIX + k] !== undefined && s[LS_PREFIX + k] !== empty;
+  return has("fid", "null") || has("roster", "[]") || has("savedRosters", "[]") || has("gameHistory", "[]") || has("campaign", "null") || s[LS_PREFIX + "tutorialSeen"] === "true";
+}
+
+function Switch({ on, onChange, label }) {
+  return (
+    <button role="switch" aria-checked={on} aria-label={label} onClick={() => onChange(!on)} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 12px", borderRadius: 6, cursor: "pointer", flexShrink: 0, border: "1px solid " + (on ? "#5A9C3A" : "#3A4150"), background: on ? "#5A9C3A20" : "transparent", color: on ? "#7CC05C" : "#9AA5B1", fontSize: 13, fontWeight: 600 }}>
+      <span style={{ width: 30, height: 16, borderRadius: 8, background: on ? "#5A9C3A" : "#3A4150", position: "relative", display: "inline-block" }}><span style={{ position: "absolute", top: 2, left: on ? 16 : 2, width: 12, height: 12, borderRadius: "50%", background: "#F1F2F5", transition: "left 0.15s" }} /></span>
+      {on ? "On" : "Off"}
+    </button>
+  );
+}
+
+// The two starting choices, used by the first-time question and the Your KillSheet page.
+function ModeChoice({ mode, onPick, full }) {
+  const opt = (id, title, text, offText) => {
+    const on = mode === id;
+    return (
+      <button key={id} onClick={() => onPick(id)} aria-pressed={on} style={{ display: "block", width: "100%", textAlign: "left", padding: "12px 14px", marginBottom: 8, borderRadius: 6, cursor: "pointer", border: "1px solid " + (on ? "#C9772E" : "#3A4150"), background: on ? "#C9772E14" : "#1A1D24" }}>
+        <div style={{ fontSize: 18, fontWeight: 700, color: on ? "#C9772E" : "#F1F2F5", fontFamily: "'Rajdhani', sans-serif" }}>{title}</div>
+        <div style={{ fontSize: 13, color: "#C8CDD3", lineHeight: 1.45, marginTop: 2 }}>{text}</div>
+        {full && offText && <div style={{ fontSize: 13, color: "#9AA5B1", lineHeight: 1.45, marginTop: 6 }}>{offText}</div>}
+      </button>
+    );
+  };
+  return (
+    <div>
+      {opt("learning", "I'm learning", "Start with your team, datacards, points and a step-by-step guide for each turning point.", "Switched off for now: detailed scoring, mission packs, the campaign, use tracking and online play. Turn any of them on later from the ⋯ menu on the Battle tab, under Your KillSheet.")}
+      {opt("expert", "I know the game", "Everything switched on.", "Turn anything off later from the same place.")}
+    </div>
+  );
+}
+
+// Asked once, the first time a new player opens the app.
+function Welcome() {
+  const { setMode } = React.useContext(FeatureCtx);
+  return ReactDOM.createPortal(
+    <div role="dialog" aria-modal="true" aria-label="New to Kill Team?" style={{ position: "fixed", inset: 0, zIndex: 9500, background: "rgba(8,9,12,0.85)", overflowY: "auto", display: "flex", padding: "24px 16px", color: "#F1F2F5", fontFamily: "'Inter', 'Segoe UI', sans-serif" }}>
+      <div className="ks-appear" style={{ ...cd, margin: "auto", width: "100%", maxWidth: 480, padding: 18, boxSizing: "border-box" }}>
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}><Logo size={20} /></div>
+        <div style={{ fontSize: 24, fontWeight: 700, color: "#F1F2F5", fontFamily: "'Rajdhani', sans-serif" }}>New to Kill Team?</div>
+        <p style={{ ...mu, fontSize: 14, margin: "4px 0 14px" }}>Pick how much KillSheet shows. You can change it any time.</p>
+        <ModeChoice mode={null} onPick={setMode} full />
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+// Every switch in one place, opened from the Battle tab's ⋯ menu and from the Rules tab.
+function FeaturesPage({ onClose }) {
+  const { feat, setFeat, setMode, validate, setValidate } = React.useContext(FeatureCtx);
+  const mode = featureMode(feat);
+  React.useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  const row = (key, name, desc, on, set) => (
+    <div key={key} style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "12px 0", borderTop: "1px solid #262A33" }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 16, fontWeight: 700, color: "#F1F2F5", fontFamily: "'Rajdhani', sans-serif" }}>{name}</div>
+        {!on && <div style={{ fontSize: 12, color: "#C9772E", fontWeight: 600, marginTop: 1 }}>Switched off for now</div>}
+        <div style={{ fontSize: 13, color: "#C8CDD3", lineHeight: 1.45, marginTop: 2 }}>{desc}</div>
+      </div>
+      <Switch on={on} onChange={set} label={name} />
+    </div>
+  );
+  return ReactDOM.createPortal(
+    <div role="dialog" aria-modal="true" aria-label="Your KillSheet" style={{ position: "fixed", inset: 0, zIndex: 9000, background: "#0E0F13", overflowY: "auto", color: "#F1F2F5", fontFamily: "'Inter', 'Segoe UI', sans-serif" }}>
+      <div className="ks-appear" style={{ maxWidth: 560, margin: "0 auto", padding: "16px 16px 40px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ flex: 1, fontSize: 24, fontWeight: 700, color: "#C9772E", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.04em" }}>Your KillSheet</div>
+          <button onClick={onClose} aria-label="Close" style={{ ...bs("#9AA5B1"), padding: "8px 10px", display: "inline-flex" }}><Icon name="x" size={18} /></button>
+        </div>
+        <p style={{ ...mu, fontSize: 14, margin: "4px 0 14px" }}>Choose what KillSheet shows. Switch things on as you're ready for them. Switching something off only hides it, so nothing you've saved is lost.</p>
+        <ModeChoice mode={mode} onPick={setMode} />
+        {mode === "custom" && <p style={{ ...mu, fontSize: 13, margin: "0 0 8px" }}>Custom: you've picked your own switches.</p>}
+        {FEATURE_GROUPS.map(g => (
+          <div key={g.title}>
+            <div style={{ ...h3, color: "#C9772E", margin: "18px 0 4px" }}>{g.title.toUpperCase()}</div>
+            {g.items.map(it => row(it.k, it.name, it.desc, !!feat[it.k], (v) => setFeat(it.k, v)))}
+          </div>
+        ))}
+        <div style={{ ...h3, color: "#C9772E", margin: "18px 0 4px" }}>BUILDING YOUR TEAM</div>
+        {row("validation", "Roster validation", "Checks your roster against the team's rules while you build it, so it's legal to play.", validate, setValidate)}
+        <button onClick={onClose} style={{ ...bs("#C9772E"), width: "100%", padding: "12px 0", marginTop: 16, fontSize: 14, background: "#C9772E14" }}>Done</button>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 /* ═══ SELF-TEST (open the app with ?selftest) ═══ */
 // Clicks through the whole app and reports anything that breaks. It saves your data first,
 // runs on a clean slate, then puts your data back. Results appear in a panel over the app.
-async function runSelfTest() {
+async function runSelfTest(hooks) {
   const results = [];
   const errors = [];
   const saved = snapshotKillSheetStorage();
@@ -15672,6 +15820,34 @@ async function runSelfTest() {
 
   restoreKillSheetStorage({});
   await settle(20);
+
+  // Runs first: answers the first-time question as a new player, tries the switches, then turns everything on for the rest.
+  await step("Your KillSheet: first question and switches", async () => {
+    if (!hooks) throw new Error("the self-test wasn't given the settings");
+    hooks.setReturning(false); hooks.setFeatures(null); await settle(20);
+    const welcome = document.querySelector("[role=dialog][aria-label='New to Kill Team?']");
+    if (!welcome) throw new Error("the first-time question didn't appear");
+    await click([...welcome.querySelectorAll("button")].find(b => b.textContent.startsWith("I'm learning")), "I'm learning");
+    if (document.querySelector("[role=dialog][aria-label='New to Kill Team?']")) throw new Error("the question didn't close");
+    const f = store("features") || {};
+    if (featureMode(f) !== "learning") throw new Error("Learning wasn't saved: " + JSON.stringify(f));
+    await nav("Missions");
+    if (!btn("Turn on mission packs")) throw new Error("the Missions tab doesn't say mission packs are off");
+    await nav("Battle");
+    await click(document.querySelector("[aria-label='Game menu']"), "game menu");
+    if (btn("Play online")) throw new Error("Play online shows while it's switched off");
+    await click(btn("Your KillSheet"), "Your KillSheet");
+    const page = document.querySelector("[role=dialog][aria-label='Your KillSheet']");
+    if (!page) throw new Error("the Your KillSheet page didn't open");
+    await click(page.querySelector("[role=switch][aria-label='Mission packs']"), "Mission packs switch");
+    if (!(store("features") || {}).missions) throw new Error("the Mission packs switch didn't save");
+    if (!/Custom/.test(page.innerText)) throw new Error("the page doesn't say Custom after changing one switch");
+    await click([...page.querySelectorAll("button")].find(b => b.textContent.startsWith("I know the game")), "I know the game");
+    if (featureMode(store("features") || {}) !== "expert") throw new Error("I know the game didn't switch everything on");
+    await click(page.querySelector("[aria-label='Close']"), "close button");
+    if (document.querySelector("[role=dialog][aria-label='Your KillSheet']")) throw new Error("the page didn't close");
+    return "learning, one switch, then everything on";
+  });
 
   await step("Every tab opens", async () => {
     for (const t of ["Rules", "Missions", "Battle", "Community"]) { await nav(t); if (!all("h1,h2,div").length) throw new Error(t + " is empty"); }
@@ -15835,7 +16011,20 @@ function App() {
   const [tutorialOpen, setTutorialOpen] = useState(false);
   const [tutorialSeen, setTutorialSeen] = useLocalStorage("tutorialSeen", false);
   const [campaign, setCampaign] = useLocalStorage("campaign", null); // Ctesiphus Expedition, shared by Missions and Battle
-  React.useEffect(() => { if (/[?&]selftest\b/.test(window.location.search)) setTimeout(runSelfTest, 1000); }, []);
+  // What the app shows (Your KillSheet). null until a new player answers the first-time question.
+  const [features, setFeatures] = useLocalStorage("features", null);
+  const [validate, setValidate] = useLocalStorage("validate", true);
+  const [returning, setReturning] = useState(isReturningPlayer);
+  React.useEffect(() => { if (!features && returning) setFeatures({ ...FEATURE_PRESETS.expert }); }, []);
+  const [showFeatures, setShowFeatures] = useState(false);
+  const feat = { ...(returning ? FEATURE_PRESETS.expert : FEATURE_PRESETS.learning), ...(features || {}) };
+  const featureCtx = {
+    feat, validate, setValidate,
+    setFeat: (k, v) => setFeatures(prev => ({ ...feat, ...(prev || {}), [k]: v })),
+    setMode: (m) => setFeatures({ ...FEATURE_PRESETS[m] }),
+    openFeatures: () => setShowFeatures(true),
+  };
+  React.useEffect(() => { if (/[?&]selftest\b/.test(window.location.search)) setTimeout(() => runSelfTest({ setFeatures, setReturning }), 1000); }, []);
   const openTutorial = () => { setTab("rules"); setTutorialOpen(true); setTutorialSeen(true); window.scrollTo(0, 0); };
   // Migration: old persisted tabs ("sequence" was deleted, "tutorial" moved into Rules)
   React.useEffect(() => {
@@ -15860,7 +16049,10 @@ function App() {
   const [showMP, setShowMP] = useState(false);
 
   return (
+    <FeatureCtx.Provider value={featureCtx}>
     <div style={{ minHeight: "100vh", background: "#0E0F13", color: "#F1F2F5", fontFamily: "'Inter', 'Segoe UI', sans-serif", fontSize: 14 }}>
+      {features === null && !returning && <Welcome />}
+      {showFeatures && <FeaturesPage onClose={() => setShowFeatures(false)} />}
 
       {/* CONNECTION BANNER (across all tabs) */}
       {mp.status !== "idle" && (
@@ -15934,6 +16126,7 @@ function App() {
         <div style={{ fontSize: 12, color: "#8B95A1", lineHeight: 1.6 }}>Fan-made and not affiliated with Games Workshop. Rules are condensed from the free official downloads.</div>
       </div>
     </div>
+    </FeatureCtx.Provider>
   );
 }
 
