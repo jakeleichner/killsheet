@@ -8444,27 +8444,41 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
               const all = tally(gameHistory);
               const byTeam = Object.values(gameHistory.reduce((m, g) => { (m[g.f] = m[g.f] || { f: g.f, team: g.team, games: [] }).games.push(g); return m; }, {})).sort((a, b) => b.games.length - a.games.length);
               const resColor = { win: "#5A9C3A", loss: "#E0664A", draw: "#FFB627" };
+              // Lifetime numbers: win rate (draws count as games), average score, the current run of results, record against each team.
+              const winRate = Math.round(100 * all.win / gameHistory.length);
+              const avg = (k) => { const v = gameHistory.reduce((t, g) => t + (Number(g[k]) || 0), 0) / gameHistory.length; return Math.round(v * 10) / 10; };
+              let streak = 0; while (streak < gameHistory.length && gameHistory[streak].result === gameHistory[0].result) streak++;
+              const streakText = streak >= 2 ? streak + " " + { win: "wins", loss: "losses", draw: "draws" }[gameHistory[0].result] + " in a row" : null;
+              const vsTeam = Object.values(gameHistory.filter(g => g.oppId).reduce((m, g) => { (m[g.oppId] = m[g.oppId] || { f: g.oppId, team: g.opp, games: [] }).games.push(g); return m; }, {})).sort((a, b) => b.games.length - a.games.length);
+              const teamRow = (t) => {
+                const r = tally(t.games); const fc = FACTIONS[t.f];
+                return (
+                  <div key={t.f} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderTop: "1px solid #262A33" }}>
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: fc ? fc.color : "#3A4150", flexShrink: 0 }} />
+                    <span style={{ flex: 1, minWidth: 0, fontSize: 14, color: "#F1F2F5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.team}</span>
+                    <span style={{ fontSize: 13, color: "#C8CDD3", fontFamily: "'Rajdhani', sans-serif", fontWeight: 700 }}>{r.win}W {r.loss}L {r.draw}D</span>
+                  </div>
+                );
+              };
               return (
                 <div style={{ ...cd, padding: 0, marginBottom: 12, overflow: "hidden" }}>
                   <div role="button" tabIndex={0} aria-expanded={showGames} onClick={() => setShowGames(!showGames)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", cursor: "pointer" }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 15, fontWeight: 700, color: "#F1F2F5", fontFamily: "'Rajdhani', sans-serif" }}>Game history</div>
-                      <div style={{ fontSize: 12, color: "#9AA5B1" }}>{gameHistory.length} game{gameHistory.length === 1 ? "" : "s"} {"\u00b7"} {all.win}W {all.loss}L {all.draw}D</div>
+                      <div style={{ fontSize: 12, color: "#9AA5B1" }}>{gameHistory.length} game{gameHistory.length === 1 ? "" : "s"} {"\u00b7"} {all.win}W {all.loss}L {all.draw}D {"\u00b7"} {winRate}% wins</div>
                     </div>
                     <Arrow open={showGames} />
                   </div>
                   {showGames && (
                     <div style={{ padding: "0 12px 12px" }}>
-                      {byTeam.map(t => {
-                        const r = tally(t.games); const fc = FACTIONS[t.f];
-                        return (
-                          <div key={t.f} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderTop: "1px solid #262A33" }}>
-                            <span style={{ width: 8, height: 8, borderRadius: "50%", background: fc ? fc.color : "#3A4150", flexShrink: 0 }} />
-                            <span style={{ flex: 1, minWidth: 0, fontSize: 14, color: "#F1F2F5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.team}</span>
-                            <span style={{ fontSize: 13, color: "#C8CDD3", fontFamily: "'Rajdhani', sans-serif", fontWeight: 700 }}>{r.win}W {r.loss}L {r.draw}D</span>
-                          </div>
-                        );
-                      })}
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 16px", fontSize: 13, color: "#C8CDD3", padding: "2px 0 8px" }}>
+                        <span>Average score: <strong style={{ color: "#5A9C3A" }}>You {avg("you")}</strong> {"\u00b7"} <strong style={{ color: "#E0664A" }}>Opponents {avg("them")}</strong></span>
+                        {streakText && <span>Streak: <strong style={{ color: resColor[gameHistory[0].result] }}>{streakText}</strong></span>}
+                      </div>
+                      <div style={{ ...h3, margin: "4px 0 4px" }}>Your teams</div>
+                      {byTeam.map(teamRow)}
+                      {vsTeam.length > 0 && <div style={{ ...h3, margin: "12px 0 4px" }}>Against each team</div>}
+                      {vsTeam.map(teamRow)}
                       <div style={{ ...h3, margin: "12px 0 4px" }}>Recent games</div>
                       {gameHistory.slice(0, 10).map(g => (
                         <div key={g.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderTop: "1px solid #262A33" }}>
@@ -16132,6 +16146,19 @@ async function runSelfTest(hooks) {
     const games = (store("gameHistory") || []).length;
     if (problems.length) throw new Error(problems.join("; "));
     return done + " teams played, " + games + " games recorded";
+  });
+  await step("Game history stats", async () => {
+    await nav("Battle");
+    const change = btn("Change team", true); if (change) await click(change, "Change team");
+    const head = all("[role=button]").find(e => /^Game history/.test(e.textContent.trim()));
+    if (!head) throw new Error("no Game history card on the team list");
+    if (!/\d+% wins/.test(head.textContent)) throw new Error("no win rate in the Game history heading");
+    if (head.getAttribute("aria-expanded") !== "true") await click(head, "Game history");
+    const card = head.parentElement.textContent;
+    if (!/Average score: You [\d.]+ · Opponents [\d.]+/.test(card)) throw new Error("no average score");
+    if (!/YOUR TEAMS|Your teams/.test(card) || !/RECENT GAMES|Recent games/.test(card)) throw new Error("team records or recent games missing");
+    await click(head, "Game history");
+    return head.textContent.replace(/^Game history/, "").trim();
   });
   await step("Save a roster and back up", async () => {
     await nav("Battle");
