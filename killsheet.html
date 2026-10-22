@@ -6043,27 +6043,140 @@ function useMultiplayer(onMessage) {
   return { status, role, roomCode, peerError, host, join, disconnect, send };
 }
 
-/* ═══ TOOLTIP ═══ */
-function Tip({ k, children }) {
-  const [show, setShow] = useState(false);
-  const [pos, setPos] = useState({ x: 0, y: 0 });
-  const tip = WR[k];
-  if (!tip) return (<span>{children || k}</span>);
-  const handleEnter = (e) => {
-    const rect = e.target.getBoundingClientRect();
-    setPos({ x: Math.min(rect.left, window.innerWidth - 540), y: rect.top - 8 });
-    setShow(true);
-  };
+/* ═══ RULE TIPS ═══ */
+// Bold orange words that explain themselves: tap on a phone, hover (or click to pin) on a computer.
+// One sentence, plus a link to the full rule in the Rules tab when there is one. One tip open at a time.
+const TERM_TIPS = {
+  APL: ["APL (action point limit)", "The most action points this operative can spend each time it activates. Most actions cost 1.", "Datacard stats"],
+  Move: ["Move", "How far this operative moves with a Reposition, in inches. A Charge adds 2\", and a Dash is always 3\".", "Reposition"],
+  Save: ["Save", "The score each defence die needs to block a hit. Lower is better.", "Datacard stats"],
+  Wounds: ["Wounds", "How much damage this operative can take. Under half, it's injured (2\" less Move, Hit 1 worse); at 0 it's incapacitated and removed.", "Damage"],
+  ATK: ["ATK (attacks)", "How many attack dice you roll with this weapon.", "Weapon stats"],
+  HIT: ["HIT", "The score each attack die needs to succeed. Lower is better. A 6 is always a critical success.", "Weapon stats"],
+  DMG: ["DMG (damage)", "Damage for each normal success / each critical success. 3/4 means 3 for a normal hit and 4 for a critical.", "Weapon stats"],
+  TP: ["Turning point", "One round of the game: a Strategy phase, then a Firefight phase. A battle lasts four unless the mission says otherwise.", "Turning points"],
+  CP: ["CP (command points)", "Spend them on ploys, 1CP each. You start with 2 and gain more in every Strategy phase.", "Command Points"],
+  VP: ["VP (victory points)", "Points you score from the mission. Whoever has the most at the end of the battle wins.", "Winning"],
+  Order: ["Ready and orders", "Ready means it hasn't activated yet this turning point. Tap it once it has, and it shows Expended. Conceal or Engage is its order, chosen when it activates (tap to switch). On Conceal it can't be targeted while in cover, but it can't Shoot or Charge. On Engage it acts normally.", "Orders"],
+};
+const NUMBERED_WR = [
+  [/^Range (\d+)"$/, (n) => "This weapon can only target operatives within " + n + "\" of the shooter."],
+  [/^Lethal (\d)\+$/, (n) => "Attack rolls of " + n + " or more count as critical successes (normally only 6s do)."],
+  [/^Piercing (\d)$/, (n) => "The defender rolls " + n + " fewer defence dice, whether or not you score crits."],
+  [/^Piercing Crits (\d)$/, (n) => "If you retain at least one critical success, the defender rolls " + n + " fewer defence dice."],
+  [/^Accurate (\d)$/, (n) => "Before rolling, you may set aside up to " + n + " attack dice and count them as automatic normal successes. Then roll the rest."],
+  [/^Devastating (\d)$/, (n) => "Each time you retain a critical success, deal " + n + " damage to the target right away. The crit still counts in the normal damage step."],
+  [/^(\d)" Devastating (\d)$/, (d, n) => "Each time you retain a critical success, deal " + n + " damage to the target and to each other operative visible to and within " + d + "\" of it."],
+  [/^Blast (\d)"$/, (d) => WR["Blast 1\""].replace(/1"/g, d + "\"")],
+  [/^Torrent (\d)"$/, (d) => WR["Torrent 1\""].replace(/1"/g, d + "\"")],
+];
+// A team's own weapon rules ("Blaze", "Salvo"...), from its faction rules and operative abilities.
+let TEAM_WR = null;
+const teamWeaponRules = () => {
+  if (TEAM_WR) return TEAM_WR;
+  TEAM_WR = {};
+  Object.values(FACTIONS).forEach(f => {
+    (f.factionRules || []).forEach(r => { if (r.name && r.desc && !TEAM_WR[r.name]) TEAM_WR[r.name] = r.desc.replace(/^Weapon rule\.\s*/, ""); });
+    (f.operatives || []).forEach(op => (op.abilities || []).forEach(a => { const m = a.match(/^([^:(]+?) \(weapon rule\): ([\s\S]*)$/); if (m && !TEAM_WR[m[1]]) TEAM_WR[m[1]] = m[2]; }));
+  });
+  return TEAM_WR;
+};
+// The operative's own weapon rules come first, since some teams use the same name for different rules.
+const opWeaponRules = (op) => {
+  const out = {};
+  (op.abilities || []).forEach(a => { const m = a.match(/^([^:(]+?) \(weapon rule\): ([\s\S]*)$/); if (m) out[m[1]] = m[2]; });
+  return out;
+};
+// [text, Rules tab search] for a weapon rule, or null if KillSheet has nothing on it.
+const weaponRuleTip = (k, local) => {
+  if (local && local[k]) return [local[k], null];
+  const base = k.replace(/^\d+" /, "").replace(/\s*\d+\+?"?$/, "");
+  if (WR[k]) return [WR[k], base];
+  for (const [re, fn] of NUMBERED_WR) { const m = k.match(re); if (m) return [fn(m[1], m[2]), base]; }
+  const t = teamWeaponRules()[k];
+  return t ? [t, null] : null;
+};
+
+let closeOpenTip = null;
+function RuleTip({ term, text, link, children, style, label }) {
+  const { feat, openRule } = React.useContext(FeatureCtx);
+  const [open, setOpen] = useState(false); // false, "hover" or "pinned"
+  const ref = React.useRef(null);
+  const cardRef = React.useRef(null);
+  const timer = React.useRef(null);
+  const close = React.useCallback(() => { clearTimeout(timer.current); setOpen(false); }, []);
+  const show = (how) => { clearTimeout(timer.current); if (closeOpenTip && closeOpenTip !== close) closeOpenTip(); closeOpenTip = close; setOpen(how); };
+  React.useEffect(() => {
+    if (!open) return;
+    const away = (e) => { if (!(ref.current && ref.current.contains(e.target)) && !(cardRef.current && cardRef.current.contains(e.target))) close(); };
+    const key = (e) => { if (e.key === "Escape") close(); };
+    document.addEventListener("pointerdown", away);
+    document.addEventListener("keydown", key);
+    window.addEventListener("scroll", close, { passive: true });
+    window.addEventListener("resize", close);
+    return () => {
+      document.removeEventListener("pointerdown", away);
+      document.removeEventListener("keydown", key);
+      window.removeEventListener("scroll", close);
+      window.removeEventListener("resize", close);
+      if (closeOpenTip === close) closeOpenTip = null;
+    };
+  }, [open, close]);
+  React.useEffect(() => () => clearTimeout(timer.current), []);
+  if (!feat.tips || !text) return <span style={style}>{children || term}</span>;
+  const leaveSoon = () => { clearTimeout(timer.current); timer.current = setTimeout(() => setOpen(o => (o === "hover" ? false : o)), 150); };
+  let card = null;
+  if (open && ref.current) {
+    const r = ref.current.getBoundingClientRect();
+    const width = Math.min(320, window.innerWidth - 16);
+    const left = Math.max(8, Math.min(r.left, window.innerWidth - width - 8));
+    const above = window.innerHeight - r.bottom < 170 && r.top > 170;
+    card = ReactDOM.createPortal(
+      <div ref={cardRef} role="tooltip" onClick={(e) => e.stopPropagation()}
+        onPointerEnter={(e) => { if (e.pointerType === "mouse") clearTimeout(timer.current); }}
+        onPointerLeave={(e) => { if (e.pointerType === "mouse") leaveSoon(); }}
+        style={{ position: "fixed", zIndex: 9600, left, width, boxSizing: "border-box", ...(above ? { bottom: window.innerHeight - r.top + 6 } : { top: r.bottom + 6 }),
+          background: "#1A1D24", border: "1px solid #C9772E70", borderRadius: 6, padding: "10px 12px", boxShadow: "0 8px 24px rgba(0,0,0,0.6)",
+          fontFamily: "'Inter', 'Segoe UI', sans-serif", fontSize: 13, fontWeight: 400, lineHeight: 1.45, color: "#F1F2F5", textAlign: "left", textTransform: "none", letterSpacing: "normal", whiteSpace: "normal" }}>
+        <span style={{ fontWeight: 700, color: "#C9772E" }}>{term}: </span>{text}
+        {link && (
+          <div style={{ marginTop: 6 }}>
+            <button className="link-btn" onClick={() => { close(); openRule(link); }} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "#C9772E", fontSize: 13, fontWeight: 600, textDecoration: "underline" }}>Full rule in Rules <Fwd size={13} /></button>
+          </div>
+        )}
+      </div>,
+      document.body
+    );
+  }
   return (
-    <span style={{ display: "inline-block" }} onMouseEnter={handleEnter} onMouseLeave={() => setShow(false)}>
-      <span style={{ borderBottom: "1px dashed #C9772E50", color: "#C9772E", cursor: "help" }}>{children || k}</span>
-      {show && (
-        <div style={{ position: "fixed", zIndex: 9999, bottom: window.innerHeight - pos.y, left: Math.max(8, pos.x), width: 520, maxWidth: "calc(100vw - 16px)", background: "#1A1D24", border: "1px solid #C9772E50", borderRadius: 2, padding: "8px 14px", fontSize: 11, color: "#F1F2F5", boxShadow: "0 4px 24px rgba(0,0,0,0.9), inset 0 1px 0 rgba(201,168,76,0.08)", pointerEvents: "none", lineHeight: 1.4 }}>
-          <span style={{ fontWeight: 700, color: "#C9772E", fontFamily: "'Rajdhani', sans-serif", fontSize: 11, letterSpacing: "0.06em" }}>{k}: </span>{tip}
-        </div>
-      )}
+    <span ref={ref} role="button" tabIndex={0} aria-expanded={!!open} aria-label={label || ("What is " + term + "?")}
+      onClick={(e) => { e.stopPropagation(); e.preventDefault(); if (open === "pinned") close(); else show("pinned"); }}
+      onPointerEnter={(e) => { if (e.pointerType === "mouse" && open !== "pinned") { clearTimeout(timer.current); timer.current = setTimeout(() => show("hover"), 300); } }}
+      onPointerLeave={(e) => { if (e.pointerType === "mouse") leaveSoon(); }}
+      onFocus={(e) => { if (e.target.matches(":focus-visible") && !open) show("hover"); }}
+      onBlur={() => setOpen(o => (o === "hover" ? false : o))}
+      style={{ fontWeight: 700, color: "#C9772E", cursor: "help", textDecoration: feat.labels ? "underline dotted" : "none", textUnderlineOffset: 3, ...style }}>
+      {children || term}{card}
     </span>
   );
+}
+// A word the app explains, by its key in TERM_TIPS.
+function Term({ k, children, style }) {
+  const t = TERM_TIPS[k];
+  return <RuleTip term={t[0]} text={t[1]} link={t[2]} style={style}>{children || k}</RuleTip>;
+}
+// A small (i) for words that are also buttons, like the order chips. Learning mode only.
+function TermInfo({ k }) {
+  const { feat } = React.useContext(FeatureCtx);
+  if (!feat.labels) return null;
+  const t = TERM_TIPS[k];
+  return <RuleTip term={t[0]} text={t[1]} link={t[2]} label={"What does " + t[0] + " mean?"} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, flexShrink: 0, textDecoration: "none" }}><Icon name="info" size={18} /></RuleTip>;
+}
+// Weapon rules, by their text on the weapon ("Lethal 5+", "Range 8\"", "Blaze").
+function Tip({ k, children, local }) {
+  const t = weaponRuleTip(k, local);
+  if (!t) return <span>{children || k}</span>;
+  return <RuleTip term={k} text={t[0]} link={t[1]}>{children || k}</RuleTip>;
 }
 
 /* ═══ DICE ROLLER ═══ */
@@ -6475,6 +6588,7 @@ const ICON_PATHS = {
   skull: <><path d="M12 3a7.5 7.5 0 0 0-7.5 7.5c0 2.6 1.3 4.5 3 5.6V20h9v-3.9c1.7-1.1 3-3 3-5.6A7.5 7.5 0 0 0 12 3z" /><circle cx="9" cy="11" r="1.6" /><circle cx="15" cy="11" r="1.6" /></>,
   reset: <><path d="M4 5v5h5" /><path d="M5.3 14.5A7.5 7.5 0 1 0 7 7.2L4 10" /></>,
   edit: <><path d="M4 20h4L19 9l-4-4L4 16z" /><path d="M13.5 6.5l4 4" /></>,
+  info: <><circle cx="12" cy="12" r="9" /><path d="M12 11v6" /><circle cx="12" cy="7.5" r="0.6" fill="currentColor" /></>,
 };
 function Icon({ name, size = 14, color, style }) {
   return (
@@ -6484,7 +6598,7 @@ function Icon({ name, size = 14, color, style }) {
 }
 
 /* ═══ WEAPON DISPLAY ═══ */
-function WeaponBox({ w, tag, wtype, cp, setCp, requestDamageApply, applySelfDamage }) {
+function WeaponBox({ w, tag, wtype, cp, setCp, requestDamageApply, applySelfDamage, local }) {
   const [rolling, setRolling] = useState(false);
   const { feat } = React.useContext(FeatureCtx);
   const color = wtype === "melee" ? "#D0573A" : "#C9772E";
@@ -6498,7 +6612,7 @@ function WeaponBox({ w, tag, wtype, cp, setCp, requestDamageApply, applySelfDama
         <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
           {[["ATK", w.atk], ["HIT", w.hit], ["DMG", w.dmg]].map(([label, val]) => (
             <span key={label} style={{ display: "inline-flex", alignItems: "baseline", gap: 4 }}>
-              <span style={{ fontSize: 13, color: "#9AA5B1", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.06em", fontWeight: 600 }}>{label}</span>
+              <Term k={label} style={{ fontSize: 13, fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.06em", fontWeight: 600 }}>{label}</Term>
               <span style={{ fontSize: 19, fontWeight: 700, color: "#F1F2F5", fontFamily: "'Rajdhani', sans-serif" }}>{val}</span>
             </span>
           ))}
@@ -6512,7 +6626,7 @@ function WeaponBox({ w, tag, wtype, cp, setCp, requestDamageApply, applySelfDama
         <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 6, alignItems: "center" }}>
           {tag && <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: "#C9772E15", color: "#C9772E", border: "1px solid #C9772E30" }}>{tag}</span>}
           {w.wr && w.wr !== "-" && w.wr.split(", ").map((r, i) => (
-            <Tip key={i} k={r}><span style={{ ...pl, fontSize: 12, marginBottom: 0 }}>{r}</span></Tip>
+            <Tip key={i} k={r} local={local}><span style={{ ...pl, fontSize: 12, marginBottom: 0, color: "inherit" }}>{r}</span></Tip>
           ))}
         </div>
       )}
@@ -6557,6 +6671,8 @@ const abilityText = (a) => {
 };
 function Datacard({ op, fc, equipWeapons, equipEffects, curWounds, onWound, collapsed, onToggle, ignoreInjured, cp, setCp, isActivated, onActivate, requestDamageApply, applySelfDamage, order, onOrder, uses, setUse, carried, onCarried }) {
   const [pickWeapons, setPickWeapons] = useState(false);
+  const { feat } = React.useContext(FeatureCtx);
+  const opRules = React.useMemo(() => opWeaponRules(op), [op]);
   const loadout = op.abilities.find(a => /^Loadout/i.test(a));
   const bases = [...new Set([...op.ranged, ...op.melee].map(x => weaponBase(x.name)))];
   const chosen = carried && carried.length ? new Set(carried) : null;
@@ -6598,8 +6714,11 @@ function Datacard({ op, fc, equipWeapons, equipEffects, curWounds, onWound, coll
   ) : null;
   const statsInline = (
     <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, fontFamily: DS.fontDisplay }}>
+                  {feat.labels && <span style={{ fontSize: 12, fontWeight: 600, color: DS.textSecondary, letterSpacing: "0.04em" }}>APL</span>}
                   <span style={{ fontSize: 16, fontWeight: 600, color: DS.textPrimary }}>{op.apl}</span>
+                  {feat.labels && <span style={{ fontSize: 12, fontWeight: 600, color: DS.textSecondary, letterSpacing: "0.04em" }}>Move</span>}
                   <span style={{ fontSize: 16, fontWeight: 600, color: injured ? DS.threat : DS.textPrimary }}>{moveDisplay}</span>
+                  {feat.labels && <span style={{ fontSize: 12, fontWeight: 600, color: DS.textSecondary, letterSpacing: "0.04em" }}>Save</span>}
                   <span style={{ fontSize: 16, fontWeight: 600, color: DS.textPrimary }}>{op.save}</span>
                 </div>
   );
@@ -6640,6 +6759,7 @@ function Datacard({ op, fc, equipWeapons, equipEffects, curWounds, onWound, coll
             </div>
             {!mobile && readyChip}
             {!mobile && onOrder && <OrderChip order={order} onToggle={onOrder} />}
+            {!mobile && (readyChip || onOrder) && <TermInfo k="Order" />}
             {collapsed && mobile && woundsInline}
             <span style={{ display: "inline-flex", alignSelf: "center" }}><Arrow open={!collapsed} /></span>
           </div>
@@ -6647,6 +6767,7 @@ function Datacard({ op, fc, equipWeapons, equipEffects, curWounds, onWound, coll
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: collapsed ? 6 : 8, flexWrap: "wrap" }}>
               {readyChip}
               {onOrder && <OrderChip order={order} onToggle={onOrder} />}
+              {(readyChip || onOrder) && <TermInfo k="Order" />}
               {collapsed && <div style={{ marginLeft: "auto" }}>{statsInline}</div>}
             </div>
           )}
@@ -6663,13 +6784,13 @@ function Datacard({ op, fc, equipWeapons, equipEffects, curWounds, onWound, coll
             {/* Bold stat block: 4 up */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", borderTop: "1px solid " + DS.divider, borderBottom: "1px solid " + DS.divider, background: DS.bgCard }}>
               {[
-                { label: "APL", val: op.apl, color: DS.textPrimary },
-                { label: "MOVE", val: moveDisplay, color: injured ? DS.threat : DS.textPrimary },
-                { label: "SAVE", val: op.save, color: DS.textPrimary },
+                { label: "APL", k: "APL", val: op.apl, color: DS.textPrimary },
+                { label: "MOVE", k: "Move", val: moveDisplay, color: injured ? DS.threat : DS.textPrimary },
+                { label: "SAVE", k: "Save", val: op.save, color: DS.textPrimary },
               ].map(s => (
                 <div key={s.label} style={{ textAlign: "center", padding: "14px 4px", borderRight: "1px solid " + DS.divider }}>
                   <div style={{ fontFamily: DS.fontDisplay, fontSize: 30, fontWeight: 700, color: s.color, lineHeight: 1, letterSpacing: "-0.01em" }}>{s.val}</div>
-                  <div style={{ fontFamily: DS.fontDisplay, fontSize: 14, fontWeight: 600, color: DS.textSecondary, marginTop: 6, letterSpacing: "0.1em", textTransform: "uppercase" }}>{s.label}</div>
+                  <div style={{ fontFamily: DS.fontDisplay, fontSize: 14, fontWeight: 600, color: DS.textSecondary, marginTop: 6, letterSpacing: "0.1em", textTransform: "uppercase" }}><Term k={s.k}>{s.label}</Term></div>
                 </div>
               ))}
               {/* Interactive wounds cell */}
@@ -6681,7 +6802,7 @@ function Datacard({ op, fc, equipWeapons, equipEffects, curWounds, onWound, coll
                   </div>
                   <button className="compact-btn" onClick={(e) => { e.stopPropagation(); onWound(1); }} style={{ width: 32, height: 32, border: "1px solid " + DS.divider, borderRadius: 4, background: DS.bgElevated, color: DS.success, cursor: "pointer", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, lineHeight: 1 }}>+</button>
                 </div>
-                <div style={{ fontFamily: DS.fontDisplay, fontSize: 14, fontWeight: 600, color: injured ? DS.threat : (rawInjured && ignoreInjured) ? DS.success : DS.textSecondary, marginTop: 6, letterSpacing: "0.1em", textTransform: "uppercase" }}>{injured ? "Injured" : incapacitated ? "Down" : rawInjured ? "Low" : "Wounds"}</div>
+                <div style={{ fontFamily: DS.fontDisplay, fontSize: 14, fontWeight: 600, color: injured ? DS.threat : (rawInjured && ignoreInjured) ? DS.success : DS.textSecondary, marginTop: 6, letterSpacing: "0.1em", textTransform: "uppercase" }}><Term k="Wounds" style={rawInjured || incapacitated ? { color: "inherit" } : undefined}>{injured ? "Injured" : incapacitated ? "Down" : rawInjured ? "Low" : "Wounds"}</Term></div>
               </div>
             </div>
 
@@ -6720,13 +6841,13 @@ function Datacard({ op, fc, equipWeapons, equipEffects, curWounds, onWound, coll
               {allRanged.length > 0 && (
                 <div style={{ marginBottom: allMelee.length > 0 || op.abilities.length > 0 || equipEffects.length > 0 ? 14 : 0 }}>
                   <div style={{ fontFamily: DS.fontDisplay, fontSize: 11, fontWeight: 600, color: DS.textSecondary, letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 8 }}>Ranged</div>
-                  {allRanged.map((w, i) => (<React.Fragment key={"r" + i}><WeaponBox w={w} tag={w.note || null} wtype="ranged" cp={cp} setCp={setCp} requestDamageApply={requestDamageApply} applySelfDamage={applySelfDamage} />{weaponUses(w)}</React.Fragment>))}
+                  {allRanged.map((w, i) => (<React.Fragment key={"r" + i}><WeaponBox w={w} tag={w.note || null} wtype="ranged" cp={cp} setCp={setCp} requestDamageApply={requestDamageApply} applySelfDamage={applySelfDamage} local={opRules} />{weaponUses(w)}</React.Fragment>))}
                 </div>
               )}
               {allMelee.length > 0 && (
                 <div style={{ marginBottom: op.abilities.length > 0 || equipEffects.length > 0 ? 14 : 0 }}>
                   <div style={{ fontFamily: DS.fontDisplay, fontSize: 11, fontWeight: 600, color: DS.textSecondary, letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 8 }}>Melee</div>
-                  {allMelee.map((w, i) => (<React.Fragment key={"m" + i}><WeaponBox w={w} tag={w.note || null} wtype="melee" cp={cp} setCp={setCp} requestDamageApply={requestDamageApply} applySelfDamage={applySelfDamage} />{weaponUses(w)}</React.Fragment>))}
+                  {allMelee.map((w, i) => (<React.Fragment key={"m" + i}><WeaponBox w={w} tag={w.note || null} wtype="melee" cp={cp} setCp={setCp} requestDamageApply={requestDamageApply} applySelfDamage={applySelfDamage} local={opRules} />{weaponUses(w)}</React.Fragment>))}
                 </div>
               )}
               {op.abilities.length > 0 && (
@@ -6797,11 +6918,12 @@ const factionSearchText = (fc) => searchNorm([fc.name, fc.badge, factionGroup(fc
 
 // Builder score bar: sticky under the nav (navH is set in Builder). BAR_H offsets the other sticky panels.
 const BAR_H = 66;
-function Stepper({ label, value, color, onMinus, onPlus, compact }) {
+function Stepper({ label, value, color, onMinus, onPlus, compact, term }) {
   const btn = { width: 34, height: 34, border: "1px solid #3A4150", borderRadius: 6, background: "#1A1D24", cursor: "pointer", fontSize: 18, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 };
   return (
     <div style={{ display: "flex", alignItems: "center", gap: compact ? 4 : 6, flexShrink: 0 }}>
-      {label && <span style={{ fontSize: 11, fontWeight: 700, color, fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.1em", textTransform: "uppercase" }}>{label}</span>}
+      {label && (term ? <Term k={term} style={{ fontSize: 11, fontWeight: 700, color, fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.1em", textTransform: "uppercase" }}>{label}</Term>
+        : <span style={{ fontSize: 11, fontWeight: 700, color, fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.1em", textTransform: "uppercase" }}>{label}</span>)}
       <button className="compact-btn" onClick={onMinus} aria-label={"Lower " + (label || "")} style={{ ...btn, color: "#E0664A" }}>{"−"}</button>
       <span style={{ fontSize: 24, fontWeight: 700, color, fontFamily: "'Rajdhani', sans-serif", minWidth: 22, textAlign: "center" }}>{value}</span>
       <button className="compact-btn" onClick={onPlus} aria-label={"Raise " + (label || "")} style={{ ...btn, color: "#5A9C3A" }}>+</button>
@@ -8392,14 +8514,14 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                 <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
                   <button className="compact-btn" onClick={() => setTp(Math.max(1, tp - 1))} disabled={tp <= 1} aria-label="Previous turning point" style={{ width: 30, height: 34, border: "1px solid #3A4150", borderRadius: 6, background: "#1A1D24", color: "#FFB627", cursor: tp <= 1 ? "default" : "pointer", opacity: tp <= 1 ? 0.35 : 1, fontSize: 16, padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><Back size={20} /></button>
                   <div style={{ textAlign: "center", minWidth: 30 }}>
-                    <div style={{ fontSize: 11, color: "#FFB627", fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, letterSpacing: "0.08em", lineHeight: 1 }}>TP</div>
+                    <div style={{ fontSize: 11, color: "#FFB627", fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, letterSpacing: "0.08em", lineHeight: 1 }}><Term k="TP" style={{ color: "inherit" }}>TP</Term></div>
                     <div style={{ fontSize: 22, color: "#FFB627", fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, lineHeight: 1 }}>{tp}</div>
                   </div>
                   <button className="compact-btn" onClick={() => setTp(Math.min(gc.numTPs, tp + 1))} disabled={tp >= gc.numTPs} aria-label="Next turning point" style={{ width: 30, height: 34, border: "1px solid #3A4150", borderRadius: 6, background: "#1A1D24", color: "#FFB627", cursor: tp >= gc.numTPs ? "default" : "pointer", opacity: tp >= gc.numTPs ? 0.35 : 1, fontSize: 16, padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><Fwd size={20} /></button>
                 </div>
               ) : (
                 <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: "#FFB627", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.1em" }}>TURNING POINT</span>
+                  <Term k="TP" style={{ fontSize: 11, fontWeight: 700, color: "#FFB627", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.1em" }}>TURNING POINT</Term>
                   {Array.from({ length: gc.numTPs }, (_, k) => k + 1).map(t => (
                     <button key={t} onClick={() => setTp(t)} style={{ width: 34, height: 34, borderRadius: 6, background: tp === t ? "#FFB62720" : "#262A33", border: "2px solid " + (tp === t ? "#FFB627" : "#3A4150"), fontSize: 16, fontWeight: 700, color: tp === t ? "#FFB627" : "#9AA5B1", fontFamily: "'Rajdhani', sans-serif", cursor: "pointer", padding: 0 }}>{t}</button>
                   ))}
@@ -8408,9 +8530,9 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                   </button>
                 </div>
               )}
-              <Stepper label="CP" value={cp} color={cp > 0 ? "#FFB627" : "#B8341C"} onMinus={() => setCp(Math.max(0, cp - 1))} onPlus={() => setCp(cp + 1)} compact={compactBar} />
-              {!compactBar && <Stepper label="You" value={vpYou + computedVpYou} color="#5A9C3A" onMinus={() => setVpYou(v => (v + computedVpYou > 0 ? v - 1 : v))} onPlus={() => setVpYou(vpYou + 1)} />}
-              {!compactBar && <Stepper label="Opp" value={vpOpp + computedVpOpp} color="#B8341C" onMinus={() => setVpOpp(v => (v + computedVpOpp > 0 ? v - 1 : v))} onPlus={() => setVpOpp(vpOpp + 1)} />}
+              <Stepper label={feat.labels && !compactBar ? "Command points" : "CP"} term="CP" value={cp} color={cp > 0 ? "#FFB627" : "#B8341C"} onMinus={() => setCp(Math.max(0, cp - 1))} onPlus={() => setCp(cp + 1)} compact={compactBar} />
+              {!compactBar && <Stepper label="You" term="VP" value={vpYou + computedVpYou} color="#5A9C3A" onMinus={() => setVpYou(v => (v + computedVpYou > 0 ? v - 1 : v))} onPlus={() => setVpYou(vpYou + 1)} />}
+              {!compactBar && <Stepper label="Opp" term="VP" value={vpOpp + computedVpOpp} color="#B8341C" onMinus={() => setVpOpp(v => (v + computedVpOpp > 0 ? v - 1 : v))} onPlus={() => setVpOpp(vpOpp + 1)} />}
               {(compactBar || detailScoring) && <button className="compact-btn" onClick={() => setShowScoring(!showScoring)} aria-label={showScoring ? "Hide scoring" : "Show scoring"} style={{ display: "flex", alignItems: "center", gap: 6, height: 38, padding: "0 10px", borderRadius: 6, border: "1px solid " + (showScoring ? "#C9772E60" : "#3A4150"), background: showScoring ? "#C9772E14" : "transparent", cursor: "pointer", flexShrink: 0 }}>
                 {compactBar && <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 20 }}><span style={{ color: "#5A9C3A" }}>{vpYou + computedVpYou}</span><span style={{ color: "#8B95A1" }}>{"–"}</span><span style={{ color: "#E0664A" }}>{vpOpp + computedVpOpp}</span></span>}
                 <span style={{ fontSize: 11, color: "#9AA5B1", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.08em", fontWeight: 700 }}>{compactBar ? "VP" : "SCORING"}</span>
@@ -8423,8 +8545,8 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
           <div style={{ ...cd, padding: 12, marginBottom: 10, display: showScoring && rosterLocked && (compactBar || detailScoring) ? "block" : "none" }}>
             {compactBar && (
               <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 8 }}>
-                <Stepper label="Your VP" value={vpYou + computedVpYou} color="#5A9C3A" onMinus={() => setVpYou(v => (v + computedVpYou > 0 ? v - 1 : v))} onPlus={() => setVpYou(vpYou + 1)} />
-                <Stepper label="Opp VP" value={vpOpp + computedVpOpp} color="#B8341C" onMinus={() => setVpOpp(v => (v + computedVpOpp > 0 ? v - 1 : v))} onPlus={() => setVpOpp(vpOpp + 1)} />
+                <Stepper label="Your VP" term="VP" value={vpYou + computedVpYou} color="#5A9C3A" onMinus={() => setVpYou(v => (v + computedVpYou > 0 ? v - 1 : v))} onPlus={() => setVpYou(vpYou + 1)} />
+                <Stepper label="Opp VP" term="VP" value={vpOpp + computedVpOpp} color="#B8341C" onMinus={() => setVpOpp(v => (v + computedVpOpp > 0 ? v - 1 : v))} onPlus={() => setVpOpp(vpOpp + 1)} />
                 <button onClick={handleInitiativeToggle} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 10px", borderRadius: 6, cursor: "pointer", background: hasInitiative ? "#C9772E14" : "#6B9BF714", border: "1px solid " + (hasInitiative ? "#C9772E40" : "#6B9BF740"), color: hasInitiative ? "#C9772E" : "#6B9BF7", fontFamily: "'Rajdhani', sans-serif", fontSize: 13, fontWeight: 700 }}>
                   <span style={{ width: 8, height: 8, borderRadius: "50%", background: hasInitiative ? "#C9772E" : "#6B9BF7" }} />{hasInitiative ? "You have initiative" : "Opponent has initiative"} {"·"} switch
                 </button>
@@ -14044,7 +14166,7 @@ function RuleItem({ item, open, onToggle }) {
               </div>
               {item.stats.wr && (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 2, marginTop: 6 }}>
-                  {item.stats.wr.split(", ").map((r, j) => <Tip key={j} k={r}><span style={pl}>{r}</span></Tip>)}
+                  {item.stats.wr.split(", ").map((r, j) => <Tip key={j} k={r}><span style={{ ...pl, color: "inherit" }}>{r}</span></Tip>)}
                 </div>
               )}
             </div>
@@ -14055,11 +14177,12 @@ function RuleItem({ item, open, onToggle }) {
   );
 }
 
-function Rules({ tutorialOpen, openTutorial, closeTutorial }) {
+function Rules({ search, tutorialOpen, openTutorial, closeTutorial }) {
   const { feat, openFeatures } = React.useContext(FeatureCtx);
   const [sec, setSec] = useState("play");
   const [open, setOpen] = useState({});
   const [query, setQuery] = useState("");
+  React.useEffect(() => { if (search) setQuery(search.q); }, [search]); // "Full rule in Rules" from a rule tip
   const q = query.trim().toLowerCase();
   const toggle = (key) => setOpen(o => ({ ...o, [key]: !o[key] }));
   const groupHead = (text) => <div style={{ ...h3, color: "#C9772E", margin: "18px 0 8px" }}>{text}</div>;
@@ -14303,7 +14426,7 @@ function NpoCard({ npo, open, onToggle }) {
               </div>
               {w.wr && w.wr !== "-" && (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 2, marginTop: 4 }}>
-                  {w.wr.split(", ").map((r, j) => <Tip key={j} k={r}><span style={pl}>{r}</span></Tip>)}
+                  {w.wr.split(", ").map((r, j) => <Tip key={j} k={r}><span style={{ ...pl, color: "inherit" }}>{r}</span></Tip>)}
                 </div>
               )}
             </div>
@@ -15660,13 +15783,15 @@ function CampaignCard({ c, setC, mobile, f, showToast, playing }) {
 // Parts of the app a player can switch on or off. "Learning" and "I know the game" set them all at once;
 // any switch can be changed after. Switching something off only hides it: nothing saved is lost.
 const FEATURE_PRESETS = {
-  learning: { guide: true, dice: true, uses: false, scoring: false, missions: false, campaign: false, online: false },
-  expert: { guide: false, dice: true, uses: true, scoring: true, missions: true, campaign: true, online: true },
+  learning: { guide: true, labels: true, tips: true, dice: true, uses: false, scoring: false, missions: false, campaign: false, online: false },
+  expert: { guide: false, labels: false, tips: true, dice: true, uses: true, scoring: true, missions: true, campaign: true, online: true },
 };
 const FEATURE_MODE_NAMES = { learning: "Learning", expert: "I know the game", custom: "Custom" };
 const FEATURE_GROUPS = [
   { title: "While you play", items: [
     { k: "guide", name: "Turning point guide opens by itself", desc: "The step-by-step guide opens at the start of every turning point, so you can follow along. With it off, the guide stays the way you left it." },
+    { k: "labels", name: "Learning help", desc: "Labels on closed datacards, a dotted underline under words you can tap for an explanation, and an ⓘ next to the Ready and order buttons." },
+    { k: "tips", name: "Rule tips", desc: "Tap a bold orange word, or hover over it on a computer, to see what it means in one sentence, with a link to the full rule." },
     { k: "dice", name: "Dice roller", desc: "A Roll button on every weapon. It rolls the attack and defence dice and works out the damage." },
     { k: "uses", name: "Use tracking", desc: "Tick boxes for once-per-battle abilities and ploys, limited weapons and grenades, so you know what's been used." },
   ] },
@@ -15680,7 +15805,9 @@ const FEATURE_GROUPS = [
   ] },
 ];
 const featureMode = (feat) => Object.keys(FEATURE_PRESETS).find(m => Object.keys(FEATURE_PRESETS[m]).every(k => !!feat[k] === FEATURE_PRESETS[m][k])) || "custom";
-const FeatureCtx = React.createContext({ feat: FEATURE_PRESETS.expert, setFeat: () => {}, setMode: () => {}, validate: true, setValidate: () => {}, openFeatures: () => {} });
+const FeatureCtx = React.createContext({ feat: FEATURE_PRESETS.expert, setFeat: () => {}, setMode: () => {}, validate: true, setValidate: () => {}, openFeatures: () => {}, openRule: () => {} });
+// Saved switches fill in any newer switch from the preset they match, so adding a switch doesn't turn a preset into Custom.
+const presetOf = (saved) => Object.keys(FEATURE_PRESETS).find(m => Object.keys(saved).every(k => !(k in FEATURE_PRESETS[m]) || !!saved[k] === FEATURE_PRESETS[m][k])) || "expert";
 // Players with KillSheet data from before these switches existed keep everything on and aren't asked.
 function isReturningPlayer() {
   const s = snapshotKillSheetStorage();
@@ -15976,6 +16103,35 @@ async function runSelfTest(hooks) {
     return "2 ticks, 1VP each side";
   });
 
+  // Uses the game the scoring step left running. Everything is switched on ("I know the game"), so no learning labels.
+  await step("Rule tips", async () => {
+    await nav("Battle");
+    const dc = btn("Datacards", true); if (dc) await click(dc, "Datacards");
+    const statNames = new Set(Object.values(TERM_TIPS).map(t => "What is " + t[0] + "?"));
+    let apl = all("[aria-label='What is APL (action point limit)?']")[0];
+    if (!apl) { await click(all(".datacard-print [role=button]")[0], "a datacard"); apl = all("[aria-label='What is APL (action point limit)?']")[0]; }
+    if (!apl) throw new Error("no APL tip on an open datacard");
+    if (getComputedStyle(apl).textDecorationLine !== "none") throw new Error("tips are underlined with learning help off");
+    if (all("[aria-label='What does Ready and orders mean?']").length) throw new Error("the order (i) shows with learning help off");
+    await click(apl, "APL tip");
+    const tip = () => document.querySelector("[role=tooltip]");
+    if (!tip() || !/action points/.test(tip().textContent)) throw new Error("the APL tip didn't open");
+    document.body.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true })); await settle();
+    if (tip()) throw new Error("the tip didn't close when tapping elsewhere");
+    const rule = all(".datacard-print [aria-label^='What is ']").find(e => !statNames.has(e.getAttribute("aria-label")));
+    if (!rule) throw new Error("no weapon rule tip on the datacard");
+    await click(rule, "weapon rule tip");
+    if (!tip()) throw new Error(rule.textContent + ": tip didn't open");
+    const more = [...tip().querySelectorAll("button")].find(b => /Full rule in Rules/.test(b.textContent));
+    if (more) {
+      await click(more, "Full rule in Rules");
+      const q = all("input").find(i => /Search all rules/.test(i.placeholder));
+      if (!q || !q.value) throw new Error("Full rule in Rules didn't search the Rules tab");
+      await typeInto(q, "");
+    }
+    return "APL and " + rule.textContent.trim() + (more ? ", with the Rules link" : "");
+  });
+
   // Put everything back the way it was, and stop the app saving its test state over it until reload.
   window.__ksFrozen = true;
   window.removeEventListener("error", onError);
@@ -16017,12 +16173,14 @@ function App() {
   const [returning, setReturning] = useState(isReturningPlayer);
   React.useEffect(() => { if (!features && returning) setFeatures({ ...FEATURE_PRESETS.expert }); }, []);
   const [showFeatures, setShowFeatures] = useState(false);
-  const feat = { ...(returning ? FEATURE_PRESETS.expert : FEATURE_PRESETS.learning), ...(features || {}) };
+  const feat = { ...FEATURE_PRESETS[features ? presetOf(features) : returning ? "expert" : "learning"], ...(features || {}) };
+  const [ruleSearch, setRuleSearch] = useState(null);
   const featureCtx = {
     feat, validate, setValidate,
     setFeat: (k, v) => setFeatures(prev => ({ ...feat, ...(prev || {}), [k]: v })),
     setMode: (m) => setFeatures({ ...FEATURE_PRESETS[m] }),
     openFeatures: () => setShowFeatures(true),
+    openRule: (q) => { setTutorialOpen(false); setTab("rules"); setRuleSearch({ q, n: Date.now() }); window.scrollTo(0, 0); },
   };
   React.useEffect(() => { if (/[?&]selftest\b/.test(window.location.search)) setTimeout(() => runSelfTest({ setFeatures, setReturning }), 1000); }, []);
   const openTutorial = () => { setTab("rules"); setTutorialOpen(true); setTutorialSeen(true); window.scrollTo(0, 0); };
@@ -16115,7 +16273,7 @@ function App() {
       </nav>
 
       {/* CONTENT: all tabs stay mounted, hidden with display:none to preserve state */}
-      <div className="ks-appear" style={{ display: tab === "rules" ? "block" : "none" }}><Rules tutorialOpen={tutorialOpen} openTutorial={openTutorial} closeTutorial={() => { setTutorialOpen(false); window.scrollTo(0, 0); }} /></div>
+      <div className="ks-appear" style={{ display: tab === "rules" ? "block" : "none" }}><Rules search={ruleSearch} tutorialOpen={tutorialOpen} openTutorial={openTutorial} closeTutorial={() => { setTutorialOpen(false); window.scrollTo(0, 0); }} /></div>
       <div className="ks-appear" style={{ display: tab === "missions" ? "block" : "none" }}><Missions campaign={campaign} startCampaign={() => { if (!campaign) setCampaign(cteNew("solo", "m26", 7, "", "")); setTab("builder"); window.scrollTo(0, 0); }} /></div>
       <div className="ks-appear" style={{ display: tab === "builder" ? "block" : "none" }}><Builder tp={tp} setTp={setTp} mp={mp} mpHandlerRef={mpHandlerRef} showMP={showMP} setShowMP={setShowMP} tutorialSeen={tutorialSeen} setTutorialSeen={setTutorialSeen} openTutorial={openTutorial} campaign={campaign} setCampaign={setCampaign} /></div>
       <div className="ks-appear" style={{ display: tab === "community" ? "block" : "none" }}><CommunityRosters /></div>
