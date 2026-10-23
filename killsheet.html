@@ -5621,6 +5621,33 @@ const baseOf = (o) => o.baseId || o.id;
 
 // Repeat copies get their own id ("boy~2") and name ("Kommando Boy 2") so wounds,
 // activation and multiplayer sync track each copy separately.
+// The opponent's equipment for one of their operatives: weapons it adds and effects to list on the card.
+// Worked out from saved data, so it survives a reload and works for online opponents too.
+const oppEquipFor = (faction, oppEq, oppUEq, op) => {
+  const weapons = [];
+  const effects = [];
+  let ignoreInjured = false;
+  faction.equipment.forEach(q => {
+    if (!oppEq[q.id]) return;
+    if (op.ex && op.ex.includes(q.id)) return;
+    if (q.ex && q.ex.includes(baseOf(op))) return;
+    if (q.gw) weapons.push({ ...q.gw });
+    if (q.mod === "ignore_injured") { ignoreInjured = true; effects.push(q.name + ": Ignore injured stat changes."); }
+    else if (q.mod === "poison_bolts") {
+      if (op.ranged.some(r => r.name.toLowerCase().includes("boltgun") || r.name.toLowerCase().includes("bolt pistol")))
+        effects.push("Plague Rounds: boltguns and bolt pistols gain Poison and Severe.");
+    } else if (q.mod === "remove_range") {
+      if (op.ranged.some(r => r.name.toLowerCase().includes("slugga") || r.name.toLowerCase().includes("shokka")))
+        effects.push("Collapsible Stocks: the slugga and shokka pistol lose their Range limit.");
+    } else if (!q.gw && !q.mod) effects.push(q.name + ": " + q.desc);
+  });
+  UNIV_EQUIP.forEach(q => {
+    if (!oppUEq[q.id]) return;
+    if (q.gw) weapons.push({ ...q.gw });
+    if (!q.gw && !q.mod) effects.push(q.name + ": " + q.desc);
+  });
+  return { weapons, effects, ignoreInjured };
+};
 function makeInstance(op, n) {
   return n === 1 ? { ...op } : { ...op, id: op.id + "~" + n, baseId: op.id, name: op.name + " " + n };
 }
@@ -7391,10 +7418,12 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   const [pickerSearch, setPickerSearch] = useState("");
   const [importMode, setImportMode] = useState("opponent");
   const [toast, setToast] = useState("");
-  const [damageRequest, setDamageRequest] = useState(null); // { amount: number } | null
-  const requestDamageApply = (amount) => {
+  const [damageRequest, setDamageRequest] = useState(null); // { amount, side: "mine" | "opp" (whose weapon) } | null
+  const [damageOther, setDamageOther] = useState(false); // also list the shooter's own side (Blast and Torrent hit friends too)
+  const requestDamageApply = (amount, side) => {
     if (typeof amount !== "number" || amount < 0) return;
-    setDamageRequest({ amount: Math.floor(amount) });
+    setDamageOther(false);
+    setDamageRequest({ amount: Math.floor(amount), side });
   };
   const [joinCodeInput, setJoinCodeInput] = useState("");
   const [chatHistory, setChatHistory] = useState([]); // {from: 'me'|'them', text, ts}
@@ -7410,6 +7439,17 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   const mpSuppressRef = React.useRef(false); // suppress broadcast while applying remote message
   const handleMpMessage = (msg) => {
     if (!msg || typeof msg !== "object") return;
+    // The opponent hit or healed one of our operatives. We own our wounds, so apply it here; the change is
+    // broadcast back (ownedDelta), which updates our operative's card on their screen.
+    if ((msg.type === "applyRemoteDamage" || msg.type === "applyRemoteHeal") && typeof msg.opId === "string" && typeof msg.amount === "number") {
+      const op = roster.find(o => o.id === msg.opId);
+      const amount = Math.max(0, Math.floor(msg.amount));
+      if (op && amount) {
+        setOpWounds(op.id, op.wounds, msg.type === "applyRemoteDamage" ? -amount : amount);
+        if (msg.type === "applyRemoteDamage") showToast(op.name + " took " + amount + " damage");
+      }
+      return;
+    }
     mpSuppressRef.current = true;
     try {
       if (msg.type === "snapshot" && msg.payload) {
@@ -7421,7 +7461,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
             setOppRoster(null);
           } else {
             const opF = FACTIONS[p.fid];
-            if (opF) setOppRoster({ factionId: p.fid, factionName: opF.name, factionColor: opF.color, operatives: (p.roster || []).map(o => ({ ...o, equipNote: "" })) });
+            if (opF) setOppRoster({ factionId: p.fid, operatives: (p.roster || []).map(o => ({ ...o, equipNote: "" })), eq: p.eq || {}, uEq: p.uEq || {} });
           }
         }
         if (p.wounds) setOppWounds(p.wounds);
@@ -7440,7 +7480,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
             setOppRoster(null);
           } else {
             const opF = FACTIONS[p.fid];
-            if (opF) setOppRoster({ factionId: p.fid, factionName: opF.name, factionColor: opF.color, operatives: (p.roster || []).map(o => ({ ...o, equipNote: "" })) });
+            if (opF) setOppRoster({ factionId: p.fid, operatives: (p.roster || []).map(o => ({ ...o, equipNote: "" })), eq: p.eq || {}, uEq: p.uEq || {} });
           }
         }
         if (p.wounds) setOppWounds(p.wounds);
@@ -7451,16 +7491,6 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
       } else if (msg.type === "chat" && msg.text) {
         showToast("Opponent: " + msg.text);
         setChatHistory(prev => [...prev, { from: "them", text: String(msg.text).slice(0, 500), ts: Date.now() }].slice(-50));
-      } else if (msg.type === "applyRemoteDamage" && typeof msg.opId === "string" && typeof msg.amount === "number") {
-        // Opponent shot one of our operatives: apply to our own roster
-        const op = roster.find(o => o.id === msg.opId);
-        if (op) {
-          setOpWounds(op.id, op.wounds, -msg.amount);
-          showToast(op.name + " took " + msg.amount + " dmg");
-        }
-      } else if (msg.type === "applyRemoteHeal" && typeof msg.opId === "string" && typeof msg.amount === "number") {
-        const op = roster.find(o => o.id === msg.opId);
-        if (op) setOpWounds(op.id, op.wounds, msg.amount);
       }
     } finally {
       // Release on next tick so the state-change useEffect doesn't re-broadcast
@@ -7476,8 +7506,8 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   // Broadcast our owned state when it changes
   useEffect(() => {
     if (mp.status !== "connected" || mpSuppressRef.current) return;
-    mp.send({ type: "ownedDelta", payload: { fid, roster, wounds } });
-  }, [fid, roster, wounds, mp.status]);
+    mp.send({ type: "ownedDelta", payload: { fid, roster, wounds, eq, uEq } });
+  }, [fid, roster, wounds, eq, uEq, mp.status]);
   // Broadcast shared state when it changes
   useEffect(() => {
     if (mp.status !== "connected" || mpSuppressRef.current) return;
@@ -7486,9 +7516,9 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   // On host's first connect, send an initial snapshot including shared seed
   useEffect(() => {
     if (mp.status === "connected" && mp.role === "host") {
-      mp.send({ type: "snapshot", payload: { fid, roster, wounds, shared: { tp, hasInitiative, gameConfig } } });
+      mp.send({ type: "snapshot", payload: { fid, roster, wounds, eq, uEq, shared: { tp, hasInitiative, gameConfig } } });
     } else if (mp.status === "connected" && mp.role === "guest") {
-      mp.send({ type: "snapshot", payload: { fid, roster, wounds } });
+      mp.send({ type: "snapshot", payload: { fid, roster, wounds, eq, uEq } });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mp.status, mp.role]);
@@ -7693,7 +7723,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   // Game history: one record per finished game (kept by "Clear current game data" and in backups).
   const resetGame = () => { setWounds({}); setCp(3); setVpYou(0); setVpOpp(0); setUsedPloys({}); setActivated({}); setHasInitiative(true); setLastCpTp(1); setTp(1); setPrimaryYou(Array(gc.numTPs).fill(0)); setPrimaryOpp(Array(gc.numTPs).fill(0)); setTacOps(Array.from({ length: gc.numTacOps }, () => ({ name: "", checks: [false, false] }))); setOppWounds({}); setNpoUnits([]); setOrders({}); setBattleUses({}); setCounteracted({}); setGuideChecks({}); setMissionScore({}); };
   const openEndGame = () => {
-    setEndGame({ you: vpYou + computedVpYou, them: vpOpp + computedVpOpp, opp: oppRoster ? oppRoster.factionId || (oppRoster.faction && oppRoster.faction.id) || "" : "" });
+    setEndGame({ you: vpYou + computedVpYou, them: vpOpp + computedVpOpp, opp: oppF ? oppF.id : "" });
     window.scrollTo(0, 0);
   };
   const saveGame = () => {
@@ -7779,9 +7809,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
 
   const getWounds = (opId, maxW) => wounds[opId] !== undefined ? wounds[opId] : maxW;
   const setOpWounds = (opId, maxW, delta) => {
-    const cur = getWounds(opId, maxW);
-    const next = Math.max(0, Math.min(maxW, cur + delta));
-    setWounds(prev => ({ ...prev, [opId]: next }));
+    setWounds(prev => ({ ...prev, [opId]: Math.max(0, Math.min(maxW, (prev[opId] !== undefined ? prev[opId] : maxW) + delta)) }));
   };
   const resetAllWounds = () => setWounds({});
   // Opening a card closes the others, so the list stays short during a game.
@@ -7919,33 +7947,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
       (data.fe || []).forEach(id => { oppEq[id] = true; });
       const oppUEq = {};
       (data.ue || []).forEach(id => { oppUEq[id] = true; });
-      // Compute equipment effects per operative
-      const getOppEquip = (op) => {
-        const weapons = [];
-        const effects = [];
-        let ignoreInjured = false;
-        faction.equipment.forEach(q => {
-          if (!oppEq[q.id]) return;
-          if (op.ex && op.ex.includes(q.id)) return;
-          if (q.ex && q.ex.includes(baseOf(op))) return;
-          if (q.gw) weapons.push({ ...q.gw });
-          if (q.mod === "ignore_injured") { ignoreInjured = true; effects.push(q.name + ": Ignore injured stat changes."); }
-          else if (q.mod === "poison_bolts") {
-            if (op.ranged.some(r => r.name.toLowerCase().includes("boltgun") || r.name.toLowerCase().includes("bolt pistol")))
-              effects.push("Plague Rounds: boltguns and bolt pistols gain Poison and Severe.");
-          } else if (q.mod === "remove_range") {
-            if (op.ranged.some(r => r.name.toLowerCase().includes("slugga") || r.name.toLowerCase().includes("shokka")))
-              effects.push("Collapsible Stocks: the slugga and shokka pistol lose their Range limit.");
-          } else if (!q.gw && !q.mod) effects.push(q.name + ": " + q.desc);
-        });
-        UNIV_EQUIP.forEach(q => {
-          if (!oppUEq[q.id]) return;
-          if (q.gw) weapons.push({ ...q.gw });
-          if (!q.gw && !q.mod) effects.push(q.name + ": " + q.desc);
-        });
-        return { weapons, effects, ignoreInjured };
-      };
-      setOppRoster({ faction, operatives: ops, eq: oppEq, uEq: oppUEq, getEquip: getOppEquip });
+      setOppRoster({ factionId: faction.id, operatives: ops, eq: oppEq, uEq: oppUEq });
       const initCollapsed = {};
       ops.forEach(op => { initCollapsed[op.id] = true; });
       setOppWounds({});
@@ -7958,9 +7960,11 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   };
 
   const getOppWounds = (opId, maxW) => oppWounds[opId] !== undefined ? oppWounds[opId] : maxW;
+  // Imported rosters used to keep the whole faction (oppRoster.faction); online ones only send its id.
+  const oppF = oppRoster ? (oppRoster.faction || FACTIONS[oppRoster.factionId]) : null;
+  const oppEquip = (op) => oppF ? oppEquipFor(oppF, oppRoster.eq || {}, oppRoster.uEq || {}, op) : { weapons: [], effects: [], ignoreInjured: false };
   const setOppWound = (opId, maxW, delta) => {
-    const cur = getOppWounds(opId, maxW);
-    setOppWounds(prev => ({ ...prev, [opId]: Math.max(0, Math.min(maxW, cur + delta)) }));
+    setOppWounds(prev => ({ ...prev, [opId]: Math.max(0, Math.min(maxW, (prev[opId] !== undefined ? prev[opId] : maxW) + delta)) }));
   };
 
   const printRoster = () => {
@@ -8274,55 +8278,64 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
               <div style={{ fontSize: 14, fontWeight: 700, color: "#C9772E", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.06em" }}>Apply {damageRequest.amount} Damage</div>
               <button onClick={() => setDamageRequest(null)} style={{ ...bs("#9AA5B1"), fontSize: 11, padding: "3px 8px" }}><Icon name="x" size={12} /> Cancel</button>
             </div>
-            <div style={{ fontSize: 11, color: "#9AA5B1", marginBottom: 8, fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.08em" }}>SELECT TARGET</div>
-
-            {/* Your operatives */}
-            {roster.length > 0 && (
-              <div style={{ marginBottom: 10 }}>
-                <div style={{ fontSize: 11, color: "#3B6FD4", marginBottom: 4, fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.1em" }}>YOUR TEAM</div>
-                {roster.map(op => {
-                  const cw = getWounds(op.id, op.wounds);
-                  const isDown = cw <= 0;
-                  return (
-                    <button key={op.id} disabled={isDown} onClick={() => { setOpWounds(op.id, op.wounds, -damageRequest.amount); setDamageRequest(null); showToast(op.name + " took " + damageRequest.amount + " dmg"); }} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", padding: "8px 10px", marginBottom: 3, background: isDown ? "#0E0F13" : "#262A33", border: "1px solid " + (isDown ? "#1A2430" : "#3A4150"), borderRadius: 2, color: isDown ? "#4A5563" : "#F1F2F5", cursor: isDown ? "not-allowed" : "pointer", fontFamily: "'Rajdhani', sans-serif", fontSize: 11, opacity: isDown ? 0.5 : 1 }}>
-                      <span>{op.name}</span>
-                      <span style={{ fontFamily: "monospace", color: cw <= op.wounds / 2 ? "#B8341C" : "#3D6B3F" }}>{cw}/{op.wounds}{isDown ? " (down)" : ""}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Opponent operatives */}
-            {oppRoster && oppRoster.operatives && oppRoster.operatives.length > 0 && (
-              <div>
-                <div style={{ fontSize: 11, color: "#E0664A", marginBottom: 4, fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.1em" }}>OPPONENT</div>
-                {oppRoster.operatives.map(op => {
-                  const cw = getOppWounds(op.id, op.wounds);
-                  const isDown = cw <= 0;
-                  return (
-                    <button key={op.id} disabled={isDown} onClick={() => {
-                      if (mp && mp.status === "connected") {
-                        // Opponent owns their own wounds; ask them to apply, they'll broadcast back
-                        mp.send({ type: "applyRemoteDamage", opId: op.id, amount: damageRequest.amount });
-                        showToast(op.name + " took " + damageRequest.amount + " dmg (sent)");
-                      } else {
-                        setOppWound(op.id, op.wounds, -damageRequest.amount);
-                        showToast(op.name + " took " + damageRequest.amount + " dmg");
-                      }
-                      setDamageRequest(null);
-                    }} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", padding: "8px 10px", marginBottom: 3, background: isDown ? "#0E0F13" : "#262A33", border: "1px solid " + (isDown ? "#1A2430" : "#3A4150"), borderRadius: 2, color: isDown ? "#4A5563" : "#F1F2F5", cursor: isDown ? "not-allowed" : "pointer", fontFamily: "'Rajdhani', sans-serif", fontSize: 11, opacity: isDown ? 0.5 : 1 }}>
-                      <span>{op.name}</span>
-                      <span style={{ fontFamily: "monospace", color: cw <= op.wounds / 2 ? "#B8341C" : "#3D6B3F" }}>{cw}/{op.wounds}{isDown ? " (down)" : ""}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            {(!roster.length && (!oppRoster || !oppRoster.operatives || !oppRoster.operatives.length)) && (
-              <div style={{ fontSize: 11, color: "#9AA5B1", fontStyle: "italic", textAlign: "center", padding: 12 }}>No operatives to target.</div>
-            )}
+            {(() => {
+              const amt = damageRequest.amount;
+              const online = mp && mp.status === "connected";
+              const oppOps = oppRoster && oppRoster.operatives ? oppRoster.operatives : [];
+              const row = (op, cw, onHit) => {
+                const isDown = cw <= 0;
+                return (
+                  <button key={op.id} disabled={isDown} onClick={() => { onHit(); setDamageRequest(null); }} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", padding: "10px 12px", marginBottom: 4, background: isDown ? "#0E0F13" : "#262A33", border: "1px solid " + (isDown ? "#1A2430" : "#3A4150"), borderRadius: 4, color: isDown ? "#4A5563" : "#F1F2F5", cursor: isDown ? "not-allowed" : "pointer", fontSize: 13, opacity: isDown ? 0.5 : 1, textAlign: "left" }}>
+                    <span>{op.name}</span>
+                    <span style={{ fontFamily: "monospace", color: cw <= op.wounds / 2 ? "#B8341C" : "#3D6B3F" }}>{cw}/{op.wounds}{isDown ? " (down)" : ""}</span>
+                  </button>
+                );
+              };
+              const head = (text, color) => <div style={{ fontSize: 11, color, margin: "4px 0", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.1em" }}>{text}</div>;
+              const mine = roster.length > 0 && (
+                <div key="mine" style={{ marginBottom: 10 }}>
+                  {head("YOUR TEAM", "#6B9BF7")}
+                  {roster.map(op => row(op, getWounds(op.id, op.wounds), () => { setOpWounds(op.id, op.wounds, -amt); showToast(op.name + " took " + amt + " damage"); }))}
+                </div>
+              );
+              const theirs = oppOps.length > 0 ? (
+                <div key="theirs" style={{ marginBottom: 10 }}>
+                  {head(online ? "OPPONENT (ONLINE)" : "OPPONENT", "#E0664A")}
+                  {oppOps.map(op => row(op, getOppWounds(op.id, op.wounds), () => {
+                    if (online) {
+                      // They own their wounds: their app applies it and sends the new total back to this card.
+                      mp.send({ type: "applyRemoteDamage", opId: op.id, amount: amt });
+                      showToast("Sent " + amt + " damage to " + op.name);
+                    } else {
+                      setOppWound(op.id, op.wounds, -amt);
+                      showToast(op.name + " took " + amt + " damage");
+                    }
+                  }))}
+                </div>
+              ) : (
+                <div key="theirs" style={{ marginBottom: 10, padding: "10px 12px", borderRadius: 6, background: "#0E0F13", border: "1px solid #3A4150", fontSize: 13, color: "#C8CDD3", lineHeight: 1.5 }}>
+                  Your opponent's team isn't in KillSheet. Tell them the operative you hit takes {amt} damage.
+                  <div style={{ color: "#9AA5B1", marginTop: 6 }}>To track their wounds here too, add their team:</div>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+                    <button onClick={() => { setDamageRequest(null); setShowImport(true); setTimeout(() => { const el = document.getElementById("ks-import"); if (el) el.scrollIntoView({ behavior: "smooth", block: "nearest" }); }, 60); }} style={{ ...bs("#C9772E"), fontSize: 13, padding: "8px 12px" }}>Import their roster</button>
+                    {feat.online && mp.status === "idle" && <button onClick={() => { setDamageRequest(null); setShowMP(true); }} style={{ ...bs("#6B9BF7"), fontSize: 13, padding: "8px 12px" }}>Play online</button>}
+                  </div>
+                </div>
+              );
+              // Show the side that was shot at first. The shooter's own side is one tap away, since Blast and Torrent can hit friends.
+              const side = damageRequest.side;
+              if (!side) return <React.Fragment>{mine}{theirs}</React.Fragment>;
+              const [first, other, otherLabel, otherHas] = side === "mine" ? [theirs, mine, "One of your own was hit (Blast or Torrent)", roster.length > 0] : [mine, theirs, "One of theirs was hit (Blast or Torrent)", oppOps.length > 0];
+              return (
+                <React.Fragment>
+                  {head("WHO TOOK THE DAMAGE?", "#9AA5B1")}
+                  {first}
+                  {otherHas && (damageOther ? other : (
+                    <button className="link-btn" onClick={() => setDamageOther(true)} style={{ background: "none", border: "none", padding: "6px 0", cursor: "pointer", color: "#9AA5B1", fontSize: 13, textDecoration: "underline", textUnderlineOffset: 3 }}>{otherLabel}</button>
+                  ))}
+                </React.Fragment>
+              );
+            })()}
           </div>
         </div>
       )}
@@ -9243,7 +9256,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                   return aAlive - bAlive;
                 }).map(op => {
                   const result = getEquipForOp(op);
-                  return (<Datacard key={op.id} op={op} f={f} fc={f.color} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getWounds(op.id, op.wounds)} onWound={(delta) => setOpWounds(op.id, op.wounds, delta)} collapsed={cardCollapsed[op.id] || false} onToggle={() => toggleCardCollapse(op.id)} ignoreInjured={result.ignoreInjured} cp={cp} setCp={setCp} isActivated={activated[op.id] || false} onActivate={() => setActivated(prev => ({ ...prev, [op.id]: !prev[op.id] }))} requestDamageApply={requestDamageApply} applySelfDamage={(amount) => { setOpWounds(op.id, op.wounds, -amount); showToast(op.name + " took " + amount + " self-dmg"); }} order={orders[op.id] || "conceal"} onOrder={() => setOrders(prev => ({ ...prev, [op.id]: prev[op.id] === "engage" ? "conceal" : "engage" }))} uses={feat.uses ? battleUses : null} setUse={(k, n) => setBattleUses(prev => ({ ...prev, [k]: n }))} carried={carried[op.id]} onCarried={(list) => setCarried(prev => ({ ...prev, [op.id]: list }))} />);
+                  return (<Datacard key={op.id} op={op} f={f} fc={f.color} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getWounds(op.id, op.wounds)} onWound={(delta) => setOpWounds(op.id, op.wounds, delta)} collapsed={cardCollapsed[op.id] || false} onToggle={() => toggleCardCollapse(op.id)} ignoreInjured={result.ignoreInjured} cp={cp} setCp={setCp} isActivated={activated[op.id] || false} onActivate={() => setActivated(prev => ({ ...prev, [op.id]: !prev[op.id] }))} requestDamageApply={(a) => requestDamageApply(a, "mine")} applySelfDamage={(amount) => { setOpWounds(op.id, op.wounds, -amount); showToast(op.name + " took " + amount + " self-dmg"); }} order={orders[op.id] || "conceal"} onOrder={() => setOrders(prev => ({ ...prev, [op.id]: prev[op.id] === "engage" ? "conceal" : "engage" }))} uses={feat.uses ? battleUses : null} setUse={(k, n) => setBattleUses(prev => ({ ...prev, [k]: n }))} carried={carried[op.id]} onCarried={(list) => setCarried(prev => ({ ...prev, [op.id]: list }))} />);
                 })}
 
               </div>
@@ -9258,7 +9271,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                   <div style={{ position: "sticky", top: navH + barH, maxHeight: "calc(100vh - " + (navH + barH + 10) + "px)", overflowY: "auto", overflowX: "hidden" }}>
                     <div style={{ background: "linear-gradient(135deg, " + "#B8341C" + "18, #1A1D24)", border: "1px solid " + "#B8341C" + "35", borderRadius: 4, padding: "8px 12px", marginBottom: 6, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <div>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: "#E0664A", fontFamily: "'Rajdhani', sans-serif" }}>{oppRoster.faction.name}</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: "#E0664A", fontFamily: "'Rajdhani', sans-serif" }}>{oppF ? oppF.name : "Opponent"}</div>
                         <div style={{ fontSize: 13, color: "#9AA5B1" }}>{oppRoster.operatives.reduce((s, o) => s + getOppWounds(o.id, o.wounds), 0)}W alive {"\u2022"} {oppRoster.operatives.filter(o => getOppWounds(o.id, o.wounds) <= 0).length} dead</div>
                       </div>
                       <div style={{ display: "flex", gap: 4 }}>
@@ -9271,9 +9284,9 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                       </div>
                     </div>
                     {oppRoster.operatives.map(op => {
-                      const result = oppRoster.getEquip(op);
+                      const result = oppEquip(op);
                       const oCollapsed = oppCollapsed[op.id] || false;
-                      return (<Datacard key={"opp-" + op.id} op={op} f={oppRoster.faction || FACTIONS[oppRoster.factionId]} fc={oppRoster.factionColor || "#9AA5B1"} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getOppWounds(op.id, op.wounds)} onWound={(delta) => { if (mp && mp.status === "connected" && delta < 0) { mp.send({ type: "applyRemoteDamage", opId: op.id, amount: -delta }); } else if (mp && mp.status === "connected" && delta > 0) { mp.send({ type: "applyRemoteHeal", opId: op.id, amount: delta }); } else { setOppWound(op.id, op.wounds, delta); } }} collapsed={oCollapsed} onToggle={() => setOppCollapsed(prev => ({ ...prev, [op.id]: !oCollapsed }))} ignoreInjured={result.ignoreInjured} cp={0} setCp={() => {}} requestDamageApply={requestDamageApply} applySelfDamage={(amount) => { if (mp && mp.status === "connected") { mp.send({ type: "applyRemoteDamage", opId: op.id, amount }); showToast(op.name + " took " + amount + " self-dmg (sent)"); } else { setOppWound(op.id, op.wounds, -amount); showToast(op.name + " took " + amount + " self-dmg"); } }} />);
+                      return (<Datacard key={"opp-" + op.id} op={op} f={oppF} fc={oppF ? oppF.color : "#9AA5B1"} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getOppWounds(op.id, op.wounds)} onWound={(delta) => { if (mp && mp.status === "connected" && delta < 0) { mp.send({ type: "applyRemoteDamage", opId: op.id, amount: -delta }); } else if (mp && mp.status === "connected" && delta > 0) { mp.send({ type: "applyRemoteHeal", opId: op.id, amount: delta }); } else { setOppWound(op.id, op.wounds, delta); } }} collapsed={oCollapsed} onToggle={() => setOppCollapsed(prev => ({ ...prev, [op.id]: !oCollapsed }))} ignoreInjured={result.ignoreInjured} cp={0} setCp={() => {}} requestDamageApply={(a) => requestDamageApply(a, "opp")} applySelfDamage={(amount) => { if (mp && mp.status === "connected") { mp.send({ type: "applyRemoteDamage", opId: op.id, amount }); showToast(op.name + " took " + amount + " self-dmg (sent)"); } else { setOppWound(op.id, op.wounds, -amount); showToast(op.name + " took " + amount + " self-dmg"); } }} />);
                     })}
                   </div>
                 </div>
@@ -9288,7 +9301,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                 <div id="ks-import" style={{ marginTop: 12 }}>
                   <div role="button" tabIndex={0} onClick={() => setShowImport(!showImport)} style={{ ...cd, padding: "8px 12px", cursor: "pointer", borderColor: oppRoster ? "#B8341C40" : showImport ? "#6B9BF740" : "#3A4150", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div style={{ fontSize: 13, fontWeight: 700, color: oppRoster ? "#B8341C" : "#6B9BF7", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.08em" }}>
-                      {oppRoster ? "Opponent: " + oppRoster.faction.name + " (" + oppRoster.operatives.length + ")" : "Import a roster"}
+                      {oppRoster ? "Opponent: " + (oppF ? oppF.name : "team") + " (" + oppRoster.operatives.length + ")" : "Import a roster"}
                     </div>
                     <span style={{ display: "inline-flex", marginTop: 1 }}><Arrow open={showImport} /></span>
                   </div>
@@ -9333,9 +9346,9 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                         </div>
                       </div>
                       {oppRoster.operatives.map(op => {
-                        const result = oppRoster.getEquip(op);
+                        const result = oppEquip(op);
                         const oCollapsed = oppCollapsed[op.id] || false;
-                        return (<Datacard key={"opp-m-" + op.id} op={op} f={oppRoster.faction || FACTIONS[oppRoster.factionId]} fc={oppRoster.factionColor || "#9AA5B1"} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getOppWounds(op.id, op.wounds)} onWound={(delta) => { if (mp && mp.status === "connected" && delta < 0) { mp.send({ type: "applyRemoteDamage", opId: op.id, amount: -delta }); } else if (mp && mp.status === "connected" && delta > 0) { mp.send({ type: "applyRemoteHeal", opId: op.id, amount: delta }); } else { setOppWound(op.id, op.wounds, delta); } }} collapsed={oCollapsed} onToggle={() => setOppCollapsed(prev => ({ ...prev, [op.id]: !oCollapsed }))} ignoreInjured={result.ignoreInjured} cp={0} setCp={() => {}} requestDamageApply={requestDamageApply} applySelfDamage={(amount) => { if (mp && mp.status === "connected") { mp.send({ type: "applyRemoteDamage", opId: op.id, amount }); showToast(op.name + " took " + amount + " self-dmg (sent)"); } else { setOppWound(op.id, op.wounds, -amount); showToast(op.name + " took " + amount + " self-dmg"); } }} />);
+                        return (<Datacard key={"opp-m-" + op.id} op={op} f={oppF} fc={oppF ? oppF.color : "#9AA5B1"} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getOppWounds(op.id, op.wounds)} onWound={(delta) => { if (mp && mp.status === "connected" && delta < 0) { mp.send({ type: "applyRemoteDamage", opId: op.id, amount: -delta }); } else if (mp && mp.status === "connected" && delta > 0) { mp.send({ type: "applyRemoteHeal", opId: op.id, amount: delta }); } else { setOppWound(op.id, op.wounds, delta); } }} collapsed={oCollapsed} onToggle={() => setOppCollapsed(prev => ({ ...prev, [op.id]: !oCollapsed }))} ignoreInjured={result.ignoreInjured} cp={0} setCp={() => {}} requestDamageApply={(a) => requestDamageApply(a, "opp")} applySelfDamage={(amount) => { if (mp && mp.status === "connected") { mp.send({ type: "applyRemoteDamage", opId: op.id, amount }); showToast(op.name + " took " + amount + " self-dmg (sent)"); } else { setOppWound(op.id, op.wounds, -amount); showToast(op.name + " took " + amount + " self-dmg"); } }} />);
                       })}
                     </div>
                   )}
@@ -16444,6 +16457,34 @@ async function runSelfTest(hooks) {
     if (!tip() || tip().textContent.length < 20) throw new Error(refTip.textContent + ": the linked rule's tip didn't open");
     document.body.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true })); await settle();
     return "APL, " + rule.textContent.trim() + (more ? " with the Rules link" : "") + ", \"" + word + "\" inside a tip, the " + ploy.textContent.trim() + " ploy, and \"" + refTip.textContent.trim() + "\" in rule text";
+  });
+
+  // Dice damage goes to the side that was shot at. With no opponent team loaded, it says to tell them instead.
+  await step("Dice damage target", async () => {
+    await nav("Battle");
+    const dc = btn("Datacards", true); if (dc) await click(dc, "Datacards");
+    let roll = all("[aria-label^='Roll dice for ']")[0];
+    if (!roll) { await click(all(".datacard-print [role=button]")[0], "a datacard"); roll = all("[aria-label^='Roll dice for ']")[0]; }
+    if (!roll) throw new Error("no Roll button on an open datacard");
+    await click(roll, "Roll");
+    for (let i = 0; i < 20 && !btn("Roll defence"); i++) await click(btn("Roll ") && all("button").find(b => /^Roll \d+ attack dice/.test(b.textContent.trim())), "Roll attack dice");
+    await click(btn("Roll defence"), "Roll defence");
+    let apply = all("button").find(b => /^Apply \d+ to target/.test(b.textContent.trim()));
+    if (apply && apply.disabled) { const n = all("input[type=number]").find(i => i.nextElementSibling && i.nextElementSibling.textContent.trim() === "+"); await click(n && n.nextElementSibling, "+1 damage"); apply = all("button").find(b => /^Apply \d+ to target/.test(b.textContent.trim())); }
+    await click(apply, "Apply to target");
+    const text = () => document.body.innerText;
+    if (!/WHO TOOK THE DAMAGE\?/.test(text())) throw new Error("the target list didn't open");
+    if (!/team isn't in KillSheet/.test(text()) || !btn("Import their roster")) throw new Error("with no opponent team, it doesn't say to tell them or offer to import");
+    if (/YOUR TEAM/.test(text())) throw new Error("your own operatives show first after shooting with your own weapon");
+    await click(btn("One of your own was hit"), "One of your own was hit");
+    const target = all("button").find(b => /^\S.*\d+\/\d+$/.test(b.textContent.trim()) && !b.disabled && b.closest("[style*='z-index: 10000']"));
+    if (!/YOUR TEAM/.test(text()) || !target) throw new Error("your own operatives didn't appear");
+    const [cur] = target.textContent.match(/(\d+)\/\d+$/).slice(1).map(Number);
+    await click(target, "your operative");
+    if (/WHO TOOK THE DAMAGE\?/.test(text())) throw new Error("the target list didn't close");
+    if (!/took \d+ damage/.test(text())) throw new Error("no message that the damage was applied");
+    const closeRoll = all("[aria-label='Close dice roller']")[0]; if (closeRoll) await click(closeRoll, "close dice roller");
+    return "own weapon: opponent first, tell-them note with Import, own operatives on request (" + cur + " wounds before)";
   });
 
   // Put everything back the way it was, and stop the app saving its test state over it until reload.
