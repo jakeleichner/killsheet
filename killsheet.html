@@ -5654,6 +5654,25 @@ const oppEquipFor = (faction, oppEq, oppUEq, op) => {
 function makeInstance(op, n) {
   return n === 1 ? { ...op } : { ...op, id: op.id + "~" + n, baseId: op.id, name: op.name + " " + n };
 }
+// A roster keeps a copy of each operative's datacard. This refreshes the copies from the current team data,
+// so rules fixes reach teams built before them. Ids stay the same (wounds and orders are keyed by them),
+// except that repeats saved by old versions with the same id get numbered.
+function freshOps(faction, ops) {
+  if (!faction || !Array.isArray(ops)) return ops;
+  const used = new Set();
+  return ops.map(o => {
+    const bid = baseOf(o);
+    const base = faction.operatives.find(x => x.id === bid);
+    if (!base) return o;
+    let id = o.id;
+    if (used.has(id)) { let n = 2; while (used.has(bid + "~" + n) || ops.some(p => p.id === bid + "~" + n)) n++; id = bid + "~" + n; }
+    used.add(id);
+    const n = id.includes("~") ? parseInt(id.split("~")[1]) || 1 : 1;
+    const fresh = { ...o, ...base, id };
+    if (n === 1 && id === bid) { delete fresh.baseId; return fresh; }
+    return { ...fresh, baseId: bid, name: base.name + " " + n };
+  });
+}
 function makeInstances(faction, baseIds) {
   const seen = {};
   return baseIds.map(bid => {
@@ -7659,6 +7678,30 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   // { side: "mine" | "opp" (whose operative), target, max, before, after, how: "dice" | "hand" | "self", by, weapon, tp, t }
   const [battleLog, setBattleLog] = useLocalStorage("battleLog", []);
   const [showLog, setShowLog] = useState(false);
+  // Bring saved datacards up to date with the current team data when the app opens or the team changes.
+  // Old imported opponents kept the whole team (oppRoster.faction); they switch to factionId here.
+  React.useEffect(() => {
+    const mine = fid ? FACTIONS[fid] : null;
+    if (mine && roster.length) { const fresh = freshOps(mine, roster); if (JSON.stringify(fresh) !== JSON.stringify(roster)) setRoster(fresh); }
+    const theirs = oppRoster ? FACTIONS[oppRoster.factionId || (oppRoster.faction && oppRoster.faction.id)] : null;
+    if (theirs) {
+      const next = { factionId: theirs.id, operatives: freshOps(theirs, oppRoster.operatives || []), eq: oppRoster.eq || {}, uEq: oppRoster.uEq || {} };
+      if (JSON.stringify(next) !== JSON.stringify(oppRoster)) setOppRoster(next);
+    }
+  }, [fid]);
+  // Escape closes whatever is on top: the target screen, the battle log, Play online, then the ⋯ menus.
+  React.useEffect(() => {
+    const onKey = (e) => {
+      if (e.key !== "Escape") return;
+      if (damageRequest) setDamageRequest(null);
+      else if (showLog) setShowLog(false);
+      else if (showMP) setShowMP(false);
+      else if (cardsMenu) setCardsMenu(false);
+      else if (gameMenu) setGameMenu(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [damageRequest, showLog, showMP, cardsMenu, gameMenu]);
   const attackerRef = React.useRef(null);
   const strikeTimer = React.useRef(null);
   const [damageOther, setDamageOther] = useState(false); // also list the shooter's own side (Blast and Torrent hit friends too)
@@ -7706,7 +7749,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
             setOppRoster(null);
           } else {
             const opF = FACTIONS[p.fid];
-            if (opF) setOppRoster({ factionId: p.fid, operatives: (p.roster || []).map(o => ({ ...o, equipNote: "" })), eq: p.eq || {}, uEq: p.uEq || {} });
+            if (opF) setOppRoster({ factionId: p.fid, operatives: freshOps(opF, (p.roster || []).map(o => ({ ...o, equipNote: "" }))), eq: p.eq || {}, uEq: p.uEq || {} });
           }
         }
         if (p.wounds) setOppWounds(p.wounds);
@@ -7725,7 +7768,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
             setOppRoster(null);
           } else {
             const opF = FACTIONS[p.fid];
-            if (opF) setOppRoster({ factionId: p.fid, operatives: (p.roster || []).map(o => ({ ...o, equipNote: "" })), eq: p.eq || {}, uEq: p.uEq || {} });
+            if (opF) setOppRoster({ factionId: p.fid, operatives: freshOps(opF, (p.roster || []).map(o => ({ ...o, equipNote: "" }))), eq: p.eq || {}, uEq: p.uEq || {} });
           }
         }
         if (p.wounds) setOppWounds(p.wounds);
@@ -8534,10 +8577,10 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
       {/* Damage target picker */}
       {damageRequest && f && (
         <div onClick={() => setDamageRequest(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 10000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-          <div onClick={(e) => { e.stopPropagation(); if (struck) setDamageRequest(null); }} style={{ background: "#1A1D24", border: "1px solid #C9772E40", borderRadius: 4, padding: 16, maxWidth: damageRequest.meta && !mobile ? 640 : 480, width: "100%", maxHeight: "80vh", overflowY: "auto", boxShadow: "0 8px 40px rgba(0,0,0,0.7)" }}>
+          <div role="dialog" aria-modal="true" aria-label={"Apply " + damageRequest.amount + " damage"} onClick={(e) => { e.stopPropagation(); if (struck) setDamageRequest(null); }} style={{ background: "#1A1D24", border: "1px solid #C9772E40", borderRadius: 4, padding: 16, maxWidth: damageRequest.meta && !mobile ? 640 : 480, width: "100%", maxHeight: "80vh", overflowY: "auto", boxShadow: "0 8px 40px rgba(0,0,0,0.7)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: "#C9772E", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.06em" }}>Apply {damageRequest.amount} Damage</div>
-              <button onClick={() => setDamageRequest(null)} style={{ ...bs("#9AA5B1"), fontSize: 11, padding: "3px 8px" }}><Icon name="x" size={12} /> Cancel</button>
+              <button autoFocus onClick={() => setDamageRequest(null)} style={{ ...bs("#9AA5B1"), fontSize: 11, padding: "3px 8px" }}><Icon name="x" size={12} /> Cancel</button>
             </div>
             {(() => {
               const amt = damageRequest.amount;
@@ -8642,10 +8685,10 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
       {/* Battle log: their operatives' changes on the right (what you did), yours on the left. */}
       {showLog && (
         <div onClick={() => setShowLog(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 10000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-          <div role="dialog" aria-label="Battle log" onClick={(e) => e.stopPropagation()} style={{ background: "#1A1D24", border: "1px solid #6B9BF760", borderRadius: 4, padding: 16, maxWidth: 480, width: "100%", maxHeight: "80vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 40px rgba(0,0,0,0.7)" }}>
+          <div role="dialog" aria-modal="true" aria-label="Battle log" onClick={(e) => e.stopPropagation()} style={{ background: "#1A1D24", border: "1px solid #6B9BF760", borderRadius: 4, padding: 16, maxWidth: 480, width: "100%", maxHeight: "80vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 40px rgba(0,0,0,0.7)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
               <div style={{ fontSize: 18, fontWeight: 700, color: "#6B9BF7", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.04em", display: "flex", alignItems: "center", gap: 6 }}><Icon name="log" size={16} /> Battle log</div>
-              <button onClick={() => setShowLog(false)} style={{ ...bs("#9AA5B1"), fontSize: 13, padding: "8px 12px" }}><Icon name="x" size={12} /> Close</button>
+              <button autoFocus onClick={() => setShowLog(false)} style={{ ...bs("#9AA5B1"), fontSize: 13, padding: "8px 12px" }}><Icon name="x" size={12} /> Close</button>
             </div>
             <div style={{ fontSize: 12, color: "#9AA5B1", marginBottom: 8 }}>Their operatives on the right, yours on the left.</div>
             <div ref={(el) => { if (el) el.scrollTop = el.scrollHeight; }} style={{ flex: 1, minHeight: 120, overflowY: "auto", background: "#0E0F13", border: "1px solid #3A4150", borderRadius: 6, padding: 8, display: "flex", flexDirection: "column", gap: 4 }}>
@@ -8679,10 +8722,10 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
       {/* Multiplayer modal */}
       {showMP && (
         <div onClick={() => setShowMP(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 10000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ background: "#1A1D24", border: "1px solid #6B9BF780", borderRadius: 10, padding: 20, maxWidth: 460, width: "100%", boxShadow: "0 8px 40px rgba(0,0,0,0.7)" }}>
+          <div role="dialog" aria-modal="true" aria-label="Play online" onClick={(e) => e.stopPropagation()} style={{ background: "#1A1D24", border: "1px solid #6B9BF780", borderRadius: 10, padding: 20, maxWidth: 460, width: "100%", boxShadow: "0 8px 40px rgba(0,0,0,0.7)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
               <div style={{ fontSize: 20, fontWeight: 700, color: "#6B9BF7", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.04em", display: "flex", alignItems: "center", gap: 8 }}><MPIcon name="players" size={20} /> Play online</div>
-              <button onClick={() => setShowMP(false)} style={{ ...bs("#9AA5B1"), fontSize: 13, padding: "8px 12px" }}><Icon name="x" size={12} /> Close</button>
+              <button autoFocus onClick={() => setShowMP(false)} style={{ ...bs("#9AA5B1"), fontSize: 13, padding: "8px 12px" }}><Icon name="x" size={12} /> Close</button>
             </div>
 
             {/* Status row */}
@@ -16835,9 +16878,10 @@ async function runSelfTest(hooks) {
     await click(all("[aria-label='Battle log']")[0], "Log button");
     const logBox = all("[role=dialog][aria-label='Battle log']")[0];
     if (!logBox || !logBox.innerText.includes(targetName) || !/ hit .* with .*: \d+ damage/.test(logBox.innerText)) throw new Error("the battle log doesn't show the hit on " + targetName);
-    await click([...logBox.querySelectorAll("button")].find(b => /Close/.test(b.textContent)), "close the log");
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })); await settle();
+    if (all("[role=dialog][aria-label='Battle log']")[0]) throw new Error("Escape didn't close the battle log");
     const closeRoll = all("[aria-label='Close dice roller']")[0]; if (closeRoll) await click(closeRoll, "close dice roller");
-    return "own weapon: opponent first, tell-them note with Import, own operatives on request (" + cur + " wounds before), one apply per roll, attacker card, battle log";
+    return "own weapon: opponent first, tell-them note with Import, own operatives on request (" + cur + " wounds before), one apply per roll, attacker card, battle log closes with Escape";
   });
 
   // The dice maths with fixed dice: each weapon rule, cover, obscured and blocking.
@@ -16877,6 +16921,18 @@ async function runSelfTest(hooks) {
     const wrong = cases.filter(([, got, want]) => got !== want).map(([name, got, want]) => name + ": got " + got + ", want " + want);
     if (wrong.length) throw new Error(wrong.join("; "));
     return cases.length + " cases";
+  });
+
+  // Teams saved by older versions get today's datacards, keep their ids, and repeats with one id get numbered.
+  await step("Old saves get current datacards", async () => {
+    const pm = FACTIONS.plaguemarines;
+    const old = [{ id: "champion", name: "Plague Champion", wounds: 1 }, { id: "fighter", name: "PM Fighter" }, { id: "fighter", name: "PM Fighter" }, { id: "gone_op", name: "Removed" }];
+    const got = freshOps(pm, old).map(o => o.id + "/" + o.name + (o.id === "champion" ? "/" + o.wounds : "")).join(", ");
+    const want = "champion/" + pm.operatives.find(o => o.id === "champion").name + "/" + pm.operatives.find(o => o.id === "champion").wounds + ", fighter/" + pm.operatives.find(o => o.id === "fighter").name + ", fighter~2/" + pm.operatives.find(o => o.id === "fighter").name + " 2, gone_op/Removed";
+    if (got !== want) throw new Error("got " + got + "; want " + want);
+    const today = makeInstances(pm, ["fighter", "fighter", "champion"]);
+    if (JSON.stringify(freshOps(pm, today)) !== JSON.stringify(today)) throw new Error("a current roster changed when refreshed");
+    return "old names and stats replaced, ids kept, repeats numbered";
   });
 
   // Put everything back the way it was, and stop the app saving its test state over it until reload.
