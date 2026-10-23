@@ -6881,6 +6881,136 @@ function Icon({ name, size = 14, color, style }) {
   );
 }
 
+/* ═══ ATTACK EFFECTS (the dice roller's target screen) ═══ */
+// Plain shapes only (streaks, a lobbed ball, sparks, rings), no artwork.
+function attackKind(w) {
+  const wr = w.wr || "";
+  if (w.type === "melee") return "melee";
+  if (/grenade/i.test(w.name)) return "grenade";
+  // Torrent covers flamers and sprays, and also "sweeping" guns: those get a fan of shots instead.
+  if (/Torrent/.test(wr)) return /flam|burna|spew|plague wind|ignit|pyre|censer|brazier|fire|skinner|spit/i.test(w.name) ? "flame" : "sweep";
+  if (/PSYCHIC/.test(wr)) return "psychic";
+  if (/Blast/.test(wr)) return "blast";
+  return "shoot";
+}
+// Plays the effect from the attacker card to the target row, on a layer above the screen.
+// Returns the time (ms) the hit lands, so the row can flash then.
+function playAttackFx(kind, card, rowEl) {
+  const a = card.getBoundingClientRect(), b = rowEl.getBoundingClientRect();
+  const ax = a.left + a.width / 2, ay = a.top + a.height / 2;
+  const bx = b.left + b.width / 2, by = b.top + b.height / 2;
+  const dx = bx - ax, dy = by - ay, dist = Math.hypot(dx, dy) || 1;
+  const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+  const ux = dx / dist, uy = dy / dist; // toward the target
+  const layer = document.createElement("div");
+  layer.style.cssText = "position:fixed;inset:0;pointer-events:none;z-index:10002;overflow:hidden";
+  document.body.appendChild(layer);
+  const piece = (w, h, css) => {
+    const d = document.createElement("div");
+    d.style.cssText = "position:absolute;left:0;top:0;opacity:0;width:" + w + "px;height:" + h + "px;margin:" + (-h / 2) + "px 0 0 " + (-w / 2) + "px;" + css;
+    layer.appendChild(d);
+    return d;
+  };
+  const at = (x, y, extra) => "translate(" + Math.round(x) + "px," + Math.round(y) + "px)" + (extra || "");
+  const burst = (delay, size, color) => {
+    piece(size, size, "border-radius:50%;border:3px solid " + color + ";background:" + color + "40;box-shadow:0 0 12px " + color).animate([
+      { transform: at(bx, by, " scale(0.2)"), opacity: 1 },
+      { transform: at(bx, by, " scale(1.5)"), opacity: 0 },
+    ], { duration: 420, delay, easing: "ease-out", fill: "forwards" });
+  };
+  const kick = () => card.animate([{ transform: "none" }, { transform: at(-ux * 8, -uy * 8) }, { transform: "none" }], { duration: 240, easing: "ease-out" });
+  let hit;
+  if (kind === "melee") {
+    // The card lunges at the target, then two slashes cross it.
+    card.animate([
+      { transform: "none" },
+      { transform: at(-dx * 0.06, -dy * 0.06, " scale(1.04)"), offset: 0.3 },
+      { transform: at(dx * 0.72, dy * 0.72, " rotate(-3deg)"), offset: 0.75 },
+      { transform: at(dx * 0.66, dy * 0.66) },
+    ], { duration: 600, easing: "ease-in", fill: "forwards" });
+    hit = 440;
+    const len = Math.min(160, b.width * 0.6);
+    [-28, 28].forEach((deg, i) => {
+      const r = " rotate(" + deg + "deg)";
+      piece(len, 3, "border-radius:2px;background:#FFB627;box-shadow:0 0 8px #FFB627").animate([
+        { transform: at(bx, by, r + " scaleX(0)"), opacity: 1 },
+        { transform: at(bx, by, r + " scaleX(1)"), opacity: 1, offset: 0.4 },
+        { transform: at(bx, by, r + " scaleX(1)"), opacity: 0 },
+      ], { duration: 380, delay: hit + i * 100, fill: "forwards" });
+    });
+  } else if (kind === "grenade") {
+    // Lobbed in an arc, then bursts.
+    kick();
+    const lift = Math.max(60, dist * 0.45);
+    const frames = [];
+    for (let i = 0; i <= 10; i++) { const t = i / 10; frames.push({ transform: at(ax + dx * t, ay + dy * t - 4 * lift * t * (1 - t), " rotate(" + (t * 540) + "deg)"), opacity: i === 10 ? 0 : 1 }); }
+    hit = 650;
+    piece(11, 11, "border-radius:3px;background:#C8CDD3;box-shadow:0 0 4px #000").animate(frames, { duration: hit, fill: "forwards" });
+    burst(hit, 80, "#FFB627");
+    burst(hit + 80, 50, "#E0664A");
+  } else if (kind === "flame") {
+    // A spray of sparks that fans out over the target (green for plague and venom sprays).
+    kick();
+    const colors = /plague|venom|spit/i.test(card.getAttribute("aria-label") || "") ? ["#9BD35A", "#5A9C3A", "#C8E06A"] : ["#FFB627", "#E0664A", "#C9772E"];
+    for (let i = 0; i < 18; i++) {
+      const off = (Math.random() - 0.5) * 70, size = 6 + Math.random() * 5;
+      piece(size, size, "border-radius:50%;background:" + colors[i % 3] + ";box-shadow:0 0 6px " + colors[i % 3]).animate([
+        { transform: at(ax + ux * 20, ay + uy * 20, " scale(0.5)"), opacity: 1 },
+        { transform: at(bx - uy * off, by + ux * off, " scale(1.5)"), opacity: 0 },
+      ], { duration: 380, delay: i * 24, easing: "ease-out", fill: "forwards" });
+    }
+    hit = 300;
+  } else if (kind === "sweep") {
+    // A fan of tracers raking across the target.
+    kick();
+    for (let i = 0; i < 5; i++) {
+      const tx = b.left + b.width * (0.15 + 0.175 * i), ty = by + (Math.random() - 0.5) * 8;
+      const ang = Math.atan2(ty - ay, tx - ax) * 180 / Math.PI;
+      piece(26, 3, "border-radius:2px;background:linear-gradient(90deg, transparent, #FFB627);box-shadow:0 0 6px #FFB627").animate([
+        { transform: at(ax, ay, " rotate(" + ang + "deg)"), opacity: 1 },
+        { transform: at(tx, ty, " rotate(" + ang + "deg)"), opacity: 1, offset: 0.95 },
+        { transform: at(tx, ty, " rotate(" + ang + "deg)"), opacity: 0 },
+      ], { duration: 280, delay: i * 60, easing: "linear", fill: "forwards" });
+    }
+    hit = 280;
+  } else if (kind === "psychic") {
+    // Rings that grow as they travel.
+    kick();
+    for (let i = 0; i < 3; i++) {
+      piece(26, 26, "border-radius:50%;border:2px solid #B48CFF;box-shadow:0 0 10px #B48CFF").animate([
+        { transform: at(ax, ay, " scale(0.6)"), opacity: 1 },
+        { transform: at(bx, by, " scale(2)"), opacity: 0 },
+      ], { duration: 480, delay: i * 120, easing: "ease-in", fill: "forwards" });
+    }
+    hit = 480;
+    burst(hit, 60, "#B48CFF");
+  } else if (kind === "blast") {
+    // One heavy shell, then a burst.
+    kick();
+    hit = 380;
+    piece(18, 7, "border-radius:4px;background:#FFB627;box-shadow:0 0 10px #FFB627").animate([
+      { transform: at(ax, ay, " rotate(" + angle + "deg)"), opacity: 1 },
+      { transform: at(bx, by, " rotate(" + angle + "deg)"), opacity: 1, offset: 0.95 },
+      { transform: at(bx, by, " rotate(" + angle + "deg)"), opacity: 0 },
+    ], { duration: hit, easing: "ease-in", fill: "forwards" });
+    burst(hit, 90, "#FFB627");
+    burst(hit + 70, 56, "#E0664A");
+  } else {
+    // Three quick tracers.
+    kick();
+    for (let i = 0; i < 3; i++) {
+      piece(30, 3, "border-radius:2px;background:linear-gradient(90deg, transparent, #FFB627);box-shadow:0 0 6px #FFB627").animate([
+        { transform: at(ax, ay, " rotate(" + angle + "deg)"), opacity: 1 },
+        { transform: at(bx, by, " rotate(" + angle + "deg)"), opacity: 1, offset: 0.95 },
+        { transform: at(bx, by, " rotate(" + angle + "deg)"), opacity: 0 },
+      ], { duration: 280, delay: i * 110, easing: "linear", fill: "forwards" });
+    }
+    hit = 280;
+  }
+  setTimeout(() => layer.remove(), hit + 1000);
+  return hit;
+}
+
 /* ═══ WEAPON DISPLAY ═══ */
 function WeaponBox({ w, tag, wtype, cp, setCp, requestDamageApply, applySelfDamage, local }) {
   const [rolling, setRolling] = useState(false);
@@ -6976,7 +7106,7 @@ function Datacard({ op, f, fc, equipWeapons, equipEffects, curWounds, onWound, c
     return <UsePips label={"Limited " + max} used={uses[key] || 0} max={max} onSet={(n) => setUse(key, n)} />;
   };
   // The target screen shows who attacked and with which weapon.
-  const damageFrom = (w) => requestDamageApply ? (amount, done) => requestDamageApply(amount, done, { attacker: op.name, weapon: w.name }) : undefined;
+  const damageFrom = (w) => requestDamageApply ? (amount, done) => requestDamageApply(amount, done, { attacker: op.name, weapon: w.name, kind: attackKind(w) }) : undefined;
   const allRanged = [...op.ranged.filter(carries).map(w => ({ ...w, type: "ranged" })), ...equipWeapons.filter(w => w.type === "ranged")];
   const allMelee = [...op.melee.filter(carries).map(w => ({ ...w, type: "melee" })), ...equipWeapons.filter(w => w.type === "melee")];
 
@@ -8392,22 +8522,14 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                 const still = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
                 if (!card || still || !rowEl.animate) { setDamageRequest(null); return; }
                 setStruck({ key, after });
-                const a = card.getBoundingClientRect(), b = rowEl.getBoundingClientRect();
-                const dx = (b.left + b.width / 2) - (a.left + a.width / 2), dy = (b.top + b.height / 2) - (a.top + a.height / 2);
-                const at = (k, extra) => "translate(" + Math.round(dx * k) + "px, " + Math.round(dy * k) + "px)" + (extra || "");
-                card.animate([
-                  { transform: "none" },
-                  { transform: at(-0.06, " scale(1.04)"), offset: 0.3 },
-                  { transform: at(0.72, " rotate(-3deg)"), offset: 0.75 },
-                  { transform: at(0.66) },
-                ], { duration: 600, easing: "ease-in", fill: "forwards" });
+                const hitAt = playAttackFx(damageRequest.meta.kind || "melee", card, rowEl);
                 rowEl.animate([
                   { background: "#262A33", transform: "none" },
                   { background: "#B8341C", transform: "translateX(5px)", offset: 0.25 },
                   { background: "#5A1F14", transform: "translateX(-4px)", offset: 0.55 },
                   { background: "#262A33", transform: "none" },
-                ], { duration: 450, delay: 440 });
-                strikeTimer.current = setTimeout(() => setDamageRequest(null), 1100);
+                ], { duration: 450, delay: hitAt });
+                strikeTimer.current = setTimeout(() => setDamageRequest(null), hitAt + 700);
               };
               const row = (op, cw, onHit, sideKey) => {
                 const key = sideKey + op.id;
@@ -8473,7 +8595,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
               // Attacker on the left (on top on phones), targets beside it.
               return (
                 <div style={{ display: mobile ? "block" : "grid", gridTemplateColumns: "190px 1fr", gap: 16, alignItems: "start" }}>
-                  <div ref={attackerRef} aria-label={"Attacker: " + meta.attacker + " with " + meta.weapon} style={{ position: "relative", zIndex: 2, padding: "10px 12px", marginBottom: mobile ? 12 : 0, borderRadius: 4, background: "#262A33", border: "1px solid " + tone + "80", boxShadow: "0 4px 16px rgba(0,0,0,0.4)" }}>
+                  <div ref={attackerRef} data-attack={meta.kind} aria-label={"Attacker: " + meta.attacker + " with " + meta.weapon} style={{ position: "relative", zIndex: 2, padding: "10px 12px", marginBottom: mobile ? 12 : 0, borderRadius: 4, background: "#262A33", border: "1px solid " + tone + "80", boxShadow: "0 4px 16px rgba(0,0,0,0.4)" }}>
                     {head("ATTACKER", tone)}
                     <div style={{ fontSize: 16, fontWeight: 700, color: "#F1F2F5", fontFamily: "'Rajdhani', sans-serif", lineHeight: 1.2 }}>{meta.attacker}</div>
                     <div style={{ fontSize: 13, color: "#C8CDD3", marginTop: 2 }}>{meta.weapon}</div>
@@ -16625,6 +16747,7 @@ async function runSelfTest(hooks) {
     if (!/WHO TOOK THE DAMAGE\?/.test(text())) throw new Error("the target list didn't open");
     const attacker = all("[aria-label^='Attacker: ']")[0];
     if (!attacker || !/ with \S/.test(attacker.getAttribute("aria-label"))) throw new Error("the target screen doesn't show the attacker and weapon");
+    if (!/^(melee|grenade|flame|sweep|psychic|blast|shoot)$/.test(attacker.dataset.attack || "")) throw new Error("the attack has no effect type");
     if (!/team isn't in KillSheet/.test(text()) || !btn("Import their roster")) throw new Error("with no opponent team, it doesn't say to tell them or offer to import");
     if (/YOUR TEAM/.test(text())) throw new Error("your own operatives show first after shooting with your own weapon");
     await click(btn("One of your own was hit"), "One of your own was hit");
