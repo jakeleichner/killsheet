@@ -38,6 +38,9 @@
     .ks-appear { animation: ksAppear 0.24s ease-out backwards; }
     @media (prefers-reduced-motion: reduce) { .ks-appear { animation: none; } }
     [role="button"] { cursor: pointer; }
+    /* Number boxes sit between our own - and + buttons, so hide the browser's arrows (Safari draws them over the digits). */
+    input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type=number] { -moz-appearance: textfield; appearance: textfield; }
     /* Mission map diagrams (maps/*.svg) are dropped in as markup; size the svg to its box. */
     .km-tile > svg { display: block; width: 100%; height: auto; }
     .km-fit > svg { display: block; width: 100%; height: 100%; }
@@ -6796,7 +6799,7 @@ function DiceRoller({ w, wtype, onClose, cp, setCp, requestDamageApply, applySel
                       <div style={{ ...h3, color: "#C9772E", marginBottom: 0 }}>Final damage</div>
                       <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                         <button onClick={() => setEditedDamage(Math.max(0, finalDamage - 1))} style={{ width: 34, height: 34, border: "1px solid #3A4150", borderRadius: 6, background: "#0E0F13", color: "#E0664A", cursor: "pointer", fontSize: 14, fontWeight: 700, padding: 0 }}>{"\u2212"}</button>
-                        <input type="number" value={finalDamage} onChange={(e) => { const v = parseInt(e.target.value); setEditedDamage(isNaN(v) ? 0 : Math.max(0, v)); }} style={{ width: 44, textAlign: "center", background: "#0E0F13", border: "1px solid #3A4150", borderRadius: 6, color: "#C9772E", fontSize: 14, fontWeight: 700, fontFamily: "'Courier New', monospace", padding: "8px 12px", outline: "none" }} />
+                        <input type="number" value={finalDamage} onChange={(e) => { const v = parseInt(e.target.value); setEditedDamage(isNaN(v) ? 0 : Math.max(0, v)); }} aria-label="Final damage" style={{ width: 56, height: 34, boxSizing: "border-box", textAlign: "center", background: "#0E0F13", border: "1px solid #C9772E80", borderRadius: 6, color: "#FFB627", fontSize: 20, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", padding: "0 4px", outline: "none" }} />
                         <button onClick={() => setEditedDamage(finalDamage + 1)} style={{ width: 34, height: 34, border: "1px solid #3A4150", borderRadius: 6, background: "#0E0F13", color: "#5A9C3A", cursor: "pointer", fontSize: 14, fontWeight: 700, padding: 0 }}>+</button>
                         {editedDamage !== null && editedDamage !== estimate && (
                           <button onClick={() => setEditedDamage(null)} style={{ ...bs("#9AA5B1"), fontSize: 13, padding: "8px 12px" }} title={"Reset to estimate (" + estimate + ")"}><Icon name="reset" size={12} /></button>
@@ -6805,7 +6808,7 @@ function DiceRoller({ w, wtype, onClose, cp, setCp, requestDamageApply, applySel
                       {applied ? (
                         <button disabled style={{ ...bs("#5A9C3A"), fontSize: 13, padding: "8px 12px", cursor: "default" }}><Icon name="check" size={12} /> Applied to {applied}</button>
                       ) : (
-                        <button disabled={!requestDamageApply || finalDamage <= 0} onClick={() => { if (requestDamageApply) requestDamageApply(finalDamage, setApplied); }} style={{ ...bs(finalDamage > 0 ? "#B8341C" : "#3A4150"), fontSize: 13, padding: "8px 12px", opacity: (requestDamageApply && finalDamage > 0) ? 1 : 0.4, cursor: (requestDamageApply && finalDamage > 0) ? "pointer" : "not-allowed" }}><Icon name="skull" size={12} /> Apply {finalDamage} to target</button>
+                        <button disabled={!requestDamageApply || finalDamage <= 0} onClick={() => { if (requestDamageApply) requestDamageApply(finalDamage, setApplied); }} style={{ ...bs(finalDamage > 0 ? "#E0664A" : "#3A4150"), background: finalDamage > 0 ? "#B8341C30" : "transparent", fontSize: 13, padding: "8px 12px", opacity: (requestDamageApply && finalDamage > 0) ? 1 : 0.4, cursor: (requestDamageApply && finalDamage > 0) ? "pointer" : "not-allowed" }}><Icon name="skull" size={12} /> Apply {finalDamage} to target</button>
                       )}
                     </div>
                     <div style={{ fontSize: 13, color: "#9AA5B1", marginTop: 3 }}>
