@@ -127,10 +127,10 @@ The gold→rust bulk swap was done globally, which flattened the "look here" sig
 | High | Preview/Community tab invisible (missing TAB_ICONS entry) | ✅ Fixed |
 
 ### Limitations (intentional / documented, not bugs)
-- Limited 1 weapons: informational only, not usage-tracked.
+- Limited weapons and grenades are only tracked with the Use tracking switch on (tick boxes); nothing stops a player using them again.
 - CP/VP and tac-op picks not synced in multiplayer (private per player).
 - WebRTC may fail on ~15% of restrictive networks.
-- Closing a tab disconnects multiplayer (no auto-reconnect path).
+- Closing a tab drops an online game; the room is remembered for 12 hours and either player can rejoin it with one tap (see the Rejoin entry in Done recently). Two tabs on one computer were tested, real phones on different networks were not.
 - Killzone selector is cosmetic (doesn't apply terrain rules).
 - Mission scoring is manual (no enforced primary/tac-op effects).
 

@@ -6458,6 +6458,64 @@ function RefText({ text, f, self }) {
 }
 
 /* ═══ DICE ROLLER ═══ */
+/* ═══ DICE MATHS ═══ */
+// Kept apart from the dice roller so the self-test can check it with fixed dice.
+// The weapon rules that change the dice, read from a weapon's rules text.
+function diceRules(w) {
+  const wr = w.wr || "";
+  const n = (re) => { const m = wr.match(re); return m ? parseInt(m[1]) : 0; };
+  return {
+    hit: parseInt(w.hit) || 6,
+    lethal: n(/Lethal (\d)\+/), accurate: n(/Accurate (\d)/), devastating: n(/Devastating (\d)/),
+    piercing: n(/Piercing (\d)/), piercingCrits: n(/Piercing Crits (\d)/),
+    severe: /Severe/.test(wr), rending: /Rending/.test(wr), punishing: /Punishing/.test(wr),
+    brutal: /Brutal/.test(wr), saturate: /Saturate/.test(wr),
+  };
+}
+// One attack die. A 1 always fails and a 6 is always a crit; with Lethal x+, successes of x or more are crits.
+function attackDie(v, r) {
+  if (v === 1) return "fail";
+  if (v === 6) return "crit";
+  if (v < r.hit) return "fail";
+  return r.lethal && v >= r.lethal ? "crit" : "hit";
+}
+// What the attacker keeps. `dice` are the rolled dice; Accurate dice are set aside as normal successes instead of rolled.
+function attackResult(dice, r, obscured) {
+  let crits = 0, hits = 0, fails = 0;
+  dice.forEach(d => { const c = attackDie(d, r); if (c === "crit") crits++; else if (c === "hit") hits++; else fails++; });
+  hits += r.accurate;
+  let severeApplied = false, rendingApplied = false, punishingApplied = false, obscuredLost = 0;
+  if (r.severe && crits === 0 && hits > 0) { crits++; hits--; severeApplied = true; }
+  // A crit made by Severe doesn't trigger Rending or Punishing.
+  if (r.rending && !severeApplied && crits > 0 && hits > 0) { crits++; hits--; rendingApplied = true; }
+  if (r.punishing && !severeApplied && crits > 0 && fails > 0) { hits++; fails--; punishingApplied = true; }
+  // Obscured: crits count as normal successes and the attacker discards one success.
+  if (obscured) { hits += crits; crits = 0; if (hits > 0) { hits--; obscuredLost = 1; } }
+  return { crits, hits, fails, severeApplied, rendingApplied, punishingApplied, obscuredLost, accurateBonus: r.accurate, devastating: r.devastating, devastatingDmg: r.devastating * crits };
+}
+// Shooting: 3 defence dice, fewer with Piercing (or Piercing Crits when the attacker kept a crit).
+// In cover, one of them is a save kept without rolling, unless the weapon has Saturate.
+function defenceDiceCount(r, atk, cover) {
+  const total = Math.max(0, 3 - r.piercing - (atk && atk.crits > 0 ? r.piercingCrits : 0));
+  const coverSave = cover && !r.saturate && total > 0 ? 1 : 0;
+  return { roll: total - coverSave, coverSave };
+}
+// Damage that gets through when the defender blocks as well as they can.
+// Shooting: a crit save blocks a crit or a normal hit, a normal save blocks a normal hit, and two normal saves block a crit.
+// Fighting: the same, except normal successes can't block crits, and against Brutal only crits block.
+function damageThrough(atk, def, normalDmg, critDmg, melee, brutal) {
+  const saves = melee && brutal ? 0 : def.saves;
+  let best = Infinity;
+  for (let c = 0; c <= Math.min(def.crits, atk.crits); c++) {
+    const critsLeft = atk.crits - c;
+    const hitsLeft = atk.hits - Math.min(atk.hits, def.crits - c);
+    for (let pairs = 0; pairs <= (melee ? 0 : Math.min(critsLeft, Math.floor(saves / 2))); pairs++) {
+      best = Math.min(best, (critsLeft - pairs) * critDmg + Math.max(0, hitsLeft - (saves - 2 * pairs)) * normalDmg);
+    }
+  }
+  return best + atk.devastatingDmg;
+}
+
 function DiceRoller({ w, wtype, onClose, cp, setCp, requestDamageApply, applySelfDamage }) {
   const [attackDice, setAttackDice] = useState(null);
   const [defenceDice, setDefenceDice] = useState(null);
@@ -6466,6 +6524,8 @@ function DiceRoller({ w, wtype, onClose, cp, setCp, requestDamageApply, applySel
   const [defSave, setDefSave] = useState(3);
   const [hasCover, setHasCover] = useState(false);
   const [isObscured, setIsObscured] = useState(false);
+  const [coverKept, setCoverKept] = useState(0); // cover save kept without rolling, decided when the defence dice are rolled
+  const [oppDice, setOppDice] = useState(4); // in a fight: how many dice the opponent rolls
   const [editedDamage, setEditedDamage] = useState(null); // user-overridden damage; null = use estimate
   const [hotRoll, setHotRoll] = useState(null); // d6 result if Hot weapon was fired
   const [applied, setApplied] = useState(null); // name of the operative this roll's damage went to; a new roll clears it
@@ -6477,15 +6537,9 @@ function DiceRoller({ w, wtype, onClose, cp, setCp, requestDamageApply, applySel
 
   // Parse weapon rules
   const wr = w.wr || "";
-  const hasLethal5 = wr.includes("Lethal 5+");
-  const hasAccurate1 = wr.includes("Accurate 1");
-  const hasAccurate2 = wr.includes("Accurate 2");
   const hasBalanced = wr.includes("Balanced");
   const hasCeaseless = wr.includes("Ceaseless");
   const hasRelentless = wr.includes("Relentless");
-  const hasSevere = wr.includes("Severe");
-  const hasRending = wr.includes("Rending");
-  const hasPunishing = wr.includes("Punishing");
   const hasBrutal = wr.includes("Brutal");
   const hasSaturate = wr.includes("Saturate");
   const hasHot = wr.includes("Hot");
@@ -6493,25 +6547,18 @@ function DiceRoller({ w, wtype, onClose, cp, setCp, requestDamageApply, applySel
   const hasPoison = wr.includes("Poison");
   const hasToxic = wr.includes("Toxic");
   const hasLimited = wr.includes("Limited 1");
-  const devastating = wr.includes("Devastating 3") ? 3 : wr.includes("Devastating 2") ? 2 : 0;
-  const piercing = wr.includes("Piercing Crits 1") ? "pcrits1" : wr.includes("Piercing 1") ? "p1" : null;
-  const hitVal = parseInt(w.hit);
-  const critThreshold = hasLethal5 ? 5 : 6;
+  const rules = React.useMemo(() => diceRules(w), [w]);
+  const melee = wtype === "melee";
+  const rollCount = Math.max(0, parseInt(w.atk) - rules.accurate);
 
   const rollD6 = () => Math.floor(Math.random() * 6) + 1;
   const rollMultiple = (n) => Array.from({ length: n }, rollD6);
 
-  const classifyAttack = (val) => {
-    if (val === 1) return "fail";
-    if (val >= critThreshold) return "crit";
-    if (val >= hitVal) return "hit";
-    return "fail";
-  };
+  const classifyAttack = (val) => attackDie(val, rules);
 
   const doAttackRoll = () => {
     attackKind.current = "Attack";
-    const numDice = parseInt(w.atk);
-    const rolls = rollMultiple(numDice);
+    const rolls = rollMultiple(rollCount);
     setAttackDice(rolls);
     setRerolledAttack(false);
     setCmdRerolled(false);
@@ -6552,43 +6599,14 @@ function DiceRoller({ w, wtype, onClose, cp, setCp, requestDamageApply, applySel
     if (fails.length > 0) rerollAttack(fails);
   };
 
-  // Compute attack results
-  const getAttackResults = () => {
-    if (!attackDice) return null;
-    let crits = 0, hits = 0, fails = 0;
-    attackDice.forEach(d => { const c = classifyAttack(d); if (c === "crit") crits++; else if (c === "hit") hits++; else fails++; });
-
-    // Accurate: auto successes (already rolled fewer conceptually, but we add hits)
-    const accurateBonus = hasAccurate2 ? 2 : hasAccurate1 ? 1 : 0;
-
-    // Severe: no natural crits → upgrade one hit to crit
-    let severeApplied = false;
-    if (hasSevere && crits === 0 && hits > 0) { crits++; hits--; severeApplied = true; }
-
-    // Rending: any crits → upgrade one hit to crit
-    let rendingApplied = false;
-    if (hasRending && crits > 0 && hits > 0) { crits++; hits--; rendingApplied = true; }
-
-    // Punishing: any crits → one fail becomes hit
-    let punishingApplied = false;
-    if (hasPunishing && crits > 0 && fails > 0) { hits++; fails--; punishingApplied = true; }
-
-    hits += accurateBonus;
-
-    // Devastating: each retained crit deals N bonus damage immediately
-    const devastatingDmg = devastating * crits;
-
-    return { crits, hits, fails, severeApplied, rendingApplied, punishingApplied, accurateBonus, devastating, devastatingDmg };
-  };
+  const getAttackResults = () => attackDice ? attackResult(attackDice, rules, isObscured && !melee) : null;
 
   const doDefenceRoll = () => {
-    let numDice = 3;
-    if (piercing === "p1") numDice = 2;
-    const results = getAttackResults();
-    if (piercing === "pcrits1" && results && results.crits > 0) numDice = 2;
-    const rolls = rollMultiple(numDice);
-    defenceKind.current = "Defence";
-    setDefenceDice(rolls);
+    let numDice = oppDice, kept = 0;
+    if (!melee) { const d = defenceDiceCount(rules, getAttackResults(), hasCover); numDice = d.roll; kept = d.coverSave; }
+    defenceKind.current = melee ? "Their fight dice" : "Defence";
+    setCoverKept(kept);
+    setDefenceDice(rollMultiple(numDice));
     setEditedDamage(null);
   };
 
@@ -6603,8 +6621,8 @@ function DiceRoller({ w, wtype, onClose, cp, setCp, requestDamageApply, applySel
     if (!defenceDice) return null;
     let crits = 0, saves = 0, fails = 0;
     defenceDice.forEach(d => { const c = classifyDefence(d); if (c === "crit") crits++; else if (c === "hit") saves++; else fails++; });
-    if (hasCover && !hasSaturate) saves++;
-    return { crits, saves, fails, coverSave: hasCover && !hasSaturate };
+    saves += coverKept;
+    return { crits, saves, fails, coverSave: coverKept > 0 };
   };
 
   // Log every roll (first rolls and re-rolls) to the shared history, newest first, last 10.
@@ -6620,7 +6638,7 @@ function DiceRoller({ w, wtype, onClose, cp, setCp, requestDamageApply, applySel
   }, [attackDice]);
   React.useEffect(() => {
     if (!defenceDice) return;
-    logRoll(defenceKind.current + " (save " + defSave + "+)", defenceDice, classifyDefence);
+    logRoll(defenceKind.current + (melee ? " (hit " : " (save ") + defSave + "+)", defenceDice, classifyDefence);
     defenceKind.current = "Defence re-roll";
   }, [defenceDice]);
 
@@ -6649,8 +6667,8 @@ function DiceRoller({ w, wtype, onClose, cp, setCp, requestDamageApply, applySel
       {/* Attack Roll */}
       <div style={{ marginBottom: 8 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-          <button onClick={doAttackRoll} style={{ ...bs("#C9772E"), fontSize: 13, padding: "8px 12px" }}><Icon name="dice" size={13} /> Roll {w.atk} attack dice</button>
-          <div style={{ fontSize: 13, color: "#9AA5B1" }}>Hit: {w.hit}{hasLethal5 ? " (Lethal 5+)" : ""}</div>
+          <button onClick={doAttackRoll} style={{ ...bs("#C9772E"), fontSize: 13, padding: "8px 12px" }}><Icon name="dice" size={13} /> Roll {rollCount} attack dice</button>
+          <div style={{ fontSize: 13, color: "#9AA5B1" }}>Hit: {w.hit}{rules.lethal ? " (Lethal " + rules.lethal + "+)" : ""}</div>
         </div>
 
         {attackDice && (
@@ -6697,7 +6715,7 @@ function DiceRoller({ w, wtype, onClose, cp, setCp, requestDamageApply, applySel
                 <div style={{ fontSize: 13, color: "#9AA5B1", marginTop: 2 }}>
                   Damage if nothing is blocked: {atkResults.crits}×{w.dmg.split("/")[1]} + {atkResults.hits}×{w.dmg.split("/")[0]}{atkResults.devastatingDmg > 0 ? " + " + atkResults.devastatingDmg + " (Dev)" : ""} = {atkResults.crits * parseInt(w.dmg.split("/")[1]) + atkResults.hits * parseInt(w.dmg.split("/")[0]) + atkResults.devastatingDmg} total.
                 </div>
-                {atkResults.accurateBonus > 0 && <div style={{ fontSize: 13, color: "#5A9C3A" }}>+{atkResults.accurateBonus} auto hit(s) from Accurate</div>}
+                {atkResults.accurateBonus > 0 && <div style={{ fontSize: 13, color: "#5A9C3A" }}>Accurate {atkResults.accurateBonus}: {atkResults.accurateBonus === 1 ? "one die was" : atkResults.accurateBonus + " dice were"} set aside as a normal success instead of rolled.</div>}
                 {atkResults.severeApplied && <div style={{ fontSize: 13, color: "#C9772E" }}>Severe: one normal success became a critical success, since you rolled no natural crits.</div>}
                 {atkResults.rendingApplied && <div style={{ fontSize: 13, color: "#C9772E" }}>Rending: one normal success became a critical success.</div>}
                 {atkResults.punishingApplied && <div style={{ fontSize: 13, color: "#C9772E" }}>Punishing: one failed die became a normal success.</div>}
@@ -6738,21 +6756,29 @@ function DiceRoller({ w, wtype, onClose, cp, setCp, requestDamageApply, applySel
       {attackDice && atkResults && (atkResults.crits + atkResults.hits > 0) && (
         <div style={{ borderTop: "1px solid #262A33", paddingTop: 8 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, flexWrap: "wrap" }}>
-            <div style={{ ...h3, color: "#6B9BF7", marginBottom: 0 }}>Defence</div>
+            <div style={{ ...h3, color: "#6B9BF7", marginBottom: 0 }}>{melee ? "Their fight dice" : "Defence"}</div>
             <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
-              <span style={{ fontSize: 13, color: "#9AA5B1" }}>Save:</span>
+              <span style={{ fontSize: 13, color: "#9AA5B1" }}>{melee ? "Their Hit:" : "Save:"}</span>
               <select value={defSave} onChange={(e) => setDefSave(parseInt(e.target.value))} style={{ background: "#262A33", border: "1px solid #3A4150", borderRadius: 6, color: "#F1F2F5", fontSize: 13, padding: "8px 12px" }}>
                 {[2,3,4,5,6].map(v => <option key={v} value={v}>{v}+</option>)}
               </select>
             </div>
-            <button onClick={() => setHasCover(!hasCover)} style={toggleChip(hasCover, "#5A9C3A")}>{hasCover && <Icon name="check" size={13} />}Cover{hasSaturate ? " (Saturated)" : ""}</button>
-            <button onClick={() => setIsObscured(!isObscured)} style={toggleChip(isObscured, "#6B9BF7")}>{isObscured && <Icon name="check" size={13} />}Obscured</button>
-            <button onClick={doDefenceRoll} style={{ ...bs("#6B9BF7"), fontSize: 13, padding: "8px 12px" }}><Icon name="dice" size={13} /> Roll defence</button>
+            {!melee && <button onClick={() => setHasCover(!hasCover)} style={toggleChip(hasCover, "#5A9C3A")}>{hasCover && <Icon name="check" size={13} />}Cover{hasSaturate ? " (Saturated)" : ""}</button>}
+            {!melee && <button onClick={() => setIsObscured(!isObscured)} style={toggleChip(isObscured, "#6B9BF7")}>{isObscured && <Icon name="check" size={13} />}Obscured</button>}
+            {melee && (
+              <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                <span style={{ fontSize: 13, color: "#9AA5B1" }}>Their Atk:</span>
+                <select value={oppDice} onChange={(e) => setOppDice(parseInt(e.target.value))} aria-label="How many dice your opponent rolls" style={{ background: "#262A33", border: "1px solid #3A4150", borderRadius: 6, color: "#F1F2F5", fontSize: 13, padding: "8px 12px" }}>
+                  {[1, 2, 3, 4, 5, 6, 7].map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
+              </div>
+            )}
+            <button onClick={doDefenceRoll} style={{ ...bs("#6B9BF7"), fontSize: 13, padding: "8px 12px" }}><Icon name="dice" size={13} /> {melee ? "Roll their " + oppDice + " dice" : (() => { const d = defenceDiceCount(rules, atkResults, hasCover); return "Roll " + d.roll + " defence " + (d.roll === 1 ? "die" : "dice") + (d.coverSave ? " + 1 cover save" : ""); })()}</button>
           </div>
 
-          {isObscured && atkResults && (
+          {isObscured && !melee && atkResults && (
             <div style={{ fontSize: 13, color: "#6B9BF7", background: "#6B9BF708", padding: "3px 6px", borderRadius: 6, marginBottom: 4, border: "1px solid #6B9BF715" }}>
-              Obscured: discard 1 attacker success, all crits become normals → {Math.max(0, atkResults.crits + atkResults.hits - 1)} normal hit(s)
+              Obscured: the attacker's crits count as normal successes and one success is discarded. The totals above include this.
             </div>
           )}
 
@@ -6764,9 +6790,9 @@ function DiceRoller({ w, wtype, onClose, cp, setCp, requestDamageApply, applySel
               </div>
               <div style={{ background: "#1A1D24", borderRadius: 6, padding: "8px 12px", border: "1px solid #262A33" }}>
                 <div style={{ display: "flex", gap: 10, fontSize: 13, fontWeight: 700 }}>
-                  <span style={{ color: "#C9772E" }}>{defResults.crits} Crit Save{defResults.crits !== 1 ? "s" : ""}</span>
-                  <span style={{ color: "#5A9C3A" }}>{defResults.saves} Save{defResults.saves !== 1 ? "s" : ""}</span>
-                  <span style={{ color: "#E0664A" }}>{defResults.fails} Fail{defResults.fails !== 1 ? "s" : ""}</span>
+                  <span style={{ color: "#C9772E" }}>{defResults.crits} Crit{melee ? "" : " Save"}{defResults.crits !== 1 ? "s" : ""}</span>
+                  <span style={{ color: "#5A9C3A" }}>{defResults.saves} {melee ? "Hit" : "Save"}{defResults.saves !== 1 ? "s" : ""}</span>
+                  <span style={{ color: "#E0664A" }}>{defResults.fails} {melee ? "Miss" + (defResults.fails !== 1 ? "es" : "") : "Fail" + (defResults.fails !== 1 ? "s" : "")}</span>
                 </div>
               </div>
 
@@ -6774,24 +6800,7 @@ function DiceRoller({ w, wtype, onClose, cp, setCp, requestDamageApply, applySel
               {(() => {
                 const critDmg = parseInt(w.dmg.split("/")[1]);
                 const normalDmg = parseInt(w.dmg.split("/")[0]);
-                let aCrits = atkResults.crits;
-                let aHits = atkResults.hits;
-                let dCrits = defResults.crits;
-                let dSaves = defResults.saves;
-                // Brutal: in melee, defender can only block with crits
-                if (hasBrutal && wtype === "melee") dSaves = 0;
-                // Defender crits cancel attacker crits first
-                const k1 = Math.min(aCrits, dCrits); aCrits -= k1; dCrits -= k1;
-                // Excess defender crits cancel attacker hits
-                const k2 = Math.min(aHits, dCrits); aHits -= k2; dCrits -= k2;
-                // Pair-block: 2 normal saves cancel 1 attacker crit (if worthwhile)
-                if (critDmg > normalDmg && aCrits > 0 && dSaves >= 2) {
-                  const pair = Math.min(aCrits, Math.floor(dSaves / 2));
-                  aCrits -= pair; dSaves -= pair * 2;
-                }
-                // Defender normals cancel attacker hits
-                const k3 = Math.min(aHits, dSaves); aHits -= k3;
-                const estimate = aCrits * critDmg + aHits * normalDmg + atkResults.devastatingDmg;
+                const estimate = damageThrough(atkResults, defResults, normalDmg, critDmg, melee, rules.brutal);
                 const finalDamage = editedDamage !== null ? editedDamage : estimate;
                 return (
                   <div style={{ marginTop: 6, padding: "8px 12px", background: "#262A33", borderRadius: 6, border: "1px solid #C9772E30" }}>
@@ -6812,7 +6821,7 @@ function DiceRoller({ w, wtype, onClose, cp, setCp, requestDamageApply, applySel
                       )}
                     </div>
                     <div style={{ fontSize: 13, color: "#9AA5B1", marginTop: 3 }}>
-                      Estimate assumes optimal block. Adjust if obscured, normals-block-crits, or other rules change the math.
+                      {melee ? "Assumes your opponent uses all their successes to block. In the fight they strike back too, so change it to match what happened." : "Assumes the defender blocks as well as they can. Change it if another rule applies."}
                     </div>
                   </div>
                 );
@@ -16799,8 +16808,9 @@ async function runSelfTest(hooks) {
     if (!roll) { await click(all(".datacard-print [role=button]")[0], "a datacard"); roll = all("[aria-label^='Roll dice for ']")[0]; }
     if (!roll) throw new Error("no Roll button on an open datacard");
     await click(roll, "Roll");
-    for (let i = 0; i < 20 && !btn("Roll defence"); i++) await click(btn("Roll ") && all("button").find(b => /^Roll \d+ attack dice/.test(b.textContent.trim())), "Roll attack dice");
-    await click(btn("Roll defence"), "Roll defence");
+    const defBtn = () => all("button").find(b => /^Roll (\d+ defence (die|dice)|their \d+ dice)/.test(b.textContent.trim()));
+    for (let i = 0; i < 20 && !defBtn(); i++) await click(all("button").find(b => /^Roll \d+ attack dice/.test(b.textContent.trim())), "Roll attack dice");
+    await click(defBtn(), "Roll defence");
     let apply = all("button").find(b => /^Apply \d+ to target/.test(b.textContent.trim()));
     if (apply && apply.disabled) { const n = all("input[type=number]").find(i => i.nextElementSibling && i.nextElementSibling.textContent.trim() === "+"); await click(n && n.nextElementSibling, "+1 damage"); apply = all("button").find(b => /^Apply \d+ to target/.test(b.textContent.trim())); }
     await click(apply, "Apply to target");
@@ -16828,6 +16838,45 @@ async function runSelfTest(hooks) {
     await click([...logBox.querySelectorAll("button")].find(b => /Close/.test(b.textContent)), "close the log");
     const closeRoll = all("[aria-label='Close dice roller']")[0]; if (closeRoll) await click(closeRoll, "close dice roller");
     return "own weapon: opponent first, tell-them note with Import, own operatives on request (" + cur + " wounds before), one apply per roll, attacker card, battle log";
+  });
+
+  // The dice maths with fixed dice: each weapon rule, cover, obscured and blocking.
+  await step("Dice maths", async () => {
+    const R = (hit, wr) => diceRules({ hit, wr: wr || "" });
+    const A = (dice, r, obscured) => { const x = attackResult(dice, r, obscured); return x.crits + "c " + x.hits + "h " + x.fails + "f" + (x.devastatingDmg ? " dev" + x.devastatingDmg : ""); };
+    const D = (r, crits, cover) => { const d = defenceDiceCount(r, { crits }, cover); return d.roll + "+" + d.coverSave; };
+    const T = (ac, ah, dc, ds, n, c, melee, brutal, dev) => damageThrough({ crits: ac, hits: ah, devastatingDmg: dev || 0 }, { crits: dc, saves: ds }, n, c, melee, brutal);
+    const cases = [
+      ["plain dice, Hit 3+", A([1, 2, 3, 5, 6], R("3+")), "1c 2h 2f"],
+      ["Lethal 5+", A([5, 4, 2], R("3+", "Lethal 5+")), "1c 1h 1f"],
+      ["Lethal 4+", A([4, 3], R("4+", "Lethal 4+")), "1c 0h 1f"],
+      ["Accurate 1 sets a die aside", A([2, 6, 3], R("3+", "Accurate 1")), "1c 2h 1f"],
+      ["Accurate 1 rolls one die fewer", String(R("3+", "Accurate 1").accurate), "1"],
+      ["Severe", A([3, 4, 2], R("3+", "Severe")), "1c 1h 1f"],
+      ["Severe's crit doesn't trigger Rending", A([3, 4], R("3+", "Severe, Rending")), "1c 1h 0f"],
+      ["Rending", A([6, 3, 4], R("3+", "Rending")), "2c 1h 0f"],
+      ["Punishing", A([6, 2, 1], R("3+", "Punishing")), "1c 1h 1f"],
+      ["Devastating 4", A([6, 6, 2], R("3+", "Devastating 4")), "2c 0h 1f dev8"],
+      ["Devastating with a distance", String(R("3+", '1" Devastating 2').devastating), "2"],
+      ["Obscured: crits become normal, one lost, no Devastating", A([6, 6, 3], R("3+", "Devastating 3"), true), "0c 2h 0f"],
+      ["3 defence dice", D(R("3+"), 0, false), "3+0"],
+      ["Piercing 2", D(R("3+", "Piercing 2"), 0, false), "1+0"],
+      ["Piercing Crits 2 with a crit", D(R("3+", "Piercing Crits 2"), 1, false), "1+0"],
+      ["Piercing Crits 2 without a crit", D(R("3+", "Piercing Crits 2"), 0, false), "3+0"],
+      ["cover: roll 2, keep 1", D(R("3+"), 0, true), "2+1"],
+      ["Saturate ignores cover", D(R("3+", "Saturate"), 0, true), "3+0"],
+      ["Piercing 1 in cover", D(R("3+", "Piercing 1"), 0, true), "1+1"],
+      ["block two hits rather than pair on the crit (3/4)", String(T(1, 2, 0, 2, 3, 4)), "4"],
+      ["pair two saves on a big crit (2/5)", String(T(1, 1, 0, 2, 2, 5)), "2"],
+      ["crit save on the crit", String(T(1, 1, 1, 0, 3, 4)), "3"],
+      ["fight: normals can't block a crit", String(T(1, 0, 0, 2, 3, 4, true)), "4"],
+      ["shooting: two normals block a crit", String(T(1, 0, 0, 2, 3, 4)), "0"],
+      ["fight with Brutal: only crits block", String(T(0, 2, 1, 2, 3, 4, true, true)), "3"],
+      ["Devastating damage gets through a blocked crit", String(T(1, 0, 1, 0, 3, 4, false, false, 3)), "3"],
+    ];
+    const wrong = cases.filter(([, got, want]) => got !== want).map(([name, got, want]) => name + ": got " + got + ", want " + want);
+    if (wrong.length) throw new Error(wrong.join("; "));
+    return cases.length + " cases";
   });
 
   // Put everything back the way it was, and stop the app saving its test state over it until reload.
