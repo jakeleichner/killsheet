@@ -6863,7 +6863,7 @@ const abilityText = (a, f) => {
   const m = a.match(/^([^:.]{2,40}):\s(.*)$/s);
   return m ? <React.Fragment><strong style={{ color: "#F1F2F5", fontWeight: 700 }}>{m[1]}:</strong> <RefText text={m[2]} f={f} self={m[1].replace(/\s*\([^)]*\)\s*$/, "")} /></React.Fragment> : <RefText text={a} f={f} />;
 };
-function Datacard({ op, f, fc, equipWeapons, equipEffects, curWounds, onWound, collapsed, onToggle, ignoreInjured, cp, setCp, isActivated, onActivate, requestDamageApply, applySelfDamage, order, onOrder, uses, setUse, carried, onCarried }) {
+function Datacard({ op, f, fc, equipWeapons, equipEffects, curWounds, onWound, collapsed, onToggle, ignoreInjured, cp, setCp, isActivated, onActivate, requestDamageApply, applySelfDamage, order, onOrder, uses, setUse, carried, onCarried, narrow }) {
   const [pickWeapons, setPickWeapons] = useState(false);
   const { feat } = React.useContext(FeatureCtx);
   const opRules = React.useMemo(() => opWeaponRules(op), [op]);
@@ -6899,7 +6899,9 @@ function Datacard({ op, f, fc, equipWeapons, equipEffects, curWounds, onWound, c
   const woundColorTone = incapacitated ? DS.textTertiary : (rawInjured && !ignoreInjured) ? DS.threat : wcStrong ? DS.success : wcMid ? DS.goldSignal : DS.threat;
   const cardOpacity = incapacitated ? 0.45 : 1;
   const moveDisplay = injured ? (parseInt(op.move) - 2) + "\"" : op.move;
-  const mobile = useIsMobile();
+  // narrow: the 320px opponent column on desktop uses the phone layout (stats on a second row).
+  const isMobile = useIsMobile();
+  const mobile = isMobile || narrow;
   const readyChip = onActivate ? (
     <button onClick={(e) => { e.stopPropagation(); onActivate(); }} title={isActivated ? "Expended: tap to mark ready" : "Ready: tap once it has activated"}
                 style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 4, padding: "4px 8px", borderRadius: 4, cursor: "pointer", fontFamily: DS.fontDisplay, fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", border: "1px solid " + (isActivated ? "#5A9C3A" : "#9AA5B170"), background: isActivated ? "#5A9C3A25" : "transparent", color: isActivated ? "#7CC05C" : "#C8CDD3" }}>
@@ -9286,7 +9288,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                     {oppRoster.operatives.map(op => {
                       const result = oppEquip(op);
                       const oCollapsed = oppCollapsed[op.id] || false;
-                      return (<Datacard key={"opp-" + op.id} op={op} f={oppF} fc={oppF ? oppF.color : "#9AA5B1"} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getOppWounds(op.id, op.wounds)} onWound={(delta) => { if (mp && mp.status === "connected" && delta < 0) { mp.send({ type: "applyRemoteDamage", opId: op.id, amount: -delta }); } else if (mp && mp.status === "connected" && delta > 0) { mp.send({ type: "applyRemoteHeal", opId: op.id, amount: delta }); } else { setOppWound(op.id, op.wounds, delta); } }} collapsed={oCollapsed} onToggle={() => setOppCollapsed(prev => ({ ...prev, [op.id]: !oCollapsed }))} ignoreInjured={result.ignoreInjured} cp={0} setCp={() => {}} requestDamageApply={(a) => requestDamageApply(a, "opp")} applySelfDamage={(amount) => { if (mp && mp.status === "connected") { mp.send({ type: "applyRemoteDamage", opId: op.id, amount }); showToast(op.name + " took " + amount + " self-dmg (sent)"); } else { setOppWound(op.id, op.wounds, -amount); showToast(op.name + " took " + amount + " self-dmg"); } }} />);
+                      return (<Datacard key={"opp-" + op.id} narrow op={op} f={oppF} fc={oppF ? oppF.color : "#9AA5B1"} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getOppWounds(op.id, op.wounds)} onWound={(delta) => { if (mp && mp.status === "connected" && delta < 0) { mp.send({ type: "applyRemoteDamage", opId: op.id, amount: -delta }); } else if (mp && mp.status === "connected" && delta > 0) { mp.send({ type: "applyRemoteHeal", opId: op.id, amount: delta }); } else { setOppWound(op.id, op.wounds, delta); } }} collapsed={oCollapsed} onToggle={() => setOppCollapsed(prev => ({ ...prev, [op.id]: !oCollapsed }))} ignoreInjured={result.ignoreInjured} cp={0} setCp={() => {}} requestDamageApply={(a) => requestDamageApply(a, "opp")} applySelfDamage={(amount) => { if (mp && mp.status === "connected") { mp.send({ type: "applyRemoteDamage", opId: op.id, amount }); showToast(op.name + " took " + amount + " self-dmg (sent)"); } else { setOppWound(op.id, op.wounds, -amount); showToast(op.name + " took " + amount + " self-dmg"); } }} />);
                     })}
                   </div>
                 </div>
