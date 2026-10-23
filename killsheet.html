@@ -9303,6 +9303,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                               {[
                                 ["Share roster code", "Copy a code a friend can import", exportRoster],
                                 ["Print roster", "Datacards on paper", printRoster],
+                                oppRoster && mp.status !== "connected" ? ["Remove opponent's team", "Clears their cards and wounds", () => withUndo("Opponent removed", () => { setOppRoster(null); setOppWounds({}); setShowImport(false); })] : null,
                                 !oppRoster ? ["Import a roster", "Load an opponent's or your own code", () => { setShowImport(true); setTimeout(() => { const el = document.getElementById("ks-import"); if (el) el.scrollIntoView({ behavior: "smooth", block: "nearest" }); }, 60); }] : null,
                               ].filter(Boolean).map(([label, hint, run]) => (
                                 <button key={label} className={label === "Print roster" ? "no-print" : undefined} onClick={() => { setCardsMenu(false); run(); }} style={{ display: "block", width: "100%", textAlign: "left", background: "none", border: "none", borderRadius: 4, padding: "10px 10px", cursor: "pointer" }}>
@@ -9374,8 +9375,6 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                           const allOppCollapsed = oppRoster.operatives.every(op => oppCollapsed[op.id]);
                           return <button onClick={() => { if (allOppCollapsed) setOppCollapsed({}); else { const c = {}; oppRoster.operatives.forEach(op => { c[op.id] = true; }); setOppCollapsed(c); } }} style={{ ...bs("#9AA5B1"), fontSize: 13, padding: "8px 12px" }}><Icon name={allOppCollapsed ? "chevronDown" : "chevronUp"} size={20} /></button>;
                         })()}
-                        <button onClick={() => setOppWounds({})} style={{ ...bs("#9AA5B1"), fontSize: 13, padding: "8px 12px" }} title="Heal all"><Icon name="heart" size={13} /></button>
-                        <button onClick={() => { setOppRoster(null); setShowImport(false); }} style={{ ...bs("#B8341C"), fontSize: 13, padding: "8px 12px" }} title="Remove opponent"><Icon name="x" size={13} /></button>
                       </div>
                     </div>
                     {oppRoster.operatives.map(op => {
@@ -9436,8 +9435,6 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                             const allOppCollapsed = oppRoster.operatives.length > 0 && oppRoster.operatives.every(op => oppCollapsed[op.id]);
                             return <button onClick={() => { if (allOppCollapsed) setOppCollapsed({}); else { const c = {}; oppRoster.operatives.forEach(op => { c[op.id] = true; }); setOppCollapsed(c); } }} style={{ ...bs("#9AA5B1"), fontSize: 13, padding: "8px 12px" }}><Icon name={allOppCollapsed ? "chevronDown" : "chevronUp"} size={20} /></button>;
                           })()}
-                          <button onClick={() => setOppWounds({})} style={{ ...bs("#9AA5B1"), fontSize: 13, padding: "8px 12px" }} title="Heal all"><Icon name="heart" size={13} /></button>
-                          <button onClick={() => { setOppRoster(null); setShowImport(false); }} style={{ ...bs("#B8341C"), fontSize: 13, padding: "8px 12px" }} title="Remove opponent"><Icon name="x" size={13} /></button>
                         </div>
                       </div>
                       {oppRoster.operatives.map(op => {
