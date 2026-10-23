@@ -6384,6 +6384,8 @@ function DiceRoller({ w, wtype, onClose, cp, setCp, requestDamageApply, applySel
   const [isObscured, setIsObscured] = useState(false);
   const [editedDamage, setEditedDamage] = useState(null); // user-overridden damage; null = use estimate
   const [hotRoll, setHotRoll] = useState(null); // d6 result if Hot weapon was fired
+  const [applied, setApplied] = useState(null); // name of the operative this roll's damage went to; a new roll clears it
+  React.useEffect(() => { setApplied(null); }, [attackDice, defenceDice]);
   const [history, setHistory] = useLocalStorage("rollHistory", []);
   const [showHistory, setShowHistory] = useState(false);
   const attackKind = React.useRef("Attack");
@@ -6719,7 +6721,11 @@ function DiceRoller({ w, wtype, onClose, cp, setCp, requestDamageApply, applySel
                           <button onClick={() => setEditedDamage(null)} style={{ ...bs("#9AA5B1"), fontSize: 13, padding: "8px 12px" }} title={"Reset to estimate (" + estimate + ")"}><Icon name="reset" size={12} /></button>
                         )}
                       </div>
-                      <button disabled={!requestDamageApply || finalDamage <= 0} onClick={() => { if (requestDamageApply) requestDamageApply(finalDamage); }} style={{ ...bs(finalDamage > 0 ? "#B8341C" : "#3A4150"), fontSize: 13, padding: "8px 12px", opacity: (requestDamageApply && finalDamage > 0) ? 1 : 0.4, cursor: (requestDamageApply && finalDamage > 0) ? "pointer" : "not-allowed" }}><Icon name="skull" size={12} /> Apply {finalDamage} to target</button>
+                      {applied ? (
+                        <button disabled style={{ ...bs("#5A9C3A"), fontSize: 13, padding: "8px 12px", cursor: "default" }}><Icon name="check" size={12} /> Applied to {applied}</button>
+                      ) : (
+                        <button disabled={!requestDamageApply || finalDamage <= 0} onClick={() => { if (requestDamageApply) requestDamageApply(finalDamage, setApplied); }} style={{ ...bs(finalDamage > 0 ? "#B8341C" : "#3A4150"), fontSize: 13, padding: "8px 12px", opacity: (requestDamageApply && finalDamage > 0) ? 1 : 0.4, cursor: (requestDamageApply && finalDamage > 0) ? "pointer" : "not-allowed" }}><Icon name="skull" size={12} /> Apply {finalDamage} to target</button>
+                      )}
                     </div>
                     <div style={{ fontSize: 13, color: "#9AA5B1", marginTop: 3 }}>
                       Estimate assumes optimal block. Adjust if obscured, normals-block-crits, or other rules change the math.
@@ -7420,12 +7426,12 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   const [pickerSearch, setPickerSearch] = useState("");
   const [importMode, setImportMode] = useState("opponent");
   const [toast, setToast] = useState("");
-  const [damageRequest, setDamageRequest] = useState(null); // { amount, side: "mine" | "opp" (whose weapon) } | null
+  const [damageRequest, setDamageRequest] = useState(null); // { amount, side: "mine" | "opp" (whose weapon), onApplied(name) } | null
   const [damageOther, setDamageOther] = useState(false); // also list the shooter's own side (Blast and Torrent hit friends too)
-  const requestDamageApply = (amount, side) => {
+  const requestDamageApply = (amount, side, onApplied) => {
     if (typeof amount !== "number" || amount < 0) return;
     setDamageOther(false);
-    setDamageRequest({ amount: Math.floor(amount), side });
+    setDamageRequest({ amount: Math.floor(amount), side, onApplied });
   };
   const [joinCodeInput, setJoinCodeInput] = useState("");
   const [chatHistory, setChatHistory] = useState([]); // {from: 'me'|'them', text, ts}
@@ -8287,7 +8293,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
               const row = (op, cw, onHit) => {
                 const isDown = cw <= 0;
                 return (
-                  <button key={op.id} disabled={isDown} onClick={() => { onHit(); setDamageRequest(null); }} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", padding: "10px 12px", marginBottom: 4, background: isDown ? "#0E0F13" : "#262A33", border: "1px solid " + (isDown ? "#1A2430" : "#3A4150"), borderRadius: 4, color: isDown ? "#4A5563" : "#F1F2F5", cursor: isDown ? "not-allowed" : "pointer", fontSize: 13, opacity: isDown ? 0.5 : 1, textAlign: "left" }}>
+                  <button key={op.id} disabled={isDown} onClick={() => { onHit(); if (damageRequest.onApplied) damageRequest.onApplied(op.name); setDamageRequest(null); }} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", padding: "10px 12px", marginBottom: 4, background: isDown ? "#0E0F13" : "#262A33", border: "1px solid " + (isDown ? "#1A2430" : "#3A4150"), borderRadius: 4, color: isDown ? "#4A5563" : "#F1F2F5", cursor: isDown ? "not-allowed" : "pointer", fontSize: 13, opacity: isDown ? 0.5 : 1, textAlign: "left" }}>
                     <span>{op.name}</span>
                     <span style={{ fontFamily: "monospace", color: cw <= op.wounds / 2 ? "#B8341C" : "#3D6B3F" }}>{cw}/{op.wounds}{isDown ? " (down)" : ""}</span>
                   </button>
@@ -9258,7 +9264,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                   return aAlive - bAlive;
                 }).map(op => {
                   const result = getEquipForOp(op);
-                  return (<Datacard key={op.id} op={op} f={f} fc={f.color} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getWounds(op.id, op.wounds)} onWound={(delta) => setOpWounds(op.id, op.wounds, delta)} collapsed={cardCollapsed[op.id] || false} onToggle={() => toggleCardCollapse(op.id)} ignoreInjured={result.ignoreInjured} cp={cp} setCp={setCp} isActivated={activated[op.id] || false} onActivate={() => setActivated(prev => ({ ...prev, [op.id]: !prev[op.id] }))} requestDamageApply={(a) => requestDamageApply(a, "mine")} applySelfDamage={(amount) => { setOpWounds(op.id, op.wounds, -amount); showToast(op.name + " took " + amount + " self-dmg"); }} order={orders[op.id] || "conceal"} onOrder={() => setOrders(prev => ({ ...prev, [op.id]: prev[op.id] === "engage" ? "conceal" : "engage" }))} uses={feat.uses ? battleUses : null} setUse={(k, n) => setBattleUses(prev => ({ ...prev, [k]: n }))} carried={carried[op.id]} onCarried={(list) => setCarried(prev => ({ ...prev, [op.id]: list }))} />);
+                  return (<Datacard key={op.id} op={op} f={f} fc={f.color} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getWounds(op.id, op.wounds)} onWound={(delta) => setOpWounds(op.id, op.wounds, delta)} collapsed={cardCollapsed[op.id] || false} onToggle={() => toggleCardCollapse(op.id)} ignoreInjured={result.ignoreInjured} cp={cp} setCp={setCp} isActivated={activated[op.id] || false} onActivate={() => setActivated(prev => ({ ...prev, [op.id]: !prev[op.id] }))} requestDamageApply={(a, done) => requestDamageApply(a, "mine", done)} applySelfDamage={(amount) => { setOpWounds(op.id, op.wounds, -amount); showToast(op.name + " took " + amount + " self-dmg"); }} order={orders[op.id] || "conceal"} onOrder={() => setOrders(prev => ({ ...prev, [op.id]: prev[op.id] === "engage" ? "conceal" : "engage" }))} uses={feat.uses ? battleUses : null} setUse={(k, n) => setBattleUses(prev => ({ ...prev, [k]: n }))} carried={carried[op.id]} onCarried={(list) => setCarried(prev => ({ ...prev, [op.id]: list }))} />);
                 })}
 
               </div>
@@ -9288,7 +9294,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                     {oppRoster.operatives.map(op => {
                       const result = oppEquip(op);
                       const oCollapsed = oppCollapsed[op.id] || false;
-                      return (<Datacard key={"opp-" + op.id} narrow op={op} f={oppF} fc={oppF ? oppF.color : "#9AA5B1"} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getOppWounds(op.id, op.wounds)} onWound={(delta) => { if (mp && mp.status === "connected" && delta < 0) { mp.send({ type: "applyRemoteDamage", opId: op.id, amount: -delta }); } else if (mp && mp.status === "connected" && delta > 0) { mp.send({ type: "applyRemoteHeal", opId: op.id, amount: delta }); } else { setOppWound(op.id, op.wounds, delta); } }} collapsed={oCollapsed} onToggle={() => setOppCollapsed(prev => ({ ...prev, [op.id]: !oCollapsed }))} ignoreInjured={result.ignoreInjured} cp={0} setCp={() => {}} requestDamageApply={(a) => requestDamageApply(a, "opp")} applySelfDamage={(amount) => { if (mp && mp.status === "connected") { mp.send({ type: "applyRemoteDamage", opId: op.id, amount }); showToast(op.name + " took " + amount + " self-dmg (sent)"); } else { setOppWound(op.id, op.wounds, -amount); showToast(op.name + " took " + amount + " self-dmg"); } }} />);
+                      return (<Datacard key={"opp-" + op.id} narrow op={op} f={oppF} fc={oppF ? oppF.color : "#9AA5B1"} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getOppWounds(op.id, op.wounds)} onWound={(delta) => { if (mp && mp.status === "connected" && delta < 0) { mp.send({ type: "applyRemoteDamage", opId: op.id, amount: -delta }); } else if (mp && mp.status === "connected" && delta > 0) { mp.send({ type: "applyRemoteHeal", opId: op.id, amount: delta }); } else { setOppWound(op.id, op.wounds, delta); } }} collapsed={oCollapsed} onToggle={() => setOppCollapsed(prev => ({ ...prev, [op.id]: !oCollapsed }))} ignoreInjured={result.ignoreInjured} cp={0} setCp={() => {}} requestDamageApply={(a, done) => requestDamageApply(a, "opp", done)} applySelfDamage={(amount) => { if (mp && mp.status === "connected") { mp.send({ type: "applyRemoteDamage", opId: op.id, amount }); showToast(op.name + " took " + amount + " self-dmg (sent)"); } else { setOppWound(op.id, op.wounds, -amount); showToast(op.name + " took " + amount + " self-dmg"); } }} />);
                     })}
                   </div>
                 </div>
@@ -9350,7 +9356,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                       {oppRoster.operatives.map(op => {
                         const result = oppEquip(op);
                         const oCollapsed = oppCollapsed[op.id] || false;
-                        return (<Datacard key={"opp-m-" + op.id} op={op} f={oppF} fc={oppF ? oppF.color : "#9AA5B1"} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getOppWounds(op.id, op.wounds)} onWound={(delta) => { if (mp && mp.status === "connected" && delta < 0) { mp.send({ type: "applyRemoteDamage", opId: op.id, amount: -delta }); } else if (mp && mp.status === "connected" && delta > 0) { mp.send({ type: "applyRemoteHeal", opId: op.id, amount: delta }); } else { setOppWound(op.id, op.wounds, delta); } }} collapsed={oCollapsed} onToggle={() => setOppCollapsed(prev => ({ ...prev, [op.id]: !oCollapsed }))} ignoreInjured={result.ignoreInjured} cp={0} setCp={() => {}} requestDamageApply={(a) => requestDamageApply(a, "opp")} applySelfDamage={(amount) => { if (mp && mp.status === "connected") { mp.send({ type: "applyRemoteDamage", opId: op.id, amount }); showToast(op.name + " took " + amount + " self-dmg (sent)"); } else { setOppWound(op.id, op.wounds, -amount); showToast(op.name + " took " + amount + " self-dmg"); } }} />);
+                        return (<Datacard key={"opp-m-" + op.id} op={op} f={oppF} fc={oppF ? oppF.color : "#9AA5B1"} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getOppWounds(op.id, op.wounds)} onWound={(delta) => { if (mp && mp.status === "connected" && delta < 0) { mp.send({ type: "applyRemoteDamage", opId: op.id, amount: -delta }); } else if (mp && mp.status === "connected" && delta > 0) { mp.send({ type: "applyRemoteHeal", opId: op.id, amount: delta }); } else { setOppWound(op.id, op.wounds, delta); } }} collapsed={oCollapsed} onToggle={() => setOppCollapsed(prev => ({ ...prev, [op.id]: !oCollapsed }))} ignoreInjured={result.ignoreInjured} cp={0} setCp={() => {}} requestDamageApply={(a, done) => requestDamageApply(a, "opp", done)} applySelfDamage={(amount) => { if (mp && mp.status === "connected") { mp.send({ type: "applyRemoteDamage", opId: op.id, amount }); showToast(op.name + " took " + amount + " self-dmg (sent)"); } else { setOppWound(op.id, op.wounds, -amount); showToast(op.name + " took " + amount + " self-dmg"); } }} />);
                       })}
                     </div>
                   )}
@@ -16485,8 +16491,10 @@ async function runSelfTest(hooks) {
     await click(target, "your operative");
     if (/WHO TOOK THE DAMAGE\?/.test(text())) throw new Error("the target list didn't close");
     if (!/took \d+ damage/.test(text())) throw new Error("no message that the damage was applied");
+    if (all("button").some(b => /^Apply \d+ to target/.test(b.textContent.trim()))) throw new Error("the same roll can still be applied again");
+    if (!all("button").some(b => /^Applied to /.test(b.textContent.trim()) && b.disabled)) throw new Error("the roller doesn't say who the damage went to");
     const closeRoll = all("[aria-label='Close dice roller']")[0]; if (closeRoll) await click(closeRoll, "close dice roller");
-    return "own weapon: opponent first, tell-them note with Import, own operatives on request (" + cur + " wounds before)";
+    return "own weapon: opponent first, tell-them note with Import, own operatives on request (" + cur + " wounds before), one apply per roll";
   });
 
   // Put everything back the way it was, and stop the app saving its test state over it until reload.
