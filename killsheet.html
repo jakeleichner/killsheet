@@ -6922,9 +6922,12 @@ function attackKind(w) {
   if (/Blast/.test(wr)) return "blast";
   return "shoot";
 }
+// How slowly the effects play: 1 is the original quick version. Players can switch them off, so they get time to land.
+const FX_PACE = 1.7;
 // Plays the effect from the attacker card to the target row, on a layer above the screen.
 // Returns the time (ms) the hit lands, so the row can flash then.
 function playAttackFx(kind, card, rowEl) {
+  const ms = (t) => Math.round(t * FX_PACE);
   const a = card.getBoundingClientRect(), b = rowEl.getBoundingClientRect();
   const ax = a.left + a.width / 2, ay = a.top + a.height / 2;
   const bx = b.left + b.width / 2, by = b.top + b.height / 2;
@@ -6945,9 +6948,9 @@ function playAttackFx(kind, card, rowEl) {
     piece(size, size, "border-radius:50%;border:3px solid " + color + ";background:" + color + "40;box-shadow:0 0 12px " + color).animate([
       { transform: at(bx, by, " scale(0.2)"), opacity: 1 },
       { transform: at(bx, by, " scale(1.5)"), opacity: 0 },
-    ], { duration: 420, delay, easing: "ease-out", fill: "forwards" });
+    ], { duration: ms(420), delay, easing: "ease-out", fill: "forwards" });
   };
-  const kick = () => card.animate([{ transform: "none" }, { transform: at(-ux * 8, -uy * 8) }, { transform: "none" }], { duration: 240, easing: "ease-out" });
+  const kick = () => card.animate([{ transform: "none" }, { transform: at(-ux * 8, -uy * 8) }, { transform: "none" }], { duration: ms(240), easing: "ease-out" });
   let hit;
   if (kind === "melee") {
     // The card lunges at the target, then two slashes cross it.
@@ -6956,8 +6959,8 @@ function playAttackFx(kind, card, rowEl) {
       { transform: at(-dx * 0.06, -dy * 0.06, " scale(1.04)"), offset: 0.3 },
       { transform: at(dx * 0.72, dy * 0.72, " rotate(-3deg)"), offset: 0.75 },
       { transform: at(dx * 0.66, dy * 0.66) },
-    ], { duration: 600, easing: "ease-in", fill: "forwards" });
-    hit = 440;
+    ], { duration: ms(600), easing: "ease-in", fill: "forwards" });
+    hit = ms(440);
     const len = Math.min(160, b.width * 0.6);
     [-28, 28].forEach((deg, i) => {
       const r = " rotate(" + deg + "deg)";
@@ -6965,7 +6968,7 @@ function playAttackFx(kind, card, rowEl) {
         { transform: at(bx, by, r + " scaleX(0)"), opacity: 1 },
         { transform: at(bx, by, r + " scaleX(1)"), opacity: 1, offset: 0.4 },
         { transform: at(bx, by, r + " scaleX(1)"), opacity: 0 },
-      ], { duration: 380, delay: hit + i * 100, fill: "forwards" });
+      ], { duration: ms(380), delay: hit + ms(i * 100), fill: "forwards" });
     });
   } else if (kind === "grenade") {
     // Lobbed in an arc, then bursts.
@@ -6973,10 +6976,10 @@ function playAttackFx(kind, card, rowEl) {
     const lift = Math.max(60, dist * 0.45);
     const frames = [];
     for (let i = 0; i <= 10; i++) { const t = i / 10; frames.push({ transform: at(ax + dx * t, ay + dy * t - 4 * lift * t * (1 - t), " rotate(" + (t * 540) + "deg)"), opacity: i === 10 ? 0 : 1 }); }
-    hit = 650;
+    hit = ms(650);
     piece(11, 11, "border-radius:3px;background:#C8CDD3;box-shadow:0 0 4px #000").animate(frames, { duration: hit, fill: "forwards" });
     burst(hit, 80, "#FFB627");
-    burst(hit + 80, 50, "#E0664A");
+    burst(hit + ms(80), 50, "#E0664A");
   } else if (kind === "flame") {
     // A spray of sparks that fans out over the target (green for plague and venom sprays).
     kick();
@@ -6986,9 +6989,9 @@ function playAttackFx(kind, card, rowEl) {
       piece(size, size, "border-radius:50%;background:" + colors[i % 3] + ";box-shadow:0 0 6px " + colors[i % 3]).animate([
         { transform: at(ax + ux * 20, ay + uy * 20, " scale(0.5)"), opacity: 1 },
         { transform: at(bx - uy * off, by + ux * off, " scale(1.5)"), opacity: 0 },
-      ], { duration: 380, delay: i * 24, easing: "ease-out", fill: "forwards" });
+      ], { duration: ms(380), delay: ms(i * 24), easing: "ease-out", fill: "forwards" });
     }
-    hit = 300;
+    hit = ms(300);
   } else if (kind === "sweep") {
     // A fan of tracers raking across the target.
     kick();
@@ -6999,9 +7002,9 @@ function playAttackFx(kind, card, rowEl) {
         { transform: at(ax, ay, " rotate(" + ang + "deg)"), opacity: 1 },
         { transform: at(tx, ty, " rotate(" + ang + "deg)"), opacity: 1, offset: 0.95 },
         { transform: at(tx, ty, " rotate(" + ang + "deg)"), opacity: 0 },
-      ], { duration: 280, delay: i * 60, easing: "linear", fill: "forwards" });
+      ], { duration: ms(280), delay: ms(i * 60), easing: "linear", fill: "forwards" });
     }
-    hit = 280;
+    hit = ms(280);
   } else if (kind === "psychic") {
     // Rings that grow as they travel.
     kick();
@@ -7009,21 +7012,21 @@ function playAttackFx(kind, card, rowEl) {
       piece(26, 26, "border-radius:50%;border:2px solid #B48CFF;box-shadow:0 0 10px #B48CFF").animate([
         { transform: at(ax, ay, " scale(0.6)"), opacity: 1 },
         { transform: at(bx, by, " scale(2)"), opacity: 0 },
-      ], { duration: 480, delay: i * 120, easing: "ease-in", fill: "forwards" });
+      ], { duration: ms(480), delay: ms(i * 120), easing: "ease-in", fill: "forwards" });
     }
-    hit = 480;
+    hit = ms(480);
     burst(hit, 60, "#B48CFF");
   } else if (kind === "blast") {
     // One heavy shell, then a burst.
     kick();
-    hit = 380;
+    hit = ms(380);
     piece(18, 7, "border-radius:4px;background:#FFB627;box-shadow:0 0 10px #FFB627").animate([
       { transform: at(ax, ay, " rotate(" + angle + "deg)"), opacity: 1 },
       { transform: at(bx, by, " rotate(" + angle + "deg)"), opacity: 1, offset: 0.95 },
       { transform: at(bx, by, " rotate(" + angle + "deg)"), opacity: 0 },
     ], { duration: hit, easing: "ease-in", fill: "forwards" });
     burst(hit, 90, "#FFB627");
-    burst(hit + 70, 56, "#E0664A");
+    burst(hit + ms(70), 56, "#E0664A");
   } else {
     // Three quick tracers.
     kick();
@@ -7032,11 +7035,11 @@ function playAttackFx(kind, card, rowEl) {
         { transform: at(ax, ay, " rotate(" + angle + "deg)"), opacity: 1 },
         { transform: at(bx, by, " rotate(" + angle + "deg)"), opacity: 1, offset: 0.95 },
         { transform: at(bx, by, " rotate(" + angle + "deg)"), opacity: 0 },
-      ], { duration: 280, delay: i * 110, easing: "linear", fill: "forwards" });
+      ], { duration: ms(280), delay: ms(i * 110), easing: "linear", fill: "forwards" });
     }
-    hit = 280;
+    hit = ms(280);
   }
-  setTimeout(() => layer.remove(), hit + 1000);
+  setTimeout(() => layer.remove(), hit + ms(1000));
   return hit;
 }
 
@@ -8601,8 +8604,8 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                   { background: "#B8341C", transform: "translateX(5px)", offset: 0.25 },
                   { background: "#5A1F14", transform: "translateX(-4px)", offset: 0.55 },
                   { background: "#262A33", transform: "none" },
-                ], { duration: 450, delay: hitAt });
-                strikeTimer.current = setTimeout(() => setDamageRequest(null), hitAt + 700);
+                ], { duration: Math.round(450 * FX_PACE), delay: hitAt });
+                strikeTimer.current = setTimeout(() => setDamageRequest(null), hitAt + Math.round(800 * FX_PACE));
               };
               const row = (op, cw, onHit, sideKey) => {
                 const key = sideKey + op.id;
@@ -16869,7 +16872,7 @@ async function runSelfTest(hooks) {
     if (!/YOUR TEAM/.test(text()) || !target) throw new Error("your own operatives didn't appear");
     const [cur] = target.textContent.match(/(\d+)\/\d+$/).slice(1).map(Number);
     await click(target, "your operative");
-    for (let i = 0; i < 50 && /WHO TOOK THE DAMAGE\?/.test(text()); i++) await new Promise(r => setTimeout(r, 50));
+    for (let i = 0; i < 90 && /WHO TOOK THE DAMAGE\?/.test(text()); i++) await new Promise(r => setTimeout(r, 50));
     if (/WHO TOOK THE DAMAGE\?/.test(text())) throw new Error("the target list didn't close after the attack");
     if (!/took \d+ damage/.test(text())) throw new Error("no message that the damage was applied");
     const targetName = target.textContent.trim().replace(/\d+\/\d+$/, "").trim();
