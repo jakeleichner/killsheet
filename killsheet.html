@@ -15989,7 +15989,7 @@ function CampaignCard({ c, setC, mobile, f, showToast, playing }) {
 // Parts of the app a player can switch on or off. "Learning" and "I know the game" set them all at once;
 // any switch can be changed after. Switching something off only hides it: nothing saved is lost.
 const FEATURE_PRESETS = {
-  learning: { guide: true, labels: true, tips: true, dice: true, uses: false, scoring: false, missions: false, campaign: false, online: false },
+  learning: { guide: true, labels: true, tips: true, dice: true, uses: false, scoring: false, missions: false, campaign: false, online: true },
   expert: { guide: false, labels: false, tips: true, dice: true, uses: true, scoring: true, missions: true, campaign: true, online: true },
 };
 const FEATURE_MODE_NAMES = { learning: "Learning", expert: "I know the game", custom: "Custom" };
@@ -16094,7 +16094,7 @@ function ModeChoice({ mode, onPick, full }) {
   };
   return (
     <div>
-      {opt("learning", "I'm learning", "Start with your team, datacards, points and a step-by-step guide for each turning point.", "Switched off for now: detailed scoring, mission packs, the campaign, use tracking and online play. Turn any of them on later from the ⋯ menu on the Battle tab, under Your KillSheet.")}
+      {opt("learning", "I'm learning", "Start with your team, datacards, points and a step-by-step guide for each turning point.", "Switched off for now: detailed scoring, mission packs, the campaign and use tracking. Turn any of them on later from the ⋯ menu on the Battle tab, under Your KillSheet.")}
       {opt("expert", "I know the game", "Everything switched on.", "Turn anything off later from the same place.")}
     </div>
   );
@@ -16240,7 +16240,7 @@ async function runSelfTest(hooks) {
     await click(hinted.querySelector("[aria-label='Close']"), "close button");
     await nav("Battle");
     await click(document.querySelector("[aria-label='Game menu']"), "game menu");
-    if (btn("Play online")) throw new Error("Play online shows while it's switched off");
+    if (!btn("Play online")) throw new Error("Play online doesn't show for a learning player");
     await click(btn("Your KillSheet"), "Your KillSheet");
     const page = document.querySelector("[role=dialog][aria-label='Your KillSheet']");
     if (!page) throw new Error("the Your KillSheet page didn't open");
@@ -16527,6 +16527,8 @@ function App() {
   const [validate, setValidate] = useLocalStorage("validate", true);
   const [returning, setReturning] = useState(isReturningPlayer);
   React.useEffect(() => { if (!features && returning) setFeatures({ ...FEATURE_PRESETS.expert }); }, []);
+  // Play online joined the Learning preset (Oct 2026): saved Learning switches pick it up instead of turning Custom.
+  React.useEffect(() => { if (features && features.online === false && featureMode({ ...features, online: true }) === "learning") setFeatures(prev => ({ ...prev, online: true })); }, []);
   const [showFeatures, setShowFeatures] = useState(false);
   const feat = { ...FEATURE_PRESETS[features ? presetOf(features) : returning ? "expert" : "learning"], ...(features || {}) };
   const [ruleSearch, setRuleSearch] = useState(null);
