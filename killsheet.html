@@ -5963,114 +5963,195 @@ function genRoomCode() {
   for (let i = 0; i < 6; i++) s += alphabet[Math.floor(Math.random() * alphabet.length)];
   return s;
 }
+const MP_RETRY_MS = 3000;
+const MP_RETRIES = 20; // about a minute of trying the same room
+const MP_ROOM_HOURS = 12; // how long the Rejoin bar offers a dropped room
 function useMultiplayer(onMessage) {
   // status: 'idle' | 'hosting' | 'joining' | 'connected' | 'error'
   const [status, setStatus] = useState("idle");
   const [role, setRole] = useState(null); // 'host' | 'guest' | null
   const [roomCode, setRoomCode] = useState(null);
   const [peerError, setPeerError] = useState("");
-  const [peerRef, setPeerRef] = useState(null);
-  const [connRef, setConnRef] = useState(null);
+  const [lost, setLost] = useState(false); // the link dropped and we're waiting for it to come back
+  // The room survives reloads so either player can rejoin it with one tap.
+  const [lastRoom, setLastRoom] = useLocalStorage("mpRoom", null); // { code, role, ts }
+  // Damage and heals sent to the opponent while the link was down; sent when it comes back.
+  const [pending, setPending] = useLocalStorage("mpPending", []);
+  const peerRef = React.useRef(null);
+  const connRef = React.useRef(null);
+  const timerRef = React.useRef(null);
+  const triesRef = React.useRef(0);
+  const pendingRef = React.useRef(pending);
+  pendingRef.current = pending;
   const onMessageRef = React.useRef(onMessage);
   useEffect(() => { onMessageRef.current = onMessage; }, [onMessage]);
 
   const cleanup = () => {
-    try { if (connRef) connRef.close(); } catch (e) {}
-    try { if (peerRef) peerRef.destroy(); } catch (e) {}
-    setConnRef(null);
-    setPeerRef(null);
+    clearTimeout(timerRef.current);
+    const conn = connRef.current, peer = peerRef.current;
+    connRef.current = null;
+    peerRef.current = null;
+    try { if (conn) conn.close(); } catch (e) {}
+    try { if (peer) peer.destroy(); } catch (e) {}
   };
 
-  const wireConnection = (conn) => {
-    conn.on("open", () => { setStatus("connected"); setPeerError(""); });
-    conn.on("data", (msg) => { if (onMessageRef.current) onMessageRef.current(msg); });
-    conn.on("close", () => { setStatus("idle"); setRole(null); setRoomCode(null); });
-    conn.on("error", (err) => {
-      const msg = String(err && err.message || err);
-      let friendly = msg;
-      if (msg.indexOf("Negotiation") !== -1) {
-        friendly = "Connection failed, probably a network or firewall problem. Try a different network, or use export/import codes as a fallback.";
-      }
-      setPeerError(friendly);
-      setStatus("error");
+  const friendlyError = (msg) => {
+    if (msg.indexOf("Negotiation") !== -1) return "Connection failed, probably a network or firewall problem. Try a different network or use export/import codes.";
+    if (msg.indexOf("network") !== -1 || msg.indexOf("Network") !== -1) return "Network error. Check your internet connection.";
+    if (msg.indexOf("server-error") !== -1) return "PeerJS broker is having issues. Try again in a minute.";
+    return msg;
+  };
+
+  const wireConnection = (conn, asRole, code) => {
+    connRef.current = conn;
+    let opened = false;
+    const dropped = () => {
+      if (connRef.current !== conn) return; // an older link closing after a newer one opened
+      connRef.current = null;
+      setLost(true);
+      if (asRole === "host") setStatus("hosting"); // the room stays open; the guest can come back
+      else retryJoin(code);
+    };
+    conn.on("open", () => {
+      opened = true;
+      setStatus("connected"); setPeerError(""); setLost(false);
+      triesRef.current = 0;
+      setLastRoom({ code, role: asRole, ts: Date.now() });
+      const queued = pendingRef.current || [];
+      queued.forEach(m => { try { conn.send(m); } catch (e) {} });
+      if (queued.length) setPending([]);
     });
-    setConnRef(conn);
+    conn.on("data", (msg) => {
+      if (msg && msg.type === "bye") { // they pressed Disconnect: don't wait for them to come back
+        connRef.current = null;
+        cleanup();
+        setLastRoom(null); setPending([]); setLost(false);
+        setPeerError("Your opponent ended the online game.");
+        setStatus("error");
+        return;
+      }
+      if (onMessageRef.current) onMessageRef.current(msg);
+    });
+    conn.on("close", dropped);
+    conn.on("error", (err) => {
+      if (!opened) setPeerError(friendlyError(String(err && err.message || err)));
+      dropped();
+    });
   };
 
-  const host = () => {
+  const host = (reuse) => {
     if (typeof window === "undefined" || !window.Peer) { setPeerError("PeerJS not loaded"); setStatus("error"); return; }
+    const code = typeof reuse === "string" ? reuse : genRoomCode();
+    if (typeof reuse !== "string") triesRef.current = 0;
     cleanup();
-    const code = genRoomCode();
     const peer = new window.Peer(MP_PREFIX + code, { debug: 0, config: ICE_CONFIG });
-    setPeerRef(peer);
+    peerRef.current = peer;
     setStatus("hosting");
     setRole("host");
     setRoomCode(code);
-    peer.on("open", () => { /* waiting for guest */ });
-    peer.on("connection", (conn) => { wireConnection(conn); });
+    setLastRoom({ code, role: "host", ts: Date.now() });
+    peer.on("connection", (conn) => { wireConnection(conn, "host", code); });
+    // Lost touch with the broker (not the opponent): get the same ID back so the guest can still find us.
+    peer.on("disconnected", () => { if (peerRef.current === peer) { try { peer.reconnect(); } catch (e) {} } });
     peer.on("error", (err) => {
+      if (peerRef.current !== peer) return;
       const msg = String(err && err.message || err);
-      // ID-taken means someone else has our random code; retry once
       if (msg.indexOf("is taken") !== -1 || msg.indexOf("unavailable-id") !== -1) {
-        setTimeout(() => host(), 100);
-        return;
+        // Rejoining: the broker still holds our old room for a few seconds after a reload. New game: someone has this code.
+        if (typeof reuse === "string" && triesRef.current++ < MP_RETRIES) { setPeerError("Reopening room " + code + "..."); timerRef.current = setTimeout(() => host(code), MP_RETRY_MS); return; }
+        if (typeof reuse !== "string") { setTimeout(() => host(), 100); return; }
       }
-      // Translate common opaque errors into user-friendly text
-      let friendly = msg;
-      if (msg.indexOf("Negotiation") !== -1) friendly = "Connection failed, probably a network or firewall problem. Try a different network or use export/import codes.";
-      else if (msg.indexOf("network") !== -1 || msg.indexOf("Network") !== -1) friendly = "Network error. Check your internet connection.";
-      else if (msg.indexOf("server-error") !== -1) friendly = "PeerJS broker is having issues. Try again in a minute.";
-      setPeerError(friendly);
+      setPeerError(friendlyError(msg));
       setStatus("error");
     });
   };
 
-  const join = (code) => {
+  const join = (raw, retrying) => {
     if (typeof window === "undefined" || !window.Peer) { setPeerError("PeerJS not loaded"); setStatus("error"); return; }
-    if (!code || code.length < 4) { setPeerError("Invalid room code"); setStatus("error"); return; }
+    if (!raw || raw.length < 4) { setPeerError("Invalid room code"); setStatus("error"); return; }
+    const code = raw.toUpperCase();
+    if (!retrying) triesRef.current = 0;
     cleanup();
     const peer = new window.Peer(undefined, { debug: 0, config: ICE_CONFIG });
-    setPeerRef(peer);
+    peerRef.current = peer;
     setStatus("joining");
     setRole("guest");
-    setRoomCode(code.toUpperCase());
-    peer.on("open", () => {
-      const conn = peer.connect(MP_PREFIX + code.toUpperCase(), { reliable: true });
-      wireConnection(conn);
-    });
+    setRoomCode(code);
+    setLastRoom({ code, role: "guest", ts: Date.now() });
+    peer.on("open", () => { wireConnection(peer.connect(MP_PREFIX + code, { reliable: true }), "guest", code); });
     peer.on("error", (err) => {
+      if (peerRef.current !== peer) return;
       const msg = String(err && err.message || err);
-      let friendly = msg;
-      if (msg.indexOf("Could not connect") !== -1 || msg.indexOf("peer-unavailable") !== -1) {
-        friendly = "Room not found. Check the code.";
-      } else if (msg.indexOf("Negotiation") !== -1) {
-        friendly = "Connection failed, probably a network or firewall problem. Try a different network or use export/import codes.";
-      } else if (msg.indexOf("network") !== -1 || msg.indexOf("Network") !== -1) {
-        friendly = "Network error. Check your internet connection.";
-      } else if (msg.indexOf("server-error") !== -1) {
-        friendly = "PeerJS broker is having issues. Try again in a minute.";
-      }
-      setPeerError(friendly);
+      // While rejoining, the host may be reloading too: keep trying for a while.
+      if (retrying) { retryJoin(code); return; }
+      setPeerError(msg.indexOf("Could not connect") !== -1 || msg.indexOf("peer-unavailable") !== -1 ? "Room not found. Check the code." : friendlyError(msg));
       setStatus("error");
     });
   };
 
+  const retryJoin = (code) => {
+    clearTimeout(timerRef.current);
+    setLost(true);
+    if (triesRef.current++ >= MP_RETRIES) {
+      cleanup();
+      setPeerError("Couldn't reach room " + code + ". The host may have closed it.");
+      setStatus("error");
+      return;
+    }
+    setStatus("joining");
+    timerRef.current = setTimeout(() => join(code, true), MP_RETRY_MS);
+  };
+
+  // A phone that slept can come back with a dead link and no close event yet.
+  useEffect(() => {
+    const onVisible = () => {
+      const conn = connRef.current;
+      if (document.visibilityState === "visible" && conn && status === "connected" && conn.open === false) { try { conn.close(); } catch (e) {} }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [status]);
+
   const disconnect = () => {
-    cleanup();
+    const conn = connRef.current, peer = peerRef.current;
+    if (conn && status === "connected") {
+      // Say goodbye first so their app stops trying to rejoin, then close once it has gone out.
+      try { conn.send({ type: "bye" }); } catch (e) {}
+      connRef.current = null; peerRef.current = null;
+      clearTimeout(timerRef.current);
+      setTimeout(() => { try { conn.close(); } catch (e) {} try { peer.destroy(); } catch (e) {} }, 300);
+    } else cleanup();
     setStatus("idle");
     setRole(null);
     setRoomCode(null);
     setPeerError("");
+    setLost(false);
+    setLastRoom(null);
+    setPending([]);
+  };
+
+  const rejoin = () => {
+    if (!lastRoom) return;
+    triesRef.current = 0;
+    if (lastRoom.role === "host") host(lastRoom.code); else join(lastRoom.code, true);
   };
 
   const send = (msg) => {
-    if (connRef && status === "connected") {
-      try { connRef.send(msg); return true; } catch (e) { return false; }
+    const conn = connRef.current;
+    if (conn && status === "connected") {
+      try { conn.send(msg); return true; } catch (e) { return false; }
     }
     return false;
   };
+  // Send now, or hold it until the dropped room comes back.
+  const sendOrQueue = (msg) => {
+    if (send(msg)) return true;
+    if (lastRoom) setPending(prev => [...(prev || []), msg].slice(-50));
+    return false;
+  };
 
-  return { status, role, roomCode, peerError, host, join, disconnect, send };
+  const roomFresh = lastRoom && Date.now() - lastRoom.ts < MP_ROOM_HOURS * 3600 * 1000 ? lastRoom : null;
+  return { status, role, roomCode, peerError, lost, lastRoom: roomFresh, pendingCount: (pending || []).length, host, join, rejoin, disconnect, send, sendOrQueue };
 }
 
 /* ═══ RULE TIPS ═══ */
@@ -8316,6 +8397,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                       showToast("Sent " + amt + " damage to " + op.name);
                     } else {
                       setOppWound(op.id, op.wounds, -amt);
+                      mp.sendOrQueue({ type: "applyRemoteDamage", opId: op.id, amount: amt });
                       showToast(op.name + " took " + amt + " damage");
                     }
                   }))}
@@ -8380,6 +8462,11 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
 
             {mp.status === "idle" || mp.status === "error" ? (
               <div>
+                {mp.lastRoom && (
+                  <button onClick={mp.rejoin} style={{ ...bs("#6B9BF7"), width: "100%", padding: "10px 0", fontSize: 14, fontWeight: 700, background: "#6B9BF720", letterSpacing: "0.06em", marginBottom: 10 }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><MPIcon name="join" size={15} /> Rejoin room {mp.lastRoom.code}</span>
+                  </button>
+                )}
                 <button onClick={mp.host} style={{ ...bs("#C9772E"), width: "100%", padding: "10px 0", fontSize: 14, fontWeight: 700, background: "#C9772E12", letterSpacing: "0.06em", marginBottom: 10 }}>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><MPIcon name="host" size={15} /> Host a new game</span>
                 </button>
@@ -8389,7 +8476,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                   <button onClick={() => { mp.join(joinCodeInput); setJoinCodeInput(""); }} disabled={joinCodeInput.length < 4} style={{ ...bs(joinCodeInput.length >= 4 ? "#6B9BF7" : "#3A4150"), padding: "8px 12px", fontSize: 13, fontWeight: 700, background: joinCodeInput.length >= 4 ? "#6B9BF720" : "transparent", opacity: joinCodeInput.length >= 4 ? 1 : 0.5, cursor: joinCodeInput.length >= 4 ? "pointer" : "not-allowed", display: "inline-flex", alignItems: "center", gap: 5 }}><MPIcon name="join" size={13} />Join</button>
                 </div>
                 <div style={{ fontSize: 13, color: "#9AA5B1", marginTop: 12, lineHeight: 1.5 }}>
-                  <strong style={{ color: "#C9772E" }}>How it works:</strong> One player hosts and gets a room code; the other enters it to connect. The two browsers connect directly, and nobody needs an account. Keep this page open on both devices, because closing either tab ends the connection.
+                  <strong style={{ color: "#C9772E" }}>How it works:</strong> One player hosts and gets a room code; the other enters it to connect. The two browsers connect directly, and nobody needs an account. If the connection drops, KillSheet tries the same room again, and after a reload you can rejoin it with one tap. Wounds, CP and score stay saved on each device.
                 </div>
               </div>
             ) : mp.status === "hosting" ? (
@@ -8399,12 +8486,12 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                   <div style={{ fontSize: 36, fontWeight: 700, color: "#C9772E", fontFamily: "monospace", letterSpacing: "0.3em" }}>{mp.roomCode}</div>
                   <button onClick={() => { try { navigator.clipboard.writeText(mp.roomCode); showToast("Code copied"); } catch (e) {} }} style={{ ...bs("#9AA5B1"), fontSize: 13, padding: "8px 12px", marginTop: 6 }}>Copy code</button>
                 </div>
-                <div style={{ fontSize: 13, color: "#C9772E", textAlign: "center", marginBottom: 10, fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.06em", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}><MPIcon name="waiting" size={12} /> Waiting for your opponent to join...</div>
+                <div style={{ fontSize: 13, color: "#C9772E", textAlign: "center", marginBottom: 10, fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.06em", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}><MPIcon name="waiting" size={12} /> {mp.lost ? "Your opponent dropped. They can rejoin with this code." : "Waiting for your opponent to join..."}</div>
                 <button onClick={mp.disconnect} style={{ ...bs("#B8341C"), width: "100%", padding: "8px 0", fontSize: 13 }}>Cancel</button>
               </div>
             ) : mp.status === "joining" ? (
               <div>
-                <div style={{ textAlign: "center", padding: "12px 0", color: "#C9772E", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.06em", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}><MPIcon name="waiting" size={12} /> Connecting to {mp.roomCode}...</div>
+                <div style={{ textAlign: "center", padding: "12px 0", color: "#C9772E", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.06em", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}><MPIcon name="waiting" size={12} /> {mp.lost ? "Connection lost. Rejoining " : "Connecting to "}{mp.roomCode}...</div>
                 <button onClick={mp.disconnect} style={{ ...bs("#B8341C"), width: "100%", padding: "8px 0", fontSize: 13 }}>Cancel</button>
               </div>
             ) : mp.status === "connected" ? (
@@ -9294,7 +9381,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                     {oppRoster.operatives.map(op => {
                       const result = oppEquip(op);
                       const oCollapsed = oppCollapsed[op.id] || false;
-                      return (<Datacard key={"opp-" + op.id} narrow op={op} f={oppF} fc={oppF ? oppF.color : "#9AA5B1"} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getOppWounds(op.id, op.wounds)} onWound={(delta) => { if (mp && mp.status === "connected" && delta < 0) { mp.send({ type: "applyRemoteDamage", opId: op.id, amount: -delta }); } else if (mp && mp.status === "connected" && delta > 0) { mp.send({ type: "applyRemoteHeal", opId: op.id, amount: delta }); } else { setOppWound(op.id, op.wounds, delta); } }} collapsed={oCollapsed} onToggle={() => setOppCollapsed(prev => ({ ...prev, [op.id]: !oCollapsed }))} ignoreInjured={result.ignoreInjured} cp={0} setCp={() => {}} requestDamageApply={(a, done) => requestDamageApply(a, "opp", done)} applySelfDamage={(amount) => { if (mp && mp.status === "connected") { mp.send({ type: "applyRemoteDamage", opId: op.id, amount }); showToast(op.name + " took " + amount + " self-dmg (sent)"); } else { setOppWound(op.id, op.wounds, -amount); showToast(op.name + " took " + amount + " self-dmg"); } }} />);
+                      return (<Datacard key={"opp-" + op.id} narrow op={op} f={oppF} fc={oppF ? oppF.color : "#9AA5B1"} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getOppWounds(op.id, op.wounds)} onWound={(delta) => { if (mp && mp.status === "connected" && delta < 0) { mp.send({ type: "applyRemoteDamage", opId: op.id, amount: -delta }); } else if (mp && mp.status === "connected" && delta > 0) { mp.send({ type: "applyRemoteHeal", opId: op.id, amount: delta }); } else { setOppWound(op.id, op.wounds, delta); if (delta) mp.sendOrQueue({ type: delta < 0 ? "applyRemoteDamage" : "applyRemoteHeal", opId: op.id, amount: Math.abs(delta) }); } }} collapsed={oCollapsed} onToggle={() => setOppCollapsed(prev => ({ ...prev, [op.id]: !oCollapsed }))} ignoreInjured={result.ignoreInjured} cp={0} setCp={() => {}} requestDamageApply={(a, done) => requestDamageApply(a, "opp", done)} applySelfDamage={(amount) => { if (mp && mp.status === "connected") { mp.send({ type: "applyRemoteDamage", opId: op.id, amount }); showToast(op.name + " took " + amount + " self-dmg (sent)"); } else { setOppWound(op.id, op.wounds, -amount); mp.sendOrQueue({ type: "applyRemoteDamage", opId: op.id, amount }); showToast(op.name + " took " + amount + " self-dmg"); } }} />);
                     })}
                   </div>
                 </div>
@@ -9356,7 +9443,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                       {oppRoster.operatives.map(op => {
                         const result = oppEquip(op);
                         const oCollapsed = oppCollapsed[op.id] || false;
-                        return (<Datacard key={"opp-m-" + op.id} op={op} f={oppF} fc={oppF ? oppF.color : "#9AA5B1"} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getOppWounds(op.id, op.wounds)} onWound={(delta) => { if (mp && mp.status === "connected" && delta < 0) { mp.send({ type: "applyRemoteDamage", opId: op.id, amount: -delta }); } else if (mp && mp.status === "connected" && delta > 0) { mp.send({ type: "applyRemoteHeal", opId: op.id, amount: delta }); } else { setOppWound(op.id, op.wounds, delta); } }} collapsed={oCollapsed} onToggle={() => setOppCollapsed(prev => ({ ...prev, [op.id]: !oCollapsed }))} ignoreInjured={result.ignoreInjured} cp={0} setCp={() => {}} requestDamageApply={(a, done) => requestDamageApply(a, "opp", done)} applySelfDamage={(amount) => { if (mp && mp.status === "connected") { mp.send({ type: "applyRemoteDamage", opId: op.id, amount }); showToast(op.name + " took " + amount + " self-dmg (sent)"); } else { setOppWound(op.id, op.wounds, -amount); showToast(op.name + " took " + amount + " self-dmg"); } }} />);
+                        return (<Datacard key={"opp-m-" + op.id} op={op} f={oppF} fc={oppF ? oppF.color : "#9AA5B1"} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getOppWounds(op.id, op.wounds)} onWound={(delta) => { if (mp && mp.status === "connected" && delta < 0) { mp.send({ type: "applyRemoteDamage", opId: op.id, amount: -delta }); } else if (mp && mp.status === "connected" && delta > 0) { mp.send({ type: "applyRemoteHeal", opId: op.id, amount: delta }); } else { setOppWound(op.id, op.wounds, delta); if (delta) mp.sendOrQueue({ type: delta < 0 ? "applyRemoteDamage" : "applyRemoteHeal", opId: op.id, amount: Math.abs(delta) }); } }} collapsed={oCollapsed} onToggle={() => setOppCollapsed(prev => ({ ...prev, [op.id]: !oCollapsed }))} ignoreInjured={result.ignoreInjured} cp={0} setCp={() => {}} requestDamageApply={(a, done) => requestDamageApply(a, "opp", done)} applySelfDamage={(amount) => { if (mp && mp.status === "connected") { mp.send({ type: "applyRemoteDamage", opId: op.id, amount }); showToast(op.name + " took " + amount + " self-dmg (sent)"); } else { setOppWound(op.id, op.wounds, -amount); mp.sendOrQueue({ type: "applyRemoteDamage", opId: op.id, amount }); showToast(op.name + " took " + amount + " self-dmg"); } }} />);
                       })}
                     </div>
                   )}
@@ -16580,7 +16667,7 @@ function App() {
       {showFeatures && <FeaturesPage focus={showFeatures} onClose={() => setShowFeatures(false)} />}
 
       {/* CONNECTION BANNER (across all tabs) */}
-      {mp.status !== "idle" && (
+      {(mp.status !== "idle" || mp.lastRoom) && (
         <div style={{
           position: "sticky", top: 0, zIndex: 9998,
           background: mp.status === "connected" ? "#0F1F12" : mp.status === "error" ? "#1F0F0F" : "#1F1A0A",
@@ -16592,18 +16679,21 @@ function App() {
               <MPIcon name={mpIconFor(mp.status)} size={11} />
             </span>
             <span style={{ color: "#F1F2F5" }}>
-              {mp.status === "hosting" && (mobile ? "Hosting" : "Hosting, waiting for opponent")}
-              {mp.status === "joining" && "Connecting..."}
+              {mp.status === "idle" && (mobile ? "Game dropped" : "Your online game dropped")}
+              {mp.status === "hosting" && (mp.lost ? (mobile ? "Opponent dropped" : "Opponent dropped, waiting for them to rejoin") : mobile ? "Hosting" : "Hosting, waiting for opponent")}
+              {mp.status === "joining" && (mp.lost ? "Rejoining..." : "Connecting...")}
               {mp.status === "connected" && (mobile ? "Live" : "Connected as " + mp.role)}
               {mp.status === "error" && (mp.peerError || "Error")}
             </span>
-            {mp.roomCode && (
-              <span style={{ color: "#C9772E", fontFamily: "monospace", letterSpacing: "0.15em", fontWeight: 700 }}>{mp.roomCode}</span>
+            {(mp.roomCode || mp.lastRoom) && (
+              <span style={{ color: "#C9772E", fontFamily: "monospace", letterSpacing: "0.15em", fontWeight: 700 }}>{mp.roomCode || mp.lastRoom.code}</span>
             )}
+            {mp.pendingCount > 0 && mp.status !== "connected" && <span style={{ color: "#9AA5B1" }}>{mp.pendingCount} {mp.pendingCount === 1 ? "change" : "changes"} to send</span>}
           </div>
           <div style={{ display: "flex", gap: 4 }}>
-            <button onClick={() => { if (tab !== "builder") setTab("builder"); setShowMP(true); }} style={{ ...bs("#6B9BF7"), fontSize: 11, padding: "2px 8px" }}>{mp.status === "connected" ? <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><MPIcon name="chat" size={10} />Chat</span> : "Manage"}</button>
-            <button onClick={mp.disconnect} style={{ ...bs("#9AA5B1"), fontSize: 11, padding: "2px 8px" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><MPIcon name="leave" size={11} />Disconnect</span></button>
+            {(mp.status === "idle" || mp.status === "error") && mp.lastRoom && <button onClick={mp.rejoin} style={{ ...bs("#6B9BF7"), fontSize: 11, padding: "2px 8px", background: "#6B9BF720" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><MPIcon name="join" size={11} />Rejoin</span></button>}
+            {mp.status !== "idle" && <button onClick={() => { if (tab !== "builder") setTab("builder"); setShowMP(true); }} style={{ ...bs("#6B9BF7"), fontSize: 11, padding: "2px 8px" }}>{mp.status === "connected" ? <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><MPIcon name="chat" size={10} />Chat</span> : "Manage"}</button>}
+            <button onClick={mp.disconnect} style={{ ...bs("#9AA5B1"), fontSize: 11, padding: "2px 8px" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><MPIcon name="leave" size={11} />{mp.status === "idle" ? "Leave" : "Disconnect"}</span></button>
           </div>
         </div>
       )}
