@@ -6873,6 +6873,7 @@ const ICON_PATHS = {
   reset: <><path d="M4 5v5h5" /><path d="M5.3 14.5A7.5 7.5 0 1 0 7 7.2L4 10" /></>,
   edit: <><path d="M4 20h4L19 9l-4-4L4 16z" /><path d="M13.5 6.5l4 4" /></>,
   info: <><circle cx="12" cy="12" r="9" /><path d="M12 11v6" /><circle cx="12" cy="7.5" r="0.6" fill="currentColor" /></>,
+  log: <><path d="M9 6h11M9 12h11M9 18h11" /><circle cx="4.5" cy="6" r="1" fill="currentColor" /><circle cx="4.5" cy="12" r="1" fill="currentColor" /><circle cx="4.5" cy="18" r="1" fill="currentColor" /></>,
 };
 function Icon({ name, size = 14, color, style }) {
   return (
@@ -7645,6 +7646,10 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   const toastTimer = React.useRef(null);
   const [damageRequest, setDamageRequest] = useState(null); // { amount, side: "mine" | "opp" (whose weapon), onApplied(name), meta: { attacker, weapon } } | null
   const [struck, setStruck] = useState(null); // { key, after }: the row just hit, while the attack plays
+  // Battle log: every change to an operative's wounds this game, oldest first.
+  // { side: "mine" | "opp" (whose operative), target, max, before, after, how: "dice" | "hand" | "self", by, weapon, tp, t }
+  const [battleLog, setBattleLog] = useLocalStorage("battleLog", []);
+  const [showLog, setShowLog] = useState(false);
   const attackerRef = React.useRef(null);
   const strikeTimer = React.useRef(null);
   const [damageOther, setDamageOther] = useState(false); // also list the shooter's own side (Blast and Torrent hit friends too)
@@ -7675,6 +7680,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
       const op = roster.find(o => o.id === msg.opId);
       const amount = Math.max(0, Math.floor(msg.amount));
       if (op && amount) {
+        logMine(op, msg.type === "applyRemoteDamage" ? -amount : amount, msg.by ? "dice" : "hand", msg.by ? { by: msg.by, weapon: msg.weapon } : {});
         setOpWounds(op.id, op.wounds, msg.type === "applyRemoteDamage" ? -amount : amount);
         if (msg.type === "applyRemoteDamage") showToast(msg.by ? msg.by + " hit your " + op.name + (msg.weapon ? " with " + msg.weapon : "") + ": " + amount + " damage" : op.name + " took " + amount + " damage", msg.by ? 4000 : 2500);
       }
@@ -7951,7 +7957,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   const tacSum = tacOps.reduce((s, t) => s + t.checks.filter(Boolean).length, 0);
   const computedVpYou = primarySumYou + tacSum;
   // Game history: one record per finished game (kept by "Clear current game data" and in backups).
-  const resetGame = () => { setWounds({}); setCp(3); setVpYou(0); setVpOpp(0); setUsedPloys({}); setActivated({}); setHasInitiative(true); setLastCpTp(1); setTp(1); setPrimaryYou(Array(gc.numTPs).fill(0)); setPrimaryOpp(Array(gc.numTPs).fill(0)); setTacOps(Array.from({ length: gc.numTacOps }, () => ({ name: "", checks: [false, false] }))); setOppWounds({}); setNpoUnits([]); setOrders({}); setBattleUses({}); setCounteracted({}); setGuideChecks({}); setMissionScore({}); };
+  const resetGame = () => { setBattleLog([]); setWounds({}); setCp(3); setVpYou(0); setVpOpp(0); setUsedPloys({}); setActivated({}); setHasInitiative(true); setLastCpTp(1); setTp(1); setPrimaryYou(Array(gc.numTPs).fill(0)); setPrimaryOpp(Array(gc.numTPs).fill(0)); setTacOps(Array.from({ length: gc.numTacOps }, () => ({ name: "", checks: [false, false] }))); setOppWounds({}); setNpoUnits([]); setOrders({}); setBattleUses({}); setCounteracted({}); setGuideChecks({}); setMissionScore({}); };
   const openEndGame = () => {
     setEndGame({ you: vpYou + computedVpYou, them: vpOpp + computedVpOpp, opp: oppF ? oppF.id : "" });
     window.scrollTo(0, 0);
@@ -8035,9 +8041,23 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
     }
     return getEquipSlotCount() < gc.equipSlots;
   };
-  const selectFaction = (id) => { setFid(id); setRoster([]); setEq({}); setUEq({}); setWounds({}); setCardCollapsed({}); setUsedPloys({}); setCp(3); setVpYou(0); setVpOpp(0); setHasInitiative(true); setLastCpTp(1); setTp(1); setPrimaryYou(Array(gc.numTPs).fill(0)); setPrimaryOpp(Array(gc.numTPs).fill(0)); setTacOps(Array.from({ length: gc.numTacOps }, () => ({ name: "", checks: [false, false] }))); setOppRoster(null); setOppWounds({}); setShowImport(false); setActivated({}); setChapterPrimary(""); setChapterSecondary(""); setChapterVeteran({}); setRosterLocked(false); setNpoUnits([]); setCarried({}); setOrders({}); setBattleUses({}); setCounteracted({}); setGuideChecks({}); setMissionScore({}); };
+  const selectFaction = (id) => { setBattleLog([]); setFid(id); setRoster([]); setEq({}); setUEq({}); setWounds({}); setCardCollapsed({}); setUsedPloys({}); setCp(3); setVpYou(0); setVpOpp(0); setHasInitiative(true); setLastCpTp(1); setTp(1); setPrimaryYou(Array(gc.numTPs).fill(0)); setPrimaryOpp(Array(gc.numTPs).fill(0)); setTacOps(Array.from({ length: gc.numTacOps }, () => ({ name: "", checks: [false, false] }))); setOppRoster(null); setOppWounds({}); setShowImport(false); setActivated({}); setChapterPrimary(""); setChapterSecondary(""); setChapterVeteran({}); setRosterLocked(false); setNpoUnits([]); setCarried({}); setOrders({}); setBattleUses({}); setCounteracted({}); setGuideChecks({}); setMissionScore({}); };
 
   const getWounds = (opId, maxW) => wounds[opId] !== undefined ? wounds[opId] : maxW;
+  const logWounds = (e) => {
+    if (e.before === e.after) return;
+    setBattleLog(prev => {
+      const list = prev || [];
+      const last = list[list.length - 1];
+      // Quick taps on one operative's wound buttons make one line.
+      if (e.how === "hand" && last && last.how === "hand" && last.side === e.side && last.target === e.target && last.tp === tp && Date.now() - last.t < 15000 && Math.sign(e.after - e.before) === Math.sign(last.after - last.before)) {
+        return [...list.slice(0, -1), { ...last, after: Math.max(0, Math.min(last.max, last.after + e.after - e.before)), t: Date.now() }];
+      }
+      return [...list, { ...e, tp, t: Date.now() }].slice(-200);
+    });
+  };
+  const clampW = (v, max) => Math.max(0, Math.min(max, v));
+  const logMine = (op, delta, how, extra) => { const cw = getWounds(op.id, op.wounds); logWounds({ side: "mine", target: op.name, max: op.wounds, before: cw, after: clampW(cw + delta, op.wounds), how, ...extra }); };
   const setOpWounds = (opId, maxW, delta) => {
     setWounds(prev => ({ ...prev, [opId]: Math.max(0, Math.min(maxW, (prev[opId] !== undefined ? prev[opId] : maxW) + delta)) }));
   };
@@ -8191,6 +8211,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   };
 
   const getOppWounds = (opId, maxW) => oppWounds[opId] !== undefined ? oppWounds[opId] : maxW;
+  const logOpp = (op, delta, how, extra) => { const cw = getOppWounds(op.id, op.wounds); logWounds({ side: "opp", target: op.name, max: op.wounds, before: cw, after: clampW(cw + delta, op.wounds), how, ...extra }); };
   // Imported rosters used to keep the whole faction (oppRoster.faction); online ones only send its id.
   const oppF = oppRoster ? (oppRoster.faction || FACTIONS[oppRoster.factionId]) : null;
   const oppEquip = (op) => oppF ? oppEquipFor(oppF, oppRoster.eq || {}, oppRoster.uEq || {}, op) : { weapons: [], effects: [], ignoreInjured: false };
@@ -8520,7 +8541,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
               const strike = (e, key, after) => {
                 const rowEl = e.currentTarget, card = attackerRef.current;
                 const still = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-                if (!card || still || !rowEl.animate) { setDamageRequest(null); return; }
+                if (!card || still || !feat.fx || !rowEl.animate) { setDamageRequest(null); return; }
                 setStruck({ key, after });
                 const hitAt = playAttackFx(damageRequest.meta.kind || "melee", card, rowEl);
                 rowEl.animate([
@@ -8549,13 +8570,14 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
               const mine = roster.length > 0 && (
                 <div key="mine" style={{ marginBottom: 10 }}>
                   {head("YOUR TEAM", "#6B9BF7")}
-                  {alive(roster, getWounds, "mine-").length === 0 ? noneLeft : alive(roster, getWounds, "mine-").map(op => row(op, getWounds(op.id, op.wounds), () => { setOpWounds(op.id, op.wounds, -amt); showToast(op.name + " took " + amt + " damage"); }, "mine-"))}
+                  {alive(roster, getWounds, "mine-").length === 0 ? noneLeft : alive(roster, getWounds, "mine-").map(op => row(op, getWounds(op.id, op.wounds), () => { logMine(op, -amt, "dice", hitBy); setOpWounds(op.id, op.wounds, -amt); showToast(op.name + " took " + amt + " damage"); }, "mine-"))}
                 </div>
               );
               const theirs = oppOps.length > 0 ? (
                 <div key="theirs" style={{ marginBottom: 10 }}>
                   {head(online ? "OPPONENT (ONLINE)" : "OPPONENT", "#E0664A")}
                   {alive(oppOps, getOppWounds, "opp-").length === 0 ? noneLeft : alive(oppOps, getOppWounds, "opp-").map(op => row(op, getOppWounds(op.id, op.wounds), () => {
+                    logOpp(op, -amt, "dice", hitBy);
                     if (online) {
                       // They own their wounds: their app applies it and sends the new total back to this card.
                       mp.send({ type: "applyRemoteDamage", opId: op.id, amount: amt, ...hitBy });
@@ -8605,6 +8627,43 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                 </div>
               );
             })()}
+          </div>
+        </div>
+      )}
+      {/* Battle log: their operatives' changes on the right (what you did), yours on the left. */}
+      {showLog && (
+        <div onClick={() => setShowLog(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 10000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div role="dialog" aria-label="Battle log" onClick={(e) => e.stopPropagation()} style={{ background: "#1A1D24", border: "1px solid #6B9BF760", borderRadius: 4, padding: 16, maxWidth: 480, width: "100%", maxHeight: "80vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 40px rgba(0,0,0,0.7)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <div style={{ fontSize: 18, fontWeight: 700, color: "#6B9BF7", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.04em", display: "flex", alignItems: "center", gap: 6 }}><Icon name="log" size={16} /> Battle log</div>
+              <button onClick={() => setShowLog(false)} style={{ ...bs("#9AA5B1"), fontSize: 13, padding: "8px 12px" }}><Icon name="x" size={12} /> Close</button>
+            </div>
+            <div style={{ fontSize: 12, color: "#9AA5B1", marginBottom: 8 }}>Their operatives on the right, yours on the left.</div>
+            <div ref={(el) => { if (el) el.scrollTop = el.scrollHeight; }} style={{ flex: 1, minHeight: 120, overflowY: "auto", background: "#0E0F13", border: "1px solid #3A4150", borderRadius: 6, padding: 8, display: "flex", flexDirection: "column", gap: 4 }}>
+              {battleLog.length === 0 ? (
+                <div style={{ fontSize: 13, color: "#8B95A1", textAlign: "center", margin: "auto 0", lineHeight: 1.5 }}>Nothing yet. Damage from the dice roller and the wound buttons shows up here.</div>
+              ) : battleLog.map((e, i) => {
+                const theirs = e.side === "opp";
+                const lost = e.before - e.after;
+                const n = Math.abs(lost), w = n === 1 ? " wound" : " wounds";
+                const main = e.how === "dice" && e.by ? e.by + " hit " + e.target + (e.weapon ? " with " + e.weapon : "") + ": " + lost + " damage"
+                  : e.how === "self" ? e.target + " took " + lost + " damage from its own weapon"
+                  : lost > 0 ? e.target + " lost " + n + w
+                  : e.target + " got " + n + w + " back";
+                const newTp = i === 0 || battleLog[i - 1].tp !== e.tp;
+                return (
+                  <React.Fragment key={e.t + "-" + i}>
+                    {newTp && <div style={{ fontSize: 11, color: "#C9772E", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.12em", textAlign: "center", margin: i === 0 ? "0 0 2px" : "8px 0 2px" }}>TURNING POINT {e.tp}</div>}
+                    <div style={{ display: "flex", justifyContent: theirs ? "flex-end" : "flex-start" }}>
+                      <div style={{ maxWidth: "85%", padding: "6px 9px", borderRadius: 6, background: theirs ? "#3B6FD420" : "#B8341C20", border: "1px solid " + (theirs ? "#3B6FD440" : "#B8341C40"), fontSize: 13, color: "#F1F2F5", lineHeight: 1.4, wordBreak: "break-word" }}>
+                        <div>{main}</div>
+                        <div style={{ fontSize: 12, color: "#9AA5B1" }}>{e.before} {"→"} {e.after} wounds{e.after <= 0 ? ", incapacitated" : ""}</div>
+                      </div>
+                    </div>
+                  </React.Fragment>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}
@@ -9473,6 +9532,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                       <button onClick={saveRoster} title="Save to My Rosters on this device" style={{ ...bs("#5A9C3A"), fontSize: 11, padding: mobile ? "5px 8px" : "2px 7px", display: "flex", alignItems: "center", gap: 4 }}>
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }}><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" /></svg>Save
                       </button>
+                      {rosterLocked && <button onClick={() => setShowLog(true)} aria-label="Battle log" title="Every hit this game" style={{ ...bs("#6B9BF7"), fontSize: 11, padding: mobile ? "5px 8px" : "2px 7px", display: "flex", alignItems: "center", gap: 4 }}><Icon name="log" size={12} />Log</button>}
                       <div style={{ position: "relative" }}>
                         <button onClick={() => setCardsMenu(!cardsMenu)} aria-label="More roster options" aria-expanded={cardsMenu} style={{ ...bs("#9AA5B1"), fontSize: 16, lineHeight: 1, padding: mobile ? "6px 10px" : "2px 8px" }}>{"\u22EF"}</button>
                         {cardsMenu && (
@@ -9531,7 +9591,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                   return aAlive - bAlive;
                 }).map(op => {
                   const result = getEquipForOp(op);
-                  return (<Datacard key={op.id} op={op} f={f} fc={f.color} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getWounds(op.id, op.wounds)} onWound={(delta) => setOpWounds(op.id, op.wounds, delta)} collapsed={cardCollapsed[op.id] || false} onToggle={() => toggleCardCollapse(op.id)} ignoreInjured={result.ignoreInjured} cp={cp} setCp={setCp} isActivated={activated[op.id] || false} onActivate={() => setActivated(prev => ({ ...prev, [op.id]: !prev[op.id] }))} requestDamageApply={(a, done, meta) => requestDamageApply(a, "mine", done, meta)} applySelfDamage={(amount) => { setOpWounds(op.id, op.wounds, -amount); showToast(op.name + " took " + amount + " self-dmg"); }} order={orders[op.id] || "conceal"} onOrder={() => setOrders(prev => ({ ...prev, [op.id]: prev[op.id] === "engage" ? "conceal" : "engage" }))} uses={feat.uses ? battleUses : null} setUse={(k, n) => setBattleUses(prev => ({ ...prev, [k]: n }))} carried={carried[op.id]} onCarried={(list) => setCarried(prev => ({ ...prev, [op.id]: list }))} />);
+                  return (<Datacard key={op.id} op={op} f={f} fc={f.color} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getWounds(op.id, op.wounds)} onWound={(delta) => { logMine(op, delta, "hand"); setOpWounds(op.id, op.wounds, delta); }} collapsed={cardCollapsed[op.id] || false} onToggle={() => toggleCardCollapse(op.id)} ignoreInjured={result.ignoreInjured} cp={cp} setCp={setCp} isActivated={activated[op.id] || false} onActivate={() => setActivated(prev => ({ ...prev, [op.id]: !prev[op.id] }))} requestDamageApply={(a, done, meta) => requestDamageApply(a, "mine", done, meta)} applySelfDamage={(amount) => { logMine(op, -amount, "self"); setOpWounds(op.id, op.wounds, -amount); showToast(op.name + " took " + amount + " self-dmg"); }} order={orders[op.id] || "conceal"} onOrder={() => setOrders(prev => ({ ...prev, [op.id]: prev[op.id] === "engage" ? "conceal" : "engage" }))} uses={feat.uses ? battleUses : null} setUse={(k, n) => setBattleUses(prev => ({ ...prev, [k]: n }))} carried={carried[op.id]} onCarried={(list) => setCarried(prev => ({ ...prev, [op.id]: list }))} />);
                 })}
 
               </div>
@@ -9559,7 +9619,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                     {oppRoster.operatives.map(op => {
                       const result = oppEquip(op);
                       const oCollapsed = oppCollapsed[op.id] || false;
-                      return (<Datacard key={"opp-" + op.id} narrow op={op} f={oppF} fc={oppF ? oppF.color : "#9AA5B1"} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getOppWounds(op.id, op.wounds)} onWound={(delta) => { if (mp && mp.status === "connected" && delta < 0) { mp.send({ type: "applyRemoteDamage", opId: op.id, amount: -delta }); } else if (mp && mp.status === "connected" && delta > 0) { mp.send({ type: "applyRemoteHeal", opId: op.id, amount: delta }); } else { setOppWound(op.id, op.wounds, delta); if (delta) mp.sendOrQueue({ type: delta < 0 ? "applyRemoteDamage" : "applyRemoteHeal", opId: op.id, amount: Math.abs(delta) }); } }} collapsed={oCollapsed} onToggle={() => setOppCollapsed(prev => ({ ...prev, [op.id]: !oCollapsed }))} ignoreInjured={result.ignoreInjured} cp={0} setCp={() => {}} requestDamageApply={(a, done, meta) => requestDamageApply(a, "opp", done, meta)} applySelfDamage={(amount) => { if (mp && mp.status === "connected") { mp.send({ type: "applyRemoteDamage", opId: op.id, amount }); showToast(op.name + " took " + amount + " self-dmg (sent)"); } else { setOppWound(op.id, op.wounds, -amount); mp.sendOrQueue({ type: "applyRemoteDamage", opId: op.id, amount }); showToast(op.name + " took " + amount + " self-dmg"); } }} />);
+                      return (<Datacard key={"opp-" + op.id} narrow op={op} f={oppF} fc={oppF ? oppF.color : "#9AA5B1"} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getOppWounds(op.id, op.wounds)} onWound={(delta) => { logOpp(op, delta, "hand"); if (mp && mp.status === "connected" && delta < 0) { mp.send({ type: "applyRemoteDamage", opId: op.id, amount: -delta }); } else if (mp && mp.status === "connected" && delta > 0) { mp.send({ type: "applyRemoteHeal", opId: op.id, amount: delta }); } else { setOppWound(op.id, op.wounds, delta); if (delta) mp.sendOrQueue({ type: delta < 0 ? "applyRemoteDamage" : "applyRemoteHeal", opId: op.id, amount: Math.abs(delta) }); } }} collapsed={oCollapsed} onToggle={() => setOppCollapsed(prev => ({ ...prev, [op.id]: !oCollapsed }))} ignoreInjured={result.ignoreInjured} cp={0} setCp={() => {}} requestDamageApply={(a, done, meta) => requestDamageApply(a, "opp", done, meta)} applySelfDamage={(amount) => { logOpp(op, -amount, "self"); if (mp && mp.status === "connected") { mp.send({ type: "applyRemoteDamage", opId: op.id, amount }); showToast(op.name + " took " + amount + " self-dmg (sent)"); } else { setOppWound(op.id, op.wounds, -amount); mp.sendOrQueue({ type: "applyRemoteDamage", opId: op.id, amount }); showToast(op.name + " took " + amount + " self-dmg"); } }} />);
                     })}
                   </div>
                 </div>
@@ -9619,7 +9679,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                       {oppRoster.operatives.map(op => {
                         const result = oppEquip(op);
                         const oCollapsed = oppCollapsed[op.id] || false;
-                        return (<Datacard key={"opp-m-" + op.id} op={op} f={oppF} fc={oppF ? oppF.color : "#9AA5B1"} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getOppWounds(op.id, op.wounds)} onWound={(delta) => { if (mp && mp.status === "connected" && delta < 0) { mp.send({ type: "applyRemoteDamage", opId: op.id, amount: -delta }); } else if (mp && mp.status === "connected" && delta > 0) { mp.send({ type: "applyRemoteHeal", opId: op.id, amount: delta }); } else { setOppWound(op.id, op.wounds, delta); if (delta) mp.sendOrQueue({ type: delta < 0 ? "applyRemoteDamage" : "applyRemoteHeal", opId: op.id, amount: Math.abs(delta) }); } }} collapsed={oCollapsed} onToggle={() => setOppCollapsed(prev => ({ ...prev, [op.id]: !oCollapsed }))} ignoreInjured={result.ignoreInjured} cp={0} setCp={() => {}} requestDamageApply={(a, done, meta) => requestDamageApply(a, "opp", done, meta)} applySelfDamage={(amount) => { if (mp && mp.status === "connected") { mp.send({ type: "applyRemoteDamage", opId: op.id, amount }); showToast(op.name + " took " + amount + " self-dmg (sent)"); } else { setOppWound(op.id, op.wounds, -amount); mp.sendOrQueue({ type: "applyRemoteDamage", opId: op.id, amount }); showToast(op.name + " took " + amount + " self-dmg"); } }} />);
+                        return (<Datacard key={"opp-m-" + op.id} op={op} f={oppF} fc={oppF ? oppF.color : "#9AA5B1"} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getOppWounds(op.id, op.wounds)} onWound={(delta) => { logOpp(op, delta, "hand"); if (mp && mp.status === "connected" && delta < 0) { mp.send({ type: "applyRemoteDamage", opId: op.id, amount: -delta }); } else if (mp && mp.status === "connected" && delta > 0) { mp.send({ type: "applyRemoteHeal", opId: op.id, amount: delta }); } else { setOppWound(op.id, op.wounds, delta); if (delta) mp.sendOrQueue({ type: delta < 0 ? "applyRemoteDamage" : "applyRemoteHeal", opId: op.id, amount: Math.abs(delta) }); } }} collapsed={oCollapsed} onToggle={() => setOppCollapsed(prev => ({ ...prev, [op.id]: !oCollapsed }))} ignoreInjured={result.ignoreInjured} cp={0} setCp={() => {}} requestDamageApply={(a, done, meta) => requestDamageApply(a, "opp", done, meta)} applySelfDamage={(amount) => { logOpp(op, -amount, "self"); if (mp && mp.status === "connected") { mp.send({ type: "applyRemoteDamage", opId: op.id, amount }); showToast(op.name + " took " + amount + " self-dmg (sent)"); } else { setOppWound(op.id, op.wounds, -amount); mp.sendOrQueue({ type: "applyRemoteDamage", opId: op.id, amount }); showToast(op.name + " took " + amount + " self-dmg"); } }} />);
                       })}
                     </div>
                   )}
@@ -16260,8 +16320,8 @@ function CampaignCard({ c, setC, mobile, f, showToast, playing }) {
 // Parts of the app a player can switch on or off. "Learning" and "I know the game" set them all at once;
 // any switch can be changed after. Switching something off only hides it: nothing saved is lost.
 const FEATURE_PRESETS = {
-  learning: { guide: true, labels: true, tips: true, dice: true, uses: false, scoring: false, missions: false, campaign: false, online: true },
-  expert: { guide: false, labels: false, tips: true, dice: true, uses: true, scoring: true, missions: true, campaign: true, online: true },
+  learning: { guide: true, labels: true, tips: true, dice: true, fx: true, uses: false, scoring: false, missions: false, campaign: false, online: true },
+  expert: { guide: false, labels: false, tips: true, dice: true, fx: true, uses: true, scoring: true, missions: true, campaign: true, online: true },
 };
 const FEATURE_MODE_NAMES = { learning: "Learning", expert: "I know the game", custom: "Custom" };
 const FEATURE_GROUPS = [
@@ -16270,6 +16330,7 @@ const FEATURE_GROUPS = [
     { k: "labels", name: "Learning help", desc: "Labels on closed datacards, a dotted underline under words you can tap for an explanation, and an ⓘ next to the Ready and order buttons." },
     { k: "tips", name: "Rule tips", desc: "Tap a bold orange word, or hover over it on a computer, to see what it means in one sentence, with a link to the full rule." },
     { k: "dice", name: "Dice roller", desc: "A Roll button on every weapon. It rolls the attack and defence dice and works out the damage." },
+    { k: "fx", name: "Attack animations", desc: "Shots, slashes and blasts on the target screen when you apply damage from the dice roller. With it off, the damage goes on and the screen closes straight away." },
     { k: "uses", name: "Use tracking", desc: "Tick boxes for once-per-battle abilities and ploys, limited weapons and grenades, so you know what's been used." },
   ] },
   { title: "Scoring", items: [
@@ -16758,10 +16819,15 @@ async function runSelfTest(hooks) {
     for (let i = 0; i < 50 && /WHO TOOK THE DAMAGE\?/.test(text()); i++) await new Promise(r => setTimeout(r, 50));
     if (/WHO TOOK THE DAMAGE\?/.test(text())) throw new Error("the target list didn't close after the attack");
     if (!/took \d+ damage/.test(text())) throw new Error("no message that the damage was applied");
+    const targetName = target.textContent.trim().replace(/\d+\/\d+$/, "").trim();
     if (all("button").some(b => /^Apply \d+ to target/.test(b.textContent.trim()))) throw new Error("the same roll can still be applied again");
     if (!all("button").some(b => /^Applied to /.test(b.textContent.trim()) && b.disabled)) throw new Error("the roller doesn't say who the damage went to");
+    await click(all("[aria-label='Battle log']")[0], "Log button");
+    const logBox = all("[role=dialog][aria-label='Battle log']")[0];
+    if (!logBox || !logBox.innerText.includes(targetName) || !/ hit .* with .*: \d+ damage/.test(logBox.innerText)) throw new Error("the battle log doesn't show the hit on " + targetName);
+    await click([...logBox.querySelectorAll("button")].find(b => /Close/.test(b.textContent)), "close the log");
     const closeRoll = all("[aria-label='Close dice roller']")[0]; if (closeRoll) await click(closeRoll, "close dice roller");
-    return "own weapon: opponent first, tell-them note with Import, own operatives on request (" + cur + " wounds before), one apply per roll, attacker card";
+    return "own weapon: opponent first, tell-them note with Import, own operatives on request (" + cur + " wounds before), one apply per roll, attacker card, battle log";
   });
 
   // Put everything back the way it was, and stop the app saving its test state over it until reload.
