@@ -6901,7 +6901,7 @@ const ICON_PATHS = {
   reset: <><path d="M4 5v5h5" /><path d="M5.3 14.5A7.5 7.5 0 1 0 7 7.2L4 10" /></>,
   edit: <><path d="M4 20h4L19 9l-4-4L4 16z" /><path d="M13.5 6.5l4 4" /></>,
   info: <><circle cx="12" cy="12" r="9" /><path d="M12 11v6" /><circle cx="12" cy="7.5" r="0.6" fill="currentColor" /></>,
-  sliders: <><path d="M4 7h9M17 7h3M4 17h3M11 17h9" /><circle cx="15" cy="7" r="2" /><circle cx="9" cy="17" r="2" /></>,
+  cog: <><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" /></>,
   log: <><path d="M9 6h11M9 12h11M9 18h11" /><circle cx="4.5" cy="6" r="1" fill="currentColor" /><circle cx="4.5" cy="12" r="1" fill="currentColor" /><circle cx="4.5" cy="18" r="1" fill="currentColor" /></>,
 };
 function Icon({ name, size = 14, color, style }) {
@@ -7941,8 +7941,8 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
             Use these settings
           </button>
         </div>
-        <FeatureHint k="missions" text="Mission packs are switched off." style={{ textAlign: "center", marginTop: 10 }} />
-        <FeatureHint k="scoring" text="Tac ops are part of detailed scoring, which is switched off." style={{ textAlign: "center", marginTop: 4 }} />
+        <FeatureHint k="missions" text="Optional extra: mission packs add free missions with their own maps and rules." style={{ textAlign: "center", marginTop: 10 }} />
+        <FeatureHint k="scoring" text="Tac ops come with detailed scoring, an optional extra." style={{ textAlign: "center", marginTop: 4 }} />
         <div style={{ ...mu, fontSize: 13, textAlign: "center", marginTop: 10 }}>Roster validation, mission packs and the other switches are in <button className="link-btn" onClick={openFeatures} style={{ background: "none", border: "none", padding: 0, color: "#C9772E", cursor: "pointer", fontSize: 13, textDecoration: "underline" }}>Settings</button>.</div>
         {gameConfig && (
           <div style={{ textAlign: "center", marginTop: 10 }}>
@@ -9142,7 +9142,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
               </div>
             )}
             <div style={{ fontSize: 12, color: "#9AA5B1", marginBottom: 4 }}>{hasInitiative ? "You gain 1CP next turning point." : "You gain 2CP next turning point."}</div>
-            {!detailScoring && <FeatureHint k="scoring" text="Detailed scoring is switched off." style={{ fontSize: 12 }} />}
+            {!detailScoring && <FeatureHint k="scoring" text="Optional extra: detailed scoring tracks kill ops, crit ops and tac ops." style={{ fontSize: 12 }} />}
             {/* Scoring panel */}
             {showScoring && detailScoring && (
               <div style={{ marginTop: 6, paddingTop: 4 }}>
@@ -9375,7 +9375,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                 <div style={{ fontSize: 11, fontWeight: 700, color: cp > 0 ? "#C9772E" : "#B8341C", fontFamily: "'Rajdhani', sans-serif" }}>{cp}CP {"\u2022"} TP{tp}</div>
               </div>
               <div style={dv} />
-              {([...f.ploys.strategy, ...f.ploys.firefight].some(p => isOncePerBattle(p.desc)) || roster.some(op => op.abilities.some(isOncePerBattle) || [...op.ranged, ...op.melee].some(w => limitedMax(w.wr)))) && <FeatureHint k="uses" text="Some of your team's rules can only be used once per battle, or a set number of times. Use tracking, which ticks them off, is switched off." style={{ fontSize: 12, marginBottom: 6 }} />}
+              {([...f.ploys.strategy, ...f.ploys.firefight].some(p => isOncePerBattle(p.desc)) || roster.some(op => op.abilities.some(isOncePerBattle) || [...op.ranged, ...op.melee].some(w => limitedMax(w.wr)))) && <FeatureHint k="uses" text="Some of your team's rules can only be used once per battle, or a set number of times. Use tracking, an optional extra, ticks them off." style={{ fontSize: 12, marginBottom: 6 }} />}
               <div style={{ fontSize: 11, fontWeight: 700, color: "#C9772E", marginBottom: 4, letterSpacing: "0.1em", fontFamily: "'Rajdhani', sans-serif" }}>STRATEGY (1CP)</div>
               {f.ploys.strategy.map((p, i) => {
                 const used = isPloyUsed("strategy", i);
@@ -15275,22 +15275,25 @@ function Missions({ campaign, startCampaign }) {
   );
   const heading = <div style={{ fontSize: 22, fontWeight: 700, color: "#C9772E", fontFamily: "'Rajdhani', sans-serif", marginBottom: 4, letterSpacing: "0.04em" }}>Missions</div>;
 
-  // Switched off: say what mission packs are, and offer to turn them on.
+  // Not added yet: present mission packs as an optional extra, say what they are and how to add them.
   if (!feat.missions) return (
     <div style={{ maxWidth: 900, margin: "0 auto", padding: "20px 16px" }}>
       {heading}
       <div style={{ ...cd, padding: 14, borderLeft: "3px solid #C9772E", marginTop: 10 }}>
-        <div style={{ fontSize: 17, fontWeight: 700, color: "#F1F2F5", fontFamily: "'Rajdhani', sans-serif" }}>Mission packs are switched off for now</div>
-        <div style={{ ...mu, fontSize: 14, marginTop: 4 }}>A standard game doesn't need them, so they're off while you learn the basics. Switch them on whenever you're ready.</div>
-        {[["What it is", FEATURE_EXPLAIN.missions.what], ["What you need", FEATURE_EXPLAIN.missions.need], ["How it changes your game", FEATURE_EXPLAIN.missions.changes]].map(([h, t]) => (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <div style={{ fontSize: 17, fontWeight: 700, color: "#F1F2F5", fontFamily: "'Rajdhani', sans-serif" }}>Mission packs</div>
+          <span style={bg("#C9772E")}>Optional extra</span>
+        </div>
+        <div style={{ ...mu, fontSize: 14, marginTop: 4 }}>When you want more than a standard game, try a mission. You don't need one to play.</div>
+        {[["What they are", FEATURE_EXPLAIN.missions.what], ["What you need", FEATURE_EXPLAIN.missions.need], ["How they change your game", FEATURE_EXPLAIN.missions.changes], ["How to start", "Tap Add mission packs, then pick a pack and a mission. You can remove them again in Settings (the cog at the top)."]].map(([h, t]) => (
           <p key={h} style={{ ...mu, fontSize: 14, margin: "8px 0 0" }}><strong style={{ color: "#F1F2F5" }}>{h}:</strong> {t}</p>
         ))}
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
-          <button onClick={() => setFeat("missions", true)} style={{ ...bs("#C9772E"), background: "#C9772E14", padding: "10px 16px", fontSize: 14 }}>Turn on mission packs</button>
-          <button onClick={openFeatures} style={{ ...bs("#9AA5B1"), padding: "10px 16px", fontSize: 14 }}>All switches</button>
+          <button onClick={() => setFeat("missions", true)} style={{ ...bs("#C9772E"), background: "#C9772E14", padding: "10px 16px", fontSize: 14 }}>Add mission packs</button>
+          <button onClick={openFeatures} style={{ ...bs("#9AA5B1"), padding: "10px 16px", fontSize: 14 }}>See all extras</button>
         </div>
       </div>
-      {campaignCard || <FeatureHint k="campaign" text="The Ctesiphus Expedition campaign is switched off." style={{ marginTop: 12 }} />}
+      {campaignCard || <FeatureHint k="campaign" text="Another extra: the Ctesiphus Expedition campaign links your games on a hex map." style={{ marginTop: 12 }} />}
     </div>
   );
 
@@ -15303,7 +15306,7 @@ function Missions({ campaign, startCampaign }) {
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "12px 0" }}>
             {filters.map(f => <button key={f} onClick={() => setFilter(f)} style={{ ...bs(filter === f ? "#C9772E" : "#9AA5B1"), background: filter === f ? "#C9772E20" : "transparent", padding: "7px 12px", fontSize: 12 }}>{f}</button>)}
           </div>
-          {campaignCard || <FeatureHint k="campaign" text="The Ctesiphus Expedition campaign is switched off." style={{ margin: "0 0 12px" }} />}
+          {campaignCard || <FeatureHint k="campaign" text="Optional extra: the Ctesiphus Expedition campaign links your games on a hex map." style={{ margin: "0 0 12px" }} />}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 10 }}>
             {shown.map(p => (
               <div key={p.id} role="button" tabIndex={0} onClick={() => go(p.id, null)} style={{ ...cd, padding: 14, marginBottom: 0, cursor: "pointer", minWidth: 0 }}>
@@ -16614,7 +16617,7 @@ function ModeChoice({ mode, onPick, full }) {
   };
   return (
     <div>
-      {opt("learning", "I'm learning", "Start with your team, datacards, points and a step-by-step guide for each turning point.", "Switched off for now: detailed scoring, mission packs, the campaign and use tracking. Turn any of them on later in Settings, at the top of the screen.")}
+      {opt("learning", "I'm learning", "Start with your team, datacards, points and a step-by-step guide for each turning point.", "Extras you can add later: detailed scoring, mission packs, the campaign and use tracking. They're in Settings, the cog at the top.")}
       {opt("expert", "I know the game", "Everything switched on.", "Turn anything off later from the same place.")}
     </div>
   );
@@ -16657,7 +16660,6 @@ function FeaturesPage({ onClose, focus }) {
         <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 16, fontWeight: 700, color: "#F1F2F5", fontFamily: "'Rajdhani', sans-serif" }}>{name}</div>
-            {!on && <div style={{ fontSize: 12, color: "#C9772E", fontWeight: 600, marginTop: 1 }}>Switched off for now</div>}
             <div style={{ fontSize: 13, color: "#C8CDD3", lineHeight: 1.45, marginTop: 2 }}>{desc}</div>
             {ex && <button className="link-btn" aria-expanded={!!explain[key]} onClick={() => setExplain(x => ({ ...x, [key]: !x[key] }))} style={{ background: "none", border: "none", padding: 0, marginTop: 4, cursor: "pointer", color: "#C9772E", fontSize: 13, fontWeight: 600, textDecoration: "underline" }}>{explain[key] ? "Hide" : "What is this?"}</button>}
           </div>
@@ -16753,7 +16755,8 @@ async function runSelfTest(hooks) {
     const f = store("features") || {};
     if (featureMode(f) !== "learning") throw new Error("Learning wasn't saved: " + JSON.stringify(f));
     await nav("Missions");
-    if (!btn("Turn on mission packs")) throw new Error("the Missions tab doesn't say mission packs are off");
+    if (!btn("Add mission packs")) throw new Error("the Missions tab doesn't offer mission packs as an extra");
+    if (/switched off/i.test(document.body.innerText)) throw new Error("the Missions tab still says something is switched off");
     await click(all("button").find(b => b.textContent.trim() === "What is it?"), "campaign hint");
     const hinted = document.querySelector("[role=dialog][aria-label='Settings']");
     if (!hinted || !/What you need/.test((document.getElementById("feat-campaign") || {}).textContent || "")) throw new Error("the campaign hint didn't open its explainer");
@@ -16762,8 +16765,9 @@ async function runSelfTest(hooks) {
     await click(document.querySelector("[aria-label='Game menu']"), "game menu");
     if (!btn("Play online")) throw new Error("Play online doesn't show for a learning player");
     await click(document.querySelector("[aria-label='Game menu']"), "game menu (close)");
-    for (const t of ["Rules", "Missions", "Community", "Battle"]) { await nav(t); if (![...document.querySelectorAll("nav button")].some(b => b.textContent.trim() === "Settings" && vis(b))) throw new Error("Settings isn't in the top bar on " + t); }
-    await nav("Settings");
+    const cog = () => all("button[aria-label='Settings']")[0];
+    for (const t of ["Rules", "Missions", "Community", "Battle"]) { await nav(t); if (!cog()) throw new Error("the Settings cog doesn't show on " + t); }
+    await click(cog(), "Settings cog");
     const page = document.querySelector("[role=dialog][aria-label='Settings']");
     if (!page) throw new Error("the Settings page didn't open");
     const what = [...document.getElementById("feat-scoring").querySelectorAll("button")].find(b => b.textContent === "What is this?");
@@ -17133,6 +17137,7 @@ function App() {
   // Play online joined the Learning preset (Oct 2026): saved Learning switches pick it up instead of turning Custom.
   React.useEffect(() => { if (features && features.online === false && featureMode({ ...features, online: true }) === "learning") setFeatures(prev => ({ ...prev, online: true })); }, []);
   const [showFeatures, setShowFeatures] = useState(false);
+  const cogButton = <button onClick={() => setShowFeatures(true)} aria-label="Settings" title="Settings" aria-haspopup="dialog" style={{ width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", borderRadius: 6, cursor: "pointer", color: showFeatures ? "#C9772E" : "#9AA5B1" }}><Icon name="cog" size={20} /></button>;
   const feat = { ...FEATURE_PRESETS[features ? presetOf(features) : returning ? "expert" : "learning"], ...(features || {}) };
   const [ruleSearch, setRuleSearch] = useState(null);
   const featureCtx = {
@@ -17204,10 +17209,11 @@ function App() {
         </div>
       )}
 
-      {/* HEADER: phones show the logo above the tabs; desktop puts it inside the tab bar */}
+      {/* HEADER: phones show the logo above the tabs; desktop puts it inside the tab bar. The cog (Settings) sits top right on both. */}
       {mobile && (
-        <div style={{ padding: "10px 12px", background: "#1A1D24", borderBottom: "1px solid #3A4150" }}>
+        <div style={{ padding: "10px 12px", background: "#1A1D24", borderBottom: "1px solid #3A4150", position: "relative" }}>
           <div style={{ display: "flex", justifyContent: "center" }}><Logo size={20} /></div>
+          <div style={{ position: "absolute", right: 4, top: 0, bottom: 0, display: "flex", alignItems: "center" }}>{cogButton}</div>
         </div>
       )}
 
@@ -17233,17 +17239,7 @@ function App() {
             {label}
           </button>
         ))}
-        {/* Settings opens over any tab, so it sits apart from the tabs */}
-        <button onClick={() => setShowFeatures(true)} aria-haspopup="dialog" style={{
-          flex: "0 0 auto", padding: mobile ? "10px 10px" : "16px 18px", border: "none", borderLeft: "1px solid #3A4150", cursor: "pointer",
-          display: "flex", flexDirection: mobile ? "column" : "row", alignItems: "center", justifyContent: "center", gap: mobile ? 3 : 6,
-          fontSize: mobile ? 11 : 13, fontWeight: 600, letterSpacing: mobile ? "0.04em" : "0.08em", textTransform: "uppercase",
-          fontFamily: "'Rajdhani', 'Segoe UI', sans-serif", background: showFeatures ? "#262A33" : "transparent",
-          color: showFeatures ? "#C9772E" : "#9AA5B1", borderBottom: "2px solid transparent", transition: "all 0.15s"
-        }}>
-          <Icon name="sliders" size={18} />
-          Settings
-        </button>
+        {!mobile && <div style={{ display: "flex", alignItems: "center", padding: "0 10px", borderLeft: "1px solid #3A4150", flexShrink: 0 }}>{cogButton}</div>}
       </nav>
 
       {/* CONTENT: all tabs stay mounted, hidden with display:none to preserve state */}
