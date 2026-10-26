@@ -283,11 +283,11 @@ Estimated 2-3 hours. Should be its own focused session with its own QA pass (mix
 ### Lower-priority backlog
 - **Shock animation.** Shock is a melee weapon rule (74 weapons). When the attacker's weapon has Shock, add a zigzag of lightning across the target row after the slash. Add it as a branch in `playAttackFx` (pass Shock in through `attackKind` or the `meta` from `Datacard`'s `damageFrom`). Plain shapes only, like the other effects; respect the Attack animations switch (`feat.fx`).
 - **Hot animation.** When a Hot weapon's roll hurts its own user (the dice roller's `hotRoll` check, where `selfDmg` comes from), flash the attacker's datacard red and shake it once as the self-damage goes on. Same rules: plain shapes, off when `feat.fx` is off or reduced motion is set.
+- **Themes / colour palettes in Settings (owner, Oct 25).** Let players pick a look in Settings, for example the current dark orange, a light theme for daylight tables, a high-contrast option, and a few accent colours. Groundwork first: the ~1,360 colours are hard-coded hex values in inline styles (the `DS` object isn't used everywhere), so move them to CSS variables (`var(--accent)` etc.) set on `:root`, then a theme is a set of variable values. Keep team colours (`FACTIONS[...].color`) and dice result colours (crit gold, hit green, miss red) readable in every theme; check contrast. Save the choice with the other settings, and include it in Back up. Not a beginner/expert extra: show it to everyone.
 - **Maybe: leaderboard and friends (needs logins first).** Once the Community backend has sign-in, add a Community leaderboard built from game history (`ks_gameHistory`: wins, losses, draws, per team and overall), plus adding friends to compare records and a friends-only board. Depends on accounts and on syncing history to the server. Owner flagged this as a maybe; confirm before building.
 - More factions: see convention 11. Add `tools/teams/<team>.py`, list it in `ORDER.txt`, run the build, then `python3 tools/check.py` and build a full roster in the preview.
 - Tac op conditions in the scoring panel, if a free source ever covers them (they're on the paid Approved Ops cards).
 - Make killzone rules functional (currently cosmetic).
-- Multiplayer reconnect path.
 - Verify mp.send() under heavy load (race conditions / double-fires).
 
 ---
