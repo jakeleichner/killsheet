@@ -154,9 +154,9 @@ const CORE_CONCEPTS = [
     "Dmg: two numbers, normal/critical. 3/4 means 3 damage for each normal success and 4 for each critical success.",
     "Weapon rules change how the attack works. See Combat, Weapon rules.",
   ] },
-  { name: "Orders", summary: "Every operative has an Engage or Conceal order. You choose it each time the operative activates.", detail: [
-    "Engage: acts normally and can counteract.",
-    "Conceal: can't be targeted while in cover, but can't Shoot or Charge.",
+  { name: "Orders", visual: "orders", summary: "Every operative has an Engage or Conceal order. You choose it each time the operative activates.", detail: [
+    "Engage: can Shoot, Charge and counteract. Enemies can target it whenever it's visible.",
+    "Conceal: can't Shoot, Charge or counteract. Enemies can't target it while it's in cover. It can still move, Dash, fight in melee and pick up markers.",
     "The order token has a ready side and an expended side, so it also shows whether the operative has activated this turning point.",
   ] },
   { name: "Dice", summary: "Kill Team uses six-sided dice (D6). A 6 is always a critical success. A 1 always fails.", detail: [
@@ -9788,7 +9788,7 @@ const VISIBILITY_RULES = [
     "An operative is always visible to itself.",
   ] },
   { name: "Intervening", summary: "Terrain between two operatives is intervening.", detail: "When it's unclear, use targeting lines: imaginary 1mm lines from any point of the operative's base to every facing part of the target's base. Terrain that any line crosses is intervening. Terrain that every line crosses is wholly intervening." },
-  { name: "Cover", summary: "An operative is in cover if there's intervening terrain within its control range. It can't be in cover while within 2\" of the other operative.", detail: [
+  { name: "Cover", visual: "orders", summary: "An operative is in cover if there's intervening terrain within its control range. It can't be in cover while within 2\" of the other operative.", detail: [
     "Conceal order: an operative in cover isn't a valid target.",
     "Cover save: when shot while in cover, the defender keeps one defence die as a normal success without rolling it.",
     "An operative can't be in cover from and obscured by the same terrain feature. The defender picks one.",
@@ -9867,8 +9867,8 @@ const GLOSSARY = [
   { term: "Wounded", def: "Below starting wounds but not yet injured." },
   { term: "Expended", def: "An operative that has been activated this TP. Cannot activate again." },
   { term: "Ready", def: "An operative that hasn't been activated yet this TP." },
-  { term: "Engage", def: "Order allowing Shoot/Charge and counteracting. Can be targeted if visible." },
-  { term: "Conceal", def: "Order preventing Shoot/Charge. Not a valid target while in cover." },
+  { term: "Engage", def: "Order for attacking. It can Shoot, Charge and counteract. Enemies can target it whenever it's visible." },
+  { term: "Conceal", def: "Order for hiding. It can't Shoot, Charge or counteract. Enemies can't target it while it's in cover." },
   { term: "Counteract", def: "When all yours are expended, one expended Engage operative performs a free 1AP action (max 2\" move). Each operative once per TP." },
   { term: "Ploy", def: "Spend CP for bonus rules. Strategy ploys in Strategy phase, Firefight ploys in Firefight phase. 1CP each." },
   { term: "Strategic Gambit", def: "Used in Gambit step of Strategy phase. All strategy ploys are Strategic Gambits. Each used once/TP max." },
@@ -14742,6 +14742,7 @@ function RuleItem({ item, open, onToggle }) {
       {item.steps && <StepList items={item.steps} />}
       {more && open && (
         <div style={{ marginTop: 8, paddingLeft: 10, borderLeft: "2px solid #C9772E40" }}>
+          {item.visual === "orders" && <OrderGrid />}
           {lines.map((l, i) => <div key={i} style={{ ...mu, color: "#C8CDD3", marginBottom: 4 }}>{lines.length > 1 ? "• " : ""}<RefText text={l} self={item.name} /></div>)}
           {item.stats && (
             <div onClick={e => e.stopPropagation()} style={{ background: "#0E0F13", borderRadius: 5, padding: "8px 10px", marginTop: 6, border: "1px solid #262A33", cursor: "default" }}>
@@ -15386,19 +15387,113 @@ const TUT_UNITS = {
   boy: { name: "Kommando Boy", side: "opp", apl: 2, move: "6\"", save: "5+", wounds: 10, weapon: "Choppa 4 · 3+ · 4/5" },
 };
 const TUT_STEPS = [
-  ["Setup", "Welcome"], ["Strategy", "Initiative"], ["Strategy", "Strategy phase"], ["Firefight", "Your activation"],
-  ["Firefight", "Shoot: attack dice"], ["Firefight", "Shoot: defence dice"], ["Firefight", "Enemy activation"],
-  ["Firefight", "Fight: roll"], ["Firefight", "Fight: strike or block"], ["Firefight", "Finishing the turning point"], ["Setup", "Done"],
+  ["Intro", "How a battle works"], ["Strategy", "Initiative"], ["Strategy", "Command points and ploys"], ["Firefight", "Orders: Engage or Conceal"],
+  ["Firefight", "Your activation"], ["Firefight", "Shoot: attack dice"], ["Firefight", "Shoot: defence dice"], ["Firefight", "The enemy's turn"],
+  ["Firefight", "Fight: both roll"], ["Firefight", "Fight: strike or block"], ["Firefight", "End of the turning point"], ["Intro", "Done"],
 ];
-const TUT_PHASE_COLOR = { Setup: "#9AA5B1", Strategy: "#C9772E", Firefight: "#D0573A" };
+const TUT_PHASE_COLOR = { Intro: "#9AA5B1", Strategy: "#C9772E", Firefight: "#D0573A" };
 
-// Defender's best use of saves against attack successes (normal dmg n, crit dmg c).
+// Defender's best use of saves against attack successes (normal dmg n, crit dmg c). Tries every split, like damageThrough.
 function tutBlock(crits, normals, critSaves, normSaves, n, c) {
-  const use1 = Math.min(critSaves, crits); crits -= use1; critSaves -= use1;            // crit saves on crits
-  const use2 = Math.min(normSaves, normals); normals -= use2; normSaves -= use2;        // normal saves on normals
-  const use3 = Math.min(critSaves, normals); normals -= use3; critSaves -= use3;        // spare crit saves on normals
-  const pairs = Math.min(Math.floor(normSaves / 2), crits); crits -= pairs;             // two normal saves block a crit
-  return { crits, normals, damage: crits * c + normals * n };
+  let best = null;
+  for (let cc = 0; cc <= Math.min(critSaves, crits); cc++) {                       // crit saves on crits
+    for (let p = 0; p <= Math.min(crits - cc, Math.floor(normSaves / 2)); p++) {   // two normal saves per crit
+      const left = { crits: crits - cc - p, normals: Math.max(0, normals - (critSaves - cc) - (normSaves - 2 * p)) };
+      left.damage = left.crits * c + left.normals * n;
+      if (!best || left.damage < best.damage) best = left;
+    }
+  }
+  return best;
+}
+
+// Top-down map of the tutorial table. 10 units = 1 inch.
+const TUT_MAP = { sgtStart: [190, 114], sgtShoot: [248, 112], sgtHide: [222, 116], war: [95, 118], boy: [255, 40], nobStart: [95, 30], nobEnd: [95, 102] };
+const TUT_TERRAIN = [[150, 95, 90, 8], [30, 55, 40, 22], [200, 20, 22, 22]];
+const TUT_MAP_DESC = {
+  start: "your Sergeant is behind a wall and your Warrior is on the left. The Boss Nob and the Kommando Boy are across the table.",
+  move: "the Sergeant moves past the end of the wall, where he can see the Kommando Boy.",
+  shoot: "the Sergeant shoots the Kommando Boy.",
+  charge: "the Sergeant Dashes back behind the wall, and the Boss Nob charges your Warrior.",
+  fight: "the Boss Nob and your Warrior are in control range of each other.",
+};
+
+function TutMap({ scene, hp }) {
+  const M = TUT_MAP, Y = "#5A9C3A", E = "#D0573A";
+  const sgt = scene === "start" ? M.sgtStart : scene === "move" || scene === "shoot" ? M.sgtShoot : M.sgtHide;
+  const nob = scene === "charge" || scene === "fight" ? M.nobEnd : M.nobStart;
+  const los = scene === "move" || scene === "shoot";
+  const ring = scene === "charge" || scene === "fight";
+  const path = (a, b) => <line x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} stroke="#C8CDD3" strokeWidth="1.5" strokeDasharray="1.5 3" strokeLinecap="round" />;
+  const ghost = (p, col) => <circle cx={p[0]} cy={p[1]} r="7" fill="none" stroke={col} strokeWidth="1" strokeDasharray="2 2" opacity="0.6" />;
+  // Label above or below; "left" keeps it clear of the control range ring.
+  const op = (p, letter, label, col, w, above, left) => (
+    <g opacity={w <= 0 ? 0.4 : 1}>
+      <circle cx={p[0]} cy={p[1]} r="7" fill="#0E0F13" />
+      <circle cx={p[0]} cy={p[1]} r="7" fill={col + "40"} stroke={col} strokeWidth="2" />
+      <text x={p[0]} y={p[1] + 3} textAnchor="middle" fontSize="8" fontWeight="700" fill="#F1F2F5">{letter}</text>
+      {w <= 0 && <path d={`M${p[0] - 6} ${p[1] - 6}L${p[0] + 6} ${p[1] + 6}M${p[0] + 6} ${p[1] - 6}L${p[0] - 6} ${p[1] + 6}`} stroke="#B8341C" strokeWidth="2" />}
+      {left
+        ? <text x={p[0] - 21} y={p[1] + 3} textAnchor="end" fontSize="8" fill="#9AA5B1">{label}</text>
+        : <text x={p[0]} y={above ? p[1] - 11 : p[1] + 17} textAnchor="middle" fontSize="8" fill="#9AA5B1">{label}</text>}
+    </g>
+  );
+  const key = (mark, text) => <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><svg width="16" height="10" aria-hidden="true">{mark}</svg>{text}</span>;
+  return (
+    <div style={{ marginBottom: 12, maxWidth: 520 }}>
+      <svg viewBox="0 0 300 150" role="img" aria-label={"Map: " + TUT_MAP_DESC[scene]} style={{ display: "block", width: "100%", background: "#0E0F13", border: "1px solid #262A33", borderRadius: 6 }}>
+        {TUT_TERRAIN.map(([x, y, w, h], i) => <rect key={i} x={x} y={y} width={w} height={h} rx="1.5" fill="#3A4150" stroke="#5A6170" strokeWidth="1" />)}
+        {scene === "move" && <>{ghost(M.sgtStart, Y)}{path(M.sgtStart, M.sgtShoot)}</>}
+        {scene === "charge" && <>{ghost(M.sgtShoot, Y)}{path(M.sgtShoot, M.sgtHide)}{ghost(M.nobStart, E)}{path(M.nobStart, M.nobEnd)}</>}
+        {los && <line x1={M.sgtShoot[0]} y1={M.sgtShoot[1]} x2={M.boy[0]} y2={M.boy[1]} stroke="#FFB627" strokeWidth={scene === "shoot" ? 2 : 1.5} strokeDasharray="5 3" />}
+        {ring && <circle cx={M.war[0]} cy={M.war[1]} r="17" fill="none" stroke="#FFB627" strokeWidth="1" strokeDasharray="2 2" opacity="0.8" />}
+        {op(sgt, "S", "Sergeant", Y, hp.sgt, false)}
+        {op(M.war, "W", "Warrior", Y, hp.war, false, ring)}
+        {op(nob, "N", "Boss Nob", E, hp.nob, true, ring)}
+        {op(M.boy, "B", "Kommando Boy", E, hp.boy, true)}
+        <path d="M10 140v4h60v-4" fill="none" stroke="#8B95A1" strokeWidth="1" />
+        <text x="76" y="145" fontSize="8" fill="#8B95A1">6"</text>
+      </svg>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 12px", fontSize: 12, color: "#9AA5B1", marginTop: 6 }}>
+        {key(<circle cx="8" cy="5" r="4" fill={Y + "40"} stroke={Y} strokeWidth="1.5" />, "Yours")}
+        {key(<circle cx="8" cy="5" r="4" fill={E + "40"} stroke={E} strokeWidth="1.5" />, "Enemy")}
+        {key(<rect x="1" y="2" width="14" height="6" rx="1" fill="#3A4150" stroke="#5A6170" />, "Terrain")}
+        {(scene === "move" || scene === "charge") && key(<line x1="1" y1="5" x2="15" y2="5" stroke="#C8CDD3" strokeWidth="1.5" strokeDasharray="1.5 3" strokeLinecap="round" />, "Move")}
+        {los && key(<line x1="1" y1="5" x2="15" y2="5" stroke="#FFB627" strokeWidth="1.5" strokeDasharray="5 3" />, "Line of sight")}
+        {ring && key(<circle cx="8" cy="5" r="4" fill="none" stroke="#FFB627" strokeWidth="1" strokeDasharray="2 2" />, "Control range (1\")")}
+      </div>
+    </div>
+  );
+}
+
+// Engage vs Conceal, in the open vs in cover. Used by the tutorial and by Rules (Orders, Cover).
+function OrderGrid() {
+  const cell = (order, cover) => {
+    const col = order === "engage" ? "#C9772E" : "#6B9BF7";
+    const safe = order === "conceal" && cover;
+    return (
+      <div style={{ background: "#0E0F13", border: "1px solid " + (safe ? "#6B9BF7" : "#262A33"), borderRadius: 6, padding: "6px 6px 8px" }}>
+        <svg viewBox="0 0 120 36" aria-hidden="true" style={{ display: "block", width: "100%" }}>
+          <circle cx="10" cy="18" r="6" fill="#D0573A40" stroke="#D0573A" strokeWidth="1.5" />
+          {cover && <rect x="91" y="5" width="5" height="26" rx="1" fill="#3A4150" stroke="#5A6170" />}
+          {safe
+            ? <><line x1="17" y1="18" x2="84" y2="18" stroke="#8B95A1" strokeWidth="1.5" strokeDasharray="4 3" /><path d="M80 13l8 10M88 13l-8 10" stroke="#B8341C" strokeWidth="2" /></>
+            : <line x1="17" y1="18" x2="102" y2="18" stroke="#FFB627" strokeWidth="1.5" strokeDasharray="4 3" />}
+          <circle cx="109" cy="18" r="6" fill={col + "40"} stroke={col} strokeWidth="2" />
+        </svg>
+        <div style={{ fontSize: 12, fontWeight: 700, color: safe ? "#6B9BF7" : "#C8CDD3", textAlign: "center", marginTop: 4, lineHeight: 1.3 }}>{safe ? "Can't be shot" : cover ? "Can be shot, with a cover save" : "Can be shot"}</div>
+      </div>
+    );
+  };
+  const head = (t) => <div style={{ fontSize: 12, fontWeight: 700, color: "#9AA5B1", textAlign: "center", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.06em" }}>{t}</div>;
+  const rowHead = (t, col) => <div style={{ fontSize: 14, fontWeight: 700, color: col, fontFamily: "'Rajdhani', sans-serif", alignSelf: "center" }}>{t}</div>;
+  return (
+    <div role="img" aria-label="An Engage operative can be shot whenever it's visible. A Conceal operative can't be shot while it's in cover, but can be shot in the open." style={{ display: "grid", gridTemplateColumns: "58px 1fr 1fr", gap: 6, marginBottom: 12, maxWidth: 520 }}>
+      <div />{head("In the open")}{head("In cover")}
+      {rowHead("Engage", "#C9772E")}{cell("engage", false)}{cell("engage", true)}
+      {rowHead("Conceal", "#6B9BF7")}{cell("conceal", false)}{cell("conceal", true)}
+      <div /><div style={{ gridColumn: "span 2", fontSize: 12, color: "#9AA5B1" }}>Left: an enemy shooting. Right: your operative.</div>
+    </div>
+  );
 }
 
 function Tutorial({ onExit }) {
@@ -15440,6 +15535,7 @@ function Tutorial({ onExit }) {
       {dice.map((v, i) => <Die key={i} v={v} kind={v === 6 ? "crit" : v >= hit ? "hit" : "miss"} />)}
     </div>
   );
+  const chip = (text, col, off) => <span style={{ display: "inline-block", padding: "4px 10px", borderRadius: 6, marginRight: 6, marginBottom: 6, border: "1px solid " + (off ? "#3A4150" : col), color: off ? "#8B95A1" : col, textDecoration: off ? "line-through" : "none", fontSize: 13, fontWeight: 700 }}>{text}</span>;
   const count = (dice, hit) => ({ crits: dice.filter(v => v === 6).length, normals: dice.filter(v => v >= hit && v < 6).length, fails: dice.filter(v => v < hit || v === 1).length });
   const Unit = ({ id }) => {
     const u = TUT_UNITS[id];
@@ -15486,7 +15582,7 @@ function Tutorial({ onExit }) {
     const s = f.opp.shift();
     const dmg = DMG.opp[s];
     setHp(h => ({ ...h, war: h.war - dmg }));
-    f.log.push("Nob strikes with a " + (s === "crit" ? "crit" : "normal success") + ": " + dmg + " damage.");
+    f.log.push("The Nob strikes with a " + (s === "crit" ? "crit" : "normal success") + ": " + dmg + " damage.");
     f.turn = nextTurn(f);
     setFight(f);
   };
@@ -15517,115 +15613,152 @@ function Tutorial({ onExit }) {
   const pc = TUT_PHASE_COLOR[phase];
 
   const body = [
-    // 0 Welcome
+    // 0 How a battle works
     () => (
       <div>
-        <Say>This walkthrough plays <B>one full turning point</B> of Kill Team: roll for initiative, activate an operative, shoot, then survive an Ork charge in a fight. The dice are real; the enemy plays itself.</Say>
+        <Say>You'll play one turning point against a bot: your two Intercessors (Angels of Death) against two Ork Kommandos, with their real datacards. You roll the dice, and the bot plays the Orks.</Say>
+        <div role="img" aria-label="Each turning point has a Strategy phase, then a Firefight phase. A battle has four turning points." style={{ display: "flex", alignItems: "stretch", gap: 6, marginBottom: 12 }}>
+          {[["Strategy phase", "Initiative, CP, ploys", "#C9772E"], ["Firefight phase", "Take turns activating operatives", "#D0573A"]].map(([t, s, col], i) => (
+            <React.Fragment key={t}>
+              {i > 0 && <div style={{ alignSelf: "center", color: "#9AA5B1" }}><Fwd /></div>}
+              <div style={{ flex: 1, background: col + "14", border: "1px solid " + col, borderRadius: 6, padding: "8px 10px" }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: col, fontFamily: "'Rajdhani', sans-serif" }}>{t}</div>
+                <div style={{ fontSize: 12, color: "#C8CDD3", lineHeight: 1.4 }}>{s}</div>
+              </div>
+            </React.Fragment>
+          ))}
+        </div>
+        <Say>That's one turning point. A battle has <B>four</B>.</Say>
         <Teams />
-        <Say>A battle lasts <B>four turning points</B>. Each one has a <B>Strategy phase</B> (initiative, command points, ploys) and a <B color="#D0573A">Firefight phase</B> (taking turns activating operatives).</Say>
+        <Say>Each card shows APL (action points per activation), Move, Save (what each defence die needs) and Wounds, then its weapon: attack dice, the roll each one needs, and damage.</Say>
         <Next to={1} label="Start turning point 1" />
       </div>
     ),
     // 1 Initiative
     () => (
       <div>
-        <Say>Both players roll a D6. The higher roll <B>decides who has initiative</B>. Whoever has it activates first in the Firefight phase. On a tie, the player who doesn't have initiative decides (in the first turning point, follow the mission).</Say>
+        <Say>Both players roll a D6. Whoever rolls higher picks who has <B>initiative</B>, and that player activates first in the Firefight phase. On a tie, the player who doesn't have initiative picks.</Say>
         {!init ? (
           <Act onClick={() => { let y = d6(), o = d6(); setInit({ you: y, opp: o, youHave: y >= o }); }}><Icon name="dice" size={16} /> Roll for initiative</Act>
         ) : (
           <div>
             <div style={{ display: "flex", gap: 24, marginBottom: 12 }}>
               <div><div style={{ ...h3, color: "#5A9C3A" }}>You</div><Die v={init.you} kind={init.youHave ? "hit" : "miss"} /></div>
-              <div><div style={{ ...h3, color: "#D0573A" }}>Enemy</div><Die v={init.opp} kind={!init.youHave ? "hit" : "miss"} /></div>
+              <div><div style={{ ...h3, color: "#D0573A" }}>Bot</div><Die v={init.opp} kind={!init.youHave ? "hit" : "miss"} /></div>
             </div>
-            <Say>{init.you > init.opp ? <>You rolled higher and take initiative, so <B>you activate first</B>.</> : init.you < init.opp ? <>The enemy rolled higher and takes initiative. For this walkthrough you'll still go first, but in a real game they would.</> : <>A tie. For this walkthrough, you take initiative and <B>activate first</B>.</>}</Say>
+            <Say>{init.you > init.opp ? <>You rolled higher, so you take initiative and <B>go first</B>.</> : init.you < init.opp ? <>The bot rolled higher. In a real game it would go first. Here you go first anyway.</> : <>A tie. Here you take initiative and <B>go first</B>.</>}</Say>
             <Next to={2} />
           </div>
         )}
       </div>
     ),
-    // 2 Strategy phase
+    // 2 Command points and ploys
     () => (
       <div>
-        <Say>The rest of the Strategy phase is quick:</Say>
-        <Box title="Strategy phase steps" color="#C9772E">
-          <div><B>Gain CP.</B> Everyone starts with 2CP and gains 1CP in the first Strategy phase, so you have <B>3CP</B>. Later, the player with initiative gains 1CP and the other gains 2CP.</div>
-          <div style={{ marginTop: 6 }}><B>Ready.</B> Turn every operative's order token to its ready side.</div>
-          <div style={{ marginTop: 6 }}><B>Gambits.</B> Take turns using strategy ploys (1CP each) or passing, until both players pass.</div>
+        <Box title="Then, in order" color="#C9772E">
+          <div><B>Gain CP.</B> You start the battle with 2CP, and both players gain 1CP in the first turning point, so you have <B>3CP</B>. After that, the player with initiative gains 1CP and the other gains 2CP.</div>
+          <div style={{ marginTop: 6 }}><B>Ready.</B> Flip every order token to its ready side.</div>
+          <div style={{ marginTop: 6 }}><B>Gambits.</B> Starting with initiative, take turns using a strategy ploy (1CP) or passing. The step ends when both players pass in a row.</div>
         </Box>
-        <Say>You pass on ploys this time to save CP. Orders aren't picked here: you choose each operative's order when it activates.</Say>
+        <Say>Ploys are your team's special tricks, listed on its cards. You pass this time and keep your CP.</Say>
         <Next to={3} label="Begin the Firefight phase" />
       </div>
     ),
-    // 3 Your activation
+    // 3 Orders
     () => (
       <div>
-        <Say>You activate your <B color="#5A9C3A">Intercessor Sergeant</B>. First, pick his order:</Say>
+        <Say>When an operative activates, you give it an order: <B>Engage</B> to attack, or <B color="#6B9BF7">Conceal</B> to hide. The order decides whether enemies can shoot it.</Say>
+        <OrderGrid />
+        <Say><B>In cover</B> means there's terrain between it and the shooter, within 1" of it. Nothing counts as in cover from a shooter within 2".</Say>
+        <Box title="On Conceal, an operative" color="#6B9BF7">
+          <div><B color="#6B9BF7">Can:</B> move, Dash, fight enemies in melee, and pick up markers.</div>
+          <div style={{ marginTop: 4 }}><B color="#6B9BF7">Can't:</B> Shoot, Charge or counteract.</div>
+        </Box>
+        <Say>Every operative starts the battle on Conceal.</Say>
+        <Next to={4} />
+      </div>
+    ),
+    // 4 Your activation
+    () => (
+      <div>
+        <TutMap scene={order === "engage" ? "move" : "start"} hp={hp} />
+        <Say>You activate your <B color="#5A9C3A">Sergeant</B>. He's behind a wall, and the Kommando Boy is out in the open. Pick his order:</Say>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
-          {[["engage", "Engage", "#C9772E", "Can Shoot and Charge. Can be shot if visible."], ["conceal", "Conceal", "#6B9BF7", "Can't be shot while in cover, but can't Shoot or Charge."]].map(([id, label, col, txt]) => (
+          {[["engage", "Engage", "#C9772E", "Can Shoot. Can be shot whenever he's visible."], ["conceal", "Conceal", "#6B9BF7", "Can't be shot behind the wall. Can't Shoot."]].map(([id, label, col, txt]) => (
             <button key={id} onClick={() => setOrder(id)} style={{ textAlign: "left", padding: 12, borderRadius: 6, cursor: "pointer", border: "2px solid " + (order === id ? col : "#3A4150"), background: order === id ? col + "18" : "#1A1D24" }}>
               <div style={{ fontSize: 16, fontWeight: 700, color: col, fontFamily: "'Rajdhani', sans-serif" }}>{label}</div>
               <div style={{ fontSize: 13, color: "#C8CDD3", lineHeight: 1.5, marginTop: 2 }}>{txt}</div>
             </button>
           ))}
         </div>
-        {order === "conceal" && <Box color="#6B9BF7">Good instinct for staying alive, but a Concealed operative can't Shoot. Pick <B>Engage</B> to take the shot.</Box>}
+        {order === "conceal" && <Box color="#6B9BF7">On Conceal he's safe behind the wall, but he can't Shoot. Pick <B>Engage</B> to attack.</Box>}
         {order === "engage" && (
           <div>
-            <Say>He has <B>APL 3</B>, so he can spend 3 action points. Each action costs AP, and he can't do the same action twice in one activation.</Say>
+            <Say>His <B>APL is 3</B>, so he has 3 action points to spend. He can't take the same action twice in one activation.</Say>
             <Box title="His plan" color="#C9772E">
-              <div><B>Reposition (1AP):</B> move up to 6" to see the Kommando Boy.</div>
+              <div><B>Reposition (1AP):</B> move up to 6" past the end of the wall, where he can see the Kommando Boy.</div>
               <div style={{ marginTop: 4 }}><B>Shoot (1AP):</B> fire the bolt rifle.</div>
-              <div style={{ marginTop: 4 }}><B>Dash (1AP):</B> move up to 3" back behind cover.</div>
+              <div style={{ marginTop: 4 }}><B>Dash (1AP):</B> move up to 3" back behind the wall.</div>
             </Box>
-            <Next to={4} label="Take the shot" />
+            <Next to={5} label="Take the shot" />
           </div>
         )}
       </div>
     ),
-    // 4 Attack dice
+    // 5 Attack dice
     () => (
       <div>
+        <TutMap scene="shoot" hp={hp} />
         <Box title="Bolt rifle" color="#C9772E">ATK <B>4</B> {"·"} HIT <B>3+</B> {"·"} DMG <B>3/4</B> {"·"} <B>Piercing Crits 1</B></Box>
-        <Say>Roll <B>4 dice</B> (ATK). Each <B>3 or more</B> hits (HIT 3+). A <B color="#FFB627">6 is a critical success</B>, and a 1 always misses. Normal hits deal 3 damage, crits deal 4. Piercing Crits 1: if you keep any crits, the defender rolls one fewer defence die.</Say>
+        <Say>Roll <B>4 attack dice</B>. Each <B>3 or more</B> is a hit, and a <B color="#FFB627">6 is a critical hit</B>. A 1 always misses. Normal hits deal 3 damage and crits deal 4.</Say>
+        <Say>Piercing Crits 1: if you roll any crits, the defender rolls one fewer defence die.</Say>
         {!atk ? <Act onClick={() => setAtk(roll(4))}><Icon name="dice" size={16} /> Roll 4 attack dice</Act> : (
           <div>
             <DiceRow dice={atk} hit={3} />
-            <Say><B color="#FFB627">{a.crits} crit{a.crits === 1 ? "" : "s"}</B>, <B color="#5A9C3A">{a.normals} normal hit{a.normals === 1 ? "" : "s"}</B>, <B color="#B8341C">{a.fails} miss{a.fails === 1 ? "" : "es"}</B>.{pierced ? " You kept a crit, so Piercing Crits 1 kicks in: the Ork rolls only 2 defence dice." : ""}</Say>
-            {a.crits + a.normals === 0 ? <><Say>All misses. That happens. Roll again for the walkthrough.</Say><Act onClick={() => setAtk(roll(4))} color="#9AA5B1"><Icon name="reset" size={16} /> Roll again</Act></> : <Next to={5} label="The Ork rolls defence" />}
+            <Say><B color="#FFB627">{a.crits} crit{a.crits === 1 ? "" : "s"}</B>, <B color="#5A9C3A">{a.normals} normal hit{a.normals === 1 ? "" : "s"}</B>, <B color="#B8341C">{a.fails} miss{a.fails === 1 ? "" : "es"}</B>.{pierced ? " You rolled a crit, so the Ork rolls 2 defence dice instead of 3." : ""}</Say>
+            {a.crits + a.normals === 0 ? <><Say>No hits. Roll again so the tutorial can carry on.</Say><Act onClick={() => setAtk(roll(4))} color="#9AA5B1"><Icon name="reset" size={16} /> Roll again</Act></> : <Next to={6} label="The Ork rolls defence" />}
           </div>
         )}
       </div>
     ),
-    // 5 Defence dice
+    // 6 Defence dice
     () => (
       <div>
-        <Say>The <B color="#D0573A">Kommando Boy</B> isn't in cover, so he rolls <B>{defDice} defence dice</B> needing <B>5+</B> (his Save). Each save can block a hit: <B>one normal save blocks a normal hit</B>, <B>two normal saves block a crit</B>, and <B>a crit save blocks either</B>.</Say>
+        <Say>The <B color="#D0573A">Kommando Boy</B> rolls <B>{defDice} defence dice</B>, and each <B>5 or more</B> is a save (Save 5+). He's in the open, so he gets no cover save. In cover he'd keep one die as a save without rolling it.</Say>
+        <Box title="Each save blocks" color="#3A4150">
+          <div>One normal save blocks a normal hit.</div>
+          <div>Two normal saves block a crit.</div>
+          <div>A critical save (a 6) blocks either.</div>
+        </Box>
         {!def ? <Act onClick={() => setDef(roll(defDice))} color="#D0573A"><Icon name="dice" size={16} /> Roll {defDice} defence dice for the Ork</Act> : (
           <div>
             <DiceRow dice={def} hit={5} />
-            <Box title="Result" color="#D0573A">
-              The Ork saves {d.crits + d.normals} and blocks as well as he can. <B>{shot.crits} crit{shot.crits === 1 ? "" : "s"}</B> and <B>{shot.normals} normal hit{shot.normals === 1 ? "" : "s"}</B> get through: <B color="#D0573A">{shot.damage} damage</B>.
+            <Box title="Your hits after his saves" color="#D0573A">
+              <div style={{ marginBottom: 2 }}>
+                {Array.from({ length: a.crits }, (_, i) => <React.Fragment key={"c" + i}>{chip(i < a.crits - shot.crits ? "Crit blocked" : "Crit: 4", "#FFB627", i < a.crits - shot.crits)}</React.Fragment>)}
+                {Array.from({ length: a.normals }, (_, i) => <React.Fragment key={"n" + i}>{chip(i < a.normals - shot.normals ? "Hit blocked" : "Hit: 3", "#5A9C3A", i < a.normals - shot.normals)}</React.Fragment>)}
+              </div>
+              <B color="#D0573A">{shot.damage} damage</B> gets through.
             </Box>
-            <Say>{shot.damage >= 10 ? <>That's 10 or more: the Kommando Boy is <B color="#D0573A">incapacitated</B> and removed.</> : shot.damage >= 5 ? <>He drops below half his wounds, so he's <B color="#FFB627">injured</B>: -2" Move and his weapons hit 1 worse.</> : shot.damage > 0 ? <>He's hurt but still fighting.</> : <>All blocked. He shrugs it off.</>}</Say>
-            <button onClick={() => { setHp(h => ({ ...h, boy: 10 - shot.damage })); go(6); }} style={{ ...bs("#C9772E"), background: "#C9772E18", padding: "12px 18px", fontSize: 14 }}>Continue <Fwd /></button>
+            <Say>{shot.damage >= 10 ? <>That's all 10 of his wounds. He's <B color="#D0573A">incapacitated</B> and removed.</> : 10 - shot.damage < 5 ? <>He's down to {10 - shot.damage} wounds, under half, so he's <B color="#FFB627">injured</B>: -2" Move, and his weapons hit on 1 worse.</> : shot.damage > 0 ? <>He's down to {10 - shot.damage} wounds.</> : <>He blocks everything.</>}</Say>
+            <button onClick={() => { setHp(h => ({ ...h, boy: 10 - shot.damage })); go(7); }} style={{ ...bs("#C9772E"), background: "#C9772E18", padding: "12px 18px", fontSize: 14 }}>Continue <Fwd /></button>
           </div>
         )}
       </div>
     ),
-    // 6 Enemy activation
+    // 7 The enemy's turn
     () => (
       <div>
-        <Teams />
-        <Say>Your Sergeant Dashes back to cover and is <B>expended</B>. Now the enemy activates. Players keep taking turns, one operative at a time.</Say>
-        <Say>The <B color="#D0573A">Boss Nob</B> takes an Engage order and <B>Charges (1AP)</B>: he moves up to his Move plus 2" and must finish within <B>control range</B> (visible and within 1") of your <B color="#5A9C3A">Intercessor Warrior</B>. Then he <B>Fights (1AP)</B>.</Say>
-        <Next to={7} label="Fight" />
+        <TutMap scene="charge" hp={hp} />
+        <Say>Your Sergeant spends his last AP on a Dash back behind the wall. He's now <B>expended</B>: done for this turning point. Players take turns, one operative each.</Say>
+        <Say>The bot activates the <B color="#D0573A">Boss Nob</B> on Engage and <B>Charges (1AP)</B>: he moves up to his Move plus 2", and has to finish within <B>control range</B> of your <B color="#5A9C3A">Warrior</B>. Control range is within 1" and visible. Then he <B>Fights (1AP)</B>.</Say>
+        <Next to={8} label="Fight" />
       </div>
     ),
-    // 7 Fight: roll
+    // 8 Fight: both roll
     () => (
       <div>
-        <Say>In a fight, <B>both operatives roll at the same time</B> with a melee weapon. The one who started it (the Nob) is the attacker; your Warrior retaliates.</Say>
+        <Say>In a fight, <B>both sides roll attack dice at once</B> with melee weapons. The Nob started it, so he's the attacker. Your Warrior fights back (that's called retaliating).</Say>
         <Box color="#3A4150">
           <div><B color="#D0573A">Nob, big choppa:</B> 5 dice, hits on 3+, 5 damage (6 on a crit).</div>
           <div style={{ marginTop: 4 }}><B color="#5A9C3A">Your Warrior, fists:</B> 4 dice, hits on 3+, 3 damage (4 on a crit).</div>
@@ -15635,17 +15768,17 @@ function Tutorial({ onExit }) {
             <div style={{ ...h3, color: "#D0573A" }}>Nob</div><DiceRow dice={fight.oppDice} hit={3} />
             <div style={{ ...h3, color: "#5A9C3A" }}>Your Warrior</div><DiceRow dice={fight.youDice} hit={3} />
             <Say>The Nob has <B>{fight.opp.length}</B> success{fight.opp.length === 1 ? "" : "es"} and you have <B>{fight.you.length}</B>.</Say>
-            <Next to={8} label="Resolve the fight" />
+            <Next to={9} label="Resolve the fight" />
           </div>
         )}
       </div>
     ),
-    // 8 Fight: strike or block
+    // 9 Fight: strike or block
     () => {
-      const chips = (list, col) => list.length ? list.map((s, i) => <span key={i} style={{ display: "inline-block", padding: "4px 10px", borderRadius: 6, marginRight: 6, marginBottom: 6, border: "1px solid " + (s === "crit" ? "#FFB627" : col), color: s === "crit" ? "#FFB627" : col, fontSize: 13, fontWeight: 700 }}>{s === "crit" ? "Crit" : "Normal"}</span>) : <span style={{ fontSize: 13, color: "#8B95A1" }}>none left</span>;
+      const chips = (list, col) => list.length ? list.map((s, i) => <React.Fragment key={i}>{chip(s === "crit" ? "Crit" : "Normal", s === "crit" ? "#FFB627" : col)}</React.Fragment>) : <span style={{ fontSize: 13, color: "#8B95A1" }}>none left</span>;
       return (
         <div>
-          <Say>Starting with the attacker, take turns resolving <B>one success at a time</B>. Each one either <B>strikes</B> (deals damage right away) or <B>blocks</B> (cancels one of the opponent's successes: a normal blocks a normal, a crit blocks anything).</Say>
+          <Say>Starting with the attacker, take turns using <B>one success at a time</B>. <B>Strike</B> deals its damage now. <B>Block</B> cancels one of the enemy's successes: a normal blocks a normal, and a crit blocks either. When one side runs out, the other uses the rest.</Say>
           <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "1fr 1fr", gap: mobile ? 0 : 8, marginBottom: 10 }}>
             <Unit id="nob" /><Unit id="war" />
           </div>
@@ -15653,7 +15786,7 @@ function Tutorial({ onExit }) {
             <div style={{ marginBottom: 4 }}><B color="#D0573A">Nob left:</B> {chips(fight.opp, "#D0573A")}</div>
             <div><B color="#5A9C3A">You left:</B> {chips(fight.you, "#5A9C3A")}</div>
           </Box>
-          {!fightOver && fight.turn === "opp" && <Act onClick={oppResolves} color="#D0573A">Nob's turn: see what he does <Fwd /></Act>}
+          {!fightOver && fight.turn === "opp" && <Act onClick={oppResolves} color="#D0573A">The Nob's turn <Fwd /></Act>}
           {!fightOver && fight.turn === "you" && (
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
               <button onClick={() => youResolve("strike")} style={{ ...bs("#5A9C3A"), background: "#5A9C3A18", padding: "12px", fontSize: 14 }}>Strike</button>
@@ -15663,33 +15796,33 @@ function Tutorial({ onExit }) {
           {fight.log.length > 0 && <Box title="What happened">{fight.log.map((l, i) => <div key={i}>{i + 1}. {l}</div>)}</Box>}
           {fightOver && (
             <div>
-              <Say>{hp.war <= 0 ? <>Your Warrior is <B color="#D0573A">incapacitated</B>. Blocking more might have saved him: against a big hitter, block early.</> : hp.nob <= 0 ? <>You took the Nob down. A good mix of strikes and blocks.</> : <>Both survive. Krumpin' Time lets the Nob Fight a second time in the same activation, so he may swing again.</>}</Say>
-              <Next to={9} />
+              <Say>{hp.war <= 0 ? <>Your Warrior is <B color="#D0573A">incapacitated</B>. Each of the Nob's hits deals 5 or 6, so blocking them is often worth more than striking.</> : hp.nob <= 0 ? <>You took down the Nob.</> : <>Both survive. The Nob's Krumpin' Time ability lets him Fight twice in one activation, so in a real game he could attack again.</>}</Say>
+              <Next to={10} />
             </div>
           )}
         </div>
       );
     },
-    // 9 Finishing the turning point
+    // 10 End of the turning point
     () => (
       <div>
-        <Teams />
-        <Say>Players keep alternating until every operative is <B>expended</B>. Two more rules finish the turning point:</Say>
-        <Box title="Counteract" color="#C9772E">If all your operatives are expended but your opponent still has ready ones, one of your expended operatives with an <B>Engage</B> order can make a free 1AP action (moving no more than 2"). Each operative once per turning point.</Box>
-        <Box title="End of the turning point" color="#C9772E">When everyone is expended, the turning point ends. <B>Score victory points</B> as your mission says (for example, holding objective markers), then start the next turning point with a new Strategy phase.</Box>
-        <Next to={10} />
+        <TutMap scene="fight" hp={hp} />
+        <Say>Players keep taking turns until every operative is <B>expended</B>.</Say>
+        <Box title="Counteract" color="#C9772E">If all your operatives are expended and your opponent still has ready ones, you can counteract when it's your turn: pick an expended operative on <B>Engage</B> and give it one free 1AP action. It can't move more than 2". Each operative can counteract once per turning point.</Box>
+        <Box title="End of the turning point" color="#C9772E">When every operative is expended, the turning point ends. Score victory points (VP) as your mission says, for example for holding objective markers. Then the next turning point starts with a new Strategy phase.</Box>
+        <Next to={11} />
       </div>
     ),
-    // 10 Done
+    // 11 Done
     () => (
       <div>
-        <Say>That's a full turning point. A battle is four of them, and the player with the most VP at the end wins.</Say>
+        <Say>That's one turning point. After four, the player with the most VP wins.</Say>
         <Box title="You've learned" color="#5A9C3A">
-          {["Initiative decides who activates first", "Strategy phase: gain CP, ready, ploys", "Choose an order when an operative activates", "Shooting: attack dice, then defence dice, then damage", "Fighting: both roll, then strike or block in turns", "Counteract and scoring"].map((t, i) => (
+          {["Initiative decides who activates first", "Strategy phase: CP, ready, ploys", "Engage or Conceal, and what cover does", "Shooting: attack dice, defence dice, damage", "Fighting: both roll, then strike or block", "Counteracting and scoring"].map((t, i) => (
             <div key={i} style={{ display: "flex", gap: 8, alignItems: "baseline" }}><span style={{ color: "#5A9C3A" }}><Icon name="check" size={14} /></span>{t}</div>
           ))}
         </Box>
-        <Say>Next, build a real team in <B>Battle</B>, look things up in <B>Rules</B>, or try a co-op mission from <B>Missions</B>.</Say>
+        <Say>Next, build a team in <B>Battle</B>, look up a rule in <B>Rules</B>, or try a co-op mission in <B>Missions</B>.</Say>
         <button onClick={restart} style={{ ...bs("#9AA5B1"), padding: "12px 18px", fontSize: 14, display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="reset" size={14} /> Play again</button>
       </div>
     ),
@@ -15702,13 +15835,13 @@ function Tutorial({ onExit }) {
         <div style={{ flex: 1, fontSize: 22, fontWeight: 700, color: "#C9772E", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.04em" }}>Tutorial</div>
         {step > 0 && <button onClick={restart} style={{ ...bs("#9AA5B1"), padding: "8px 12px", fontSize: 12, display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="reset" size={13} /> Restart</button>}
       </div>
-      <p style={{ ...mu, marginBottom: 12 }}>Play one turning point against a bot, with real dice and real datacards.</p>
+      <p style={{ ...mu, marginBottom: 12 }}>One turning point against a bot, with real datacards. You roll the dice.</p>
       <div style={{ display: "flex", gap: 3, marginBottom: 14 }}>
         {TUT_STEPS.map(([ph], i) => <div key={i} style={{ flex: 1, height: 5, borderRadius: 3, background: i <= step ? TUT_PHASE_COLOR[ph] : "#262A33", transition: "background 0.3s" }} />)}
       </div>
       <div style={{ ...cd, padding: mobile ? 16 : 22, borderTop: "3px solid " + pc }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
-          <span style={bg(pc)}>{phase} phase</span>
+          <span style={bg(pc)}>{phase === "Intro" ? "Tutorial" : phase + " phase"}</span>
           <span style={{ fontSize: 13, color: "#9AA5B1" }}>Step {step + 1} of {TUT_STEPS.length}</span>
         </div>
         <div style={{ fontSize: 24, fontWeight: 700, color: "#F1F2F5", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.02em", marginBottom: 12 }}>{TUT_STEPS[step][1]}</div>
@@ -16656,8 +16789,25 @@ async function runSelfTest(hooks) {
     await typeInto(search, "");
     await click(btn("How to Play", true), "How to Play");
     await click(btn("New to Kill Team"), "tutorial card");
-    for (let i = 0; i < 4; i++) { const b = all("button").find(x => /^(Start|Next|Continue|Roll)/.test(x.textContent.trim())); if (b) { b.click(); await settle(); } }
+    if (tutBlock(1, 1, 0, 2, 3, 4).damage !== 3) throw new Error("tutorial blocking: two saves should block the crit, letting 3 through");
+    // Play the whole tutorial: try Conceal first, then Engage; keep striking until the fight ends.
+    const seen = new Set();
+    for (let i = 0; i < 80 && !btn("Play again"); i++) {
+      const card = document.body.innerText;
+      if (/Orders: Engage or Conceal/.test(card) && !document.querySelector("[role=img][aria-label^='An Engage operative']")) throw new Error("the Engage/Conceal diagram is missing");
+      if (/Step 5 of/.test(card) && !seen.has("conceal")) { seen.add("conceal"); await click(btn("Conceal"), "Conceal order"); if (!/can't Shoot. Pick Engage/.test(document.body.innerText)) throw new Error("picking Conceal didn't explain why he can't shoot"); await click(btn("Engage"), "Engage order"); }
+      const map = document.querySelector("[role=img][aria-label^='Map:']");
+      if (map) seen.add(map.getAttribute("aria-label").slice(5, 30));
+      const b = all("button").find(x => /^(Start|Continue|Begin|Take the shot|Roll|The Ork|Fight|Both roll|Resolve|The Nob's turn|Strike)/.test(x.textContent.trim()));
+      if (!b) throw new Error("the tutorial got stuck at: " + (card.match(/Step \d+ of \d+/) || ["?"])[0]);
+      b.click(); await settle();
+    }
+    if (!btn("Play again")) throw new Error("the tutorial didn't reach the end");
+    if (seen.size < 5) throw new Error("only " + (seen.size - 1) + " map pictures showed");
     await click(btn("Rules", true), "tutorial back button");
+    await click(all("[role=button]").find(e => e.textContent.trim().startsWith("Orders")), "Orders rule");
+    if (!document.querySelector("[role=img][aria-label^='An Engage operative']")) throw new Error("the Orders rule doesn't show the Engage/Conceal diagram");
+    return "played through, " + (seen.size - 1) + " map pictures";
   });
   await step("Missions: every pack, mission and map", async () => {
     await nav("Missions");
