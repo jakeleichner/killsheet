@@ -6901,6 +6901,7 @@ const ICON_PATHS = {
   reset: <><path d="M4 5v5h5" /><path d="M5.3 14.5A7.5 7.5 0 1 0 7 7.2L4 10" /></>,
   edit: <><path d="M4 20h4L19 9l-4-4L4 16z" /><path d="M13.5 6.5l4 4" /></>,
   info: <><circle cx="12" cy="12" r="9" /><path d="M12 11v6" /><circle cx="12" cy="7.5" r="0.6" fill="currentColor" /></>,
+  sliders: <><path d="M4 7h9M17 7h3M4 17h3M11 17h9" /><circle cx="15" cy="7" r="2" /><circle cx="9" cy="17" r="2" /></>,
   log: <><path d="M9 6h11M9 12h11M9 18h11" /><circle cx="4.5" cy="6" r="1" fill="currentColor" /><circle cx="4.5" cy="12" r="1" fill="currentColor" /><circle cx="4.5" cy="18" r="1" fill="currentColor" /></>,
 };
 function Icon({ name, size = 14, color, style }) {
@@ -7942,7 +7943,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
         </div>
         <FeatureHint k="missions" text="Mission packs are switched off." style={{ textAlign: "center", marginTop: 10 }} />
         <FeatureHint k="scoring" text="Tac ops are part of detailed scoring, which is switched off." style={{ textAlign: "center", marginTop: 4 }} />
-        <div style={{ ...mu, fontSize: 13, textAlign: "center", marginTop: 10 }}>Roster validation, mission packs and the other switches are in <button className="link-btn" onClick={openFeatures} style={{ background: "none", border: "none", padding: 0, color: "#C9772E", cursor: "pointer", fontSize: 13, textDecoration: "underline" }}>Your KillSheet</button>.</div>
+        <div style={{ ...mu, fontSize: 13, textAlign: "center", marginTop: 10 }}>Roster validation, mission packs and the other switches are in <button className="link-btn" onClick={openFeatures} style={{ background: "none", border: "none", padding: 0, color: "#C9772E", cursor: "pointer", fontSize: 13, textDecoration: "underline" }}>Settings</button>.</div>
         {gameConfig && (
           <div style={{ textAlign: "center", marginTop: 10 }}>
             <button onClick={() => setShowSetup(false)} style={{ ...bs("#9AA5B1"), padding: "8px 16px", fontSize: 12 }}>Cancel</button>
@@ -7951,7 +7952,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
         {(fid || (roster && roster.length > 0)) && (
           <div style={{ textAlign: "center", marginTop: 14 }}>
             <button onClick={() => {
-              if (confirm("Clear the current game? This clears your roster, team, equipment, wounds, CP, VP and game state. Your saved rosters, game history and Your KillSheet switches are kept. This can't be undone.")) {
+              if (confirm("Clear the current game? This clears your roster, team, equipment, wounds, CP, VP and game state. Your saved rosters, game history and Settings are kept. This can't be undone.")) {
                 clearKillSheetStorage();
                 if (typeof window !== "undefined") window.location.reload();
               }
@@ -8835,7 +8836,6 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
               <div onClick={() => setGameMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
               <div style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", zIndex: 41, minWidth: 230, background: "#262A33", border: "1px solid #3A4150", borderRadius: 6, boxShadow: "0 8px 24px rgba(0,0,0,0.5)", padding: 6 }}>
                 {[
-                  ["Your KillSheet", FEATURE_MODE_NAMES[featureMode(feat)] + ". Choose what the app shows", openFeatures, "#FFB627"],
                   mp.status === "idle" && feat.online ? ["Play online", "Link up with a friend on another device", () => setShowMP(true), "#6B9BF7"] : null,
                   window.__ksInstall ? ["Install app", "Add KillSheet to this device. Works offline.", () => { const p = window.__ksInstall; window.__ksInstall = null; p.prompt(); }, "#F1F2F5"]
                     : /iPhone|iPad|iPod/.test(navigator.userAgent) && !navigator.standalone ? ["Add to Home Screen", "Works offline once added", () => showToast("In Safari, tap Share, then Add to Home Screen", 6000), "#F1F2F5"] : null,
@@ -14820,7 +14820,7 @@ function Rules({ search, tutorialOpen, openTutorial, closeTutorial }) {
       )}
       {sec === "play" && !q && (
         <button className="link-btn" onClick={openFeatures} style={{ background: "none", border: "none", padding: "8px 0 0", cursor: "pointer", textAlign: "left", fontSize: 13, color: "#9AA5B1" }}>
-          Your KillSheet: {FEATURE_MODE_NAMES[featureMode(feat)]}. <span style={{ color: "#C9772E", textDecoration: "underline" }}>Change what's shown</span>
+          Settings: {FEATURE_MODE_NAMES[featureMode(feat)]}. <span style={{ color: "#C9772E", textDecoration: "underline" }}>Change what's shown</span>
         </button>
       )}
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "12px 0 8px" }}>
@@ -16600,7 +16600,7 @@ function Switch({ on, onChange, label }) {
   );
 }
 
-// The two starting choices, used by the first-time question and the Your KillSheet page.
+// The two starting choices, used by the first-time question and the Settings page.
 function ModeChoice({ mode, onPick, full }) {
   const opt = (id, title, text, offText) => {
     const on = mode === id;
@@ -16614,7 +16614,7 @@ function ModeChoice({ mode, onPick, full }) {
   };
   return (
     <div>
-      {opt("learning", "I'm learning", "Start with your team, datacards, points and a step-by-step guide for each turning point.", "Switched off for now: detailed scoring, mission packs, the campaign and use tracking. Turn any of them on later from the ⋯ menu on the Battle tab, under Your KillSheet.")}
+      {opt("learning", "I'm learning", "Start with your team, datacards, points and a step-by-step guide for each turning point.", "Switched off for now: detailed scoring, mission packs, the campaign and use tracking. Turn any of them on later in Settings, at the top of the screen.")}
       {opt("expert", "I know the game", "Everything switched on.", "Turn anything off later from the same place.")}
     </div>
   );
@@ -16674,10 +16674,10 @@ function FeaturesPage({ onClose, focus }) {
     );
   };
   return ReactDOM.createPortal(
-    <div role="dialog" aria-modal="true" aria-label="Your KillSheet" style={{ position: "fixed", inset: 0, zIndex: 9000, background: "#0E0F13", overflowY: "auto", color: "#F1F2F5", fontFamily: "'Inter', 'Segoe UI', sans-serif" }}>
+    <div role="dialog" aria-modal="true" aria-label="Settings" style={{ position: "fixed", inset: 0, zIndex: 9000, background: "#0E0F13", overflowY: "auto", color: "#F1F2F5", fontFamily: "'Inter', 'Segoe UI', sans-serif" }}>
       <div className="ks-appear" style={{ maxWidth: 560, margin: "0 auto", padding: "16px 16px 40px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{ flex: 1, fontSize: 24, fontWeight: 700, color: "#C9772E", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.04em" }}>Your KillSheet</div>
+          <div style={{ flex: 1, fontSize: 24, fontWeight: 700, color: "#C9772E", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.04em" }}>Settings</div>
           <button onClick={onClose} aria-label="Close" style={{ ...bs("#9AA5B1"), padding: "8px 10px", display: "inline-flex" }}><Icon name="x" size={18} /></button>
         </div>
         <p style={{ ...mu, fontSize: 14, margin: "4px 0 14px" }}>Choose what KillSheet shows. Switch things on as you're ready for them. Switching something off only hides it, so nothing you've saved is lost.</p>
@@ -16755,15 +16755,17 @@ async function runSelfTest(hooks) {
     await nav("Missions");
     if (!btn("Turn on mission packs")) throw new Error("the Missions tab doesn't say mission packs are off");
     await click(all("button").find(b => b.textContent.trim() === "What is it?"), "campaign hint");
-    const hinted = document.querySelector("[role=dialog][aria-label='Your KillSheet']");
+    const hinted = document.querySelector("[role=dialog][aria-label='Settings']");
     if (!hinted || !/What you need/.test((document.getElementById("feat-campaign") || {}).textContent || "")) throw new Error("the campaign hint didn't open its explainer");
     await click(hinted.querySelector("[aria-label='Close']"), "close button");
     await nav("Battle");
     await click(document.querySelector("[aria-label='Game menu']"), "game menu");
     if (!btn("Play online")) throw new Error("Play online doesn't show for a learning player");
-    await click(btn("Your KillSheet"), "Your KillSheet");
-    const page = document.querySelector("[role=dialog][aria-label='Your KillSheet']");
-    if (!page) throw new Error("the Your KillSheet page didn't open");
+    await click(document.querySelector("[aria-label='Game menu']"), "game menu (close)");
+    for (const t of ["Rules", "Missions", "Community", "Battle"]) { await nav(t); if (![...document.querySelectorAll("nav button")].some(b => b.textContent.trim() === "Settings" && vis(b))) throw new Error("Settings isn't in the top bar on " + t); }
+    await nav("Settings");
+    const page = document.querySelector("[role=dialog][aria-label='Settings']");
+    if (!page) throw new Error("the Settings page didn't open");
     const what = [...document.getElementById("feat-scoring").querySelectorAll("button")].find(b => b.textContent === "What is this?");
     await click(what, "What is this? under Detailed scoring");
     if (!/Approved Ops/.test(document.getElementById("feat-scoring").textContent)) throw new Error("the detailed scoring explainer didn't open");
@@ -16773,7 +16775,7 @@ async function runSelfTest(hooks) {
     await click([...page.querySelectorAll("button")].find(b => b.textContent.startsWith("I know the game")), "I know the game");
     if (featureMode(store("features") || {}) !== "expert") throw new Error("I know the game didn't switch everything on");
     await click(page.querySelector("[aria-label='Close']"), "close button");
-    if (document.querySelector("[role=dialog][aria-label='Your KillSheet']")) throw new Error("the page didn't close");
+    if (document.querySelector("[role=dialog][aria-label='Settings']")) throw new Error("the page didn't close");
     return "learning, one switch, then everything on";
   });
 
@@ -17231,6 +17233,17 @@ function App() {
             {label}
           </button>
         ))}
+        {/* Settings opens over any tab, so it sits apart from the tabs */}
+        <button onClick={() => setShowFeatures(true)} aria-haspopup="dialog" style={{
+          flex: "0 0 auto", padding: mobile ? "10px 10px" : "16px 18px", border: "none", borderLeft: "1px solid #3A4150", cursor: "pointer",
+          display: "flex", flexDirection: mobile ? "column" : "row", alignItems: "center", justifyContent: "center", gap: mobile ? 3 : 6,
+          fontSize: mobile ? 11 : 13, fontWeight: 600, letterSpacing: mobile ? "0.04em" : "0.08em", textTransform: "uppercase",
+          fontFamily: "'Rajdhani', 'Segoe UI', sans-serif", background: showFeatures ? "#262A33" : "transparent",
+          color: showFeatures ? "#C9772E" : "#9AA5B1", borderBottom: "2px solid transparent", transition: "all 0.15s"
+        }}>
+          <Icon name="sliders" size={18} />
+          Settings
+        </button>
       </nav>
 
       {/* CONTENT: all tabs stay mounted, hidden with display:none to preserve state */}
