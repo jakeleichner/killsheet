@@ -280,7 +280,6 @@ Estimated 2-3 hours. Should be its own focused session with its own QA pass (mix
 - **Tutorial part 2.** Part 1 doesn't cover objectives, scoring or ploys. A second short walkthrough: contesting and controlling an objective marker (APL totals), scoring at the end of a turning point, and spending CP on a strategy and a firefight ploy. Same map style (`TutMap`). Beginner basics. Medium.
 - **Text size in Appearance.** A Normal / Large / Larger choice beside the themes, for reading at the table. Needs a base font-size variable that inline sizes can scale from (many sizes are fixed px). For everyone. Medium.
 - **End-of-game recap.** When a game ends, show VP by turning point, who took out whom and the best operative (most damage dealt), from `ks_battleLog` and the score. Save it with the game in history. For everyone. Medium.
-- **Quarterly rules check.** Every three months, check Games Workshop's team rules downloads for new update logs and list what changed, for the owner to approve before anything is edited. Needs a record of each team's last-checked update date. Could run as a scheduled task.
 - **Owner: run `DEVICE_TESTS.md` after the next deploy** (iPhone Safari self-test, online play on two devices, offline on a phone) and tell Claude anything that doesn't match.
 - **Owner to decide the errata items in `tools/teams/RULES_CHECK.md` ("For the owner to decide").** Where the PDF's card text and its older errata disagree, the app follows the card. Change any the owner rules on, in `tools/teams/<team>.py`, then rebuild.
 - **Community Rosters: owner to decide whether it stays.** Under the beginner-first vision, sharing rosters is close to "adding your own content"; if kept, it becomes a switch like the others.
@@ -295,6 +294,7 @@ Estimated 2-3 hours. Should be its own focused session with its own QA pass (mix
 - Tac op conditions in the scoring panel, if a free source ever covers them (they're on the paid Approved Ops cards).
 - Make killzone rules functional (currently cosmetic).
 - Verify mp.send() under heavy load (race conditions / double-fires).
+- **Quarterly rules check (owner: last in line).** Every three months a scheduled task on the owner's Mac checks Games Workshop's team rules downloads for update logs newer than a recorded last-checked date per team, downloads changed PDFs, and writes a report for the owner to approve; nothing in the app changes without that. Needs the per-team record first (start from the October 2026 rules check), then a trial run. If GW's site blocks downloads, the owner drops the PDFs in Downloads instead.
 
 ---
 
