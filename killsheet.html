@@ -5977,6 +5977,71 @@ function useLocalStorage(key, initialValue) {
   return [value, setValue];
 }
 // Undo support: copy all KillSheet keys, and put a copy back.
+// Back up: every KillSheet key as a JSON file. Phones get the share sheet (Save to Files, AirDrop, Drive); elsewhere it downloads.
+// Returns the file name when it downloaded. Plain function, so the crash screen can use it without the app running.
+function downloadBackup(share) {
+  const payload = { app: "KillSheet", kind: "backup", version: 1, savedAt: new Date().toISOString(), data: snapshotKillSheetStorage() };
+  const d = new Date();
+  const name = "killsheet-backup-" + d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0") + ".json";
+  const file = new File([JSON.stringify(payload)], name, { type: "application/json" });
+  if (share && navigator.canShare && navigator.canShare({ files: [file] })) {
+    navigator.share({ files: [file], title: "KillSheet backup" }).catch(() => {});
+    return null;
+  }
+  const url = URL.createObjectURL(file);
+  const a = document.createElement("a");
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return name;
+}
+
+// Keeps the screen on while a game is in progress (Screen Wake Lock), so the phone doesn't dim mid-turn.
+// The lock drops when the page is hidden, so it's asked for again when KillSheet comes back. window.__ksAwake is for the self-test.
+function useKeepAwake(on) {
+  React.useEffect(() => {
+    if (!on) { window.__ksAwake = "off"; return; }
+    if (!("wakeLock" in navigator)) { window.__ksAwake = "unsupported"; return; }
+    let lock = null, live = true;
+    const get = () => {
+      if (document.visibilityState !== "visible" || (lock && !lock.released)) return;
+      window.__ksAwake = "requested";
+      navigator.wakeLock.request("screen").then(l => { if (!live) { l.release().catch(() => {}); return; } lock = l; window.__ksAwake = "on"; }, () => { if (live) window.__ksAwake = "refused"; });
+    };
+    get();
+    document.addEventListener("visibilitychange", get);
+    return () => { live = false; document.removeEventListener("visibilitychange", get); if (lock) lock.release().catch(() => {}); window.__ksAwake = "off"; };
+  }, [on]);
+}
+
+// Crash safety net: if a screen crashes, show a way out instead of a blank page.
+// window.__ksCrashTest makes CrashTest throw, so the self-test can check this screen.
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(error) { return { error }; }
+  componentDidCatch(error) { if (window.console) console.error("KillSheet crashed in " + (this.props.where || "the app") + ":", error); }
+  render() {
+    const error = this.state.error;
+    if (!error) return this.props.children;
+    const where = this.props.where;
+    return (
+      <div role="alert" style={{ maxWidth: 560, margin: "32px auto", padding: "0 16px" }}>
+        <div style={{ ...cd, borderLeft: "3px solid #B8341C", padding: 16 }}>
+          <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif" }}>Something went wrong</div>
+          <p style={{ ...mu, fontSize: 14, margin: "6px 0 12px" }}>{where ? "The " + where + " tab" : "KillSheet"} hit an error. Your rosters and games are still saved on this device. If you're worried, back them up first, then reload.</p>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button onClick={() => window.location.reload()} style={{ ...bs("var(--accent)"), padding: "10px 16px", fontSize: 14 }}>Reload</button>
+            <button onClick={() => downloadBackup(window.innerWidth < 700)} style={{ ...bs("var(--muted)"), padding: "10px 16px", fontSize: 14 }}>Back up my data</button>
+            <button onClick={() => this.setState({ error: null })} style={{ ...bs("var(--muted)"), padding: "10px 16px", fontSize: 14 }}>Try again</button>
+          </div>
+          <details style={{ marginTop: 12 }}><summary style={{ ...mu, fontSize: 12, cursor: "pointer" }}>Error details</summary><code style={{ display: "block", fontSize: 12, color: "var(--muted)", marginTop: 6, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{String((error && error.message) || error)}</code></details>
+        </div>
+      </div>
+    );
+  }
+}
+function CrashTest() { if (window.__ksCrashTest) throw new Error("Self-test crash"); return null; }
+
 function snapshotKillSheetStorage() {
   const snap = {};
   try {
@@ -5999,7 +6064,7 @@ function restoreKillSheetStorage(snap) {
   } catch (e) { /* storage unavailable */ }
 }
 // "Clear current game data" keeps saved rosters, game history and the Your KillSheet switches.
-const KEEP_ON_CLEAR = ["savedRosters", "gameHistory", "features", "validate", "appearance"];
+const KEEP_ON_CLEAR = ["savedRosters", "gameHistory", "features", "validate", "appearance", "lastBackup", "backupNudgeAt", "homeTipSeen"];
 function clearKillSheetStorage() {
   try {
     if (typeof window === "undefined") return;
@@ -7731,21 +7796,9 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   const [endGame, setEndGame] = useState(null); // the End game card: { you, them, opp }
   const [showGames, setShowGames] = useState(false);
   const backUp = () => {
-    const payload = { app: "KillSheet", kind: "backup", version: 1, savedAt: new Date().toISOString(), data: snapshotKillSheetStorage() };
-    const d = new Date();
-    const name = "killsheet-backup-" + d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0") + ".json";
-    const file = new File([JSON.stringify(payload)], name, { type: "application/json" });
-    // Phones: the share sheet (Save to Files, AirDrop, Drive). Elsewhere: a normal download.
-    if (mobile && navigator.canShare && navigator.canShare({ files: [file] })) {
-      navigator.share({ files: [file], title: "KillSheet backup" }).catch(() => {});
-      return;
-    }
-    const url = URL.createObjectURL(file);
-    const a = document.createElement("a");
-    a.href = url; a.download = name;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-    showToast("Backup saved as " + name, 4000);
+    setLastBackup(Date.now());
+    const name = downloadBackup(mobile);
+    if (name) showToast("Backup saved as " + name, 4000);
   };
   const readBackup = (file) => {
     if (!file) return;
@@ -7780,6 +7833,15 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   const [toast, setToast] = useState("");
   const toastTimer = React.useRef(null);
   React.useEffect(() => { if (onTeamColor) onTeamColor(fid && FACTIONS[fid] ? FACTIONS[fid].color : null); }, [fid]); // for Match my team
+  useKeepAwake(rosterLocked && feat.awake !== false);
+  // Keeping data safe: backup reminders, and the Home Screen note for iPhone Safari (which can clear site data after a while).
+  const [lastBackup, setLastBackup] = useLocalStorage("lastBackup", null);
+  const [backupNudgeAt, setBackupNudgeAt] = useLocalStorage("backupNudgeAt", null);
+  const [homeTipSeen, setHomeTipSeen] = useLocalStorage("homeTipSeen", false);
+  const hasData = savedRosters.length > 0 || gameHistory.length > 0;
+  React.useEffect(() => {
+    if (hasData && navigator.storage && navigator.storage.persist) navigator.storage.persisted().then(p => p || navigator.storage.persist()).catch(() => {});
+  }, [hasData]);
   const [damageRequest, setDamageRequest] = useState(null); // { amount, side: "mine" | "opp" (whose weapon), onApplied(name), meta: { attacker, weapon } } | null
   const [struck, setStruck] = useState(null); // { key, after }: the row just hit, while the attack plays
   // Battle log: every change to an operative's wounds this game, oldest first.
@@ -8668,8 +8730,31 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   const v = f ? getValidation() : { errors: [], warnings: [], valid: true, complete: false, selections: 0 };
   const isComplete = !!(f && f.composition && v.complete);
 
+  // Shown on the Battle tab when not playing: one note at a time, never mid-game.
+  const iosSafari = /iPhone|iPad|iPod/.test(navigator.userAgent) && !/CriOS|FxiOS|EdgiOS/.test(navigator.userAgent);
+  const installed = navigator.standalone || (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches);
+  const MONTH = 30 * 24 * 3600 * 1000;
+  const safetyNote = rosterLocked || !hasData ? null
+    : iosSafari && !installed && !homeTipSeen ? "home"
+    : (!lastBackup || Date.now() - lastBackup > MONTH) && (!backupNudgeAt || Date.now() - backupNudgeAt > MONTH) ? "backup" : null;
+  const noteCard = (title, text, buttons) => (
+    <div role="note" style={{ ...cd, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: "10px 12px 10px 14px", borderLeft: "3px solid var(--accent)" }}>
+      <div style={{ flex: "1 1 220px", minWidth: 0 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif" }}>{title}</div>
+        <div style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.45 }}>{text}</div>
+      </div>
+      <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>{buttons}</div>
+    </div>
+  );
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto", padding: "20px 16px", position: "relative" }}>
+      {safetyNote === "home" && noteCard("Keep your data safe",
+        <>Safari can clear a website's saved data if you don't open it for a while. Add KillSheet to your Home Screen and your rosters and games are kept: tap Share, then Add to Home Screen.</>,
+        <button onClick={() => setHomeTipSeen(true)} style={{ ...bs("var(--accent)"), padding: "8px 14px", fontSize: 13 }}>Got it</button>)}
+      {safetyNote === "backup" && noteCard("Back up your rosters and games",
+        <>KillSheet keeps them only on this device{lastBackup ? ", and your last backup was over a month ago" : ""}. A backup file lets you restore them on a new phone or after clearing your browser.</>,
+        <><button onClick={backUp} style={{ ...bs("var(--accent)"), padding: "8px 14px", fontSize: 13 }}>Back up</button>
+          <button onClick={() => setBackupNudgeAt(Date.now())} style={{ ...bs("var(--muted)"), padding: "8px 14px", fontSize: 13 }}>Later</button></>)}
       {/* Undo toast */}
       {undo && (
         <div role="status" style={{ position: "fixed", bottom: "calc(16px + env(safe-area-inset-bottom))", left: 16, right: 16, margin: "0 auto", width: "fit-content", maxWidth: 560, boxSizing: "border-box", zIndex: 9999, display: "flex", alignItems: "center", gap: 10, padding: "8px 8px 8px 16px", borderRadius: 8, background: "var(--raised)", border: "1px solid var(--line)", boxShadow: "0 8px 24px rgba(0,0,0,0.6)" }}>
@@ -16616,17 +16701,18 @@ function CampaignCard({ c, setC, mobile, f, showToast, playing }) {
 // Parts of the app a player can switch on or off. "Learning" and "I know the game" set them all at once;
 // any switch can be changed after. Switching something off only hides it: nothing saved is lost.
 const FEATURE_PRESETS = {
-  learning: { guide: true, labels: true, tips: true, dice: true, fx: true, uses: false, scoring: false, missions: false, campaign: false, online: true },
-  expert: { guide: false, labels: false, tips: true, dice: true, fx: true, uses: true, scoring: true, missions: true, campaign: true, online: true },
+  learning: { guide: true, labels: true, tips: true, dice: true, fx: true, awake: true, uses: false, scoring: false, missions: false, campaign: false, online: true },
+  expert: { guide: false, labels: false, tips: true, dice: true, fx: true, awake: true, uses: true, scoring: true, missions: true, campaign: true, online: true },
 };
 const FEATURE_MODE_NAMES = { learning: "Learning", expert: "I know the game", custom: "Custom" };
 const FEATURE_GROUPS = [
   { title: "While you play", items: [
     { k: "guide", name: "Turning point guide opens by itself", desc: "The step-by-step guide opens at the start of every turning point, so you can follow along. With it off, the guide stays the way you left it." },
     { k: "labels", name: "Learning help", desc: "Labels on closed datacards, a dotted underline under words you can tap for an explanation, and an ⓘ next to the Ready and order buttons." },
-    { k: "tips", name: "Rule tips", desc: "Tap a bold orange word, or hover over it on a computer, to see what it means in one sentence, with a link to the full rule." },
+    { k: "tips", name: "Rule tips", desc: "Tap a bold orange word, or hover over it on a computer, to see what it means in one sentence, with a link to more information in Rules." },
     { k: "dice", name: "Dice roller", desc: "A Roll button on every weapon. It rolls the attack and defense dice and works out the damage." },
     { k: "fx", name: "Attack animations", desc: "Shots, slashes and blasts on the target screen when you apply damage from the dice roller. With it off, the damage goes on and the screen closes straight away." },
+    { k: "awake", name: "Keep the screen on", desc: "While a game is in progress, your phone or tablet doesn't dim or lock. It goes back to normal when the game ends. Uses a little more battery." },
     { k: "uses", name: "Use tracking", desc: "Checkboxes for once-per-battle abilities and ploys, limited weapons and grenades, so you know what's been used." },
   ] },
   { title: "Scoring", items: [
@@ -17014,6 +17100,15 @@ async function runSelfTest(hooks) {
         await click(btn("Save result", true), "Save result");
         await click(btn("Edit roster") || btn("Ploys & rules") , "back to roster");
         const edit = btn("Edit roster"); if (edit) await click(edit, "Edit roster");
+        if (done === 0) {
+          // A finished game with no backup yet: the Battle tab offers one (iPhone Safari first suggests the Home Screen).
+          const note = () => all("[role=note]").find(n => /Back up your rosters|Keep your data safe/.test(n.textContent));
+          if (!note()) throw new Error("no backup reminder after the first finished game");
+          if (/Keep your data safe/.test(note().textContent)) await click([...note().querySelectorAll("button")].find(b => b.textContent.trim() === "Got it"), "Got it");
+          if (!note() || !/Back up your rosters/.test(note().textContent)) throw new Error("no backup reminder after the Home Screen note");
+          await click([...note().querySelectorAll("button")].find(b => b.textContent.trim() === "Later"), "Later");
+          if (note()) throw new Error("the backup reminder didn't go away after Later");
+        }
       } catch (e) { problems.push(fc.name + ": " + e.message); }
       done++;
     }
@@ -17192,6 +17287,34 @@ async function runSelfTest(hooks) {
   });
 
   // The dice maths with fixed dice: each weapon rule, cover, obscured and blocking.
+  await step("Screen stays on, crash screen", async () => {
+    // Uses the game the earlier steps left running.
+    if (!store("rosterLocked")) throw new Error("no game in progress to test with");
+    const ok = "wakeLock" in navigator ? ["on", "requested", "refused"] : ["unsupported"];
+    if (!ok.includes(window.__ksAwake)) throw new Error("during a game the screen lock is '" + window.__ksAwake + "'");
+    await click(all("button[aria-label='Settings']")[0], "Settings cog");
+    const page = document.querySelector("[role=dialog][aria-label='Settings']");
+    const sw = page.querySelector("[role=switch][aria-label='Keep the screen on']");
+    await click(sw, "Keep the screen on (off)");
+    if (window.__ksAwake !== "off") throw new Error("switching it off didn't release the screen");
+    await click(sw, "Keep the screen on");
+    await click(page.querySelector("[aria-label='Close']"), "close Settings");
+    // A crash in one tab shows the safety screen there, with Reload, Back up and Try again; the rest of the app keeps working.
+    const before = errors.length;
+    window.__ksCrashTest = true;
+    await nav("Community"); await settle(20);
+    window.__ksCrashTest = false;
+    const alert = all("[role=alert]").find(a => /Something went wrong/.test(a.textContent));
+    errors.splice(before); // React reports the test crash as an error; that one is expected
+    if (!alert) throw new Error("a crash didn't show the safety screen");
+    for (const t of ["Reload", "Back up my data", "Try again"]) if (![...alert.querySelectorAll("button")].some(b => b.textContent.trim() === t)) throw new Error("the safety screen has no " + t + " button");
+    await nav("Rules");
+    if (!btn("New to Kill Team")) throw new Error("the other tabs stopped working after a crash");
+    await nav("Community");
+    await click([...alert.querySelectorAll("button")].find(b => b.textContent.trim() === "Try again"), "Try again");
+    if (all("[role=alert]").some(a => /Something went wrong/.test(a.textContent))) throw new Error("Try again didn't bring the tab back");
+    return "screen lock " + window.__ksAwake + "; crash screen shows and recovers";
+  });
   await step("Appearance: themes and Match my team", async () => {
     const rgb = (h) => "rgb(" + hexRgb(h).join(", ") + ")";
     await click(all("button[aria-label='Settings']")[0], "Settings cog");
@@ -17449,10 +17572,10 @@ function App() {
       </nav>
 
       {/* CONTENT: all tabs stay mounted, hidden with display:none to preserve state */}
-      <div className="ks-appear" style={{ display: tab === "rules" ? "block" : "none" }}><Rules search={ruleSearch} tutorialOpen={tutorialOpen} openTutorial={openTutorial} closeTutorial={() => { setTutorialOpen(false); window.scrollTo(0, 0); }} /></div>
-      <div className="ks-appear" style={{ display: tab === "missions" ? "block" : "none" }}><Missions campaign={campaign} startCampaign={() => { if (!campaign) setCampaign(cteNew("solo", "m26", 7, "", "")); setTab("builder"); window.scrollTo(0, 0); }} /></div>
-      <div id="panel-builder" className="ks-appear" style={{ display: tab === "builder" ? "block" : "none", ...(battleAccent ? { "--accent": battleAccent } : {}) }}><Builder tp={tp} setTp={setTp} mp={mp} mpHandlerRef={mpHandlerRef} showMP={showMP} setShowMP={setShowMP} tutorialSeen={tutorialSeen} setTutorialSeen={setTutorialSeen} openTutorial={openTutorial} campaign={campaign} setCampaign={setCampaign} onTeamColor={setTeamColor} /></div>
-      <div className="ks-appear" style={{ display: tab === "community" ? "block" : "none" }}><CommunityRosters /></div>
+      <div className="ks-appear" style={{ display: tab === "rules" ? "block" : "none" }}><ErrorBoundary where="Rules"><Rules search={ruleSearch} tutorialOpen={tutorialOpen} openTutorial={openTutorial} closeTutorial={() => { setTutorialOpen(false); window.scrollTo(0, 0); }} /></ErrorBoundary></div>
+      <div className="ks-appear" style={{ display: tab === "missions" ? "block" : "none" }}><ErrorBoundary where="Missions"><Missions campaign={campaign} startCampaign={() => { if (!campaign) setCampaign(cteNew("solo", "m26", 7, "", "")); setTab("builder"); window.scrollTo(0, 0); }} /></ErrorBoundary></div>
+      <div id="panel-builder" className="ks-appear" style={{ display: tab === "builder" ? "block" : "none", ...(battleAccent ? { "--accent": battleAccent } : {}) }}><ErrorBoundary where="Battle"><Builder tp={tp} setTp={setTp} mp={mp} mpHandlerRef={mpHandlerRef} showMP={showMP} setShowMP={setShowMP} tutorialSeen={tutorialSeen} setTutorialSeen={setTutorialSeen} openTutorial={openTutorial} campaign={campaign} setCampaign={setCampaign} onTeamColor={setTeamColor} /></ErrorBoundary></div>
+      <div className="ks-appear" style={{ display: tab === "community" ? "block" : "none" }}><ErrorBoundary where="Community"><CommunityRosters /><CrashTest /></ErrorBoundary></div>
 
       {/* FOOTER */}
       <div style={{ textAlign: "center", padding: "20px 16px", borderTop: "1px solid var(--line)", background: "linear-gradient(180deg, var(--bg), #08070600)" }}>
@@ -17497,7 +17620,7 @@ function MapCompare() {
 const root = ReactDOM.createRoot(document.getElementById('root'));
 // The self-test saves the player's data and clears it before the app starts, so the test begins from a clean slate.
 if (/[?&]selftest\b/.test(window.location.search)) { window.__ksSaved = snapshotKillSheetStorage(); restoreKillSheetStorage({}); }
-root.render(React.createElement(/[?&]maps\b/.test(window.location.search) ? MapCompare : App));
+root.render(React.createElement(ErrorBoundary, null, React.createElement(/[?&]maps\b/.test(window.location.search) ? MapCompare : App)));
   </script>
 </body>
 </html>

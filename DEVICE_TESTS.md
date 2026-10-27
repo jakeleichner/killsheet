@@ -29,7 +29,12 @@ mobile data instead of Wi-Fi, so the two are on different networks.
 | 7 | Close KillSheet completely on the host (A), then open it again. | A shows a Rejoin bar; after tapping it, both are connected in the same room. |
 | 8 | On A, tap Disconnect. | B says "Your opponent ended the online game" and doesn't keep trying. |
 
-## 3. Offline
+## 3. Screen and saved data on your phone
+
+1. Start a game in KillSheet (Battle tab, Start game). Put the phone down and don't touch it for 3 minutes. The screen should stay on. End the game: the phone should dim and lock normally again.
+2. In Safari (not the Home Screen app), with at least one saved roster or finished game, open the Battle tab while not in a game. A "Keep your data safe" note should suggest adding KillSheet to your Home Screen. Tap Got it; next comes a "Back up your rosters and games" note.
+
+## 4. Offline
 
 1. Open KillSheet on your phone once while online and let it load fully.
 2. Turn on Airplane Mode and close Safari.
