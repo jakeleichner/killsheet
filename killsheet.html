@@ -6536,6 +6536,7 @@ function damageThrough(atk, def, normalDmg, critDmg, melee, brutal) {
 }
 
 function DiceRoller({ w, wtype, onClose, cp, setCp, requestDamageApply, applySelfDamage }) {
+  const { feat } = React.useContext(FeatureCtx);
   const [attackDice, setAttackDice] = useState(null);
   const [defenceDice, setDefenceDice] = useState(null);
   const [rerolledAttack, setRerolledAttack] = useState(false);
@@ -6761,7 +6762,12 @@ function DiceRoller({ w, wtype, onClose, cp, setCp, requestDamageApply, applySel
                       <span style={{ fontSize: 13, color: triggered ? "#B8341C" : "#3D6B3F" }}>{triggered ? hotRoll + " < " + w.hit + " → " + selfDmg + " self-damage" : hotRoll + " ≥ " + w.hit + " → safe"}</span>
                     </div>
                     {triggered && (
-                      <button disabled={!applySelfDamage} onClick={() => { if (applySelfDamage) applySelfDamage(selfDmg); }} style={{ ...bs("#B8341C"), fontSize: 13, padding: "8px 12px", opacity: applySelfDamage ? 1 : 0.4 }}><Icon name="skull" size={12} /> Apply {selfDmg} self-damage</button>
+                      <button disabled={!applySelfDamage} onClick={(e) => {
+                        if (!applySelfDamage) return;
+                        const card = e.currentTarget.closest(".datacard-print"), still = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+                        if (card && card.animate && feat.fx && !still) playHotFx(card, e.currentTarget);
+                        applySelfDamage(selfDmg);
+                      }} style={{ ...bs("#B8341C"), fontSize: 13, padding: "8px 12px", opacity: applySelfDamage ? 1 : 0.4 }}><Icon name="skull" size={12} /> Apply {selfDmg} self-damage</button>
                     )}
                   </div>
                 </div>
@@ -6926,8 +6932,8 @@ function attackKind(w) {
 // How slowly the effects play: 1 is the original quick version. Players can switch them off, so they get time to land.
 const FX_PACE = 1.7;
 // Plays the effect from the attacker card to the target row, on a layer above the screen.
-// Returns the time (ms) the hit lands, so the row can flash then.
-function playAttackFx(kind, card, rowEl) {
+// Returns the time (ms) the hit lands, so the row can flash then. opts.shock adds lightning after the hit (Shock weapons).
+function playAttackFx(kind, card, rowEl, opts = {}) {
   const ms = (t) => Math.round(t * FX_PACE);
   const a = card.getBoundingClientRect(), b = rowEl.getBoundingClientRect();
   const ax = a.left + a.width / 2, ay = a.top + a.height / 2;
@@ -7040,8 +7046,55 @@ function playAttackFx(kind, card, rowEl) {
     }
     hit = ms(280);
   }
+  if (opts.shock) {
+    // Shock: a jagged bolt of lightning flickers across the target after the hit.
+    const ns = "http://www.w3.org/2000/svg", w = b.width * 0.84, h = Math.max(24, b.height * 0.7);
+    const svg = document.createElementNS(ns, "svg");
+    svg.setAttribute("data-fx", "shock");
+    svg.setAttribute("width", w); svg.setAttribute("height", h);
+    svg.style.cssText = "position:absolute;left:" + (b.left + b.width * 0.08) + "px;top:" + (by - h / 2) + "px;overflow:visible;opacity:0;filter:drop-shadow(0 0 6px #6BC7FF)";
+    [[3, "#6BC7FF"], [1.5, "#E8F7FF"]].forEach(([sw, col], k) => {
+      const line = document.createElementNS(ns, "polyline");
+      const pts = [];
+      for (let i = 0; i <= 10; i++) { const edge = i === 0 || i === 10; pts.push(Math.round(w * i / 10 + (edge ? 0 : (Math.random() - 0.5) * w * 0.06)) + "," + Math.round(edge ? h / 2 : (i % 2 ? 0.1 : 0.9) * h + (Math.random() - 0.5) * h * 0.3)); }
+      line.setAttribute("points", pts.join(" "));
+      line.setAttribute("fill", "none"); line.setAttribute("stroke", col); line.setAttribute("stroke-width", sw);
+      line.setAttribute("stroke-linejoin", "round"); line.setAttribute("stroke-linecap", "round");
+      if (k === 0) line.setAttribute("opacity", "0.8");
+      svg.appendChild(line);
+    });
+    layer.appendChild(svg);
+    svg.animate([{ opacity: 0 }, { opacity: 1, offset: 0.1 }, { opacity: 0.2, offset: 0.3 }, { opacity: 1, offset: 0.45 }, { opacity: 0.4, offset: 0.7 }, { opacity: 0 }],
+      { duration: ms(450), delay: hit + ms(260), fill: "forwards" });
+  }
   setTimeout(() => layer.remove(), hit + ms(1000));
   return hit;
+}
+
+// Hot: when a Hot weapon hurts its own user, the operative's card glows red and shakes, and embers rise from the roll.
+function playHotFx(card, fromEl) {
+  const ms = (t) => Math.round(t * FX_PACE);
+  const r = card.getBoundingClientRect(), o = (fromEl || card).getBoundingClientRect();
+  const layer = document.createElement("div");
+  layer.style.cssText = "position:fixed;inset:0;pointer-events:none;z-index:10002;overflow:hidden";
+  document.body.appendChild(layer);
+  const glow = document.createElement("div");
+  glow.setAttribute("data-fx", "hot");
+  glow.style.cssText = "position:absolute;left:" + r.left + "px;top:" + r.top + "px;width:" + r.width + "px;height:" + r.height + "px;border-radius:6px;opacity:0;background:#B8341C30;box-shadow:inset 0 0 28px #E0664A, 0 0 18px #B8341C";
+  layer.appendChild(glow);
+  glow.animate([{ opacity: 0 }, { opacity: 1, offset: 0.2 }, { opacity: 0.7, offset: 0.6 }, { opacity: 0 }], { duration: ms(700), fill: "forwards" });
+  card.animate([{ transform: "none" }, { transform: "translateX(-6px)" }, { transform: "translateX(6px)" }, { transform: "translateX(-4px)" }, { transform: "translateX(3px)" }, { transform: "none" }], { duration: ms(450), easing: "ease-out" });
+  for (let i = 0; i < 10; i++) {
+    const x = o.left + Math.random() * o.width, y = o.top + o.height / 2, size = 4 + Math.random() * 4, col = i % 2 ? "#FFB627" : "#E0664A";
+    const d = document.createElement("div");
+    d.style.cssText = "position:absolute;left:0;top:0;opacity:0;width:" + size + "px;height:" + size + "px;border-radius:50%;background:" + col + ";box-shadow:0 0 6px " + col;
+    layer.appendChild(d);
+    d.animate([
+      { transform: "translate(" + Math.round(x) + "px," + Math.round(y) + "px)", opacity: 1 },
+      { transform: "translate(" + Math.round(x + (Math.random() - 0.5) * 30) + "px," + Math.round(y - 50 - Math.random() * 40) + "px) scale(0.4)", opacity: 0 },
+    ], { duration: ms(600), delay: ms(i * 35), easing: "ease-out", fill: "forwards" });
+  }
+  setTimeout(() => layer.remove(), ms(1100));
 }
 
 /* ═══ WEAPON DISPLAY ═══ */
@@ -7139,7 +7192,7 @@ function Datacard({ op, f, fc, equipWeapons, equipEffects, curWounds, onWound, c
     return <UsePips label={"Limited " + max} used={uses[key] || 0} max={max} onSet={(n) => setUse(key, n)} />;
   };
   // The target screen shows who attacked and with which weapon.
-  const damageFrom = (w) => requestDamageApply ? (amount, done) => requestDamageApply(amount, done, { attacker: op.name, weapon: w.name, kind: attackKind(w) }) : undefined;
+  const damageFrom = (w) => requestDamageApply ? (amount, done) => requestDamageApply(amount, done, { attacker: op.name, weapon: w.name, kind: attackKind(w), shock: /\bShock\b/.test(w.wr || "") }) : undefined;
   const allRanged = [...op.ranged.filter(carries).map(w => ({ ...w, type: "ranged" })), ...equipWeapons.filter(w => w.type === "ranged")];
   const allMelee = [...op.melee.filter(carries).map(w => ({ ...w, type: "melee" })), ...equipWeapons.filter(w => w.type === "melee")];
 
@@ -8599,7 +8652,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                 const still = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
                 if (!card || still || !feat.fx || !rowEl.animate) { setDamageRequest(null); return; }
                 setStruck({ key, after });
-                const hitAt = playAttackFx(damageRequest.meta.kind || "melee", card, rowEl);
+                const hitAt = playAttackFx(damageRequest.meta.kind || "melee", card, rowEl, { shock: !!damageRequest.meta.shock });
                 rowEl.animate([
                   { background: "#262A33", transform: "none" },
                   { background: "#B8341C", transform: "translateX(5px)", offset: 0.25 },
@@ -17044,6 +17097,20 @@ async function runSelfTest(hooks) {
   });
 
   // The dice maths with fixed dice: each weapon rule, cover, obscured and blocking.
+  await step("Shock and Hot effects", async () => {
+    const box = (top) => { const d = document.createElement("div"); d.style.cssText = "position:fixed;left:20px;top:" + top + "px;width:240px;height:60px"; document.body.appendChild(d); return d; };
+    const a = box(40), b = box(260);
+    try {
+      playAttackFx("melee", a, b);
+      if (document.querySelector("svg[data-fx='shock']")) throw new Error("lightning showed for a weapon without Shock");
+      playAttackFx("melee", a, b, { shock: true });
+      if (!document.querySelector("svg[data-fx='shock'] polyline")) throw new Error("no lightning for a Shock weapon");
+      playHotFx(a, a);
+      if (!document.querySelector("[data-fx='hot']")) throw new Error("no red glow for Hot self-damage");
+    } finally { a.remove(); b.remove(); }
+    const all = Object.values(FACTIONS).flatMap(f => f.operatives.flatMap(o => [...o.ranged, ...o.melee]));
+    return all.filter(w => /\bShock\b/.test(w.wr || "")).length + " Shock and " + all.filter(w => /\bHot\b/.test(w.wr || "")).length + " Hot weapons on datacards";
+  });
   await step("Dice maths", async () => {
     const R = (hit, wr) => diceRules({ hit, wr: wr || "" });
     const A = (dice, r, obscured) => { const x = attackResult(dice, r, obscured); return x.crits + "c " + x.hits + "h " + x.fails + "f" + (x.devastatingDmg ? " dev" + x.devastatingDmg : ""); };
