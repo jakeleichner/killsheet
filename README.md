@@ -120,13 +120,10 @@ The gold→rust bulk swap was done globally, which flattened the "look here" sig
 
 | Severity | Where | Status |
 |---|---|---|
-| High | Builder "Begin Roster Building" → React error #310 (hooks-after-early-return) | ✅ Fixed |
-| Medium | Multiplayer "Negotiation failed" on some networks (symmetric NAT) | 🟡 Mitigated with ExpressTURN; deeply restrictive networks may still fail — fallback is import/export codes |
-| Medium | Multiplayer dropped empty-roster sync (couldn't see opponent until they added an op) | ✅ Fixed |
-| High | Preview/Community tab invisible (missing TAB_ICONS entry) | ✅ Fixed |
+| Medium | Multiplayer "Negotiation failed" on some networks (symmetric NAT) | 🟡 Mitigated with ExpressTURN; deeply restrictive networks may still fail. Fallback: import/export codes |
 
 ### Limitations (intentional / documented, not bugs)
-- Limited weapons and grenades are only tracked with the Use tracking switch on (tick boxes); nothing stops a player using them again.
+- Limited weapons and grenades are only tracked with the Use tracking switch on (checkboxes); nothing stops a player using them again.
 - CP/VP and tac-op picks not synced in multiplayer (private per player).
 - WebRTC may fail on ~15% of restrictive networks.
 - Closing a tab drops an online game; the room is remembered for 12 hours and either player can rejoin it with one tap (see the Rejoin entry in Done recently). Two tabs on one computer were tested, real phones on different networks were not.
@@ -169,7 +166,7 @@ These will bite you if you don't know them:
 
 ## Work queue (what's left to do)
 
-### Immediate / next session: Community Rosters backend
+### Community Rosters backend (decide first whether Community stays; see Other open tasks)
 The Community Rosters tab is currently a **visual placeholder only** (a "coming soon" mock). The feature: visitors post a named roster, organized by faction, others upvote/downvote and browse. This requires a backend (the app currently has none).
 
 Planned implementation:
@@ -276,6 +273,14 @@ Estimated 2-3 hours. Should be its own focused session with its own QA pass (mix
 - Pre-ship checker added: `python3 tools/check.py` (hooks before early returns, every tab has an icon and panel, unique localStorage keys, no direct localStorage use, print class, JSX script tag).
 
 ### Other open tasks (rough priority order)
+- **Keep the screen awake during a game.** Use the Screen Wake Lock API (`navigator.wakeLock.request("screen")`, Safari 16.4+) while a game is in progress (roster locked), release it when the game ends or the tab is hidden, and re-request on `visibilitychange`. For everyone. Small.
+- **Crash safety net.** Only the campaign card has an error boundary; any other crash leaves a blank page. Wrap the app (and each tab panel) in an error boundary that shows "Something went wrong", a Reload button, and a Back up button that still works (reads storage directly). Self-test: force a render error in a test component and check the fallback shows. For everyone. Small.
+- **Protect saved data on iPhone.** Safari can delete a site's storage after 7 days of Safari use without visiting it; home screen apps are exempt. After the first saved roster or finished game, show a one-time "Add KillSheet to your Home Screen so your data is kept" note (iOS Safari, not already installed), and a backup reminder if the last backup is old. Also call `navigator.storage.persist()` where supported. For everyone. Small.
+- **Diagrams in the Rules tab.** The owner found words alone confusing in the tutorial. Add small pictures like `OrderGrid` to the hardest rules: cover vs obscured, control range, Charge (move + 2", end in control range), visibility and intervening terrain. Shown when the rule is opened. For everyone; most useful to beginners. Medium.
+- **Tutorial part 2.** Part 1 doesn't cover objectives, scoring or ploys. A second short walkthrough: contesting and controlling an objective marker (APL totals), scoring at the end of a turning point, and spending CP on a strategy and a firefight ploy. Same map style (`TutMap`). Beginner basics. Medium.
+- **Text size in Appearance.** A Normal / Large / Larger choice beside the themes, for reading at the table. Needs a base font-size variable that inline sizes can scale from (many sizes are fixed px). For everyone. Medium.
+- **End-of-game recap.** When a game ends, show VP by turning point, who took out whom and the best operative (most damage dealt), from `ks_battleLog` and the score. Save it with the game in history. For everyone. Medium.
+- **Quarterly rules check.** Every three months, check Games Workshop's team rules downloads for new update logs and list what changed, for the owner to approve before anything is edited. Needs a record of each team's last-checked update date. Could run as a scheduled task.
 - **Owner: run `DEVICE_TESTS.md` after the next deploy** (iPhone Safari self-test, online play on two devices, offline on a phone) and tell Claude anything that doesn't match.
 - **Owner to decide the errata items in `tools/teams/RULES_CHECK.md` ("For the owner to decide").** Where the PDF's card text and its older errata disagree, the app follows the card. Change any the owner rules on, in `tools/teams/<team>.py`, then rebuild.
 - **Community Rosters: owner to decide whether it stays.** Under the beginner-first vision, sharing rosters is close to "adding your own content"; if kept, it becomes a switch like the others.
@@ -284,6 +289,7 @@ Estimated 2-3 hours. Should be its own focused session with its own QA pass (mix
 - **Legion of the Damned**: previewed in the Big Autumn Preview; add once its rules are published.
 
 ### Lower-priority backlog
+- **Maybe: attack sounds.** Short sounds with the attack animations (slash, shot, blast, lightning, overheat), with their own switch, off by default since sound at a shared table can annoy. Plain synthesized sounds (Web Audio), no game audio.
 - **Maybe: leaderboard and friends (needs logins first).** Once the Community backend has sign-in, add a Community leaderboard built from game history (`ks_gameHistory`: wins, losses, draws, per team and overall), plus adding friends to compare records and a friends-only board. Depends on accounts and on syncing history to the server. Owner flagged this as a maybe; confirm before building.
 - More factions: see convention 11. Add `tools/teams/<team>.py`, list it in `ORDER.txt`, run the build, then `python3 tools/check.py` and build a full roster in the preview.
 - Tac op conditions in the scoring panel, if a free source ever covers them (they're on the paid Approved Ops cards).
