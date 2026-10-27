@@ -5935,11 +5935,11 @@ function teamAccent(hex, theme) {
   }
   return c;
 }
-function applyTheme(id, teamColor) {
+// The team color (Match my team) isn't set here: it applies to the Battle tab only, so the logo, tabs and other tabs keep the theme.
+function applyTheme(id) {
   const t = THEMES[id] || THEMES.default;
   const root = document.documentElement;
   Object.entries(t.vars).forEach(([k, v]) => root.style.setProperty("--" + k, v));
-  root.style.setProperty("--accent", teamColor ? teamAccent(teamColor, t) : t.vars.accent);
   root.style.colorScheme = t.light ? "light" : "dark";
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute("content", t.vars.bg);
@@ -16776,7 +16776,7 @@ function AppearancePicker() {
       <div style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "12px 0", marginTop: 10, borderTop: "1px solid var(--raised)" }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif" }}>Match my team</div>
-          <div style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.45, marginTop: 2 }}>Buttons and highlights take your team's color, on top of your theme. A few team colors are adjusted so they stay readable and don't look like dice or damage colors.</div>
+          <div style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.45, marginTop: 2 }}>On the Battle tab, buttons and highlights take your team's color, on top of your theme. A few team colors are adjusted so they stay readable and don't look like dice or damage colors.</div>
           {team && <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, fontSize: 12, color: "var(--muted)" }}><span style={{ width: 14, height: 14, borderRadius: 3, background: team, display: "inline-block" }} />Your team's color now</div>}
         </div>
         <Switch on={!!appearance.matchTeam} onChange={(v) => setAppearance(a => ({ ...a, matchTeam: v }))} label="Match my team" />
@@ -17218,6 +17218,14 @@ async function runSelfTest(hooks) {
     const sw = page.querySelector("[role=switch][aria-label='Match my team']");
     await click(sw, "Match my team");
     if (!(store("appearance") || {}).matchTeam) throw new Error("Match my team didn't save");
+    // It colors the Battle tab only: the logo and the root keep the theme's accent.
+    const fid = store("fid"), t = Object.values(THEMES).slice(-1)[0];
+    if (fid && FACTIONS[fid]) {
+      const panel = document.getElementById("panel-builder"), want = teamAccent(FACTIONS[fid].color, t);
+      if (getComputedStyle(panel).getPropertyValue("--accent").trim().toUpperCase() !== want) throw new Error("the Battle tab didn't take the team color");
+      if (getComputedStyle(document.documentElement).getPropertyValue("--accent").trim().toUpperCase() !== t.vars.accent.toUpperCase()) throw new Error("the team color leaked outside the Battle tab");
+      const c = crosshair(); if (c && getComputedStyle(c).stroke !== rgb(t.vars.accent)) throw new Error("the logo took the team color");
+    }
     await click(sw, "Match my team (off)");
     await click(page.querySelector("[role=radio][aria-label='Default']"), "Default theme");
     await click(page.querySelector("[aria-label='Close']"), "close Settings");
@@ -17333,7 +17341,8 @@ function App() {
   // Appearance: the theme, and whether the accent follows your team's color (Builder reports the team).
   const [appearance, setAppearance] = useLocalStorage("appearance", { theme: "default", matchTeam: false });
   const [teamColor, setTeamColor] = useState(null);
-  React.useLayoutEffect(() => applyTheme(appearance.theme, appearance.matchTeam ? teamColor : null), [appearance.theme, appearance.matchTeam, teamColor]);
+  React.useLayoutEffect(() => applyTheme(appearance.theme), [appearance.theme]);
+  const battleAccent = appearance.matchTeam && teamColor ? teamAccent(teamColor, THEMES[appearance.theme] || THEMES.default) : null;
   const cogButton = <button onClick={() => setShowFeatures(true)} aria-label="Settings" title="Settings" aria-haspopup="dialog" style={{ width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", borderRadius: 6, cursor: "pointer", color: showFeatures ? "var(--accent)" : "var(--muted)" }}><Icon name="cog" size={20} /></button>;
   const feat = { ...FEATURE_PRESETS[features ? presetOf(features) : returning ? "expert" : "learning"], ...(features || {}) };
   const [ruleSearch, setRuleSearch] = useState(null);
@@ -17442,7 +17451,7 @@ function App() {
       {/* CONTENT: all tabs stay mounted, hidden with display:none to preserve state */}
       <div className="ks-appear" style={{ display: tab === "rules" ? "block" : "none" }}><Rules search={ruleSearch} tutorialOpen={tutorialOpen} openTutorial={openTutorial} closeTutorial={() => { setTutorialOpen(false); window.scrollTo(0, 0); }} /></div>
       <div className="ks-appear" style={{ display: tab === "missions" ? "block" : "none" }}><Missions campaign={campaign} startCampaign={() => { if (!campaign) setCampaign(cteNew("solo", "m26", 7, "", "")); setTab("builder"); window.scrollTo(0, 0); }} /></div>
-      <div className="ks-appear" style={{ display: tab === "builder" ? "block" : "none" }}><Builder tp={tp} setTp={setTp} mp={mp} mpHandlerRef={mpHandlerRef} showMP={showMP} setShowMP={setShowMP} tutorialSeen={tutorialSeen} setTutorialSeen={setTutorialSeen} openTutorial={openTutorial} campaign={campaign} setCampaign={setCampaign} onTeamColor={setTeamColor} /></div>
+      <div id="panel-builder" className="ks-appear" style={{ display: tab === "builder" ? "block" : "none", ...(battleAccent ? { "--accent": battleAccent } : {}) }}><Builder tp={tp} setTp={setTp} mp={mp} mpHandlerRef={mpHandlerRef} showMP={showMP} setShowMP={setShowMP} tutorialSeen={tutorialSeen} setTutorialSeen={setTutorialSeen} openTutorial={openTutorial} campaign={campaign} setCampaign={setCampaign} onTeamColor={setTeamColor} /></div>
       <div className="ks-appear" style={{ display: tab === "community" ? "block" : "none" }}><CommunityRosters /></div>
 
       {/* FOOTER */}
