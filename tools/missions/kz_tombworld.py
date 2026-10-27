@@ -16,7 +16,7 @@ PACK = dict(
         R("Walls", "Tomb World walls are Heavy and Wall terrain.", [
             "Nothing can move over or through Wall terrain, whatever other rules say.",
             "You can't see over or through it.",
-            "Measure distances around it by the shortest route (except to areas like drop zones or the centre).",
+            "Measure distances around it by the shortest route (except to areas like drop zones or the center).",
             "For cover and obscured, only the corners and ends of walls count as intervening, unless the active operative has already passed that point. Small bumps don't count as corners.",
         ]),
         R("Hatchways", "Start closed. Closed: the access point and hatch are Heavy and Wall terrain. Open: remove the hatch; the access point is Accessible, Insignificant and Exposed (use the walls beside it for cover)."),

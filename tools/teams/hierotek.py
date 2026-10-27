@@ -51,7 +51,7 @@ TEAM = {
         "strategy": [
             ("Relentless Onslaught", "When shooting an operative within 8\", ranged weapons gain Balanced. The shooter must be within 8\" even when using Magnify."),
             ("Command Underlings", "SUPPORT. Pick one: other operatives visible within 6\" of a Cryptek make a free Dash, or non-Crypteks visible within 3\" of an Apprentek make a free Dash."),
-            ("Undying Androids", "When one is shot and can't retain any cover saves, retain one defence die as a normal success without rolling it."),
+            ("Undying Androids", "When one is shot and can't retain any cover saves, retain one defense die as a normal success without rolling it."),
             ("Methodical Elimination", "Melee weapons gain Accurate 1, or Accurate 2 when retaliating or fighting without having moved more than its Move this activation."),
         ],
         "firefight": [

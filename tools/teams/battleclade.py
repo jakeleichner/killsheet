@@ -32,7 +32,7 @@ TEAM = {
             ("Duty of Reclamation", "Once per action, Command Re-roll costs 0CP for a Battleclade operative contesting an objective or one of your mission markers."),
             ("Incantation of the Iron Soul", "Whenever an attack die inflicts 3 or more damage on a Battleclade operative, roll one D6: on a 4+, subtract 1 from that damage."),
             ("Noospheric Possession", "SUPPORT. Servitors within 6\" of the Auto-proxy or Underseer get Accurate 1 on their weapons."),
-            ("Prioritised Acquisition", "Pick an objective or one of your mission markers. When working out who controls it, your contesting operatives' total APL counts as 1 higher. Battleclade operatives within 3\" of it get +1 Atk on melee weapons (to a maximum of 4)."),
+            ("Prioritized Acquisition", "Pick an objective or one of your mission markers. When working out who controls it, your contesting operatives' total APL counts as 1 higher. Battleclade operatives within 3\" of it get +1 Atk on melee weapons (to a maximum of 4)."),
         ],
         "firefight": [
             ("Remote Access", "Once during a Tech-Priest's activation, it can do a mission action on a marker within 4\" (that no enemy contests) instead of in its control range, or Operate Hatch within 4\"."),

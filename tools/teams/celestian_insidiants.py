@@ -26,7 +26,7 @@ TEAM = {
     },
     "factionRules": [
         ("Inspiration", "An operative becomes INSPIRING when it incapacitates an enemy with 6 or more Wounds, or just before it moves in a Charge. INSPIRING operatives' datacard weapons gain Severe."),
-        ("Martyrdom", "When an INSPIRING operative is incapacitated, another friendly operative it's visible to or within 6\" of gains a Benediction. Ardour: +1 APL for the battle (not the Superior). Wrath: datacard weapons gain Ceaseless for the battle. Restoration: regain up to D3+2 wounds. Exigence: a free Charge of up to 3\" or a Dash, ending closer to the fallen operative."),
+        ("Martyrdom", "When an INSPIRING operative is incapacitated, another friendly operative it's visible to or within 6\" of gains a Benediction. Ardor: +1 APL for the battle (not the Superior). Wrath: datacard weapons gain Ceaseless for the battle. Restoration: regain up to D3+2 wounds. Exigence: a free Charge of up to 3\" or a Dash, ending closer to the fallen operative."),
         ("Weapons of the Witch Hunters", "PSYCHIC ranged weapons can't damage Insidiants, and PSYCHIC actions can't pick or count them. Operatives within 3\" of an Insidiant can't use PSYCHIC actions, rules or ranged weapons, and their PSYCHIC melee weapons lose their rules (Dmg 3/4 at most)."),
         ("Anti-PSYKER", ANTI_PSYKER),
     ],
@@ -35,7 +35,7 @@ TEAM = {
             ("Suffering & Sacrifice", "When a wounded Insidiant attacks, its weapons gain Balanced."),
             ("Holy Resilience", "When an INSPIRING operative fights or retaliates, Normal and Critical Dmg of 4 or more inflicts 1 less damage on it."),
             ("Suspect & Eliminate", "Pick an enemy (it and enemies visible within 2\" of it) or a marker (enemies contesting it). They gain Suspicion until the end of the turning point, and weapons attacking them gain Punishing."),
-            ("Wrathful Determination", "When one with an Engage order is shot, re-roll one defence die."),
+            ("Wrathful Determination", "When one with an Engage order is shot, re-roll one defense die."),
         ],
         "firefight": [
             ("Unshakeable Pursuit", "Use during an activation. It ignores Move changes, and an INSPIRING operative gets +1\" Move. You can use this before a Charge that makes it INSPIRING."),

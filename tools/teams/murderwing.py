@@ -59,19 +59,19 @@ TEAM = {
     "ploys": {
         "strategy": [
             ("Cull the Weak", "When shooting or fighting an enemy that's 2\" or more lower, has reduced APL, or was wounded at the start of the activation, weapons gain Punishing."),
-            ("Nightmare on High", "When one is shot while 2\" or more above the killzone floor, or after Boosting this turning point, re-roll one defence die."),
+            ("Nightmare on High", "When one is shot while 2\" or more above the killzone floor, or after Boosting this turning point, re-roll one defense die."),
             ("Predators Above", "While 2\" or more above the floor, weapons gain Balanced. After a Boost, they keep Balanced until the end of the activation."),
             ("Instil Fear", "When one fights, Normal Dmg of 3 or more inflicts 1 less damage on it."),
         ],
         "firefight": [
             ("Murderous Descent", "When an enemy ends a move within 3\" horizontally and more than 2\" lower (in close quarters: within 2\", in a different room), interrupt with a free Charge that must end in its control range."),
-            ("Long Forgotten Honour", "When one fights or retaliates and resolves a critical success, end the sequence instead and make a free Fall Back of up to 3\", ignoring restrictions. The Fight ends."),
+            ("Long Forgotten Honor", "When one fights or retaliates and resolves a critical success, end the sequence instead and make a free Fall Back of up to 3\", ignoring restrictions. The Fight ends."),
             ("Malicious Narcissism", "On your turn to activate, with only one Murderwing ready: for the rest of the turning point, while you have fewer ready operatives, you can skip activations (no counteracting until it's expended)."),
             ("Wings of Darkness", "A Fall Back or Reposition Boost sets up 3\" further. It can't Shoot, Fight or use Carving Blow until the next turning point. You can't use this in the first turning point."),
         ],
     },
     "equipment": [
-        {"id": "clawed_armour", "name": "Clawed Armour", "desc": "Clawed Charge (0AP, a Boost action during a Charge): inflict 1 damage on an enemy in its control range, then the Charge ends."},
+        {"id": "clawed_armour", "name": "Clawed Armor", "desc": "Clawed Charge (0AP, a Boost action during a Charge): inflict 1 damage on an enemy in its control range, then the Charge ends."},
         {"id": "warp_fuel", "name": "Warp Fuel", "desc": "Once per turning point, when an enemy Falls Back in its activation from a Murderwing's control range, that Murderwing makes a free Reposition or Charge of up to 3\"."},
         {"id": "bladefins", "name": "Bladefins", "desc": "Slice from Above (1AP, a Boost action during a Fall Back or Reposition): inflict D3+1 damage on an enemy in its Boost zone."},
         {"id": "vox_casters", "name": "Vox-casters", "desc": "Once per turning point, Vox-cry (1AP, not with a Conceal order): enemies within 2\" take a stun test (on a D6 roll of 3+, they get -1 APL until the end of their next activation)."},

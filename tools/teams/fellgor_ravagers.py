@@ -29,7 +29,7 @@ TEAM = {
     "ploys": {
         "strategy": [
             ("Pelting Firepower", "When shooting an enemy that another Ravager shot this turning point, weapons gain Ceaseless, or Relentless if two or more others did."),
-            ("Reckless Determination", "When an expended Ravager is shot and has no cover saves, retain one defence die as a normal success without rolling it."),
+            ("Reckless Determination", "When an expended Ravager is shot and has no cover saves, retain one defense die as a normal success without rolling it."),
             ("Violent Temperament", "When one fights or retaliates, after rolling you can re-roll all of your attack dice (all or none)."),
             ("Ambush", "A Ravager that switched from Conceal to Engage when activated is ambushing. When it fights, retain one normal success as a critical success (not with a Frenzy token)."),
         ],

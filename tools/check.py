@@ -140,6 +140,20 @@ def check_setters(text):
     return [f"`{name}(...)` is called but never defined (leftover from removed state?)." for name in sorted(used - defined)]
 
 
+def check_us_spelling(lines):
+    """App text is US English. Data keys that keep the old spelling (npo.behaviour) are allowed."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from us_spelling import BRITISH
+    out = []
+    for i, line in enumerate(lines, 1):
+        for m in BRITISH.finditer(line):
+            a, b = m.start(), m.end()
+            if line[a - 1:a] == "." or re.match(r'"?\s*:', line[b:b + 3]) or line[b:b + 2] == '"]':
+                continue  # a data key, not text
+            out.append(f"line {i}: '{m.group(0)}' (use the US spelling)")
+    return out
+
+
 def main():
     path = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).resolve().parent.parent / "killsheet.html"
     text = path.read_text(encoding="utf-8")
@@ -152,6 +166,7 @@ def main():
         ("Datacard print class present", check_print_class(text)),
         ("JSX script tag intact", check_babel_script(text)),
         ("Every setX() call is defined", check_setters(text)),
+        ("US spelling in app text", check_us_spelling(lines)),
     ]
     failed = 0
     for label, problems in checks:

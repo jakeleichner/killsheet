@@ -50,7 +50,7 @@ TEAM = {
     ],
     "ploys": {
         "strategy": [
-            ("The Emperor Protects", "When a Sanctifier benefiting from the Sermon is shot, re-roll any defence dice showing one result of your choice."),
+            ("The Emperor Protects", "When a Sanctifier benefiting from the Sermon is shot, re-roll any defense dice showing one result of your choice."),
             ("Fervent Brawl", "While one benefits from the Sermon, melee weapons gain Ceaseless, and Normal and Critical Dmg of 4 or more inflicts 1 less damage on it. One that activates in range of the Orator keeps the Sermon for that whole activation."),
             ("Zealous Persecution", "When one fights after Charging this activation, melee weapons gain Lethal 5+."),
             ("Rally the Flock", "Each Sanctifier (not the Orator) benefiting from the Sermon makes a free Dash or Fall Back of up to 3\", ending closer to the Orator and visible to it. You can't use this in the first turning point."),
@@ -74,9 +74,9 @@ TEAM = {
             "Lead the Procession: After the first turning point, when it's the Orator and it Charges, Falls Back or Repositions, Sanctifiers benefiting from the Sermon and visible to it can each make a free Charge, Fall Back or Reposition of up to 3\", ending still in the Sermon."],
            "LEADER, CONFESSOR", wounds=10, pts=32),
         sc("cherub", "Cherub", [], [("Incentiviser", 3, "5+", "1/3", "Shock")],
-           ["Cherub: Its APL counts as 1 lower for objective control. While it has a Conceal order and is in cover, enemies more than 2\" away can't target it. It can only use its own weapons, and has no unique actions except Incentivise.",
+           ["Cherub: Its APL counts as 1 lower for objective control. While it has a Conceal order and is in cover, enemies more than 2\" away can't target it. It can only use its own weapons, and has no unique actions except Incentivize.",
             "Fly: When it Charges, Falls Back or Repositions, it can fly instead: set it up wholly within its Move horizontally, and not in enemy control range unless it's Charging.",
-            "Incentivise (1AP): SUPPORT. Another Sanctifier (not the Confessor, Death Cult Assassin, Miraculist or Orator) visible within 2\" gets +1 APL until the end of its next activation. It can't do this within enemy control range."],
+            "Incentivize (1AP): SUPPORT. Another Sanctifier (not the Confessor, Death Cult Assassin, Miraculist or Orator) visible within 2\" gets +1 APL until the end of its next activation. It can't do this within enemy control range."],
            "CHERUB", wounds=5, move='7"'),
         sc("conflagrator", "Conflagrator", [("Twin hand flamers (focused)", 4, "2+", "3/3", 'Range 6", Saturate, Torrent 2", Blaze'), ("Twin hand flamers (twin torrent)", 4, "2+", "3/3", 'Range 6", Saturate, Torrent 0", Twin Torrent, Blaze')],
            [("Gun butts", 4, "4+", "2/3", "-")],

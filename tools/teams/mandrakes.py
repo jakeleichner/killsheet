@@ -25,12 +25,12 @@ TEAM = {
         ("Within Shadow", "An operative is Within Shadow if it's within 1\" of Heavy terrain that isn't lower than it, if any part of its base is under Vantage terrain, or if a Shadow Portal marker is in its control range."),
         ("Shadow Passage", "Once per turning point, a Mandrake Within Shadow taking a Reposition can instead be removed and set up Within Shadow somewhere else. It can't be in enemy control range or be a valid target for any enemy, and it can't Shoot or Fight until the next turning point."),
         ("Umbral Entities", "Enemies shooting a Mandrake ignore Piercing. Within Shadow, its Save improves by 1."),
-        ("Soulstrike", "Weapon rule. Defence dice equal to or below the target's APL are successes, and higher results are fails. A 1 is always a critical success, and a 6 is always a fail."),
+        ("Soulstrike", "Weapon rule. Defense dice equal to or below the target's APL are successes, and higher results are fails. A 1 is always a critical success, and a 6 is always a fail."),
     ],
     "ploys": {
         "strategy": [
             ("Creeping Horror", "After each enemy activation, one Mandrake with a Conceal order can make a free Dash that starts and ends Within Shadow (each Mandrake once per turning point). You can't use this in the first turning point."),
-            ("Gloaming Shroud", "When a Mandrake Within Shadow is shot, retain one defence die as a normal success without rolling it. This is on top of any cover save."),
+            ("Gloaming Shroud", "When a Mandrake Within Shadow is shot, retain one defense die as a normal success without rolling it. This is on top of any cover save."),
             ("Blade in the Dark", "Mandrakes can Charge with a Conceal order if they start or end Within Shadow."),
             ("Inescapable Nightmare", "When one shoots, fights or retaliates Within Shadow, re-roll one attack die."),
         ],
@@ -61,7 +61,7 @@ TEAM = {
             "Soul Harvest: Kills by Part Collector or its baleblade earn 1 Soul Harvest point (2 if the enemy had APL 3 or more). When a Mandrake activates, spend 1 point for +1 APL for the battle, or to regain up to 2D3 wounds. You can spend points even if this operative is dead."],
            "CHOOSER OF THE FLESH"),
         mk("dirgemaw", "Dirgemaw", [BALEBLAST, ("Horrifying scream", 5, "2+", "2/2", 'Range 6", Devastating 2, Seek Light, Stun, Soulstrike')], [GLIMMER],
-           ["Haunting Focus: STRATEGIC GAMBIT. An enemy gains your Haunting Focus token until the next Ready step. When your opponent would next activate it, if this operative is ready you can activate it first, and it must attack that enemy before any other (cancelled if it can't). Then your opponent activates that enemy or another.",
+           ["Haunting Focus: STRATEGIC GAMBIT. An enemy gains your Haunting Focus token until the next Ready step. When your opponent would next activate it, if this operative is ready you can activate it first, and it must attack that enemy before any other (canceled if it can't). Then your opponent activates that enemy or another.",
             "Pareidolic Projection (1AP): Pick an enemy that's a valid target or Within Shadow. It gets a worse Hit by 1 and -2\" Move until this operative's next activation, until it dies, or until it uses this again. It can't do this within control range of any other enemy."],
            "DIRGEMAW"),
         mk("shadeweaver", "Shadeweaver", [BALEBLAST], [GLIMMER],

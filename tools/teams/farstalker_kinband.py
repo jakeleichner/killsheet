@@ -55,7 +55,7 @@ TEAM = {
                "Victory Shriek: When your mark dies, one Kroot within 6\" of this operative gains Balanced for the battle (each Kroot once)."],
               "LEADER, KILL-BROKER", wounds=9, pts=32),
         kroot("bow_hunter", "Bow-hunter", [("Accelerator bow (fused arrow)", 4, "3+", "4/5", "Piercing 1"), ("Accelerator bow (glide arrow)", 4, "3+", "3/4", "Silent"), ("Accelerator bow (voltaic arrow)", 4, "3+", "3/5", 'Blast 1"')], [BLADE],
-              ["Energise (1AP): Its bow gains Lethal 5+ until the end of the turning point, or until it shoots with it. It can't do this within enemy control range."], "BOW-HUNTER"),
+              ["Energize (1AP): Its bow gains Lethal 5+ until the end of the turning point, or until it shoots with it. It can't do this within enemy control range."], "BOW-HUNTER"),
         kroot("cold_blood", "Cold-blood", [("Kroot rifle", 4, "3+", "3/4", "-")], [BLADE],
               ["Hardy: When an attack die would inflict Critical Dmg on it, you can make it Normal Dmg instead.",
                "Cold-blooded: When it attacks a wounded enemy, its weapon gains Lethal 5+, and Rending too if the enemy is also injured."], "COLD-BLOOD", wounds=9),

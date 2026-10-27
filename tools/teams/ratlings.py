@@ -49,7 +49,7 @@ TEAM = {
     },
     "equipment": [
         {"id": "stolen_goods", "name": "Stolen Goods", "desc": "At the end of Select Operatives, roll a D3. On a 1, you lose 1CP. On a 2, you gain 1CP. On a 3, your opponent loses 1CP."},
-        {"id": "improvised_armour", "name": "Improvised Armour", "desc": "When Bullgryns and Ogryns are shot, defence results of 5+ are critical successes."},
+        {"id": "improvised_armour", "name": "Improvised Armor", "desc": "When Bullgryns and Ogryns are shot, defense results of 5+ are critical successes."},
         {"id": "purloined_rations", "name": "Purloined Rations", "desc": "Once per turning point, after rolling attack dice with a rifle, it improves its Hit by 1 for that sequence."},
         {"id": "lucky_round", "name": "Lucky Round", "desc": "Once per turning point, after rolling attack dice with a rifle, it gains Severe for that sequence."},
     ],

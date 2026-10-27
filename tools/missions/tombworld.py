@@ -1,4 +1,4 @@
-from _lib import R, A, W, NPO, M, BEHAVIOUR, COOP_TEAM
+from _lib import R, A, W, NPO, M, BEHAVIOR, COOP_TEAM
 
 HATCH = " Opens hatches when it needs to."
 SPREAD = "Set up 2D3+3 NPOs with Conceal wholly within Player B's territory, spread out evenly, each with terrain between it and Player A's drop zone."
@@ -48,7 +48,7 @@ PACK = dict(
             "11: Canoptek Tomb Crawler with twin gauss reapers",
             "12: Canoptek Tomb Crawler with transdimensional isolator",
         ]),
-        BEHAVIOUR,
+        BEHAVIOR,
         R("Threat principle", "When you make a choice for an NPO, pick the option that's worst for you. If you still can't decide, pick at random.", [
             "Which NPO activates: the one that can Shoot or Fight and is most dangerous doing so, then one not in cover, then the closest to your operatives.",
             "Where to set it up: where it's most likely to stop you winning, then where it can best Charge, Shoot or Fight, then where it isn't a valid target.",
@@ -115,14 +115,14 @@ PACK = dict(
             "Shoot.",
             "Reposition, ideally where it has a valid target that isn't obscured (a Dash can finish this).",
             "Dash, ideally where it has a valid target that isn't obscured.",
-        ], rules=[("Aggressive Defence Construct", "If a player operative within 2\" incapacitates it, roll a D3: on 2+ that operative takes damage equal to the roll.")],
+        ], rules=[("Aggressive Defense Construct", "If a player operative within 2\" incapacitates it, roll a D3: on 2+ that operative takes damage equal to the roll.")],
             base="28mm", note="Has one ranged weapon: scalpel or tesla caster."),
     ],
     missions=[
         M(1, "Shifting Labyrinth", "Co-op", "Find the way out of a maze that keeps moving its exit.",
           rules=[
               R("NPOs", SPREAD),
-              R("Escape", "Place an Escape marker at the centre of Player B's killzone edge. Your operatives can leave over that edge while within 1\" of the marker."),
+              R("Escape", "Place an Escape marker at the center of Player B's killzone edge. Your operatives can leave over that edge while within 1\" of the marker."),
               R("Auspex Calibration", "From the second turning point on, as a gambit, if nobody has escaped yet, roll a D3: 1 moves the marker D3+3\" left along the edge, 2 leaves it, 3 moves it D3+3\" right.",
                 "It can go round a corner. If terrain is in the way, keep moving it the same way until it fits."),
           ],

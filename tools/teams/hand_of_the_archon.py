@@ -34,7 +34,7 @@ TEAM = {
         ],
     },
     "factionRules": [
-        ("Power from Pain", "After an action in which a Kabalite injured an enemy without killing it, or killed one, it gains a Pain token (two for killing an enemy with 12 or more Wounds). Spend tokens on one invigoration per activation or counteraction (Stimulated Senses can be added on top). Dark Animus: +1 APL until its next activation. Accelerated Rejuvenation: regain D3+1 wounds. Vitalised Surge: after a kill, make a free Dash. Stimulated Senses: after rolling, re-roll any dice showing one result of your choice."),
+        ("Power from Pain", "After an action in which a Kabalite injured an enemy without killing it, or killed one, it gains a Pain token (two for killing an enemy with 12 or more Wounds). Spend tokens on one invigoration per activation or counteraction (Stimulated Senses can be added on top). Dark Animus: +1 APL until its next activation. Accelerated Rejuvenation: regain D3+1 wounds. Vitalized Surge: after a kill, make a free Dash. Stimulated Senses: after rolling, re-roll any dice showing one result of your choice."),
         ("Rifles", "When one shoots a splinter rifle before any Charge, Fall Back or Reposition this activation, it gains Accurate 1."),
     ],
     "ploys": {
@@ -42,7 +42,7 @@ TEAM = {
             ("Blade Artists", "Melee weapons gain Rending."),
             ("Merciless Sadists", "When shooting or fighting a wounded enemy, weapons gain Balanced."),
             ("From Darkness, Death", "When one is activated, pick an enemy it isn't a valid target for. The first time it attacks that enemy this activation, retain one normal success as a critical success."),
-            ("Denizens of Night", "When one is shot while more than 2\" from enemies, with Heavy or Light terrain intervening or while under Vantage terrain, re-roll one defence die."),
+            ("Denizens of Night", "When one is shot while more than 2\" from enemies, with Heavy or Light terrain intervening or while under Vantage terrain, re-roll one defense die."),
         ],
         "firefight": [
             ("Cruel Deception", "This activation, Fall Back costs it 1 less AP."),

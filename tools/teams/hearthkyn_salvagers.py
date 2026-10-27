@@ -36,13 +36,13 @@ TEAM = {
     ],
     "ploys": {
         "strategy": [
-            ("Wrought Defence", "When one is shot and has one or fewer successes after re-rolls, retain one fail as a normal success."),
+            ("Wrought Defense", "When one is shot and has one or fewer successes after re-rolls, retain one fail as a normal success."),
             ("Proximate Firepower", "When shooting an enemy within 6\", ranged weapons improve their Hit by 1 (to a maximum of 3+)."),
             ("Need Keeps", "Pick an objective or mission marker. When working out who controls it, your contesting operatives' total APL counts as 1 higher. Salvagers within 3\" of it get +1 Atk on melee weapons (to a maximum of 4, or Balanced if already 4)."),
             ("Toil Earns", "Pick an objective or mission marker. Enemies within 3\" of it count as having one extra Grudge token."),
         ],
         "firefight": [
-            ("Sturdy", "When one is shot, as you collect defence dice, the attacker's retained critical successes become normal successes."),
+            ("Sturdy", "When one is shot, as you collect defense dice, the attacker's retained critical successes become normal successes."),
             ("Engage to Acquire", "After rolling attack dice against an enemy that controls an objective or one of your mission markers, re-roll any of them."),
             ("The Ancestors Are Watching", "This activation, make a free Shoot or Fight, ignoring changes to weapon stats from being injured."),
             ("Worth It", "When a Salvager is incapacitated, it makes a free mission action before it's removed."),
@@ -88,8 +88,8 @@ TEAM = {
             "System Jam (1AP): An enemy that's a valid target and has no System Jam token gains one. It can't activate until every enemy without a token is expended, and loses the token when it activates. It can't do this within enemy control range."],
            "KINLYNK"),
         hk("kognitaar", "Kognitâar", [BOLTER, ION], [FISTS],
-           [CHOICE, "Tactician: STRATEGIC GAMBIT, while it's in the killzone. Place your Attack marker (Salvagers attacking enemies within 3\" of it gain Balanced) or your Defence marker (Salvagers within 3\" of it re-roll one defence die when shot). Remove it in the next Ready step.",
-            "Accelerated Appraisal (1AP): Place or move your Attack or Defence marker. It can't do this within enemy control range."],
+           [CHOICE, "Tactician: STRATEGIC GAMBIT, while it's in the killzone. Place your Attack marker (Salvagers attacking enemies within 3\" of it gain Balanced) or your Defense marker (Salvagers within 3\" of it re-roll one defense die when shot). Remove it in the next Ready step.",
+            "Accelerated Appraisal (1AP): Place or move your Attack or Defense marker. It can't do this within enemy control range."],
            "KOGNITÂAR"),
         hk("lokatr", "Lokâtr", [BOLTER, ION], [FISTS],
            [CHOICE, "Spot (1AP): SUPPORT. Pick a visible enemy. Until the end of the turning point, Salvagers within 3\" of this operative gain Seek Light when shooting it, and it can't be obscured. It can't do this within enemy control range.",

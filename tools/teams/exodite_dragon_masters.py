@@ -24,7 +24,7 @@ TEAM = {
     "factionRules": [
         ("Draconic Cavalry Tactics", "Set up the Drakoliths first. The mounted riders start in reserve and enter in the first Firefight phase with their bases touching your killzone edge. This counts as a Turn action."),
         ("Drakesteed Agility", "Mounted riders can't Charge, Dash, Fall Back or Reposition. Instead they have two actions. Sprint (0AP): move straight forwards or backwards (up to 9\" forwards or 3\" back per activation, and 12\" per turning point), with one pivot of up to 45°. It can't climb or end on Vantage terrain higher than 2\". It moves through operatives, terrain under 2\" tall counts as Accessible, and it removes equipment terrain it passes through. Turn (1AP): pivot up to 45°. Neither can be done while counteracting. Riders activate twice per turning point, spending up to 3AP per activation and no more than their APL in total. Light terrain, terrain under 2\" and terrain that doesn't wholly intervene can't give cover from them or obscure them, and they can fight enemies within 1\" horizontally and 4\" vertically."),
-        ("Mercurial Speed", "Each rider has a SPEED of 3-, 4+ or 7+, starting at 3-. A Sprint of 4\" or more gives 4+, and 7\" or more gives 7+. Moving backwards, moving less than 4\" or not Sprinting gives 3-. When one at SPEED 4+ is shot, retain one defence die as a normal success without rolling it (at 7+, as a critical success). Drakoliths use the rule on their own datacard."),
+        ("Mercurial Speed", "Each rider has a SPEED of 3-, 4+ or 7+, starting at 3-. A Sprint of 4\" or more gives 4+, and 7\" or more gives 7+. Moving backwards, moving less than 4\" or not Sprinting gives 3-. When one at SPEED 4+ is shot, retain one defense die as a normal success without rolling it (at 7+, as a critical success). Drakoliths use the rule on their own datacard."),
     ],
     "ploys": {
         "strategy": [
@@ -43,7 +43,7 @@ TEAM = {
     "equipment": [
         {"id": "clan_talismans", "name": "Clan Talismans", "desc": "Once per turning point when a rider attacks, if you fail two or more dice, discard one failure to retain another as a normal success."},
         {"id": "crystal_matrices", "name": "Lileathan Crystal Matrices", "desc": "Once per turning point, a solar carbine or long rifle gains Piercing 1 until the end of the activation."},
-        {"id": "dragonscale_mesh", "name": "Dragonscale Mesh", "desc": "Once per turning point, when a rider is shot, retain one normal defence success as a critical success."},
+        {"id": "dragonscale_mesh", "name": "Dragonscale Mesh", "desc": "Once per turning point, when a rider is shot, retain one normal defense success as a critical success."},
         {"id": "spirit_stones", "name": "Spirit Stones", "desc": "When a rider is incapacitated, gain 1CP."},
     ],
     "operatives": [

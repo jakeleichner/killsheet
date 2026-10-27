@@ -37,19 +37,19 @@ TEAM = {
     },
     "factionRules": [
         ("Astartes", "During each activation, an operative can take two Shoot actions or two Fight actions. If it shoots twice, at least one of those shots must use a bolt weapon, and the second Shoot costs 1 extra AP if both use a bolt sniper rifle or heavy bolter. These operatives can counteract whatever their order."),
-        ("Chapter Tactics", "Pick a primary and a secondary tactic for the battle (keep the same ones for a whole campaign or tournament). 1 Aggressive: melee weapons gain Rending. 2 Dueller: normal successes can block critical successes, except against Brutal. 3 Resolute: ignore APL changes and Shock. 4 Stealthy: when shot, if it can retain a cover save, retain one extra cover save, or one cover save as a critical success (not on top of Vantage terrain's improved cover save). 5 Mobile: Fall Back costs 1 less AP, and it can Charge while in enemy control range. 6 Hardy: when shot, defence results of 5+ are critical successes. 7 Sharpshooter: if it hasn't Charged, Fallen Back or Repositioned this activation, bolt weapons gain Accurate 1 and Severe. 8 Siege Specialist: ranged weapons gain Saturate, and enemies can't assist in fights against it."),
+        ("Chapter Tactics", "Pick a primary and a secondary tactic for the battle (keep the same ones for a whole campaign or tournament). 1 Aggressive: melee weapons gain Rending. 2 Dueler: normal successes can block critical successes, except against Brutal. 3 Resolute: ignore APL changes and Shock. 4 Stealthy: when shot, if it can retain a cover save, retain one extra cover save, or one cover save as a critical success (not on top of Vantage terrain's improved cover save). 5 Mobile: Fall Back costs 1 less AP, and it can Charge while in enemy control range. 6 Hardy: when shot, defense results of 5+ are critical successes. 7 Sharpshooter: if it hasn't Charged, Fallen Back or Repositioned this activation, bolt weapons gain Accurate 1 and Severe. 8 Siege Specialist: ranged weapons gain Saturate, and enemies can't assist in fights against it."),
     ],
     "ploys": {
         "strategy": [
             ("Combat Doctrine", "Pick one doctrine. Devastator: shooting targets more than 6\" away. Tactical: shooting targets within 6\". Assault: fighting or retaliating. Those attacks gain Balanced."),
-            ("Indomitus", "When one is shot and you fail two or more defence dice, discard one failure to retain another as a normal success."),
+            ("Indomitus", "When one is shot and you fail two or more defense dice, discard one failure to retain another as a normal success."),
             ("And They Shall Know No Fear", "Ignore stat changes from being injured, including weapon stats."),
             ("Adaptive Tactics", "Change your secondary Chapter Tactic until the end of the turning point."),
         ],
         "firefight": [
             ("Adjust Doctrine", "Use during an activation, if you used Combat Doctrine this turning point. Change the doctrine you picked."),
             ("Wrath of Vengeance", "When one counteracts, it can take a free extra 1AP action. The two actions must be different."),
-            ("Transhuman Physiology", "When one is shot, retain one normal defence success as a critical success."),
+            ("Transhuman Physiology", "When one is shot, retain one normal defense success as a critical success."),
             ("Shock Assault", "When it fights in an activation in which it Charged, its melee weapon gains Shock and its first strike deals 1 extra damage (to a maximum of 7)."),
         ],
     },

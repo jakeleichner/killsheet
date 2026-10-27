@@ -12,11 +12,11 @@ AUTOPISTOL = ("Autopistol", 4, "4+", "2/3", 'Range 8"')
 LASGUN = ("Hot-shot lasgun", 4, "3+", "3/4", "-")
 EXPENDABLE = "Expendable: It doesn't count for kill or elimination ops, or for escape and survive scoring."
 PSYCHIC_NULL = "Psychic Null: PSYCHIC ranged weapons can't damage it, and PSYCHIC actions can't pick or count it. Operatives within 6\" can't use PSYCHIC actions, rules or ranged weapons, and their PSYCHIC melee weapons lose their rules (Dmg 3/4 at most)."
-LOBOTOMISED = "Lobotomised: When it's activated, if it's visible within 3\" of another Agent (not a Gun Servitor), it gets +1 APL for that activation."
+LOBOTOMIZED = "Lobotomized: When it's activated, if it's visible within 3\" of another Agent (not a Gun Servitor), it gets +1 APL for that activation."
 
 def servitor(oid, name, ranged):
     return {"id": oid, "name": name, "apl": 1, "move": '5"', "save": "4+", "wounds": 11, "pts": 32,
-            "ranged": ranged, "melee": [("Servo claw", 3, "4+", "4/5", "-")], "abilities": [LOBOTOMISED], "kw": "GUN SERVITOR"}
+            "ranged": ranged, "melee": [("Servo claw", 3, "4+", "4/5", "-")], "abilities": [LOBOTOMIZED], "kw": "GUN SERVITOR"}
 
 def scion(oid, name, ranged, abilities, kw):
     return {"id": oid, "name": "Scion " + name, "apl": 2, "move": '6"', "save": "4+", "wounds": 8, "pts": 25,
@@ -50,14 +50,14 @@ CORE = [
      "kw": "ENLIGHTENER"},
     {"id": "hexorcist", "name": "Hexorcist", "apl": 2, "move": '6"', "save": "5+", "wounds": 7, "pts": 25,
      "ranged": [("Shotgun", 4, "3+", "3/3", 'Range 6"')], "melee": [FISTS],
-     "abilities": ["Hexorcise: Enemies visible within 6\" of it can't re-roll attack or defence dice.",
+     "abilities": ["Hexorcise: Enemies visible within 6\" of it can't re-roll attack or defense dice.",
                    "Chasten (1AP): Pick an enemy within 6\" that's a valid target, and one of its datacard rules or unique actions (not weapon rules, and not \"ignored for kill ops\"). It loses that rule until the end of its next activation. It can't do this within enemy control range."],
      "kw": "HEXORCIST"},
     {"id": "mystic", "name": "Mystic", "apl": 2, "move": '6"', "save": "5+", "wounds": 7, "pts": 25,
      "ranged": [("Autopistol", 4, "2+", "2/3", 'Range 8", Seek')], "melee": [("Fists", 3, "5+", "2/3", "-")],
      "abilities": ["Icon Bearer: Its APL counts as 1 higher for marker control.",
                    "Lightly Armed: It can only use its datacard weapons.",
-                   "Scry (1AP): PSYCHIC. Pick a friendly Agent within 6\". Until this operative's next activation, give it Guidance (when attacking, retain one fail as a normal success or one normal success as a critical success) or Protection (the same for defence dice when shot). It can't do this within enemy control range."],
+                   "Scry (1AP): PSYCHIC. Pick a friendly Agent within 6\". Until this operative's next activation, give it Guidance (when attacking, retain one fail as a normal success or one normal success as a critical success) or Protection (the same for defense dice when shot). It can't do this within enemy control range."],
      "kw": "PSYKER, MYSTIC", "ex": ["combat_daggers"]},
     {"id": "penal", "name": "Penal Legionnaire", "apl": 2, "move": '6"', "save": "5+", "wounds": 7, "pts": 25,
      "ranged": [("Hand flamer", 4, "2+", "3/3", 'Range 6", Saturate, Torrent 1"')], "melee": [("Chainsword", 4, "4+", "4/5", "-")],
@@ -188,18 +188,18 @@ TEAM = {
             "Up to 2 Gun Servitors (with different weapons) if you take no requisitioned operatives, otherwise 1.",
             "Whole team: only 1 weapon with Piercing 2, and up to 3 with any Piercing X (Piercing Crits doesn't count).",
             "Requisition limits. Scions: up to 2 Gunners. Breachers: 1 Gunner, the Gheistskull needs a Void-jammer, the C.A.T. needs a Surveyor (each counts as half a selection). Death Korps: send 6 operatives (11 agents in total), up to 3 Gunners and Snipers combined. Exaction Squad: 1 Gunner and up to 2 Subductors. Kasrkin: up to 2 Gunners and Sharpshooters combined.",
-            "Faction rules they keep: Breachers keep Void Armour, and the Exaction Squad keeps Ruthless Efficiency and Repress.",
+            "Faction rules they keep: Breachers keep Void Armor, and the Exaction Squad keeps Ruthless Efficiency and Repress.",
         ],
     },
     "factionRules": [
-        ("Inquisitorial Requisition", "Requisitioned operatives (all from one group: Death Korps, Exaction Squad, Imperial Navy Breachers, Kasrkin, Sisters of Silence or Tempestus Scions) become INQUISITORIAL AGENT. They can't use their old faction's ploys, equipment or faction rules unless the requisition card allows it (Breachers keep Void Armour)."),
+        ("Inquisitorial Requisition", "Requisitioned operatives (all from one group: Death Korps, Exaction Squad, Imperial Navy Breachers, Kasrkin, Sisters of Silence or Tempestus Scions) become INQUISITORIAL AGENT. They can't use their old faction's ploys, equipment or faction rules unless the requisition card allows it (Breachers keep Void Armor)."),
     ],
     "ploys": {
         "strategy": [
             ("Denounce", "Pick an enemy and roll a D3. In the Firefight phase, it can't activate or act until your opponent has activated that many operatives, or it's their last one. Costs 1 extra CP for each earlier use."),
             ("Intense Scrutiny", "When an Agent picks targets, enemies within 4\" (instead of 2\") can't be in cover. They only lose their cover save within 2\"."),
             ("Quarry", "Pick an enemy as your quarry for the turning point. Agents shooting, fighting or retaliating against it gain Ceaseless. When it's incapacitated, pick a new quarry."),
-            ("Irrefutable Jurisdiction", "When an Agent within 3\" of an objective is shot, re-roll one defence die. If it's contesting the objective, re-roll any dice showing one result of your choice instead."),
+            ("Irrefutable Jurisdiction", "When an Agent within 3\" of an objective is shot, re-roll one defense die. If it's contesting the objective, re-roll any dice showing one result of your choice instead."),
         ],
         "firefight": [
             ("Absolute Authority", "When your opponent uses a ploy that costs CP (not Command Re-roll), it has no effect, they get the CP back, and they can't use it again this turning point. Once per battle for each ploy."),
@@ -211,7 +211,7 @@ TEAM = {
     "equipment": [
         {"id": "rosette", "name": "Inquisitorial Rosette", "desc": "Once per battle, when an Agent activates, if you used Quarry this turning point, pick a new quarry."},
         {"id": "combat_daggers", "name": "Combat Daggers", "desc": "Agents get a combat dagger (Sisters of Silence get +1 Atk instead).", "gw": ("melee", "Combat dagger", 3, "4+", "3/4", "-")},
-        {"id": "bodysuits", "name": "Armoured Bodysuits", "desc": "When an Agent with a 5+ Save (not the Tome-skull) is shot, retain one defence roll of 4 as a normal success."},
+        {"id": "bodysuits", "name": "Armored Bodysuits", "desc": "When an Agent with a 5+ Save (not the Tome-skull) is shot, retain one defense roll of 4 as a normal success."},
         {"id": "servo_skull", "name": "Servo-skull", "desc": "Once per battle, a mission action costs one Agent 1 less AP."},
     ],
     "operatives": [

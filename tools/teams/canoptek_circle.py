@@ -4,7 +4,7 @@ CRAWLER_ABILITIES = [
     "Steadfast: For marker control, you can treat its APL as 3, ignoring any changes.",
 ]
 WARRIOR_ABILITIES = [
-    "Aggressive Defence: When an enemy within 2\" incapacitates it, roll a D3. On a 2+, that enemy takes 1 damage.",
+    "Aggressive Defense: When an enemy within 2\" incapacitates it, roll a D3. On a 2+, that enemy takes 1 damage.",
     "Expendable Construct: It doesn't count for kill or elimination ops, or for escape and survive scoring.",
     "A Ceaseless Scuttling: STRATEGIC GAMBIT in each turning point after the first. If fewer than three Warriors are alive, set up another one, ready and with a Conceal order, wholly in your drop zone.",
 ]
@@ -42,7 +42,7 @@ TEAM = {
         "strategy": [
             ("Cryptogravitic Repulsion", "Once per action, the first time an enemy would move into your matrix, it costs that enemy an extra 1\"."),
             ("Souldrain", "Enemies in your matrix, or fighting a Canoptek in it, get -1 Normal and Critical Dmg on melee weapons (to a minimum of 2) until the end of the activation."),
-            ("Hypershielding", "When one is shot while your matrix intervenes or it's in your matrix, re-roll any defence dice showing one result of your choice."),
+            ("Hypershielding", "When one is shot while your matrix intervenes or it's in your matrix, re-roll any defense dice showing one result of your choice."),
             ("Transdynamic Amplification", "When shooting with your matrix intervening, or at a target in it, weapons gain Ceaseless."),
         ],
         "firefight": [

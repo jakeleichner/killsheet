@@ -40,7 +40,7 @@ TEAM = {
     "ploys": {
         "strategy": [
             ("Piratical Profiteers", "When attacking while either side contests an objective or one of your mission markers, weapons gain Balanced."),
-            ("Mobile Engagement", "When one is shot after moving this turning point, re-roll one defence die."),
+            ("Mobile Engagement", "When one is shot after moving this turning point, re-roll one defense die."),
             ("Plunderers", "Up to D3 Voidscarred make a free Dash, and can't Dash in their own activations this turning point. You can't use this in the first turning point."),
             ("Outcasts", "When one is more than 5\" from other friendly operatives, its weapons gain Punishing."),
         ],
@@ -54,7 +54,7 @@ TEAM = {
     "equipment": [
         {"id": "mistfield", "name": "Mistfield", "desc": "Once per turning point, when one is shot from more than 3\" away, the attacker's Piercing gets worse by 1."},
         {"id": "runes_guidance", "name": "Runes of Guidance", "desc": "Once per turning point, a Way Seeker or Soul Weaver PSYCHIC action (not Warp Fold) gets 3\" extra range."},
-        {"id": "diuturnal_mantles", "name": "Diuturnal Mantles", "desc": "When one is shot by Blast or Torrent, re-roll one defence die. It isn't affected by x\" Devastating unless it's the target."},
+        {"id": "diuturnal_mantles", "name": "Diuturnal Mantles", "desc": "When one is shot by Blast or Torrent, re-roll one defense die. It isn't affected by x\" Devastating unless it's the target."},
         {"id": "star_charts", "name": "Star Charts", "desc": "STRATEGIC GAMBIT: roll a D3. If it beats the turning point number, gain 1CP and stop using this."},
     ],
     "operatives": [

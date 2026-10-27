@@ -12,7 +12,7 @@ OPTIONS = [("bolt", "inferno bolt pistol", BOLT_PISTOL, None), ("khopesh", "Pros
 
 SORCERERS = {
     "destiny": ("Destiny", [("Doombolt", 4, "3+", "4/2", "PSYCHIC, Devastating 2, Lethal 5+")],
-                ["Protected by Fate (1AP): PSYCHIC. Pick a visible Warpcoven operative. Until this operative's next activation, until it dies or until it uses this again, re-roll any of that operative's defence dice when it's shot. It can't do this within enemy control range.",
+                ["Protected by Fate (1AP): PSYCHIC. Pick a visible Warpcoven operative. Until this operative's next activation, until it dies or until it uses this again, re-roll any of that operative's defense dice when it's shot. It can't do this within enemy control range.",
                  "Ravage Destiny (1AP): PSYCHIC. Pick an enemy visible within 9\". Until this operative's next activation, until it dies or until it uses this again, your opponent must re-roll that enemy's attack results of 6, and its APL counts as 1 lower for marker control. It can't do this within enemy control range."]),
     "tempyrion": ("Tempyrion", [("Fluxblast", 4, "3+", "3/4", 'PSYCHIC, Blast 2", Rending')],
                   ["Reconstitution Ritual (1AP): PSYCHIC. A Warpcoven operative visible within 6\" regains up to 2D3 wounds. Once per turning point across your team, and not within enemy control range.",
@@ -86,7 +86,7 @@ TEAM = {
         "strategy": [
             ("Aetherial Warding", "When it's shot, Piercing 1 becomes Piercing Crits 1."),
             ("Savage Herd", "Tzaangor melee weapons gain Accurate 1, and also Severe if they're assisted, or fighting visible within 6\" of a Sorcerer."),
-            ("Fate Itself Is My Weapon", "Roll two D6 and set them aside. This turning point, after any attack roll (before re-rolls), swap one of them in for a rolled die. That die can't be re-rolled, and you can do this once per sequence. If the two totalled less than 9, discard the other after the first use."),
+            ("Fate Itself Is My Weapon", "Roll two D6 and set them aside. This turning point, after any attack roll (before re-rolls), swap one of them in for a rolled die. That die can't be re-rolled, and you can do this once per sequence. If the two totaled less than 9, discard the other after the first use."),
             ("Brotherhood of Sorcerers", "Sorcerers' PSYCHIC weapons gain Balanced, or Ceaseless if another Sorcerer is within 9\"."),
         ],
         "firefight": [

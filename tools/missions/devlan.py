@@ -1,4 +1,4 @@
-from _lib import R, A, W, NPO, M, THREAT_PRINCIPLE, BEHAVIOUR, COOP_TEAM
+from _lib import R, A, W, NPO, M, THREAT_PRINCIPLE, BEHAVIOR, COOP_TEAM
 
 TERMAGANT_PRI = [
     "Fall Back to cover, ideally where it has a valid target that isn't obscured.",
@@ -14,9 +14,9 @@ SWARM_PRI = [
 ]
 RED_TERROR_RULES = [
     ("Fearsome Foe", "Can only be in cover or obscured behind terrain at least 3\" tall. Its control range is 1\" across and 6\" up, in both directions. If a card activates it while it's expended, ready it first, so it can activate several times per turning point."),
-    ("Burrow", "Whenever it moves, take it off the table and set it back up on the killzone floor within its move distance, wherever its behaviour wants. Temporarily remove terrain under 3\" tall and push other operatives aside to make room."),
+    ("Burrow", "Whenever it moves, take it off the table and set it back up on the killzone floor within its move distance, wherever its behavior wants. Temporarily remove terrain under 3\" tall and push other operatives aside to make room."),
     ("Survival Instincts", "It can't be incapacitated or injured, and its APL can't change. When it would be incapacitated, it heals fully and switches to Lurk. If it's already in Lurk, it heals fully and gains a Regeneration token. Either way, all remaining attack dice in that fight or shot are discarded."),
-    ("Behaviour changes", "It starts in Hunt. It switches to Lurk when it would be incapacitated (or when a mission says so), and back to Hunt when it activates underground with no Regeneration tokens."),
+    ("Behavior changes", "It starts in Hunt. It switches to Lurk when it would be incapacitated (or when a mission says so), and back to Hunt when it activates underground with no Regeneration tokens."),
 ]
 
 PACK = dict(
@@ -38,7 +38,7 @@ PACK = dict(
             "You have initiative in the first turning point. After that, roll one die for the NPOs and one for you. If the NPOs win, they always take initiative.",
         ]),
         R("NPOs and CP", "NPOs never gain CP. They only use the strategy gambits the mission gives them, then pass."),
-        BEHAVIOUR,
+        BEHAVIOR,
         R("NPO activation cards", "When it's the NPOs' turn, draw a card numbered 1 to 13 and check the mission's activation table.", [
             "Discard each card after use. You can look through the discard pile at any time.",
             "Shuffle all cards back together in each Ready step, or when the deck runs out.",

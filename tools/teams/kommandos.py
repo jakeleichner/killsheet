@@ -32,7 +32,7 @@ TEAM = {
             ("Dakka! Dakka! Dakka!", "Ranged weapons gain Punishing."),
             ("Sssshhhh!", "Each Kommando that isn't a valid target for the enemy, or has a Conceal order and is more than 6\" from enemies, can make a free Dash. You can't use this in the first turning point."),
             ("WAAAGH!", "Melee weapons gain Balanced."),
-            ("Skulk About", "When an enemy shoots a Kommando with a Conceal order, retain one defence die as a normal success without rolling it. This is on top of any cover save."),
+            ("Skulk About", "When an enemy shoots a Kommando with a Conceal order, retain one defense die as a normal success without rolling it. This is on top of any cover save."),
         ],
         "firefight": [
             ("Just a Scratch", "When an attack die inflicts Normal Dmg on a Kommando (not the Bomb Squig or Grot), ignore that damage."),

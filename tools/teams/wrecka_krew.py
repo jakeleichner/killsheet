@@ -37,7 +37,7 @@ TEAM = {
             ("Destruction", "Ranged weapons gain Saturate."),
             ("Amped Up", "Each operative with an Engage order regains up to D3+1 wounds."),
             ("Waaagh!", "Melee weapons gain Balanced."),
-            ("Tuff Gitz", "When an operative with an Engage order is shot, re-roll one defence die."),
+            ("Tuff Gitz", "When an operative with an Engage order is shot, re-roll one defense die."),
         ],
         "firefight": [
             ("Proppa Scrap", "A Breaka Boy or the Boss Nob can Fight twice this activation."),
@@ -50,7 +50,7 @@ TEAM = {
         {"id": "engine_oil", "name": "Engine Oil", "desc": "Once per turning point, when an operative (not a Bomb Squig) activates, it ignores stat changes from being injured for that activation."},
         {"id": "glyphs", "name": "Glyphs", "desc": "Pick Waaagh! or Destruction. Its first use costs 0CP, and later uses cost 0CP if you have any Wrecka points."},
         {"id": "drill_rokkits", "name": "Drill Rokkits", "desc": "Once per turning point, a rokkit launcha or 'eavy rokkit launcha loses Blast and gains Piercing 1 for that Shoot."},
-        {"id": "extra_armour", "name": "Extra Armour", "desc": "Operatives (not Bomb Squigs) get -1\" Move and improve their Save by 1. Not with a Portable Barricade's Protective rule."},
+        {"id": "extra_armour", "name": "Extra Armor", "desc": "Operatives (not Bomb Squigs) get -1\" Move and improve their Save by 1. Not with a Portable Barricade's Protective rule."},
     ],
     "operatives": [
         wk("boss_nob", "Wrecka Boss Nob",
@@ -75,7 +75,7 @@ TEAM = {
            "BREAKA BOY, FIGHTER"),
         wk("krusha", "Breaka Boy Krusha", [], [("Knucklebustas", 4, "3+", "5/6", "Brutal, Shock, Smash")],
            ["Smash (weapon rule): With each strike, you can push the enemy up to 1\" straight away from this operative, then move this one up to 1\" to stay in its control range.",
-            "Armoured Up: When it's shot, fights or retaliates, your opponent can only retain 6s as critical successes."],
+            "Armored Up: When it's shot, fights or retaliates, your opponent can only retain 6s as critical successes."],
            "BREAKA BOY, KRUSHA"),
         wk("gunner_eavy", "Tankbusta Gunner ('eavy rokkit launcha)", [("'Eavy rokkit launcha", 6, "4+", "4/5", 'Blast 1", Heavy (Dash only)')], [FISTS], [KOMPETITIVE], "TANKBUSTA, GUNNER"),
         wk("gunner_rokkit", "Tankbusta Gunner (rokkit launcha)", [ROKKIT], [FISTS], [KOMPETITIVE], "TANKBUSTA, GUNNER"),

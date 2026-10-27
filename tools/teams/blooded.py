@@ -46,7 +46,7 @@ TEAM = {
     "ploys": {
         "strategy": [
             ("Reckless Aspirant", "When it's wholly in your opponent's territory, its weapons gain Accurate 1 when it shoots or fights, or Punishing if it holds a token."),
-            ("Malevolent Grit", "When one holding a token, or wholly in your opponent's territory, is shot, re-roll one defence die."),
+            ("Malevolent Grit", "When one holding a token, or wholly in your opponent's territory, is shot, re-roll one defense die."),
             ("Glory Kill", "Pick an enemy visible to one of your Blooded operatives. Until the end of the turning point, weapons attacking it gain Ceaseless, or Relentless if the attacker holds a token."),
             ("Bitter Demise", "When a Blooded operative is incapacitated, roll a D3. On a 3 (or 2+ if it held a token), inflict that much damage on an enemy visible within 2\" of it."),
         ],
@@ -54,7 +54,7 @@ TEAM = {
             ("Moment of Repute", "During the activation of the operative under the Gaze of the Gods, it gets +1 APL."),
             ("Reward Earned", "When a token holder incapacitates an enemy within 2\" of it, gain a Blooded token."),
             ("Callous Disregard", "When one Shoots, friendly operatives in the target's control range don't stop it targeting. Each failed attack die inflicts damage equal to its result on one friendly operative in the target's control range."),
-            ("Dark Favour", "When a token holder is picked as the target of a Shoot or Fight, another Blooded operative visible within 3\" becomes the target instead. It only has cover or is obscured if the original target was. Not against Blast or Torrent."),
+            ("Dark Favor", "When a token holder is picked as the target of a Shoot or Fight, another Blooded operative visible within 3\" becomes the target instead. It only has cover or is obscured if the original target was. Not against Blast or Torrent."),
         ],
     },
     "equipment": [
@@ -89,7 +89,7 @@ TEAM = {
             "STIMM rules: Rejuvenated (regain up to 2D3 wounds). Enraged (melee weapons gain Relentless). Fortified (whenever an attack die inflicts 3 or more damage on it, roll one D6: on a 5+, subtract 1 from that damage)."],
            "CORPSEMAN"),
         tr("enforcer", "Enforcer", [("Bolt pistol", 4, "3+", "3/4", 'Range 8"')], [("Power fist", 4, "4+", "5/7", "Brutal")],
-           ["Gruelling Disciplinarian: Blooded operatives within 6\" of it ignore stat changes from being injured. One activated within 6\" ignores them for that whole activation.",
+           ["Grueling Disciplinarian: Blooded operatives within 6\" of it ignore stat changes from being injured. One activated within 6\" ignores them for that whole activation.",
             "Enforce (1AP): Another Blooded operative visible within 3\" makes a free 1AP action, moving no more than 2\". A Commsman can't Signal or use Sacrilegious Actuation this way. It can't do this within enemy control range."],
            "ENFORCER", save="4+", wounds=9, pts=32),
         tr("flenser", "Flenser", [], [("Skinning blades", 4, "3+", "3/4", "Ceaseless, Stalk")],
@@ -114,7 +114,7 @@ TEAM = {
            ["Tough: When it fights, retaliates or is shot, Normal Dmg of 3 or more inflicts 1 less damage."], "THUG", save="4+"),
         tr("trench_sweeper", "Trench Sweeper", [("Shotgun", 4, "3+", "3/3", 'Range 6"')], [("Bayonet & shield", 3, "3+", "2/3", "Shield")],
            ["Shield (weapon rule): When fighting or retaliating with it, each block can block two unresolved successes.",
-            "Shielding: When activated, until its next activation it gets -2\" Move and can re-roll any defence dice when shot."],
+            "Shielding: When activated, until its next activation it gets -2\" Move and can re-roll any defense dice when shot."],
            "TRENCH SWEEPER", save="4+", wounds=9),
         tr("trooper", "Trooper", [LASGUN], [BAYONET],
            ["Group Activation: When it's expended, activate another ready Trooper next (no more than two in a row)."], "TROOPER"),

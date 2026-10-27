@@ -26,8 +26,8 @@ PACK = dict(
         R("Control range, visibility and cover", "Same as normal Kill Team: control range is visible and within 1\". Cover is intervening terrain within the target's control range, but not within 2\" of the shooter.",
           "Markers: you control one if more of your operatives contest it than enemies (count operatives, not APL)."),
         R("Damage", "At 0 wounds an operative is incapacitated and removed.", "When a Space Marine without a Mortal Wound token goes down, place a Downed Ally marker within its control range first."),
-        R("Shooting and fighting", "Same sequences as Kill Team: three defence dice, cover gives a free normal save, 6s are crits, strike or block in fights. Targets just need to be visible (no orders)."),
-        R("NPO behaviour", "Each NPO does the first action on its list it can, until it has done two actions or can't do any more. Use the threat principle (pick what's worst for you) for any other choice."),
+        R("Shooting and fighting", "Same sequences as Kill Team: three defense dice, cover gives a free normal save, 6s are crits, strike or block in fights. Targets just need to be visible (no orders)."),
+        R("NPO behavior", "Each NPO does the first action on its list it can, until it has done two actions or can't do any more. Use the threat principle (pick what's worst for you) for any other choice."),
     ],
     actions=[
         A("Reposition", "-", "Move up to 6\". Can't move into enemy control range.", "Not while within enemy control range."),

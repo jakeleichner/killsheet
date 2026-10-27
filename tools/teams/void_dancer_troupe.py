@@ -53,7 +53,7 @@ TEAM = {
     "ploys": {
         "strategy": [
             ("Rising Crescendo", "It can Dash in the same activation after a Charge (but not before)."),
-            ("Prismatic Blur", "When one is shot after moving this turning point, re-roll one defence die."),
+            ("Prismatic Blur", "When one is shot after moving this turning point, re-roll one defense die."),
             ("Darting Salvo", "During a Reposition in its activation, it can stop to Shoot and then finish the move."),
             ("Cegorach's Jest", "Once per sequence, when one fights or retaliates and your opponent strikes with a normal success, roll a D6. If it's below their weapon's Hit, that strike blocks one of your dice instead (ignore Brutal)."),
         ],
@@ -61,7 +61,7 @@ TEAM = {
             ("The Curtain Falls", "When one fights and makes a critical strike that doesn't kill, end the sequence and make a free Fall Back of up to 3\"."),
             ("Elusive Target", "Until its next activation, while it has a Conceal order and is in cover, enemies more than 2\" away can't target it."),
             ("Murderous Entrance", "When one fights after Charging this activation, after you strike, resolve another normal success (or a critical success if you have no normal ones) as a strike straight away."),
-            ("Domino Field", "When one is shot, in the Resolve Defence Dice step, one successful defence die blocks all attack dice that show the same result."),
+            ("Domino Field", "When one is shot, in the Resolve Defense Dice step, one successful defense die blocks all attack dice that show the same result."),
         ],
     },
     "equipment": [

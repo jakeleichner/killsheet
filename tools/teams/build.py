@@ -11,6 +11,8 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).parent
+sys.path.insert(0, str(HERE.parent))
+from us_spelling import us  # the PDFs use British spellings; the app uses US
 START = "const FACTIONS = {\n"
 END = "};\n\n/* ═══ ROSTER & COMPOSITION HELPERS"
 
@@ -153,7 +155,7 @@ def check(t):
         wt_path = HERE.parent / "text" / f"{src}.wtypes.json"
         if not wt_path.exists():
             return None
-        raw = json.loads(wt_path.read_text())
+        raw = {us(k): v for k, v in json.loads(wt_path.read_text()).items()}
         types = {k.lower().replace("\u2019", "'").replace("\u2011", "-"): set(v) for k, v in raw.items()}          # exact profile names
         for k, v in raw.items():                                      # plus merged base names
             types.setdefault("base:" + base(k), set()).update(v)

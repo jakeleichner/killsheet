@@ -30,7 +30,7 @@ TEAM = {
             ("Gory Tenacity", "When one fights or retaliates, the first enemy strike on it each sequence is halved (rounding up, to a minimum of 2)."),
             ("Hunt for Blood", "One Goremonger switches to Engage (if it has a Conceal order) and makes a free Charge of up to 3\"."),
             ("Enhanced Violence", "With a half gore tank, melee weapons gain Balanced. With a full tank, they gain Relentless."),
-            ("Augmented Endurance", "When one is shot with a half gore tank, re-roll one defence die. With a full tank, re-roll any."),
+            ("Augmented Endurance", "When one is shot with a half gore tank, re-roll one defense die. With a full tank, re-roll any."),
         ],
         "firefight": [
             ("Destructive Demise", "When a Goremonger is incapacitated, inflict damage on an enemy in its control range based on its tank: D3 if empty, D3+1 if half, D3+2 if full."),
@@ -47,7 +47,7 @@ TEAM = {
     ],
     "operatives": [
         gm("blood_herald", "Blood Herald", [("Icon of Khorne", 4, "2+", "4/4", 'Range 8", Saturate')], [("Chainblade", 4, "3+", "4/5", "Rending")],
-           ["Khorne's Favour: Once per activation, if its tank is empty, raise it.",
+           ["Khorne's Favor: Once per activation, if its tank is empty, raise it.",
             "Impending Apotheosis: Once per battle, ignore the Normal Dmg from one attack die."],
            "LEADER, BLOOD HERALD", wounds=11),
         gm("aspirant", "Aspirant", [AUTOPISTOL], [("Chainglaive", 4, "3+", "4/5", "Rending")],

@@ -47,7 +47,7 @@ OPERATIVES = [
         "Signal (1AP): SUPPORT. Another Death Korps visible within 6\" gets +1 APL until the end of its next activation. It can't do this within enemy control range."],
        "VOX-OPERATOR"),
     dk("zealot", "Zealot", [LASGUN], [BAYONET],
-       ["The Emperor Protects: When it's shot, you can re-roll any of its defence dice.",
+       ["The Emperor Protects: When it's shot, you can re-roll any of its defense dice.",
         "Uplifting Primer: SUPPORT. Death Korps within 3\" of it gain Severe on their weapons."], "ZEALOT"),
 ]
 LIST_IDS = [o["id"] for o in OPERATIVES]
@@ -71,7 +71,7 @@ TEAM = {
         ],
     },
     "factionRules": [
-        ("Guardsmen Orders", "STRATEGIC GAMBIT and SUPPORT. The Watchmaster gives one order to all Death Korps within 6\" until the end of the turning point (only the latest order counts). Take Aim!: ranged weapons gain Ceaseless (not the mortar barrage or remote detonator). Fix Bayonets!: melee weapons gain Ceaseless. Dig In!: when shot with a cover save, re-roll any defence dice showing one result of your choice. Move! Move! Move!: +1\" Move when Repositioning."),
+        ("Guardsmen Orders", "STRATEGIC GAMBIT and SUPPORT. The Watchmaster gives one order to all Death Korps within 6\" until the end of the turning point (only the latest order counts). Take Aim!: ranged weapons gain Ceaseless (not the mortar barrage or remote detonator). Fix Bayonets!: melee weapons gain Ceaseless. Dig In!: when shot with a cover save, re-roll any defense dice showing one result of your choice. Move! Move! Move!: +1\" Move when Repositioning."),
     ],
     "ploys": {
         "strategy": [

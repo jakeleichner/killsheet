@@ -1,4 +1,4 @@
-from _lib import R, A, W, NPO, M, BEHAVIOUR, COOP_TEAM
+from _lib import R, A, W, NPO, M, BEHAVIOR, COOP_TEAM
 
 MELEE_PRI = [
     "Fight.",
@@ -40,7 +40,7 @@ PACK = dict(
         R("NPO limit", "No more than 10 NPOs on the table at once. Skip any that would go over, using the threat principle to pick which ones."),
         R("Event cards", "NPOs gain no CP. As an NPO gambit in each Strategy phase, draw a random Typhon event card. After the first turning point, draw two if the NPOs don't have initiative.",
           "Shuffle used event cards back into the deck in each Ready step."),
-        BEHAVIOUR,
+        BEHAVIOR,
         R("Threat principle", "When you make a choice for an NPO, pick the option that's worst for you. If you still can't decide, pick at random.", [
             "Which NPO activates: the one that can Fight or Shoot and is most dangerous doing so, then one not in cover, then the closest to your operatives.",
             "Where to set it up: where it's most likely to stop you winning, then within control range of your operatives (if it fights), then where it isn't a valid target, then where it can best Charge or Shoot.",
@@ -60,9 +60,9 @@ PACK = dict(
         {"name": "Birthing Sac", "effect": "Set up one ready NPO with Conceal as close as possible to a random gestation sac (S). If you can't, draw a different card."},
         {"name": "Voracious", "effect": "NPO weapons have Lethal 5+."},
         {"name": "Sentient Barbs", "effect": "When a player operative moves within 1\" of a Tyranid Infestation piece, roll a D6: on 3+ it takes 1 damage. Once per piece per activation."},
-        {"name": "Spore Miasma", "effect": "When shooting at an operative more than 8\" away, the defender rolls one extra defence die."},
+        {"name": "Spore Miasma", "effect": "When shooting at an operative more than 8\" away, the defender rolls one extra defense die."},
         {"name": "Overrun", "effect": "Each NPO makes a free Charge of up to 3\" (changing order if needed). Any that can't, make a free Dash instead."},
-        {"name": "Lurk", "effect": "When you shoot an NPO, re-roll one of its defence dice if that helps it. When you would strike an NPO, roll a D6: on 5+ you must block instead (if you can't, the strike does nothing)."},
+        {"name": "Lurk", "effect": "When you shoot an NPO, re-roll one of its defense dice if that helps it. When you would strike an NPO, roll a D6: on 5+ you must block instead (if you can't, the strike does nothing)."},
         {"name": "Feed", "effect": "D3 NPOs immediately make a free Fight action. If none can, draw a different card."},
         {"name": "Ripper Swarm", "effect": "If no Ripper Swarm is out, set one up ready with Conceal in NPO territory (co-op) or near a random objective marker (head-to-head), within control range of a player operative if possible. If a wounded one is out, it heals fully. If neither, draw a different card."},
         {"name": "Synaptic Backlash", "effect": "Pick a player operative and roll a D6. If it beats that operative's APL, it gets -1 APL. If not, pick another and repeat. Doesn't affect operatives that block psychic rules."},
@@ -118,7 +118,7 @@ PACK = dict(
           rules=[
               R("NPOs", f"None at the start. {GAMBIT}, set up D3+1 ready NPOs with Conceal as close as possible to each gestation sac (S) (roll for each)."),
               R("Destroy Gestation Sac", "Each gestation sac (S) has 20 wounds, Save 5+, and is removed at 0. Barbgaunt Blast can't damage them.", [
-                  "Shooting: you can target a sac if it's visible, including as a Blast or Torrent secondary target. It can be obscured (treat the whole thing as its base) but never in cover. Your weapons hit it on 2+ (before other changes like injured). It rolls one extra defence die.",
+                  "Shooting: you can target a sac if it's visible, including as a Blast or Torrent secondary target. It can be obscured (treat the whole thing as its base) but never in cover. Your weapons hit it on 2+ (before other changes like injured). It rolls one extra defense die.",
                   "Fighting: you can fight a sac within control range. It doesn't strike back. Your weapons hit it on 2+.",
               ]),
               R("Aggression Instincts", "Once a sac has lost wounds or been destroyed, the NPOs draw an extra event card in each Strategy phase where they have initiative. Once one sac is destroyed, roll two D3 and use the higher for NPOs arriving at the other."),

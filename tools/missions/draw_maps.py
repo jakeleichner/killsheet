@@ -6,14 +6,14 @@ With no map ids it redraws every mission map the mission data names (not the map
 
 How it works:
 - The PDF's own drawing gives exact terrain outlines, walls, doors, vantage lines, killzone edges,
-  markers and labels. Each is recoloured by what it is (see classify_shapes).
+  markers and labels. Each is recolored by what it is (see classify_shapes).
 - Drop zones and territories are often baked into a picture of the board, so they come from the
-  rendered page instead: sample the colours on a 0.1" grid, tidy, trace the outlines. When the PDF has
-  zone rectangles of its own, those are used (exact) and only their colour is sampled.
+  rendered page instead: sample the colors on a 0.1" grid, tidy, trace the outlines. When the PDF has
+  zone rectangles of its own, those are used (exact) and only their color is sampled.
 - Pages with two boards (Tomb World, Shadowhunt's Descent killzone) become one drawing with both.
 
 Needs macOS `sips` (renders pages) and pypdf. Takes about a minute and a half for all maps.
-Prints any shapes it didn't recognise; those are drawn in their original colour so they still show.
+Prints any shapes it didn't recognize; those are drawn in their original color so they still show.
 """
 import glob
 import math
@@ -65,7 +65,7 @@ def _colour(vals):
 
 
 def _walk(reader, stream, resources, ctm, out, depth=0):
-    """Collect filled and stroked paths (in page points) with their colours, line widths and dashes.
+    """Collect filled and stroked paths (in page points) with their colors, line widths and dashes.
     Curves are flattened into short straight pieces. Clipping is ignored."""
     from pypdf.generic import ContentStream, IndirectObject
     if depth > 8: return
@@ -166,7 +166,7 @@ class PageImage:
 
 
 def nearest(palette):
-    """Colour -> class of the closest palette colour (cached)."""
+    """Color -> class of the closest palette color (cached)."""
     cache = {}
 
     def f(c):
@@ -179,7 +179,7 @@ def nearest(palette):
 
 # ═══ Zones ═══════════════════════════════════════════════════════════════════════════════
 # Zone classes: dz_a / terr_a = player (player A) drop zone and territory; dz_b / terr_b = NPO
-# (or player B) drop zone and territory; mid = neutral. "x" marks colours that aren't zones.
+# (or player B) drop zone and territory; mid = neutral. "x" marks colors that aren't zones.
 
 ZONES = ["mid", "terr_b", "dz_b", "terr_a", "dz_a"]
 X_COMMON = [((88, 106, 98), "x"), ((12, 12, 18), "x"), ((250, 250, 250), "x"), ((47, 51, 51), "x"), ((60, 72, 72), "x")]
@@ -258,7 +258,7 @@ def fill_straight(grid, keep):
 
 
 def drop_thin(grid, keep, k=3):
-    """Remove zone features thinner than about 2k cells (grid lines, centre lines), then refill them."""
+    """Remove zone features thinner than about 2k cells (grid lines, center lines), then refill them."""
     ny, nx = len(grid), len(grid[0])
     held = [[False] * nx for _ in range(ny)]
     for cls in keep:
@@ -408,7 +408,7 @@ def traced_zones(im, ph, b, W, H, palette, square=None, cell=0.1):
 
 
 def vector_zones(im, ph, shapes, b, W, H, palette):
-    """Zones from the PDF's own zone rectangles, coloured by sampling the page. None if there aren't any."""
+    """Zones from the PDF's own zone rectangles, colored by sampling the page. None if there aren't any."""
     bx0, bx1, by0, by1 = b
     sx, sy = (bx1 - bx0) / W, (by1 - by0) / H
     polys = []
@@ -494,7 +494,7 @@ _ter_near = nearest(TER_PAL)
 
 
 def terrain_class(im, ph, pts, step=3.0):
-    """Light or dark terrain, from the page colours inside the outline."""
+    """Light or dark terrain, from the page colors inside the outline."""
     s = im.h / ph
     xs = [p[0] for p in pts]; ys = [p[1] for p in pts]
     c = Counter()
@@ -510,7 +510,7 @@ def terrain_class(im, ph, pts, step=3.0):
 
 
 def draw_board(mid, pack, page, im, b, n_boards, index, unknown):
-    """One board: zones, recoloured shapes and labels, in board tenths of an inch (y down)."""
+    """One board: zones, recolored shapes and labels, in board tenths of an inch (y down)."""
     shapes, ph = page["shapes"], page["h"]
     W, H = board_size(b, pack)
     bx0, bx1, by0, by1 = b
@@ -701,7 +701,7 @@ def draw_board(mid, pack, page, im, b, n_boards, index, unknown):
 
 
 # ═══ SVG ═════════════════════════════════════════════════════════════════════════════════
-# Colours match the app (dark cards, orange accent). Side A (player) is warm, side B (NPOs or
+# Colors match the app (dark cards, orange accent). Side A (player) is warm, side B (NPOs or
 # player B) is blue. The app's map legend uses the same class names.
 
 STYLE = """

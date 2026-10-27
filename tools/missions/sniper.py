@@ -1,5 +1,5 @@
 import copy
-from _lib import R, A, W, NPO, M, BEHAVIOUR, COOP_TEAM
+from _lib import R, A, W, NPO, M, BEHAVIOR, COOP_TEAM
 from shadowhunt import PACK as SHADOW
 
 MARKS_PRI = [
@@ -9,7 +9,7 @@ MARKS_PRI = [
     "Dash to cover, ideally where it has a valid target that isn't obscured.",
 ]
 
-# Same generic NPOs as Shadowhunt; this pack's Marksman behaviour has no Fight step.
+# Same generic NPOs as Shadowhunt; this pack's Marksman behavior has no Fight step.
 generic = []
 for n in SHADOW["npos"]:
     if n["name"].startswith(("Trooper", "Tough", "Warrior", "Heavy")):
@@ -43,7 +43,7 @@ PACK = dict(
             "NPOs get no equipment.",
         ]),
         R("Initiative", "Roll one die for the NPOs and one for you. If the NPOs win, they always take initiative."),
-        BEHAVIOUR,
+        BEHAVIOR,
         R("Threat principle", "When you make a choice for an NPO, pick the option that's worst for you. If you still can't decide, pick at random.", [
             "Which NPO activates: the one that can Fight or Shoot and is most dangerous doing so, then one not in cover, then the closest to your operatives.",
             "Who it shoots: not obscured, then not in cover, then closest, then wounded, then ready.",
@@ -86,9 +86,9 @@ PACK = dict(
           rules=[
               R("NPOs", f"The Sniper goes on the highest Vantage terrain of Stronghold B. {NPOS_90} wholly within Stronghold B, out of sight of your drop zone or in cover."),
               R("Flanking Forces", "Operatives that escaped over the NPO edge in mission 2 start in the right-hand player drop zone. Everyone else starts in the left-hand one."),
-              R("Defend the Stronghold", "Add a barricade to the centre of Stronghold B. NPOs do whatever best defends the stronghold, and only leave it if that really threatens your operatives."),
+              R("Defend the Stronghold", "Add a barricade to the center of Stronghold B. NPOs do whatever best defends the stronghold, and only leave it if that really threatens your operatives."),
               R("No Escape", "When one of your operatives wholly inside Stronghold B shoots an NPO also wholly inside it, your ranged weapons have Seek Light. That lets you target the Sniper."),
-              R("Reinforcements", REINF.format(when=" after the second", where="Set each one up wholly within 4\" of the centre of a random NPO killzone edge.")),
+              R("Reinforcements", REINF.format(when=" after the second", where="Set each one up wholly within 4\" of the center of a random NPO killzone edge.")),
           ],
           victory=["At the end of any turning point from the fourth on, you can end the battle. It also ends if all your operatives are incapacitated.",
                    "You win if you control the stronghold: your operatives wholly inside it and on the floor have more total APL than the NPOs there."]),

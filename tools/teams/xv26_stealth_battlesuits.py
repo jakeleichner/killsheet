@@ -66,7 +66,7 @@ TEAM = {
         ],
         "firefight": [
             ("Engage Jet Pack", "When a non-Drone activates or counteracts, ignore the vertical distance of one climb and one drop."),
-            ("Saviour Protocols", "When a non-Drone is picked as the target of a Shoot, a Drone visible within 3\" of it becomes the target instead. No effect against Blast or Torrent."),
+            ("Savior Protocols", "When a non-Drone is picked as the target of a Shoot, a Drone visible within 3\" of it becomes the target instead. No effect against Blast or Torrent."),
             ("Vectored Retro-thrusters", "When an enemy ends a Charge in a non-Drone's control range, the non-Drone makes a free Fall Back of up to 3\", which can't be prevented. The enemy can then Reposition with its remaining move."),
             ("Ghostshroud", "At the end of an activation, an XV26 with an Engage order switches to Conceal. Each operative once per battle."),
         ],

@@ -42,7 +42,7 @@ TEAM = {
         ],
         "firefight": [
             ("Sharp Reactions", "After an enemy with a Conceal order within 8\" of a Spectre acts, you can still use Elite Fieldcraft to interrupt."),
-            ("Prepared Defence", "When a Spectre that has a Conceal order or is ready retaliates, resolve one success early as a block, or let one block block two successes. Not in an activation you interrupted."),
+            ("Prepared Defense", "When a Spectre that has a Conceal order or is ready retaliates, resolve one success early as a block, or let one block block two successes. Not in an activation you interrupted."),
             ("Dodge", "This activation, Fall Back costs it 1 less AP."),
             ("Silent Killers", "When a Spectre with a Conceal order isn't a valid target for enemies, this activation it can Charge with a Conceal order, and its first strike can deal 3 extra damage (then it can't use its other successes)."),
         ],

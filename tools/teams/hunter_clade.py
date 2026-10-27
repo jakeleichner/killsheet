@@ -62,7 +62,7 @@ TEAM = {
         ],
     },
     "factionRules": [
-        ("Doctrina Imperatives", "At the end of Select Operatives, pick one imperative as your Primary Mode. As a STRATEGIC GAMBIT, pick an imperative for your operatives until the Ready step of the next Strategy phase. Both its Optimisation and its Deprecation apply. Once per battle, when you pick your Primary Mode, ignore its Deprecation."),
+        ("Doctrina Imperatives", "At the end of Select Operatives, pick one imperative as your Primary Mode. As a STRATEGIC GAMBIT, pick an imperative for your operatives until the Ready step of the next Strategy phase. Both its Optimization and its Deprecation apply. Once per battle, when you pick your Primary Mode, ignore its Deprecation."),
         ("Protector Imperative", "Ranged weapons gain Ceaseless. Deprecation: melee weapons get a worse Hit by 1 (doesn't stack with being injured)."),
         ("Conqueror Imperative", "Melee weapons gain Ceaseless. Deprecation: ranged weapons get a worse Hit by 1 (doesn't stack with being injured)."),
         ("Bulwark Imperative", "Normal Dmg of 3 or more inflicts 1 less damage. Deprecation: -1\" Move."),
@@ -80,14 +80,14 @@ TEAM = {
             ("Control Edict", "On your turn to activate, a Leader and another ready operative visible within 3\" of it (only one Sicarian) activate one after the other before your opponent goes."),
             ("Scrapcode Overload", "When an Infiltrator activates, or when it or an enemy within 3\" of it would Pick Up Marker or take a mission action (not Operate Hatch), use this. Until its next activation, when enemies contest a marker and at least one of them is within 3\" of it, their total APL counts as 1 lower."),
             ("Command Override", "When an operative activates, give it a different imperative until the next Ready step."),
-            ("Omnissiah's Imperative", "Use during its activation, or when it's shot (at the end of the Roll Attack Dice step). Until the next Ready step, it gets a bonus based on its imperative. Protector: ranged weapons gain Severe. Conqueror: when fighting, after your first attack die, resolve another one straight away. Bulwark: improve Save by 1 and roll one extra defence die when shot. Aggressor: ignore the first 2\" of one climb. Neutral: nothing."),
+            ("Omnissiah's Imperative", "Use during its activation, or when it's shot (at the end of the Roll Attack Dice step). Until the next Ready step, it gets a bonus based on its imperative. Protector: ranged weapons gain Severe. Conqueror: when fighting, after your first attack die, resolve another one straight away. Bulwark: improve Save by 1 and roll one extra defense die when shot. Aggressor: ignore the first 2\" of one climb. Neutral: nothing."),
         ],
     },
     "equipment": [
         {"id": "rad_bombardment", "name": "Rad Bombardment", "desc": "STRATEGIC GAMBIT, once per battle, after the first turning point. Pick an objective or your opponent's drop zone and roll a D6 for each enemy there (subtract 1 if it's under Vantage terrain). On a 4+, it gets -1 APL until the end of its next activation, and on a 6 it also takes D3 damage."},
         {"id": "extremis_mind_link", "name": "Extremis Mind-link", "desc": "Once per battle, use Control Edict for 0CP, and both operatives activate at the same time (alternate their actions in any order)."},
         {"id": "redundancy_systems", "name": "Redundancy Systems", "desc": "Once per turning point, when an operative activates outside enemy control range, it regains up to D3+2 wounds."},
-        {"id": "refractor_field", "name": "Refractor Field", "desc": "Once per turning point, when an operative is shot, the attacker's Piercing gets worse by 1 (use at the start of the Roll Defence Dice step)."},
+        {"id": "refractor_field", "name": "Refractor Field", "desc": "Once per turning point, when an operative is shot, the attacker's Piercing gets worse by 1 (use at the start of the Roll Defense Dice step)."},
     ],
     "operatives": [
         op("infiltrator_princeps", "Sicarian Infiltrator Princeps", 11, 40, INF_RANGED, INF_MELEE,

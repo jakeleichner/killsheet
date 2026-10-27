@@ -30,12 +30,12 @@ TEAM = {
         "strategy": [
             ("Storm's Bite", "When one fights an enemy wholly within your Storm, that enemy gets -1 Atk on melee weapons (to a minimum of 3)."),
             ("Savage Fighters", "After it retaliates, if it's alive and the enemy is still in its control range, inflict D3+1 damage on that enemy."),
-            ("Cloaked by the Storm", "When one is shot while wholly within your Storm, re-roll one defence die."),
+            ("Cloaked by the Storm", "When one is shot while wholly within your Storm, re-roll one defense die."),
             ("Tempestuous Wrath", "When one fights or retaliates while wholly within your Storm (or after starting the activation there), melee weapons gain Balanced."),
         ],
         "firefight": [
             ("Touched by Lokyar", "After rolling attack dice for a Wolf Scout (not the Wolf) fighting more than 5\" from other friendly operatives, re-roll any of them."),
-            ("Transhuman Physiology", "When a Wolf Scout (not the Wolf) is shot, retain one normal defence success as a critical success."),
+            ("Transhuman Physiology", "When a Wolf Scout (not the Wolf) is shot, retain one normal defense success as a critical success."),
             ("Acute Senses", "Use when one Shoots. Its ranged weapons gain Range 6\" and Seek Light, and enemies can't be obscured."),
             ("Counterattack", "At the end of an enemy's activation, or after it Fights, one Wolf Scout makes a free Fight against that enemy only."),
         ],

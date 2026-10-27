@@ -1,4 +1,4 @@
-from _lib import R, A, W, NPO, M, S, BEHAVIOUR, THREAT_PRINCIPLE
+from _lib import R, A, W, NPO, M, S, BEHAVIOR, THREAT_PRINCIPLE
 
 PACK = dict(
     id="archivist",
@@ -25,8 +25,8 @@ PACK = dict(
             "Set up equipment (mission 2: take turns item by item). Mission 1: set up NPOs now with Conceal. Mission 2: the Archivist arrives later.",
             "Set up operatives wholly within your drop zone with Conceal (mission 2: a third of your team at a time, taking turns). Mission 1: you have initiative in the first turning point.",
         ]),
-        R("Nemesis rules", "Extra Defence: when shot, it rolls one extra defence die unless it's injured. Bulky: it can't be placed on Vantage terrain more than 2\" off the floor."),
-        BEHAVIOUR,
+        R("Nemesis rules", "Extra Defense: when shot, it rolls one extra defense die unless it's injured. Bulky: it can't be placed on Vantage terrain more than 2\" off the floor."),
+        BEHAVIOR,
     ],
     npos=[
         NPO("The Archivist", "2-3 (from card)", "6\"", "4+", 35, [
@@ -40,8 +40,8 @@ PACK = dict(
             "Shoot the closest NPO.",
             "Dash towards the closest player operative, to cover if possible.",
         ], rules=[
-            ("Nemesis", "Extra Defence and Bulky. Counts as APL 4 for marker control."),
-            ("Xenotech Shielding", "When shot: ignore Piercing, and Dmg of 4 or more deals 1 less. It keeps Extra Defence even while injured."),
+            ("Nemesis", "Extra Defense and Bulky. Counts as APL 4 for marker control."),
+            ("Xenotech Shielding", "When shot: ignore Piercing, and Dmg of 4 or more deals 1 less. It keeps Extra Defense even while injured."),
         ], base="Small (50mm)"),
     ],
     missions=[
@@ -67,14 +67,14 @@ PACK = dict(
           cards=[("1-9", "Activate one NPO other than the Archivist."),
                  ("10-11", "Activate the Archivist NPO with APL 2 (max twice and 9\" of movement per turning point)."),
                  ("12-13", "Activate the Archivist NPO with APL 3 (max twice and 9\" of movement per turning point).")]),
-        M(2, "Negotiation", "Head-to-head", "Both teams grab infocores from a wreck. The Archivist works for whoever offers the most, and earning its favour means letting the enemy hold cores.",
+        M(2, "Negotiation", "Head-to-head", "Both teams grab infocores from a wreck. The Archivist works for whoever offers the most, and earning its favor means letting the enemy hold cores.",
           maps=["archivist-p06"],
           rules=[
-              R("NPOs", "In the second Ready step, set up the Archivist NPO, ready with Conceal, touching the centre of a random neutral killzone edge. After both players have activated, if it's on the table, draw from its activation deck."),
+              R("NPOs", "In the second Ready step, set up the Archivist NPO, ready with Conceal, touching the center of a random neutral killzone edge. After both players have activated, if it's on the table, draw from its activation deck."),
               R("Infocore Extraction", "Your operatives (not the Archivist) can pick up Infocore mission markers. Operatives with a base APL of 3+ can carry two.",
                 "At the end of each turning point, each player gains Negotiation points equal to the number of Infocores the enemy controls."),
               R("Negotiation", "Each time the Archivist would activate, both players secretly bid Negotiation points (hold that many dice in your hand), then reveal.",
-                "The higher bidder spends their bid and controls the Archivist as their own operative for that activation. On a tie, it stays an NPO and follows its behaviour."),
+                "The higher bidder spends their bid and controls the Archivist as their own operative for that activation. On a tie, it stays an NPO and follows its behavior."),
               R("Who controls the Archivist NPO", "Its target is the closest player operative in its control range. If none, the closest visible player operative holding an Infocore it could fight, shoot or move towards (or the closest if none are visible). Roll off if tied.",
                 "The other player runs it for that action and must go after that target. If no operative holds an Infocore and nobody bought it, skip the activation."),
           ],

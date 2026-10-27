@@ -82,7 +82,7 @@ TEAM = {
     "ploys": {
         "strategy": [
             ("Guilt Reveals Itself", "When picking targets, enemies within 4\" (instead of 2\") can't be in cover. They only lose their cover save within 2\"."),
-            ("Inviolate Jurisdiction", "When one is shot while within 2\" of an objective or an enemy, re-roll one defence die."),
+            ("Inviolate Jurisdiction", "When one is shot while within 2\" of an objective or an enemy, re-roll one defense die."),
             ("Dispense Justice", "When one fights or retaliates without having moved more than its Move this activation, or while counteracting, melee weapons gain Ceaseless."),
             ("Terminal Decree", "When one shoots an enemy within 6\", or a Gunner shoots anything, ranged weapons gain Balanced."),
         ],

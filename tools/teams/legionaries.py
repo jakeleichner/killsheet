@@ -5,7 +5,7 @@ CHAINSWORD = ("Chainsword", 5, "3+", "4/5", "-")
 PLASMA_PISTOL = [("Plasma pistol (standard)", 4, "3+", "3/5", 'Range 8", Piercing 1'), ("Plasma pistol (supercharge)", 4, "3+", "4/5", 'Range 8", Hot, Lethal 5+, Piercing 1')]
 TAINTED = ("Tainted bolt pistol", 4, "3+", "3/5", 'Range 8", Rending')
 ICON = ["Icon Bearer: Its APL counts as 1 higher for marker control.",
-        "Favoured of the Dark Gods: In the Ready step, if it controls an objective that no one has tainted, that objective is tainted for the battle and you gain 1CP."]
+        "Favored of the Dark Gods: In the Ready step, if it controls an objective that no one has tainted, that objective is tainted for the battle and you gain 1CP."]
 INFERNAL = ["Infernal Pact: Once per battle, when a Warrior activates, change its Mark of Chaos."]
 
 def leg(oid, name, ranged, melee, abilities, kw, wounds=14):
@@ -41,7 +41,7 @@ TEAM = {
         ("Astartes", "During each activation, a Legionary can take two Shoot actions or two Fight actions. If it shoots twice, at least one of those shots must use a bolt pistol, boltgun or tainted bolt pistol. Legionaries can counteract whatever their order."),
         ("Marks of Chaos", "Each Legionary takes one Mark for the battle, and they can differ. Ploys give extra benefits to operatives with the matching Mark."),
         ("Khorne: Wrathful Onslaught", "Melee weapons gain Severe."),
-        ("Nurgle: Disgusting Vigour", "When Normal Dmg of 3 or more is inflicted on it, roll a D6: on a 5+, subtract 1 from that damage."),
+        ("Nurgle: Disgusting Vigor", "When Normal Dmg of 3 or more is inflicted on it, roll a D6: on a 5+, subtract 1 from that damage."),
         ("Slaanesh: Unnatural Agility", "+1\" Move."),
         ("Tzeentch: Empyreal Guidance", "Ranged weapons gain Severe."),
         ("Undivided: Vicious Reavers", "When attacking an enemy within 6\", weapons gain Ceaseless."),
@@ -61,7 +61,7 @@ TEAM = {
         ],
     },
     "equipment": [
-        {"id": "warded_armour", "name": "Warded Armour", "desc": "STRATEGIC GAMBIT: one Legionary has a 2+ Save until the next Ready step."},
+        {"id": "warded_armour", "name": "Warded Armor", "desc": "STRATEGIC GAMBIT: one Legionary has a 2+ Save until the next Ready step."},
         {"id": "tainted_rounds", "name": "Tainted Rounds", "desc": "Once per turning point, a bolt pistol or boltgun gains Rending for that Shoot."},
         {"id": "chaos_talismans", "name": "Chaos Talismans", "desc": "STRATEGIC GAMBIT: pick a Mark. Once per activation, when a Legionary with that Mark fails two or more dice, it can take D3 damage to discard one failure and retain another as a normal success."},
         {"id": "malefic_blades", "name": "Malefic Blades", "desc": "Legionaries get a malefic blade.", "gw": ("melee", "Malefic blade", 5, "3+", "3/4", "-")},

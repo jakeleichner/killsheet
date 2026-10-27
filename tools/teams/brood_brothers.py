@@ -51,7 +51,7 @@ TEAM = {
         ],
         "firefight": [
             ("Unquestioning Loyalty", "When a LEADER is picked as the target of a Shoot or Fight, a non-leader Broodguard visible within 3\" becomes the target instead. It only has cover or is obscured if the original target was. Not against Blast or Torrent."),
-            ("Idolisation", "When a non-leader within 6\" of a LEADER or the Iconward attacks, retain one fail as a normal success or one normal success as a critical success."),
+            ("Idolization", "When a non-leader within 6\" of a LEADER or the Iconward attacks, retain one fail as a normal success or one normal success as a critical success."),
             ("Ruthless Coordination", "When picking a target, work out cover and obscured from another Brood Brother that both can see (and that isn't in enemy control range). No extra Vantage benefits."),
             ("Insidious", "After an activation (not in the first turning point), one Brood Brother that isn't a valid target for enemies makes a free Dash, and must still not be a valid target after."),
         ],
@@ -59,7 +59,7 @@ TEAM = {
     "equipment": [
         {"id": "covert_guises", "name": "Covert Guises", "desc": "Roll a D3. In the first turning point's Strategy phase, that many Broodguard wholly in your drop zone get a free Reposition, ending wholly within 3\" of it."},
         {"id": "cult_knives", "name": "Cult Knives", "desc": "Broodguard get a cult knife.", "gw": ("melee", "Cult knife", 3, "4+", "3/4", "-")},
-        {"id": "cult_talisman", "name": "Cult Talisman", "desc": "Once per turning point, when a Brood Brother (not the Patriarch) is shot, retain one normal defence success as a critical success."},
+        {"id": "cult_talisman", "name": "Cult Talisman", "desc": "Once per turning point, when a Brood Brother (not the Patriarch) is shot, retain one normal defense success as a critical success."},
         {"id": "lookout", "name": "Lookout", "desc": "STRATEGIC GAMBIT: an enemy visible to a Brood Brother gains a Crossfire token."},
     ],
     "operatives": [

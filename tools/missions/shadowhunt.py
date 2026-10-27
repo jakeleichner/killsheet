@@ -1,4 +1,4 @@
-from _lib import R, A, W, NPO, M, S, BEHAVIOUR, COOP_TEAM
+from _lib import R, A, W, NPO, M, S, BEHAVIOR, COOP_TEAM
 from tombworld import PACK as TOMB
 
 BRAWL_PRI = [
@@ -44,7 +44,7 @@ PACK = dict(
             "9-12: Tomb Crawler, or any Heavy.",
             "No more than 10 NPOs on the table at once.",
         ]),
-        BEHAVIOUR,
+        BEHAVIOR,
         R("NPOs on two boards", "NPOs open hatches when they need to, can use entryways and teleport pads, and move to cover when they can (often not possible below if they want to Charge or Shoot)."),
         COOP_TEAM,
         R("Co-op game sequence", "Pick the mission, set up both boards, sort your NPO groups, pick operatives, then set up.", steps=[
@@ -132,7 +132,7 @@ PACK = dict(
         M(3, "Rising Doom", "Co-op", "You freed a C'tan Shard. Now run for the surface before it kills you all.",
           maps=["shadowhunt-p19"],
           rules=[
-              R("NPOs", JO_NPOS.format(w=90) + " At the end of the first turning point, remove the sarcophagus and place the C'tan Shard of the Nightbringer in the centre of that room."),
+              R("NPOs", JO_NPOS.format(w=90) + " At the end of the first turning point, remove the sarcophagus and place the C'tan Shard of the Nightbringer in the center of that room."),
               R("Escape", "When one of your operatives ends its activation on the Vantage terrain of Stronghold B and not within an enemy's control range, you can remove it: it has escaped."),
           ],
           victory=["When all your operatives have left the killzone, the battle ends.", "You win if at least a third of them (round up) escaped."]),

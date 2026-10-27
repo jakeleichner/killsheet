@@ -27,9 +27,9 @@ def W(name, kind, atk, hit, dmg, wr="-"):
     return {"name": name, "type": kind, "atk": atk, "hit": hit, "dmg": dmg, "wr": wr}
 
 
-def NPO(name, apl, move, save, wounds, weapons, behaviour, priorities, rules=(), base=None, note=None):
+def NPO(name, apl, move, save, wounds, weapons, behavior, priorities, rules=(), base=None, note=None):
     d = {"name": name, "apl": apl, "move": move, "save": save, "wounds": wounds,
-         "weapons": list(weapons), "behaviour": behaviour, "priorities": list(priorities),
+         "weapons": list(weapons), "behaviour": behavior, "priorities": list(priorities),
          "rules": [{"name": n, "desc": t} for n, t in rules]}
     if base:
         d["base"] = base
@@ -84,10 +84,10 @@ THREAT_PRINCIPLE = R(
     ],
 )
 
-BEHAVIOUR = R(
-    "NPO behaviour",
+BEHAVIOR = R(
+    "NPO behavior",
     "Each NPO datacard lists actions in priority order. Whenever the NPO would act, it performs the first one it can. If it can't do any, it's expended.",
-    "The behaviour also says which order (Engage or Conceal) to give it when it activates.",
+    "The behavior also says which order (Engage or Conceal) to give it when it activates.",
 )
 
 COOP_TEAM = R(

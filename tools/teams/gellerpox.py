@@ -42,7 +42,7 @@ TEAM = {
         "strategy": [
             ("Drawn to the Hum", "Pick an objective. A Reposition or Charge gets +1\" Move, but must end within 2\" of it."),
             ("Rust Emanations", "When a Nightmare Hulk fights or retaliates, your opponent can't retain 3s as successes."),
-            ("Plagueridden Determination", "When a non-Vermin with an Engage order is shot, re-roll one defence die."),
+            ("Plagueridden Determination", "When a non-Vermin with an Engage order is shot, re-roll one defense die."),
             ("Blessings of Infection", "When one fights or retaliates and you fail three or more dice, discard one failure to retain another as a normal success. Or, with three or more successes, discard a failure to turn a normal success into a critical success."),
         ],
         "firefight": [
@@ -54,7 +54,7 @@ TEAM = {
     },
     "equipment": [
         {"id": "mutated_symptoms", "name": "Mutated Symptoms", "desc": "Once per battle when activating, that operative gains a second Techno-curse until the end of the turning point."},
-        {"id": "plague_bellows", "name": "Plague Bellows", "desc": "When a Hulk is shot from more than 6\" away, retain one defence roll of 3 as a normal success."},
+        {"id": "plague_bellows", "name": "Plague Bellows", "desc": "When a Hulk is shot from more than 6\" away, retain one defense roll of 3 as a normal success."},
         {"id": "mutoid_vermin", "name": "Mutoid Vermin", "desc": "Add 4 Mutoid Vermin operatives to the team (pick them in the Battle tab)."},
         {"id": "polluted_stockpile", "name": "Polluted Stockpile", "desc": "Roll 2D6. On a 7+, remove one of your opponent's equipment. Otherwise, they remove one of their own. It can't be selected again."},
     ],

@@ -30,7 +30,7 @@ TEAM = {
     ],
     "ploys": {
         "strategy": [
-            ("Exaltation in Pain", "Ignore Hit changes from being injured. When a wounded Cultist is shot, re-roll one defence die."),
+            ("Exaltation in Pain", "Ignore Hit changes from being injured. When a wounded Cultist is shot, re-roll one defense die."),
             ("Fervent Onslaught", "Melee weapons gain Accurate 1, or Accurate 2 for Mutants and Torments."),
             ("Creatures of Nightmare", "For markers contested by an enemy within 2\" of a Mutant or Torment, the enemy's total APL counts as 1 lower."),
             ("Sickening Aura", "Enemies within 2\" of a Mutant or Torment get a worse Hit by 1. This isn't affected by being injured."),
@@ -45,7 +45,7 @@ TEAM = {
     "equipment": [
         {"id": "baleful_script", "name": "Baleful Script", "desc": "STRATEGIC GAMBIT, once per battle: change one of your Accursed Gifts."},
         {"id": "covert_guises", "name": "Covert Guises", "desc": "Roll a D3. In the first turning point's Strategy phase, that many Devotees wholly in your drop zone get a free Reposition, ending wholly within 3\" of it."},
-        {"id": "unholy_talisman", "name": "Unholy Talisman", "desc": "Once per turning point, when a Cultist is shot, retain one normal defence success as a critical success."},
+        {"id": "unholy_talisman", "name": "Unholy Talisman", "desc": "Once per turning point, when a Cultist is shot, retain one normal defense success as a critical success."},
         {"id": "vile_blessing", "name": "Vile Blessing", "desc": "Once per battle, ignore the Normal Dmg from one attack die on an operative that isn't a Devotee. Not on the same die as Unnatural Regeneration."},
     ],
     "operatives": [

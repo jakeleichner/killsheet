@@ -45,7 +45,7 @@ TEAM = {
             ("Patient Ambush", "On your turn to activate, skip that activation."),
             ("Stealth Assault", "When an operative with a Conceal order activates, switches to Engage, Charges and then Fights (with no other actions first), after resolving your first attack die, resolve another straight away."),
             ("Critical Shot", "When it resolves a critical success while shooting with a bolt weapon, it deals D3 extra damage."),
-            ("Transhuman Physiology", "When one is shot, in the Roll Defence Dice step, retain one normal success as a critical success."),
+            ("Transhuman Physiology", "When one is shot, in the Roll Defense Dice step, retain one normal success as a critical success."),
         ],
     },
     "equipment": [
@@ -75,7 +75,7 @@ TEAM = {
            ["Custom (weapon rule): At the end of Select Operatives, give it up to two of: Balanced, Lethal 5+, Piercing Crits 1, Rending, Saturate."],
            "INFILTRATOR, VETERAN"),
         ph("voxbreaker", "Infiltrator Voxbreaker", [MARKSMAN], [FISTS],
-           ["Voxbreaker: Your opponent can't re-roll attack or defence dice for enemies within 6\" of it.",
+           ["Voxbreaker: Your opponent can't re-roll attack or defense dice for enemies within 6\" of it.",
             "Auspex Scan (1AP): Until its next activation, when operatives shoot enemies within 8\" of it, the target can't be obscured, and Incursors also gain Seek Light. It can't do this within enemy control range."],
            "INFILTRATOR, VOXBREAKER"),
         ph("infiltrator_warrior", "Infiltrator Warrior", [MARKSMAN], [FISTS], [VANGUARD], "INFILTRATOR, WARRIOR"),

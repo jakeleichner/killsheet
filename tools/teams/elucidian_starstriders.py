@@ -43,7 +43,7 @@ TEAM = {
         ],
     },
     "equipment": [
-        {"id": "armoured_undersuit", "name": "Armoured Undersuit", "desc": "When an operative with a 5+ Save (not the Canid) is shot, retain one defence roll of 4 as a normal success."},
+        {"id": "armoured_undersuit", "name": "Armored Undersuit", "desc": "When an operative with a 5+ Save (not the Canid) is shot, retain one defense roll of 4 as a normal success."},
         {"id": "hot_shot_packs", "name": "Hot Shot Capacitor Packs", "desc": "Up to twice per turning point, a laspistol, lasgun or relic laspistol gets +1 Normal and Critical Dmg, Hot and Piercing Crits 1 until the end of the turning point."},
         {"id": "coordinates_uplink", "name": "Improved Coordinates Uplink", "desc": "When a support asset's target is within 6\" of a NAVIS operative, it can't be obscured and the weapon gains Saturate."},
         {"id": "rapid_gunnery", "name": "Rapid Gunnery", "desc": "Once per battle, reuse a support asset you've already used."},
@@ -68,7 +68,7 @@ TEAM = {
            "DEATH CULT EXECUTIONER", apl=3),
         es("lectro_maester", "Lectro-maester", [("Voltaic pistol", 4, "3+", "4/4", 'Range 8", 1" Devastating 1, Rending')], [GUN_BUTT],
            ["Missionary of the Martian Creed: Once per activation, Pick Up Marker, Place Marker or a mission action costs it 1 less AP.",
-            "Voltaghiest Array: When Starstriders within 4\" of it are shot, re-roll one defence die.",
+            "Voltaghiest Array: When Starstriders within 4\" of it are shot, re-roll one defense die.",
             "Calibrate Voltagheist (0AP): Until its next activation, pick one. Charge: the voltaic pistol gains Lethal 4+. Field: enemies that end a move visible within 4\" take D6 damage. It can't do this within enemy control range."],
            "LECTRO-MAESTER", save="4+"),
         es("rejuvenat", "Rejuvenat Adept", [("Laspistol", 4, "4+", "2/3", 'Range 8"')], [("Scalpel claw", 3, "4+", "3/4", "Rending")],

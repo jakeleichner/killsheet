@@ -34,11 +34,11 @@ TEAM = {
             ("The Shield That Slays", "When one is wholly within your opponent's territory, Normal Dmg of 4 or more inflicts 1 less damage on it."),
             ("And They Shall Know No Fear", "Ignore stat changes from being injured, including weapon stats."),
             ("Mission Tactics", "Pick Conceal or Engage. When attacking an enemy with that order, weapons gain Balanced."),
-            ("The Long Vigil", "When one is shot while wholly within your territory, re-roll one defence die."),
+            ("The Long Vigil", "When one is shot while wholly within your territory, re-roll one defense die."),
         ],
         "firefight": [
             ("Advanced Auspex Scan", "Use when one Shoots. Until the end of the activation, its ranged weapons gain Saturate and enemies can't be obscured."),
-            ("Transhuman Physiology", "When one is shot, retain one normal defence success as a critical success."),
+            ("Transhuman Physiology", "When one is shot, retain one normal defense success as a critical success."),
             ("Suffer Not the Alien", "After rolling attack dice against an operative that isn't CHAOS or IMPERIUM, re-roll any of them."),
             ("Auspicator Tracking", "When one counteracts, it can change its order before taking any actions."),
         ],

@@ -25,7 +25,7 @@ TEAM = {
         ],
     },
     "factionRules": [
-        ("Acts of Faith", "In the Ready step of each Strategy phase, gain Faith points equal to half your Novitiates that aren't incapacitated (rounding up). When a Novitiate attacks or is shot, spend points in the Roll Attack Dice or Roll Defence Dice step for one Act of Faith per sequence. Guidance (1 point): re-roll one die. Blessing (2): retain a normal success as a critical success. Intervention (3): retain a fail as a normal success."),
+        ("Acts of Faith", "In the Ready step of each Strategy phase, gain Faith points equal to half your Novitiates that aren't incapacitated (rounding up). When a Novitiate attacks or is shot, spend points in the Roll Attack Dice or Roll Defense Dice step for one Act of Faith per sequence. Guidance (1 point): re-roll one die. Blessing (2): retain a normal success as a critical success. Intervention (3): retain a fail as a normal success."),
     ],
     "ploys": {
         "strategy": [
@@ -63,7 +63,7 @@ TEAM = {
             ["Auto-broadcaster (0AP): Place your Auto-broadcaster within 8\" horizontally, or move it up to 8\". Enemies within 3\" of it can't re-roll attack dice. Remove it if this operative is removed. It can't do this within enemy control range.",
              "Stirring Rhetoric (1AP): SUPPORT. Another Novitiate visible within 6\" (or within 6\" of the Auto-broadcaster) gets +1 APL (to a maximum of 3) until the end of its next activation. It can't do this within enemy control range."],
             "DIALOGUS"),
-        nov("duellist", "Duellist", [AUTOPISTOL], [("Duelling blades", 4, "3+", "4/5", "Ceaseless, Riposte")],
+        nov("duellist", "Duellist", [AUTOPISTOL], [("Dueling blades", 4, "3+", "4/5", "Ceaseless, Riposte")],
             ["Riposte (weapon rule): Each time you block with a critical success, also inflict the weapon's Critical Dmg on the enemy."],
             "DUELLIST"),
         nov("exactor", "Exactor", [("Neural whips (ranged)", 5, "3+", "2/3", 'Range 3", Lethal 5+, Stun')], [("Neural whips (melee)", 5, "3+", "2/3", "Lethal 5+, Shock")],

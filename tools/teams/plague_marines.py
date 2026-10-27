@@ -69,7 +69,7 @@ TEAM = {
             "Putrescent Vitality (1AP): PSYCHIC. Pick a friendly operative visible within 3\" and roll 2D6. On a total of 7, it regains 7 wounds. Otherwise, it regains wounds equal to the highest die. Once per turning point, and not within enemy control range."],
            "PSYKER, MALIGNANT PLAGUECASTER"),
         pm("pm_warrior", "Plague Marine Warrior", [("Boltgun", 4, "3+", "3/4", "Toxic")], [("Plague knife", 4, "3+", "3/4", "Severe, Poison")],
-           ["Repulsive Fortitude: When it's shot, defence results of 5+ are critical successes.", TOXIC],
+           ["Repulsive Fortitude: When it's shot, defense results of 5+ are critical successes.", TOXIC],
            "WARRIOR"),
     ],
 }

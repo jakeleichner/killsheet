@@ -12,7 +12,7 @@ PACK = dict(
     modes=["Head-to-head"],
     killzone="Any, plus a shrine statue",
     kz="open",
-    summary="An add-on for any two-player mission: a deck of Blood (attack) and Zeal (defence) cards you draw and play during the battle, plus a shrine statue in the middle of the board.",
+    summary="An add-on for any two-player mission: a deck of Blood (attack) and Zeal (defense) cards you draw and play during the battle, plus a shrine statue in the middle of the board.",
     source="Blood and Zeal Mission Pack",
     keyMaps=[],
     rules=[
@@ -27,7 +27,7 @@ PACK = dict(
         R("The decks", "Shuffle Blood and Zeal into two face-down decks. Lay three of each face down beside them: that's the draw area.", [
             "To draw, take any face-down card from the draw area (you know if it's Blood or Zeal, not what it says), then refill that spot from the same deck.",
             "Keep your hand secret. If both players draw at once, take turns one card at a time, starting with initiative.",
-            "Blood cards are mostly attack. Zeal cards are mostly defence.",
+            "Blood cards are mostly attack. Zeal cards are mostly defense.",
         ]),
         R("When you draw", "Draw one card in each Ready step, plus one card for each VP your opponent scores."),
         R("Playing cards", "Each card says when you can use it. Once used, put it face up in your Blood or Zeal discard pile. Discard piles are public.",
@@ -60,13 +60,13 @@ PACK = dict(
             C("Use or Reuse Ploy", "Firefight phase: use a firefight ploy for 1CP less, or use one a second time this turning point (paying its cost)."),
             C("Steal Card", "During your operative's activation: take a card from your opponent's hand."),
         ]},
-        {"name": "Zeal cards", "note": "Defence cards. Draw from the face-down draw area.", "cards": [
+        {"name": "Zeal cards", "note": "Defense cards. Draw from the face-down draw area.", "cards": [
             C("-D3 Damage Strike", "When an enemy fighting your operative deals damage with a die: ignore D3 of it."),
-            C("Max Success Defence", "When your operative is shot, in Roll Defence Dice: keep all your defence dice as normal successes without rolling."),
+            C("Max Success Defense", "When your operative is shot, in Roll Defense Dice: keep all your defense dice as normal successes without rolling."),
             C("+1 APL for Control", "During your activation or at the end of the turning point: pick an objective you contest. Until next turning point, your total APL there counts as 1 higher."),
             C("-D3 Damage Shot", "When an enemy shooting your operative deals damage with a die: ignore D3 of it."),
             C("Ignore Weapon Rule", "When your operative is targeted and the enemy picks a weapon: that weapon loses one weapon rule (not Range) for that sequence."),
-            C("Critical Defence", "When your operative is shot, in Roll Defence Dice: turn one normal success into a crit."),
+            C("Critical Defense", "When your operative is shot, in Roll Defense Dice: turn one normal success into a crit."),
             C("Revive onto 1 Wound", "When your operative would be incapacitated: it stays at 1 wound, can't be incapacitated for the rest of that action, all remaining attack dice are discarded, then it can make a free Dash or a 3\" Fall Back."),
             C("Free Action", "During your operative's activation: it makes a free 1AP action."),
             C("Double Block (Fight)", "Fighting or retaliating, when you block: that success blocks one or two unresolved enemy successes."),
@@ -74,7 +74,7 @@ PACK = dict(
             C("Heal 3D3", "During your operative's activation: it heals 3D3 wounds."),
             C("Gain 1CP", "Any time: gain 1CP."),
             C("Reveal Opponent's Cards", "During any activation: your opponent reveals their hand."),
-            C("Re-roll Defence Dice", "When your operative is shot, after rolling defence dice: re-roll any of them."),
+            C("Re-roll Defense Dice", "When your operative is shot, after rolling defense dice: re-roll any of them."),
             C("Free Ending Action", "End of the Firefight phase: one of your operatives makes a free action, moving no more than 2\". It can change order."),
             C("Use or Change Ploy", "Firefight phase: use a strategy ploy now (paying its cost), or swap a strategy ploy you used this turning point for a different one (paying any extra CP)."),
         ]},

@@ -1,4 +1,4 @@
-from _lib import R, A, W, NPO, M, S, BEHAVIOUR, THREAT_PRINCIPLE
+from _lib import R, A, W, NPO, M, S, BEHAVIOR, THREAT_PRINCIPLE
 
 BRAWLER = [
     "Fight.",
@@ -41,14 +41,14 @@ PACK = dict(
             "Set up equipment (mission 2: take turns item by item). Set up NPOs: the Ambull and Borewyrms go in reserve; in mission 1 set up the sentries now with Conceal.",
             "Set up operatives wholly within your drop zone with Conceal (mission 2: a third of your team at a time, taking turns).",
         ]),
-        R("Nemesis rules", "Extra Defence: when shot, it rolls one extra defence die unless it's injured. Bulky: it can't be placed on Vantage terrain more than 2\" off the floor (see its card for the rest)."),
-        BEHAVIOUR,
+        R("Nemesis rules", "Extra Defense: when shot, it rolls one extra defense die unless it's injured. Bulky: it can't be placed on Vantage terrain more than 2\" off the floor (see its card for the rest)."),
+        BEHAVIOR,
     ],
     npos=[
         NPO("Ambull", "2-3 (from card)", "6\"", "4+", 35, [
             W("Enormous claws", "melee", 5, "3+", "4/5", "Brutal, Ceaseless, Rending"),
         ], "Brawler: moves in to fight, using cover on the way. Always Engage (it's a Nemesis).", BRAWLER, rules=[
-            ("Nemesis", "Extra Defence and Bulky. Counts as APL 4 for marker control."),
+            ("Nemesis", "Extra Defense and Bulky. Counts as APL 4 for marker control."),
             ("Rad-Maggot Symbiosis", "Each time it activates, it heals wounds equal to its APL + 1. Its APL comes from the activation card."),
         ], base="Small (50mm)"),
         NPO("Borewyrm Infestation", 1, "4\"", "5+", 5, [
@@ -83,7 +83,7 @@ PACK = dict(
               R("NPOs", "The Ambull and 2 Borewyrms are a third side, starting in reserve. After both players have activated, if any are on the table, draw from the Ambull activation deck."),
               R("Who controls the Ambull", "Its target is the closest visible player operative it could fight or move towards (closest of all if none are visible). Roll off if tied. The other player runs it for that action and must charge or fight that target if it can, otherwise move as Drawn to Energy says."),
               R("Drawn to Energy", "When the Ambull or a Borewyrm Repositions or Dashes, it moves towards the closest objective marker instead (if it can). It still Fights and Charges first if it can."),
-              R("Sickening Emissions", "Operatives with an objective marker in their control range can't re-roll attack or defence dice."),
+              R("Sickening Emissions", "Operatives with an objective marker in their control range can't re-roll attack or defense dice."),
           ],
           actions=[A("Siphon Power", 1, "Siphon an objective marker you control. Then draw from the Intruder deck (if any cards are left).",
                      "Not in the first turning point, not within an enemy's control range, and each marker only once per turning point.")],
