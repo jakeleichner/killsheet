@@ -27,7 +27,10 @@ mobile data instead of Wi-Fi, so the two are on different networks.
 | 5 | Lock the phone for one minute, then unlock it and go back to KillSheet. | It reconnects by itself, or shows "Your online game dropped" with a Rejoin button. Rejoin works. |
 | 6 | On B, while disconnected, tap − on one of A's operatives twice. | B's bar says "2 changes to send". After rejoining, A's operative has lost those 2 wounds. |
 | 7 | Close KillSheet completely on the host (A), then open it again. | A shows a Rejoin bar; after tapping it, both are connected in the same room. |
-| 8 | On A, tap Disconnect. | B says "Your opponent ended the online game" and doesn't keep trying. |
+| 8 | On A, open a datacard and tap Fight on a melee weapon, then pick one of B's operatives. | B switches to the Battle tab and shows the Fight screen asking which weapon fights back. |
+| 9 | On B, pick a weapon. Each roll on your own device and tap Done rolling. Then take turns: Strike or Block. | Both screens show both sets of dice, whose turn it is, and the slash and damage number on every strike. Wounds drop on both screens. |
+| 10 | Start another fight, and on B don't answer for a minute. | A shows "Do it for them"; tapping it lets A finish the fight, and B's screen closes. |
+| 11 | On A, tap Disconnect. | B says "Your opponent ended the online game" and doesn't keep trying. |
 
 ## 3. Screen and saved data on your phone
 

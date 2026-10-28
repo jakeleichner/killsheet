@@ -38,7 +38,10 @@
     @keyframes ksAppear { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
     /* "backwards", not "both": a finished animation that keeps a transform would trap position: fixed overlays inside the panel */
     .ks-appear { animation: ksAppear 0.24s ease-out backwards; }
-    @media (prefers-reduced-motion: reduce) { .ks-appear { animation: none; } }
+    /* Fight screen: the damage number rises and fades over the struck operative. */
+    @keyframes ksPop { 0% { opacity: 0; transform: translateY(6px) scale(0.8); } 20% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-18px); } }
+    .ks-pop { animation: ksPop 1.4s ease-out forwards; }
+    @media (prefers-reduced-motion: reduce) { .ks-appear { animation: none; } .ks-pop { animation: none; opacity: 0; } }
     [role="button"] { cursor: pointer; }
     /* Number boxes sit between our own - and + buttons, so hide the browser's arrows (Safari draws them over the digits). */
     input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
@@ -6004,7 +6007,8 @@ function useKeepAwake(on) {
     if (!("wakeLock" in navigator)) { window.__ksAwake = "unsupported"; return; }
     let lock = null, live = true;
     const get = () => {
-      if (document.visibilityState !== "visible" || (lock && !lock.released)) return;
+      if (lock && !lock.released) return;
+      if (document.visibilityState !== "visible") { window.__ksAwake = "hidden"; return; } // asked for again when the page shows
       window.__ksAwake = "requested";
       navigator.wakeLock.request("screen").then(l => { if (!live) { l.release().catch(() => {}); return; } lock = l; window.__ksAwake = "on"; }, () => { if (live) window.__ksAwake = "refused"; });
     };
@@ -6650,6 +6654,270 @@ function damageThrough(atk, def, normalDmg, critDmg, melee, brutal) {
   return best + atk.devastatingDmg;
 }
 
+/* ═══ FIGHTS ═══ */
+// A fight between two operatives (core rules, Fighting): both roll attack dice with a melee weapon, then, attacker first,
+// they take turns resolving one success: strike (deal its damage) or block (cancel one of the opponent's). A normal blocks
+// a normal, a crit blocks either. In an online game both devices run reduceFight on the same actions, so they stay in step.
+const otherRole = (r) => r === "atk" ? "def" : "atk";
+const fightDmg = (w, s) => { const [n, c] = String(w.dmg).split("/").map(x => parseInt(x, 10) || 0); return s === "crit" ? c : n; };
+const fightRules = (w, injured) => { const r = diceRules(w); if (injured) r.hit = Math.min(6, r.hit + 1); return r; };
+const fightDiceCount = (w) => Math.max(0, (parseInt(w.atk, 10) || 0) - diceRules(w).accurate);
+function fightSuccesses(side) {
+  const x = attackResult(side.dice || [], fightRules(side.weapon, side.op.injured), false);
+  return [...Array(x.crits).fill("crit"), ...Array(x.hits).fill("norm")];
+}
+// Brutal: the opponent can only block this weapon's successes with crits.
+const canFightBlock = (use, hit, theirWeapon) => (use === "crit" || hit === "norm") && (use === "crit" || !/\bBrutal\b/.test(theirWeapon.wr || ""));
+const fightHp = (f, role) => f[role].op.start - f.dmg[role];
+function reduceFight(f, a) {
+  if (!f) return f;
+  switch (a.type) {
+    case "target": return { ...f, def: a.def, stage: "weapon" };
+    case "weapon": return { ...f, def: { ...f.def, weapon: a.weapon }, stage: "roll" };
+    case "roll": return { ...f, [a.role]: { ...f[a.role], dice: a.dice, rr: a.dice.map(() => false), ready: false } };
+    case "reroll": {
+      const s = f[a.role];
+      if (!s.dice || s.rr[a.i] || s.ready) return f;
+      return { ...f, [a.role]: { ...s, dice: s.dice.map((v, i) => i === a.i ? a.v : v), rr: s.rr.map((r, i) => r || i === a.i) } };
+    }
+    case "ready": {
+      const n = { ...f, [a.role]: { ...f[a.role], ready: true } };
+      if (!n.atk.ready || !n.def.ready) return n;
+      const left = { atk: fightSuccesses(n.atk), def: fightSuccesses(n.def) };
+      const stage = left.atk.length || left.def.length ? "resolve" : "done";
+      return { ...n, left, stage, turn: left.atk.length ? "atk" : "def" };
+    }
+    case "act": {
+      const me = a.role, them = otherRole(me);
+      if (f.stage !== "resolve" || f.turn !== me) return f;
+      const left = { atk: [...f.left.atk], def: [...f.left.def] };
+      const i = left[me].indexOf(a.use);
+      if (i < 0) return f;
+      const dmg = { ...f.dmg }, shockUsed = { ...f.shockUsed }, entry = { role: me, kind: a.kind, use: a.use };
+      if (a.kind === "strike") {
+        left[me].splice(i, 1);
+        entry.dmg = fightDmg(f[me].weapon, a.use);
+        dmg[them] += entry.dmg;
+        // Shock: the first crit you strike with also discards one of their normal successes (a crit if they have no normals).
+        if (a.use === "crit" && /\bShock\b/.test(f[me].weapon.wr || "") && !shockUsed[me]) {
+          shockUsed[me] = true;
+          const j = left[them].indexOf("norm") >= 0 ? left[them].indexOf("norm") : left[them].indexOf("crit");
+          if (j >= 0) entry.shock = left[them].splice(j, 1)[0];
+        }
+      } else {
+        const j = left[them].indexOf(a.hit);
+        if (j < 0 || !canFightBlock(a.use, a.hit, f[them].weapon)) return f;
+        left[me].splice(i, 1);
+        left[them].splice(j, 1);
+        entry.hit = a.hit;
+      }
+      const n = { ...f, left, dmg, shockUsed, log: [...f.log, entry] };
+      const over = fightHp(n, "atk") <= 0 || fightHp(n, "def") <= 0 || (!left.atk.length && !left.def.length);
+      return { ...n, stage: over ? "done" : "resolve", turn: left[them].length ? them : me };
+    }
+    case "cancel": return { ...f, stage: "canceled" };
+    case "takeover": return { ...f, stage: "takenOver" };
+    default: return f;
+  }
+}
+// side: "mine" | "opp" (whose operative, from this device's point of view). op: { id, name, max, start, injured }.
+const newFight = (id, online, roles, atk) => ({
+  id, online, roles, stage: "target", turn: "atk", log: [], changedAt: Date.now(),
+  atk: { ...atk, dice: null, rr: [], ready: false }, def: null,
+  left: { atk: [], def: [] }, dmg: { atk: 0, def: 0 }, shockUsed: { atk: false, def: false },
+});
+const newFightSide = (side, op, weapon) => ({ side, op, weapon: weapon || null, dice: null, rr: [], ready: false });
+const fightWords = (s) => s === "crit" ? "crit" : "normal success";
+
+function FightScreen({ fight, enemies, defWeapons, sideColor, onAct, onClose, onTakeOver, importHint }) {
+  const { feat } = React.useContext(FeatureCtx);
+  const f = fight;
+  const mine = (role) => f.roles.includes(role);
+  const [sel, setSel] = useState(null);
+  const [now, setNow] = useState(Date.now());
+  const [pop, setPop] = useState(null);
+  React.useEffect(() => { const t = setInterval(() => setNow(Date.now()), 5000); return () => clearInterval(t); }, []);
+  React.useEffect(() => { setSel(null); }, [f.turn, f.log.length]);
+  // Each strike: the slash from the striker's card to the target's, and the damage number pops on the target.
+  const seen = React.useRef(f.log.length);
+  React.useEffect(() => {
+    if (f.log.length <= seen.current) { seen.current = f.log.length; return; }
+    seen.current = f.log.length;
+    const e = f.log[f.log.length - 1];
+    if (e.kind !== "strike") return;
+    const target = otherRole(e.role);
+    setPop({ role: target, amount: e.dmg, key: f.log.length });
+    const striker = document.querySelector("[data-fight-card='" + e.role + "']"), struck = document.querySelector("[data-fight-card='" + target + "']");
+    const still = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!striker || !struck || still || !feat.fx || !striker.animate) return;
+    const hit = playAttackFx("melee", striker, struck, { shock: !!e.shock });
+    struck.animate([{ transform: "none" }, { transform: "translateX(5px)", offset: 0.3 }, { transform: "translateX(-4px)", offset: 0.6 }, { transform: "none" }], { duration: Math.round(400 * FX_PACE), delay: hit });
+    setTimeout(() => striker.getAnimations().forEach(x => x.cancel()), hit + Math.round(500 * FX_PACE));
+  }, [f.log.length]);
+
+  const name = (role) => f[role] && f[role].op ? f[role].op.name : "";
+  const who = (role) => mine(role) && f.online ? "You" : name(role);
+  const waitingOn = (role) => f.online && !mine(role);
+  const slow = f.online && now - f.changedAt > 60000;
+  const dieKind = (role, v) => attackDie(v, fightRules(f[role].weapon, f[role].op.injured));
+  // Plain functions, not components, so the cards keep the same elements between renders and the animations land on them.
+  const dice = (role) => {
+    const s = f[role];
+    if (!s || !s.weapon) return null;
+    const count = fightDiceCount(s.weapon);
+    const canRe = mine(role) && s.dice && !s.ready && f.stage === "roll";
+    return (
+      <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 6 }}>
+        {(s.dice || Array(count).fill(null)).map((v, i) => {
+          const k = v == null ? null : dieKind(role, v);
+          const col = k === "crit" ? "var(--gold)" : k === "hit" ? "#5A9C3A" : k === "fail" ? "#B8341C" : "var(--line)";
+          return (
+            <button key={i} disabled={!canRe || s.rr[i]} onClick={() => onAct({ type: "reroll", role, i, v: Math.floor(Math.random() * 6) + 1 })}
+              aria-label={v == null ? "Not rolled" : "Die " + (i + 1) + ": " + v + (canRe && !s.rr[i] ? ", tap to re-roll" : "")}
+              className="compact-btn" style={{ width: 30, height: 30, padding: 0, borderRadius: 5, border: "2px " + (s.rr[i] ? "dashed " : "solid ") + col, background: v == null ? "transparent" : al(col, "18"), color: col, fontSize: 15, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", cursor: canRe && !s.rr[i] ? "pointer" : "default" }}>{v == null ? "" : v}</button>
+          );
+        })}
+      </div>
+    );
+  };
+  const card = (role) => {
+    const s = f[role];
+    if (!s) return (
+      <div style={{ ...cd, marginBottom: 0, padding: 10, borderLeft: "3px solid var(--line)" }}>
+        <div style={{ ...h3, marginBottom: 2 }}>Fights back</div>
+        <div style={{ ...mu, fontSize: 13 }}>Pick who they're fighting.</div>
+      </div>
+    );
+    const hp = Math.max(0, fightHp(f, role));
+    const col = sideColor(s.side);
+    return (
+      <div data-fight-card={role} style={{ ...cd, marginBottom: 0, padding: 10, borderLeft: "3px solid " + col, position: "relative", opacity: hp <= 0 ? 0.55 : 1 }}>
+        <div style={{ ...h3, marginBottom: 2, color: col }}>{role === "atk" ? "Attacking" : "Fights back"}{f.online && mine(role) ? " (you)" : ""}</div>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+          <span style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif", textDecoration: hp <= 0 ? "line-through" : "none" }}>{s.op.name}</span>
+          <span style={{ fontSize: 15, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", color: hp <= 0 ? "#B8341C" : hp < s.op.max / 2 ? "var(--gold)" : "var(--text)" }}>{hp}/{s.op.max}W</span>
+        </div>
+        {s.weapon
+          ? <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{s.weapon.name} {"·"} {s.weapon.atk} {"·"} {s.weapon.hit} {"·"} {s.weapon.dmg}{s.weapon.wr && s.weapon.wr !== "-" ? " · " + s.weapon.wr : ""}{s.op.injured ? " · injured: hits on 1 worse" : ""}</div>
+          : <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>Picking a weapon</div>}
+        {dice(role)}
+        {f.stage !== "target" && f.stage !== "weapon" && f.stage !== "roll" && (
+          <div style={{ marginTop: 6, display: "flex", gap: 4, flexWrap: "wrap", minHeight: 22 }}>
+            {f.left[role].length ? f.left[role].map((x, i) => <span key={i} style={{ fontSize: 11, fontWeight: 700, padding: "2px 7px", borderRadius: 4, border: "1px solid " + (x === "crit" ? "var(--gold)" : col), color: x === "crit" ? "var(--gold)" : col }}>{x === "crit" ? "Crit" : "Normal"}</span>)
+              : <span style={{ fontSize: 12, color: "var(--muted2)" }}>No successes left</span>}
+          </div>
+        )}
+        {pop && pop.role === role && <span key={pop.key} className="ks-pop" style={{ position: "absolute", right: 10, top: 8, fontSize: 20, fontWeight: 700, color: "#E0664A", fontFamily: "'Rajdhani', sans-serif", pointerEvents: "none" }}>-{pop.amount}</span>}
+      </div>
+    );
+  };
+  const big = { padding: "10px 14px", fontSize: 13 };
+  const wait = (text, key) => (
+    <div key={key} style={{ ...mu, fontSize: 14, padding: "8px 0" }}>{text}
+      {slow && <div style={{ marginTop: 8 }}><button onClick={onTakeOver} style={{ ...bs("var(--muted)"), ...big }}>Do it for them</button><div style={{ fontSize: 12, marginTop: 4 }}>No answer for a minute. You can finish this fight on your device.</div></div>}
+    </div>
+  );
+
+  let body;
+  if (f.stage === "target") {
+    body = enemies.length ? (
+      <div>
+        <div style={{ ...mu, fontSize: 14, marginBottom: 8 }}>Who is {name("atk")} fighting? It has to be within 1" (control range).</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 6 }}>
+          {enemies.map(e => (
+            <button key={e.op.id} onClick={() => onAct({ type: "target", def: newFightSide(e.side, e.info) })} style={{ ...cd, marginBottom: 0, padding: "8px 10px", textAlign: "left", cursor: "pointer", borderLeft: "3px solid " + sideColor(e.side), display: "flex", alignItems: "baseline", gap: 6 }}>
+              <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif" }}>{e.op.name}</span>
+              <span style={{ fontSize: 13, color: "var(--muted)" }}>{e.info.start}/{e.info.max}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    ) : <div style={{ ...mu, fontSize: 14 }}>{importHint}</div>;
+  } else if (f.stage === "weapon") {
+    body = mine("def") ? (
+      <div>
+        <div style={{ ...mu, fontSize: 14, marginBottom: 8 }}>{f.online ? name("atk") + " is fighting your " + name("def") + ". " : ""}Pick the melee weapon {name("def")} fights back with.</div>
+        {defWeapons.length ? defWeapons.map((w, i) => (
+          <button key={i} onClick={() => onAct({ type: "weapon", weapon: { name: w.name, atk: w.atk, hit: w.hit, dmg: w.dmg, wr: w.wr || "-" } })} style={{ ...cd, marginBottom: 6, padding: "8px 10px", width: "100%", textAlign: "left", cursor: "pointer", display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
+            <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif" }}>{w.name}</span>
+            <span style={{ fontSize: 13, color: "var(--muted)" }}>{w.atk} {"·"} {w.hit} {"·"} {w.dmg}{w.wr && w.wr !== "-" ? " · " + w.wr : ""}</span>
+          </button>
+        )) : <div style={{ ...mu, fontSize: 14 }}>{name("def")} has no melee weapon on its datacard. Ask your opponent which one it uses.</div>}
+      </div>
+    ) : wait("Waiting for your opponent to pick " + name("def") + "'s weapon.");
+  } else if (f.stage === "roll") {
+    const rollRow = (role) => {
+      const s = f[role];
+      if (!mine(role)) return wait(s.ready ? name(role) + " has rolled." : "Waiting for your opponent to roll for " + name(role) + ".", role);
+      if (s.ready) return <div key={role} style={{ ...mu, fontSize: 14, padding: "4px 0" }}>{name(role)} is ready.</div>;
+      return (
+        <div key={role} style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginBottom: 6 }}>
+          {!s.dice && <button onClick={() => onAct({ type: "roll", role, dice: Array.from({ length: fightDiceCount(s.weapon) }, () => Math.floor(Math.random() * 6) + 1) })} style={{ ...bs(role === "atk" ? "#D0573A" : "var(--accent)"), ...big }}><Icon name="dice" size={14} /> Roll {fightDiceCount(s.weapon)} dice for {name(role)}</button>}
+          {s.dice && <button onClick={() => onAct({ type: "ready", role })} style={{ ...bs("var(--accent)"), ...big }}>Done rolling for {name(role)}</button>}
+          {s.dice && <span style={{ fontSize: 12, color: "var(--muted)" }}>Tap a die to re-roll it (Balanced, Command Re-roll). Each die only once.</span>}
+        </div>
+      );
+    };
+    body = <div>{rollRow("atk")}{rollRow("def")}</div>;
+  } else if (f.stage === "resolve") {
+    const me = f.turn, them = otherRole(me), myLeft = f.left[me], theirLeft = f.left[them];
+    const use = sel && myLeft.includes(sel) ? sel : myLeft.includes("crit") ? "crit" : "norm";
+    const blocks = ["crit", "norm"].filter(h => theirLeft.includes(h) && canFightBlock(use, h, f[them].weapon));
+    const brutal = /\bBrutal\b/.test(f[them].weapon.wr || "") && use === "norm" && theirLeft.length;
+    body = mine(me) ? (
+      <div>
+        <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif", marginBottom: 6 }}>{f.online ? "Your turn" : name(me) + "'s turn"}: use one success</div>
+        {myLeft.includes("crit") && myLeft.includes("norm") && (
+          <div role="radiogroup" aria-label="Which success" style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+            {["crit", "norm"].map(x => <button key={x} role="radio" aria-checked={use === x} onClick={() => setSel(x)} style={{ ...bs(use === x ? "var(--accent)" : "var(--muted)"), padding: "6px 12px", fontSize: 12, background: use === x ? "color-mix(in srgb, var(--accent) 12%, transparent)" : "transparent" }}>{x === "crit" ? "A crit" : "A normal"}</button>)}
+          </div>
+        )}
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          <button onClick={() => onAct({ type: "act", role: me, kind: "strike", use })} style={{ ...bs("#E0664A"), ...big, background: "#B8341C30" }}><Icon name="melee" size={14} /> Strike: {fightDmg(f[me].weapon, use)} damage</button>
+          {blocks.map(h => <button key={h} onClick={() => onAct({ type: "act", role: me, kind: "block", use, hit: h })} style={{ ...bs("var(--blue)"), ...big }}>Block their {fightWords(h)}</button>)}
+        </div>
+        {brutal ? <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 6 }}>Their weapon is Brutal: only crits can block it.</div> : null}
+      </div>
+    ) : wait("Waiting for your opponent: " + name(me) + "'s turn.");
+  } else {
+    const out = ["atk", "def"].filter(r => fightHp(f, r) <= 0);
+    body = (
+      <div>
+        <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif" }}>Fight over</div>
+        <div style={{ ...mu, fontSize: 14, margin: "4px 0 10px" }}>
+          {name("atk")} took {f.dmg.atk} damage and {name("def")} took {f.dmg.def}.{out.length ? " " + out.map(name).join(" and ") + (out.length > 1 ? " are" : " is") + " incapacitated." : ""}
+        </div>
+        <button onClick={onClose} style={{ ...bs("var(--accent)"), ...big }}>Close</button>
+      </div>
+    );
+  }
+  const live = f.stage === "target" || f.stage === "weapon" || f.stage === "roll";
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 10000, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "40px 12px", overflowY: "auto" }}>
+      <div role="dialog" aria-modal="true" aria-label="Fight" style={{ ...cd, width: "100%", maxWidth: 620, padding: 14, borderTop: "3px solid #D0573A" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "#E0664A", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.06em", display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="melee" size={14} /> FIGHT{f.online ? " (ONLINE)" : ""}</div>
+          {f.stage !== "done" && <button autoFocus onClick={() => onAct({ type: "cancel" })} style={{ ...bs("var(--muted)"), fontSize: 11, padding: "3px 8px" }}><Icon name="x" size={12} /> {live ? "Cancel" : "Stop fight"}</button>}
+        </div>
+        {f.note && <div style={{ ...mu, fontSize: 13, color: "var(--gold)", marginBottom: 8 }}>{f.note}</div>}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
+          {card("atk")}{card("def")}
+        </div>
+        {body}
+        {f.log.length > 0 && (
+          <div style={{ marginTop: 12, padding: "8px 10px", background: "var(--bg)", borderRadius: 6, border: "1px solid var(--raised)" }}>
+            {f.log.map((e, i) => (
+              <div key={i} style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.5 }}>
+                {i + 1}. {who(e.role)} {e.kind === "strike" ? <>struck with a {fightWords(e.use)}: <b style={{ color: "#E0664A" }}>{e.dmg} damage</b>.{e.shock ? " Shock: " + name(otherRole(e.role)) + " loses a " + fightWords(e.shock) + "." : ""}</> : <>blocked {name(otherRole(e.role))}'s {fightWords(e.hit)} with a {fightWords(e.use)}.</>}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function DiceRoller({ w, wtype, onClose, cp, setCp, requestDamageApply, applySelfDamage }) {
   const { feat } = React.useContext(FeatureCtx);
   const [attackDice, setAttackDice] = useState(null);
@@ -7213,7 +7481,7 @@ function playHotFx(card, fromEl) {
 }
 
 /* ═══ WEAPON DISPLAY ═══ */
-function WeaponBox({ w, tag, wtype, cp, setCp, requestDamageApply, applySelfDamage, local }) {
+function WeaponBox({ w, tag, wtype, cp, setCp, requestDamageApply, applySelfDamage, local, requestFight }) {
   const [rolling, setRolling] = useState(false);
   const { feat } = React.useContext(FeatureCtx);
   const color = wtype === "melee" ? "#D0573A" : "var(--accent)";
@@ -7231,7 +7499,11 @@ function WeaponBox({ w, tag, wtype, cp, setCp, requestDamageApply, applySelfDama
               <span style={{ fontSize: 19, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif" }}>{val}</span>
             </span>
           ))}
-          {feat.dice && <button onClick={(e) => { e.stopPropagation(); setRolling(!rolling); }} aria-label={rolling ? "Close dice roller" : "Roll dice for " + w.name}
+          {feat.dice && requestFight && <button onClick={(e) => { e.stopPropagation(); requestFight(); }} aria-label={"Fight with " + w.name}
+            style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, padding: "6px 10px", border: "1px solid " + al(color, "80"), borderRadius: 6, background: al(color, "18"), color, cursor: "pointer", fontWeight: 600, fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.06em" }}>
+            <Icon name="melee" size={14} />Fight
+          </button>}
+          {feat.dice && !requestFight && <button onClick={(e) => { e.stopPropagation(); setRolling(!rolling); }} aria-label={rolling ? "Close dice roller" : "Roll dice for " + w.name}
             style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, padding: "6px 10px", border: "1px solid " + (rolling ? al(color, "80") : "var(--line)"), borderRadius: 6, background: rolling ? al(color, "18") : "transparent", color: rolling ? color : "var(--text2)", cursor: "pointer", fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, letterSpacing: "0.04em" }}>
             <Icon name={rolling ? "x" : "dice"} size={14} />{rolling ? "Close" : "Roll"}
           </button>}
@@ -7284,7 +7556,7 @@ const abilityText = (a, f) => {
   const m = a.match(/^([^:.]{2,40}):\s(.*)$/s);
   return m ? <React.Fragment><strong style={{ color: "var(--text)", fontWeight: 700 }}>{m[1]}:</strong> <RefText text={m[2]} f={f} self={m[1].replace(/\s*\([^)]*\)\s*$/, "")} /></React.Fragment> : <RefText text={a} f={f} />;
 };
-function Datacard({ op, f, fc, equipWeapons, equipEffects, curWounds, onWound, collapsed, onToggle, ignoreInjured, cp, setCp, isActivated, onActivate, requestDamageApply, applySelfDamage, order, onOrder, uses, setUse, carried, onCarried, narrow }) {
+function Datacard({ op, f, fc, equipWeapons, equipEffects, curWounds, onWound, collapsed, onToggle, ignoreInjured, cp, setCp, isActivated, onActivate, requestDamageApply, applySelfDamage, order, onOrder, uses, setUse, carried, onCarried, narrow, requestFight }) {
   const [pickWeapons, setPickWeapons] = useState(false);
   const { feat } = React.useContext(FeatureCtx);
   const opRules = React.useMemo(() => opWeaponRules(op), [op]);
@@ -7466,7 +7738,7 @@ function Datacard({ op, f, fc, equipWeapons, equipEffects, curWounds, onWound, c
               {allMelee.length > 0 && (
                 <div style={{ marginBottom: op.abilities.length > 0 || equipEffects.length > 0 ? 14 : 0 }}>
                   <div style={{ fontFamily: DS.fontDisplay, fontSize: 11, fontWeight: 600, color: DS.textSecondary, letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 8 }}>Melee</div>
-                  {allMelee.map((w, i) => (<React.Fragment key={"m" + i}><WeaponBox w={w} tag={w.note || null} wtype="melee" cp={cp} setCp={setCp} requestDamageApply={damageFrom(w)} applySelfDamage={applySelfDamage} local={opRules} />{weaponUses(w)}</React.Fragment>))}
+                  {allMelee.map((w, i) => (<React.Fragment key={"m" + i}><WeaponBox w={w} tag={w.note || null} wtype="melee" cp={cp} setCp={setCp} requestDamageApply={damageFrom(w)} requestFight={requestFight ? () => requestFight(op, w) : undefined} applySelfDamage={applySelfDamage} local={opRules} />{weaponUses(w)}</React.Fragment>))}
                 </div>
               )}
               {op.abilities.length > 0 && (
@@ -7715,7 +7987,7 @@ function TurnGuide({ tp, numTPs, setTp, hasInitiative, onInitiative, cp, f, rost
   );
 }
 
-function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen, setTutorialSeen, openTutorial, campaign, setCampaign, onTeamColor }) {
+function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen, setTutorialSeen, openTutorial, campaign, setCampaign, onTeamColor, showBattle }) {
   const mobile = useIsMobile();
   const compactBar = useIsMobile(1000); // the full score bar needs about 1000px; below that it uses the phone layout
   const navH = "var(--pinned-h, 54px)"; // height of the pinned tabs and online banner, measured by App
@@ -7844,6 +8116,11 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   }, [hasData]);
   const [damageRequest, setDamageRequest] = useState(null); // { amount, side: "mine" | "opp" (whose weapon), onApplied(name), meta: { attacker, weapon } } | null
   const [struck, setStruck] = useState(null); // { key, after }: the row just hit, while the attack plays
+  // Fights (melee): the Fight screen's state (see reduceFight). fightRef is the latest copy, for messages that arrive between renders;
+  // fightApi holds the handlers, which are defined further down.
+  const [fight, setFight] = useState(null);
+  const fightRef = React.useRef(null);
+  const fightApi = React.useRef(null);
   // Battle log: every change to an operative's wounds this game, oldest first.
   // { side: "mine" | "opp" (whose operative), target, max, before, after, how: "dice" | "hand" | "self", by, weapon, tp, t }
   const [battleLog, setBattleLog] = useLocalStorage("battleLog", []);
@@ -7863,7 +8140,8 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   React.useEffect(() => {
     const onKey = (e) => {
       if (e.key !== "Escape") return;
-      if (damageRequest) setDamageRequest(null);
+      if (fight && fightApi.current) fightApi.current.escape();
+      else if (damageRequest) setDamageRequest(null);
       else if (showLog) setShowLog(false);
       else if (showMP) setShowMP(false);
       else if (cardsMenu) setCardsMenu(false);
@@ -7871,7 +8149,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [damageRequest, showLog, showMP, cardsMenu, gameMenu]);
+  }, [fight, damageRequest, showLog, showMP, cardsMenu, gameMenu]);
   const attackerRef = React.useRef(null);
   const strikeTimer = React.useRef(null);
   const [damageOther, setDamageOther] = useState(false); // also list the shooter's own side (Blast and Torrent hit friends too)
@@ -7896,6 +8174,11 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   const mpSuppressRef = React.useRef(false); // suppress broadcast while applying remote message
   const handleMpMessage = (msg) => {
     if (!msg || typeof msg !== "object") return;
+    // Fights: the other player started one against us, or took an action in the one we share.
+    if ((msg.type === "fightStart" || msg.type === "fight") && typeof msg.id === "string") {
+      if (fightApi.current) fightApi.current.receive(msg);
+      return;
+    }
     // The opponent hit or healed one of our operatives. We own our wounds, so apply it here; the change is
     // broadcast back (ownedDelta), which updates our operative's card on their screen.
     if ((msg.type === "applyRemoteDamage" || msg.type === "applyRemoteHeal") && typeof msg.opId === "string" && typeof msg.amount === "number") {
@@ -8441,6 +8724,93 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
     setOppWounds(prev => ({ ...prev, [opId]: Math.max(0, Math.min(maxW, (prev[opId] !== undefined ? prev[opId] : maxW) + delta)) }));
   };
 
+  // ── Fights ──
+  // One device runs both sides. Online, each player runs their own side and every action travels as a "fight" message.
+  const fightTestSend = () => window.__ksMpTestSend; // the self-test plays the other device
+  const fightSend = (msg) => fightTestSend() ? (fightTestSend()(msg), true) : !!(mp && mp.status === "connected" && mp.send(msg));
+  const oppOps = () => (oppRoster && oppRoster.operatives) || [];
+  const fightOpInfo = (side, op) => {
+    const start = side === "mine" ? getWounds(op.id, op.wounds) : getOppWounds(op.id, op.wounds);
+    const eq = side === "mine" ? getEquipForOp(op) : oppEquip(op);
+    return { id: op.id, name: op.name, max: op.wounds, start, injured: start > 0 && start < Math.ceil(op.wounds / 2) && !(eq && eq.ignoreInjured) };
+  };
+  const meleeFor = (side, op) => {
+    const eq = side === "mine" ? getEquipForOp(op) : oppEquip(op);
+    const pick = side === "mine" && carried[op.id] && carried[op.id].length ? new Set(carried[op.id]) : null;
+    return [...op.melee.filter(w => !pick || pick.has(weaponBase(w.name))), ...((eq && eq.weapons) || []).filter(w => w.type === "melee")];
+  };
+  const fightWeapon = (w) => ({ name: w.name, atk: w.atk, hit: w.hit, dmg: w.dmg, wr: w.wr || "-" });
+  const showFight = (f) => { fightRef.current = f; setFight(f); };
+  const startFight = (side, op, weapon) => {
+    const online = side === "mine" && (!!fightTestSend() || (mp && mp.status === "connected"));
+    showFight({ ...newFight("f" + Date.now() + Math.floor(Math.random() * 1000), online, online ? ["atk"] : ["atk", "def"], newFightSide(side, fightOpInfo(side, op), fightWeapon(weapon))), wasOnline: online });
+  };
+  // A strike's damage goes on the struck operative. Online, each device only changes its own operatives' wounds;
+  // if a shared fight was finished on one device, the other side's damage is sent as a normal hit.
+  const fightDamage = (prev, next) => {
+    ["atk", "def"].forEach(role => {
+      const d = next.dmg[role] - prev.dmg[role];
+      if (d <= 0) return;
+      const s = next[role], by = next[otherRole(role)], extra = { by: by.op.name, weapon: by.weapon.name };
+      if (s.side === "mine") {
+        const op = roster.find(o => o.id === s.op.id);
+        if (op) { logMine(op, -d, "dice", extra); setOpWounds(op.id, op.wounds, -d); }
+      } else {
+        const op = oppOps().find(o => o.id === s.op.id);
+        if (!op) return;
+        logOpp(op, -d, "dice", extra);
+        if (!next.wasOnline) setOppWound(op.id, op.wounds, -d);
+        else if (!next.online && mp) mp.sendOrQueue({ type: "applyRemoteDamage", opId: op.id, amount: d, ...extra });
+      }
+    });
+  };
+  const dispatchFight = (action, remote) => {
+    const cur = fightRef.current;
+    if (!cur) return;
+    let next = reduceFight(cur, action);
+    if (next === cur) return;
+    next = { ...next, changedAt: Date.now() };
+    if (!remote && cur.online) {
+      const ok = action.type === "target"
+        ? fightSend({ type: "fightStart", id: cur.id, atk: { opId: cur.atk.op.id, weapon: cur.atk.weapon }, def: { opId: action.def.op.id } })
+        : fightSend({ type: "fight", id: cur.id, action });
+      if (!ok) next = { ...next, online: false, roles: ["atk", "def"], note: "The connection dropped, so finish this fight here." };
+    }
+    if (next.stage === "canceled" || next.stage === "takenOver") {
+      showFight(null);
+      if (remote) showToast(next.stage === "canceled" ? "Your opponent stopped the fight" : "Your opponent finished the fight on their device", 4000);
+      return;
+    }
+    showFight(next);
+    fightDamage(cur, next);
+  };
+  const okDice = (d) => Array.isArray(d) && d.length <= 20 && d.every(v => Number.isInteger(v) && v >= 1 && v <= 6);
+  fightApi.current = {
+    escape: () => { const f = fightRef.current; if (!f) return; if (f.stage === "done") showFight(null); else dispatchFight({ type: "cancel" }); },
+    receive: (msg) => {
+      if (msg.type === "fightStart") {
+        const atkOp = oppOps().find(o => o.id === (msg.atk && msg.atk.opId)), defOp = roster.find(o => o.id === (msg.def && msg.def.opId));
+        if (!atkOp || !defOp || !msg.atk.weapon) return;
+        const f = { ...newFight(msg.id, true, ["def"], newFightSide("opp", fightOpInfo("opp", atkOp), fightWeapon(msg.atk.weapon))), wasOnline: true };
+        showFight({ ...f, def: newFightSide("mine", fightOpInfo("mine", defOp)), stage: "weapon" });
+        if (showBattle) showBattle();
+        return;
+      }
+      const a = msg.action, cur = fightRef.current;
+      if (!cur || cur.id !== msg.id || !a || typeof a.type !== "string") return;
+      if (a.role && cur.roles.includes(a.role) && a.type !== "takeover") return; // our own side is only moved from this device
+      if ((a.type === "roll" && !okDice(a.dice)) || (a.type === "reroll" && !okDice([a.v]))) return;
+      if (a.type === "weapon") a.weapon = fightWeapon(a.weapon || {});
+      dispatchFight(a, true);
+    },
+  };
+  const takeOverFight = () => {
+    const cur = fightRef.current;
+    if (!cur) return;
+    fightSend({ type: "fight", id: cur.id, action: { type: "takeover" } });
+    showFight({ ...cur, online: false, roles: ["atk", "def"], note: "You're finishing this fight for both sides.", changedAt: Date.now() });
+  };
+
   const printRoster = () => {
     const fName = f ? f.name : "KillSheet";
     const fBadge = f ? f.badge : "";
@@ -8767,6 +9137,17 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
       {toast && (
         <div style={{ position: "fixed", top: 80, left: 16, right: 16, margin: "0 auto", width: "fit-content", maxWidth: 560, textAlign: "center", zIndex: 9999, background: "#3D6B3F", color: "white", padding: "10px 20px", borderRadius: 4, fontSize: 12, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.06em", boxShadow: "0 4px 20px rgba(0,0,0,0.6)", animation: "fadeIn 0.2s ease" }}>{toast}</div>
       )}
+      {fight && (() => {
+        const enemySide = fight.atk.side === "mine" ? "opp" : "mine";
+        const enemyOps = enemySide === "opp" ? oppOps() : roster;
+        const enemies = fight.stage === "target" ? enemyOps.map(op => ({ op, side: enemySide, info: fightOpInfo(enemySide, op) })).filter(e => e.info.start > 0) : [];
+        const defOp = fight.def && (fight.def.side === "mine" ? roster : oppOps()).find(o => o.id === fight.def.op.id);
+        const oppColor = oppF ? oppF.color : "var(--muted)";
+        return <FightScreen fight={fight} enemies={enemies} defWeapons={fight.stage === "weapon" && defOp && fight.roles.includes("def") ? meleeFor(fight.def.side, defOp) : []}
+          sideColor={(side) => side === "mine" ? (f ? f.color : "var(--accent)") : oppColor}
+          onAct={(a) => dispatchFight(a, false)} onClose={() => showFight(null)} onTakeOver={takeOverFight}
+          importHint={enemySide === "opp" ? "Their team isn't in KillSheet yet. Import their roster from the ⋯ menu on the team bar, or play online, to fight their operatives here." : "None of your operatives can fight back."} />;
+      })()}
       {/* Damage target picker */}
       {damageRequest && f && (
         <div onClick={() => setDamageRequest(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 10000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
@@ -9835,7 +10216,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                   return aAlive - bAlive;
                 }).map(op => {
                   const result = getEquipForOp(op);
-                  return (<Datacard key={op.id} op={op} f={f} fc={f.color} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getWounds(op.id, op.wounds)} onWound={(delta) => { logMine(op, delta, "hand"); setOpWounds(op.id, op.wounds, delta); }} collapsed={cardCollapsed[op.id] || false} onToggle={() => toggleCardCollapse(op.id)} ignoreInjured={result.ignoreInjured} cp={cp} setCp={setCp} isActivated={activated[op.id] || false} onActivate={() => setActivated(prev => ({ ...prev, [op.id]: !prev[op.id] }))} requestDamageApply={(a, done, meta) => requestDamageApply(a, "mine", done, meta)} applySelfDamage={(amount) => { logMine(op, -amount, "self"); setOpWounds(op.id, op.wounds, -amount); showToast(op.name + " took " + amount + " self-dmg"); }} order={orders[op.id] || "conceal"} onOrder={() => setOrders(prev => ({ ...prev, [op.id]: prev[op.id] === "engage" ? "conceal" : "engage" }))} uses={feat.uses ? battleUses : null} setUse={(k, n) => setBattleUses(prev => ({ ...prev, [k]: n }))} carried={carried[op.id]} onCarried={(list) => setCarried(prev => ({ ...prev, [op.id]: list }))} />);
+                  return (<Datacard key={op.id} op={op} f={f} fc={f.color} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getWounds(op.id, op.wounds)} onWound={(delta) => { logMine(op, delta, "hand"); setOpWounds(op.id, op.wounds, delta); }} collapsed={cardCollapsed[op.id] || false} onToggle={() => toggleCardCollapse(op.id)} ignoreInjured={result.ignoreInjured} cp={cp} setCp={setCp} isActivated={activated[op.id] || false} onActivate={() => setActivated(prev => ({ ...prev, [op.id]: !prev[op.id] }))} requestDamageApply={(a, done, meta) => requestDamageApply(a, "mine", done, meta)} requestFight={(o, w) => startFight("mine", o, w)} applySelfDamage={(amount) => { logMine(op, -amount, "self"); setOpWounds(op.id, op.wounds, -amount); showToast(op.name + " took " + amount + " self-dmg"); }} order={orders[op.id] || "conceal"} onOrder={() => setOrders(prev => ({ ...prev, [op.id]: prev[op.id] === "engage" ? "conceal" : "engage" }))} uses={feat.uses ? battleUses : null} setUse={(k, n) => setBattleUses(prev => ({ ...prev, [k]: n }))} carried={carried[op.id]} onCarried={(list) => setCarried(prev => ({ ...prev, [op.id]: list }))} />);
                 })}
 
               </div>
@@ -9863,7 +10244,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                     {oppRoster.operatives.map(op => {
                       const result = oppEquip(op);
                       const oCollapsed = oppCollapsed[op.id] || false;
-                      return (<Datacard key={"opp-" + op.id} narrow op={op} f={oppF} fc={oppF ? oppF.color : "var(--muted)"} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getOppWounds(op.id, op.wounds)} onWound={(delta) => { logOpp(op, delta, "hand"); if (mp && mp.status === "connected" && delta < 0) { mp.send({ type: "applyRemoteDamage", opId: op.id, amount: -delta }); } else if (mp && mp.status === "connected" && delta > 0) { mp.send({ type: "applyRemoteHeal", opId: op.id, amount: delta }); } else { setOppWound(op.id, op.wounds, delta); if (delta) mp.sendOrQueue({ type: delta < 0 ? "applyRemoteDamage" : "applyRemoteHeal", opId: op.id, amount: Math.abs(delta) }); } }} collapsed={oCollapsed} onToggle={() => setOppCollapsed(prev => ({ ...prev, [op.id]: !oCollapsed }))} ignoreInjured={result.ignoreInjured} cp={0} setCp={() => {}} requestDamageApply={(a, done, meta) => requestDamageApply(a, "opp", done, meta)} applySelfDamage={(amount) => { logOpp(op, -amount, "self"); if (mp && mp.status === "connected") { mp.send({ type: "applyRemoteDamage", opId: op.id, amount }); showToast(op.name + " took " + amount + " self-dmg (sent)"); } else { setOppWound(op.id, op.wounds, -amount); mp.sendOrQueue({ type: "applyRemoteDamage", opId: op.id, amount }); showToast(op.name + " took " + amount + " self-dmg"); } }} />);
+                      return (<Datacard key={"opp-" + op.id} narrow op={op} f={oppF} fc={oppF ? oppF.color : "var(--muted)"} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getOppWounds(op.id, op.wounds)} onWound={(delta) => { logOpp(op, delta, "hand"); if (mp && mp.status === "connected" && delta < 0) { mp.send({ type: "applyRemoteDamage", opId: op.id, amount: -delta }); } else if (mp && mp.status === "connected" && delta > 0) { mp.send({ type: "applyRemoteHeal", opId: op.id, amount: delta }); } else { setOppWound(op.id, op.wounds, delta); if (delta) mp.sendOrQueue({ type: delta < 0 ? "applyRemoteDamage" : "applyRemoteHeal", opId: op.id, amount: Math.abs(delta) }); } }} collapsed={oCollapsed} onToggle={() => setOppCollapsed(prev => ({ ...prev, [op.id]: !oCollapsed }))} ignoreInjured={result.ignoreInjured} cp={0} setCp={() => {}} requestDamageApply={(a, done, meta) => requestDamageApply(a, "opp", done, meta)} requestFight={mp && mp.status === "connected" ? undefined : (o, w) => startFight("opp", o, w)} applySelfDamage={(amount) => { logOpp(op, -amount, "self"); if (mp && mp.status === "connected") { mp.send({ type: "applyRemoteDamage", opId: op.id, amount }); showToast(op.name + " took " + amount + " self-dmg (sent)"); } else { setOppWound(op.id, op.wounds, -amount); mp.sendOrQueue({ type: "applyRemoteDamage", opId: op.id, amount }); showToast(op.name + " took " + amount + " self-dmg"); } }} />);
                     })}
                   </div>
                 </div>
@@ -9923,7 +10304,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                       {oppRoster.operatives.map(op => {
                         const result = oppEquip(op);
                         const oCollapsed = oppCollapsed[op.id] || false;
-                        return (<Datacard key={"opp-m-" + op.id} op={op} f={oppF} fc={oppF ? oppF.color : "var(--muted)"} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getOppWounds(op.id, op.wounds)} onWound={(delta) => { logOpp(op, delta, "hand"); if (mp && mp.status === "connected" && delta < 0) { mp.send({ type: "applyRemoteDamage", opId: op.id, amount: -delta }); } else if (mp && mp.status === "connected" && delta > 0) { mp.send({ type: "applyRemoteHeal", opId: op.id, amount: delta }); } else { setOppWound(op.id, op.wounds, delta); if (delta) mp.sendOrQueue({ type: delta < 0 ? "applyRemoteDamage" : "applyRemoteHeal", opId: op.id, amount: Math.abs(delta) }); } }} collapsed={oCollapsed} onToggle={() => setOppCollapsed(prev => ({ ...prev, [op.id]: !oCollapsed }))} ignoreInjured={result.ignoreInjured} cp={0} setCp={() => {}} requestDamageApply={(a, done, meta) => requestDamageApply(a, "opp", done, meta)} applySelfDamage={(amount) => { logOpp(op, -amount, "self"); if (mp && mp.status === "connected") { mp.send({ type: "applyRemoteDamage", opId: op.id, amount }); showToast(op.name + " took " + amount + " self-dmg (sent)"); } else { setOppWound(op.id, op.wounds, -amount); mp.sendOrQueue({ type: "applyRemoteDamage", opId: op.id, amount }); showToast(op.name + " took " + amount + " self-dmg"); } }} />);
+                        return (<Datacard key={"opp-m-" + op.id} op={op} f={oppF} fc={oppF ? oppF.color : "var(--muted)"} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getOppWounds(op.id, op.wounds)} onWound={(delta) => { logOpp(op, delta, "hand"); if (mp && mp.status === "connected" && delta < 0) { mp.send({ type: "applyRemoteDamage", opId: op.id, amount: -delta }); } else if (mp && mp.status === "connected" && delta > 0) { mp.send({ type: "applyRemoteHeal", opId: op.id, amount: delta }); } else { setOppWound(op.id, op.wounds, delta); if (delta) mp.sendOrQueue({ type: delta < 0 ? "applyRemoteDamage" : "applyRemoteHeal", opId: op.id, amount: Math.abs(delta) }); } }} collapsed={oCollapsed} onToggle={() => setOppCollapsed(prev => ({ ...prev, [op.id]: !oCollapsed }))} ignoreInjured={result.ignoreInjured} cp={0} setCp={() => {}} requestDamageApply={(a, done, meta) => requestDamageApply(a, "opp", done, meta)} requestFight={mp && mp.status === "connected" ? undefined : (o, w) => startFight("opp", o, w)} applySelfDamage={(amount) => { logOpp(op, -amount, "self"); if (mp && mp.status === "connected") { mp.send({ type: "applyRemoteDamage", opId: op.id, amount }); showToast(op.name + " took " + amount + " self-dmg (sent)"); } else { setOppWound(op.id, op.wounds, -amount); mp.sendOrQueue({ type: "applyRemoteDamage", opId: op.id, amount }); showToast(op.name + " took " + amount + " self-dmg"); } }} />);
                       })}
                     </div>
                   )}
@@ -17290,10 +17671,105 @@ async function runSelfTest(hooks) {
   });
 
   // The dice maths with fixed dice: each weapon rule, cover, obscured and blocking.
+  await step("Fights: rules, one device and online", async () => {
+    // 1. The rules, with fixed dice.
+    const W = (atk, hit, dmg, wr) => ({ name: "w", atk, hit, dmg, wr: wr || "-" });
+    const S = (sd, dice, weapon, start) => ({ side: sd, op: { id: sd, name: sd, max: start || 12, start: start || 12, injured: false }, weapon, dice, rr: dice.map(() => false), ready: false });
+    const ready = (f) => reduceFight(reduceFight(f, { type: "ready", role: "atk" }), { type: "ready", role: "def" });
+    const act = (f, role, kind, use, hit) => reduceFight(f, { type: "act", role, kind, use, hit });
+    const base = (aw, ad, dw, dd) => ({ ...newFight("t", false, ["atk", "def"], S("mine", ad, aw)), atk: S("mine", ad, aw), def: S("opp", dd, dw), stage: "roll" });
+    let f = ready(base(W(4, "3+", "4/5"), [6, 4, 2, 1], W(3, "4+", "3/4"), [5, 6, 3]));
+    const bad = [];
+    if (f.stage !== "resolve" || f.left.atk.join() !== "crit,norm" || f.left.def.join() !== "crit,norm" || f.turn !== "atk") bad.push("successes or first turn");
+    f = act(f, "atk", "strike", "crit");
+    if (f.dmg.def !== 5 || f.turn !== "def") bad.push("strike damage or turn order");
+    f = act(f, "def", "block", "norm", "norm");
+    if (f.left.atk.length || f.turn !== "def") bad.push("block, then the other side resolves the rest");
+    f = act(f, "def", "strike", "crit");
+    if (f.dmg.atk !== 4 || f.stage !== "done") bad.push("fight ends when both run out");
+    const br = ready(base(W(4, "3+", "4/5"), [4], W(3, "3+", "3/4", "Brutal"), [5, 6]));
+    if (act(br, "atk", "block", "norm", "norm") !== br) bad.push("Brutal: a normal blocked it");
+    const sh = act(ready(base(W(4, "3+", "4/5", "Shock"), [6], W(3, "3+", "3/4"), [6, 5])), "atk", "strike", "crit");
+    if (sh.left.def.join() !== "crit") bad.push("Shock didn't discard a normal success");
+    if (fightSuccesses({ dice: [3], weapon: W(4, "3+", "3/4"), op: { injured: true } }).length) bad.push("injured: still hits on 3+");
+    if (fightSuccesses({ dice: [5], weapon: W(4, "3+", "3/4", "Lethal 5+"), op: {} }).join() !== "crit") bad.push("Lethal 5+");
+    if (ready(base(W(4, "3+", "4/5"), [1, 2], W(3, "3+", "3/4"), [4])).turn !== "def") bad.push("attacker with no successes still goes first");
+    if (bad.length) throw new Error("fight rules: " + bad.join("; "));
+    // 2. On one device, against an opponent's team (sent as if they'd connected).
+    const K = FACTIONS.kommandos, theirOps = K.operatives.slice(0, 3).map(o => ({ ...o }));
+    hooks.mpMessage({ type: "snapshot", payload: { fid: "kommandos", roster: theirOps, wounds: {} } }); await settle(20);
+    await nav("Battle");
+    const dlg = () => document.querySelector("[role=dialog][aria-label='Fight']");
+    const inDlg = (re) => dlg() && [...dlg().querySelectorAll("button")].find(b => re.test(b.textContent.trim()) && !b.disabled);
+    const openFight = async () => {
+      let fb = all("[aria-label^='Fight with ']")[0];
+      if (!fb) { await click(all(".datacard-print [role=button]")[0], "a datacard"); fb = all("[aria-label^='Fight with ']")[0]; }
+      await click(fb, "Fight");
+      if (!dlg()) throw new Error("the Fight screen didn't open");
+    };
+    const weaponBtn = () => dlg() && [...dlg().querySelectorAll("button")].find(b => /\d+ · \d\+ · \d+\/\d+/.test(b.textContent));
+    const fightOut = async (theirTurn) => {
+      for (let i = 0; i < 30 && dlg() && !/Fight over/.test(dlg().innerText); i++) {
+        if (inDlg(/^Strike/)) await click(inDlg(/^Strike/), "Strike");
+        else if (theirTurn && /Waiting for your opponent: /.test(dlg().innerText)) await theirTurn();
+        else throw new Error("the fight got stuck: " + dlg().innerText.slice(0, 120));
+      }
+      if (!dlg() || !/Fight over/.test(dlg().innerText)) throw new Error("the fight didn't end");
+    };
+    await openFight();
+    await click(dlg().querySelector("button[style*='border-left']") || [...dlg().querySelectorAll("button")].find(b => theirOps.some(o => b.textContent.startsWith(o.name))), "an enemy");
+    await click(weaponBtn(), "their weapon");
+    await click(inDlg(/^Roll \d+ dice for/), "attacker's roll"); await click(inDlg(/^Roll \d+ dice for/), "defender's roll");
+    await click(inDlg(/^Done rolling/), "attacker done"); await click(inDlg(/^Done rolling/), "defender done");
+    await fightOut();
+    await click(inDlg(/^Close$/), "Close");
+    // 3. Online, defending: the other player starts a fight against one of ours.
+    const sent = []; window.__ksMpTestSend = (m) => sent.push(m);
+    try {
+      const mineOp = (store("roster") || []).find(o => (store("wounds") || {})[o.id] !== 0);
+      const before = ((store("wounds") || {})[mineOp.id]) ?? mineOp.wounds;
+      hooks.mpMessage({ type: "fightStart", id: "st1", atk: { opId: theirOps[0].id, weapon: theirOps[0].melee[0] }, def: { opId: mineOp.id } }); await settle(20);
+      if (!dlg() || !/is fighting your/.test(dlg().innerText)) throw new Error("an incoming fight didn't open the Fight screen");
+      await click(weaponBtn(), "our weapon");
+      if (!sent.some(m => m.type === "fight" && m.action.type === "weapon")) throw new Error("our weapon choice wasn't sent");
+      await click(inDlg(/^Roll \d+ dice for/), "our roll"); await click(inDlg(/^Done rolling/), "our done");
+      hooks.mpMessage({ type: "fight", id: "st1", action: { type: "roll", role: "atk", dice: [6, 1, 1] } });
+      hooks.mpMessage({ type: "fight", id: "st1", action: { type: "ready", role: "atk" } }); await settle(20);
+      let theirs = 1;
+      await fightOut(async () => { if (!theirs--) throw new Error("waiting on them with nothing left"); hooks.mpMessage({ type: "fight", id: "st1", action: { type: "act", role: "atk", kind: "strike", use: "crit" } }); await settle(20); });
+      const crit = parseInt(String(theirOps[0].melee[0].dmg).split("/")[1], 10);
+      const after = (store("wounds") || {})[mineOp.id];
+      if (after !== Math.max(0, before - crit)) throw new Error("their strike didn't take " + crit + " wounds off " + mineOp.name + " (" + before + " to " + after + ")");
+      if (!(store("battleLog") || []).some(e => e.by === theirOps[0].name && e.target === mineOp.name)) throw new Error("their strike isn't in the battle log");
+      if (sent.filter(m => m.type === "fight" && m.action.type === "act").length !== sent.filter(m => m.type === "fight" && m.action.type === "act" && m.action.role === "def").length) throw new Error("we sent an action for their side");
+      await click(inDlg(/^Close$/), "Close");
+      // 4. Online, attacking: our Fight sends a fightStart; their cancel closes our screen.
+      sent.length = 0;
+      const oppBefore = JSON.stringify(store("oppWounds") || {});
+      await openFight();
+      if (!/ONLINE/.test(dlg().innerText)) throw new Error("the fight isn't marked online");
+      await click([...dlg().querySelectorAll("button")].find(b => theirOps.some(o => b.textContent.startsWith(o.name))), "an enemy");
+      const start = sent.find(m => m.type === "fightStart");
+      if (!start || !start.def.opId) throw new Error("no fightStart was sent");
+      hooks.mpMessage({ type: "fight", id: start.id, action: { type: "weapon", weapon: theirOps[0].melee[0] } }); await settle(20);
+      await click(inDlg(/^Roll \d+ dice for/), "our roll"); await click(inDlg(/^Done rolling/), "our done");
+      hooks.mpMessage({ type: "fight", id: start.id, action: { type: "roll", role: "def", dice: [1, 1, 1] } });
+      hooks.mpMessage({ type: "fight", id: start.id, action: { type: "ready", role: "def" } }); await settle(20);
+      await fightOut();
+      if (JSON.stringify(store("oppWounds") || {}) !== oppBefore) throw new Error("online, we changed their wounds ourselves (their device owns them)");
+      await click(inDlg(/^Close$/), "Close");
+      await openFight();
+      await click([...dlg().querySelectorAll("button")].find(b => theirOps.some(o => b.textContent.startsWith(o.name))), "an enemy");
+      const start2 = sent.filter(m => m.type === "fightStart").slice(-1)[0];
+      hooks.mpMessage({ type: "fight", id: start2.id, action: { type: "cancel" } }); await settle(20);
+      if (dlg()) throw new Error("their cancel didn't close the Fight screen");
+    } finally { delete window.__ksMpTestSend; }
+    return "rules with fixed dice, a fight on one device, and both sides of an online fight";
+  });
   await step("Screen stays on, crash screen", async () => {
     // Uses the game the earlier steps left running.
     if (!store("rosterLocked")) throw new Error("no game in progress to test with");
-    const ok = "wakeLock" in navigator ? ["on", "requested", "refused"] : ["unsupported"];
+    const ok = "wakeLock" in navigator ? ["on", "requested", "refused", "hidden"] : ["unsupported"];
     if (!ok.includes(window.__ksAwake)) throw new Error("during a game the screen lock is '" + window.__ksAwake + "'");
     await click(all("button[aria-label='Settings']")[0], "Settings cog");
     const page = document.querySelector("[role=dialog][aria-label='Settings']");
@@ -17322,7 +17798,8 @@ async function runSelfTest(hooks) {
     await nav("Battle");
     const bar = document.querySelector("[data-pinned]");
     const pinned = () => getComputedStyle(document.documentElement).getPropertyValue("--pinned-h").trim();
-    const go = async (y) => { window.scrollTo(0, y); await wait(60); await settle(); };
+    // Scroll events only arrive with a drawn frame, which a hidden preview may not draw, so send one after each move.
+    const go = async (y) => { window.scrollTo(0, y); window.dispatchEvent(new Event("scroll")); await wait(60); await settle(); };
     await go(0);
     if (document.documentElement.scrollHeight - window.innerHeight < 800) return "page too short to scroll here, skipped";
     for (const y of [200, 400, 700]) await go(y);
@@ -17495,7 +17972,7 @@ function App() {
     openFeatures: (k) => setShowFeatures(typeof k === "string" ? k : true),
     openRule: (q) => { setTutorialOpen(false); setTab("rules"); setRuleSearch({ q, n: Date.now() }); window.scrollTo(0, 0); },
   };
-  React.useEffect(() => { if (/[?&]selftest\b/.test(window.location.search)) setTimeout(() => runSelfTest({ setFeatures, setReturning }), 1000); }, []);
+  React.useEffect(() => { if (/[?&]selftest\b/.test(window.location.search)) setTimeout(() => runSelfTest({ setFeatures, setReturning, mpMessage: (m) => mpHandlerRef.current && mpHandlerRef.current(m) }), 1000); }, []);
   const openTutorial = () => { setTab("rules"); setTutorialOpen(true); setTutorialSeen(true); window.scrollTo(0, 0); };
   // Migration: old persisted tabs ("sequence" was deleted, "tutorial" moved into Rules)
   React.useEffect(() => {
@@ -17626,7 +18103,7 @@ function App() {
       {/* CONTENT: all tabs stay mounted, hidden with display:none to preserve state */}
       <div className="ks-appear" style={{ display: tab === "rules" ? "block" : "none" }}><ErrorBoundary where="Rules"><Rules search={ruleSearch} tutorialOpen={tutorialOpen} openTutorial={openTutorial} closeTutorial={() => { setTutorialOpen(false); window.scrollTo(0, 0); }} /></ErrorBoundary></div>
       <div className="ks-appear" style={{ display: tab === "missions" ? "block" : "none" }}><ErrorBoundary where="Missions"><Missions campaign={campaign} startCampaign={() => { if (!campaign) setCampaign(cteNew("solo", "m26", 7, "", "")); setTab("builder"); window.scrollTo(0, 0); }} /></ErrorBoundary></div>
-      <div id="panel-builder" className="ks-appear" style={{ display: tab === "builder" ? "block" : "none", ...(battleAccent ? { "--accent": battleAccent } : {}) }}><ErrorBoundary where="Battle"><Builder tp={tp} setTp={setTp} mp={mp} mpHandlerRef={mpHandlerRef} showMP={showMP} setShowMP={setShowMP} tutorialSeen={tutorialSeen} setTutorialSeen={setTutorialSeen} openTutorial={openTutorial} campaign={campaign} setCampaign={setCampaign} onTeamColor={setTeamColor} /></ErrorBoundary></div>
+      <div id="panel-builder" className="ks-appear" style={{ display: tab === "builder" ? "block" : "none", ...(battleAccent ? { "--accent": battleAccent } : {}) }}><ErrorBoundary where="Battle"><Builder tp={tp} setTp={setTp} mp={mp} mpHandlerRef={mpHandlerRef} showMP={showMP} setShowMP={setShowMP} tutorialSeen={tutorialSeen} setTutorialSeen={setTutorialSeen} openTutorial={openTutorial} campaign={campaign} setCampaign={setCampaign} onTeamColor={setTeamColor} showBattle={() => setTab("builder")} /></ErrorBoundary></div>
       <div className="ks-appear" style={{ display: tab === "community" ? "block" : "none" }}><ErrorBoundary where="Community"><CommunityRosters /><CrashTest /></ErrorBoundary></div>
 
       {/* FOOTER */}
