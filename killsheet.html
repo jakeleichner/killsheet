@@ -6894,8 +6894,15 @@ function FightScreen({ fight, dropped, enemies, defWeapons, sideColor, onAct, on
     );
   }
   const live = f.stage === "target" || f.stage === "weapon" || f.stage === "roll";
+  // Tapping outside closes it only when nothing would be lost: before anyone has rolled (on the device that started it),
+  // or once it's over. Mid-fight, or in a fight the other player started, use Cancel or Stop.
+  const outside = (e) => {
+    if (e.target !== e.currentTarget) return;
+    if (f.stage === "done" || f.stage === "target") onClose();
+    else if (f.stage === "weapon" && mine("atk") && !(f.atk.dice || (f.def && f.def.dice))) onAct({ type: "cancel" });
+  };
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 10000, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "40px 12px", overflowY: "auto" }}>
+    <div onClick={outside} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 10000, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "40px 12px", overflowY: "auto" }}>
       <div role="dialog" aria-modal="true" aria-label="Fight" style={{ ...cd, width: "100%", maxWidth: 620, padding: 14, borderTop: "3px solid #D0573A" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: "#E0664A", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.06em", display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="melee" size={14} /> FIGHT{f.online ? " (ONLINE)" : ""}</div>
@@ -7215,8 +7222,15 @@ function ShootScreen({ shot, dropped, options, others, sideColor, onAct, onClose
     );
   }
   const early = s.stage === "target" || s.stage === "more" || s.stage === "attack";
+  // Tapping outside closes it only when nothing would be lost: before the shooter has rolled, or once it's done.
+  // Once dice are rolled, or in a shot the other player started, use Cancel or Stop.
+  const outside = (e) => {
+    if (e.target !== e.currentTarget) return;
+    if (s.stage === "done" || ((s.stage === "target" || s.stage === "more") && mine("A"))) onClose();
+    else if (s.stage === "attack" && mine("A") && t && !t.a.dice) onAct({ type: "cancel" }); // tells the other device, if online
+  };
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 10000, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "40px 12px", overflowY: "auto" }}>
+    <div onClick={outside} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 10000, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "40px 12px", overflowY: "auto" }}>
       <div role="dialog" aria-modal="true" aria-label="Shoot" style={{ ...cd, width: "100%", maxWidth: 620, padding: 14, borderTop: "3px solid var(--accent)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: "var(--accent)", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.06em", display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="ranged" size={14} /> SHOOT{s.online ? " (ONLINE)" : ""}</div>
@@ -17678,9 +17692,15 @@ async function runSelfTest(hooks) {
     };
     await openShot();
     if (!/Who is .* shooting\?/.test(dlg().innerText)) throw new Error("the Shoot screen doesn't ask for a target first");
+    await click(dlg().parentElement, "outside the Shoot screen");
+    if (dlg()) throw new Error("tapping outside didn't close the Shoot screen before anything was rolled");
+    await openShot();
     await pickEnemy();
     if (!inDlg(/^Enter real dice$/)) throw new Error("no way to enter real dice");
     await playOut();
+    await click(dlg().parentElement, "outside the finished Shoot screen");
+    if (dlg()) throw new Error("tapping outside didn't close the finished Shoot screen");
+    await openShot(); await pickEnemy(); await playOut();
     const logText = () => (store("battleLog") || []).map(e => e.target + " by " + e.by + " with " + e.weapon).join("; ");
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })); await settle();
     if (dlg()) throw new Error("Escape didn't close the finished Shoot screen");
@@ -17692,6 +17712,8 @@ async function runSelfTest(hooks) {
       const gun = theirOps.find(o => o.ranged.length).ranged[0];
       hooks.mpMessage({ type: "shootStart", id: "ss1", n: 1, atk: { opId: theirOps.find(o => o.ranged.length).id, weapon: gun }, targets: [{ owner: "B", opId: mineOp.id }] }); await settle(20);
       if (!dlg() || !/Waiting for your opponent to roll attack dice/.test(dlg().innerText)) throw new Error("their attack card didn't open here, waiting for their roll");
+      await click(dlg().parentElement, "outside their attack card");
+      if (!dlg()) throw new Error("tapping outside closed an attack the other player started");
       // A lost message: their "ready" (3) arrives without the roll (2). We wait and ask them to send everything again.
       hooks.mpMessage({ type: "shot", id: "ss1", n: 3, action: { type: "ready", who: "a" } }); await settle(20);
       if (!sent.some(m => m.type === "shotResync" && m.id === "ss1")) throw new Error("a gap in their moves didn't ask for a resend");
@@ -17793,7 +17815,10 @@ async function runSelfTest(hooks) {
     await openFight();
     await click(dlg().querySelector("button[style*='border-left']") || [...dlg().querySelectorAll("button")].find(b => theirOps.some(o => b.textContent.startsWith(o.name))), "an enemy");
     await click(weaponBtn(), "their weapon");
-    await click(inDlg(/^Roll \d+ dice for/), "attacker's roll"); await click(inDlg(/^Roll \d+ dice for/), "defender's roll");
+    await click(inDlg(/^Roll \d+ dice for/), "attacker's roll");
+    await click(dlg().parentElement, "outside the Fight screen mid-roll");
+    if (!dlg()) throw new Error("tapping outside closed the Fight screen after dice were rolled");
+    await click(inDlg(/^Roll \d+ dice for/), "defender's roll");
     await click(inDlg(/^Done rolling/), "attacker done"); await click(inDlg(/^Done rolling/), "defender done");
     await fightOut();
     await click(inDlg(/^Close$/), "Close");
