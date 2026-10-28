@@ -6918,349 +6918,303 @@ function FightScreen({ fight, enemies, defWeapons, sideColor, onAct, onClose, on
   );
 }
 
-function DiceRoller({ w, wtype, onClose, cp, setCp, requestDamageApply, applySelfDamage }) {
+/* ═══ SHOOTING (shared attack card) ═══ */
+// One Shoot action: the attacker picks the target (and, for Blast and Torrent, the extra targets), rolls attack dice,
+// then whoever owns each target rolls its defense dice. Players are "A" (shooting) and "B"; on one device this device
+// plays both. Online both devices run reduceShot on the same actions, as with fights.
+const isMulti = (w) => /\b(Blast|Torrent)\b/.test(w.wr || "");
+const shotRules = (s) => fightRules(s.atk.weapon, s.atk.op.injured);
+const shotAttack = (s, t) => attackResult((t.a && t.a.dice) || [], shotRules(s), t.obscured);
+const shotDefCount = (s, t) => defenceDiceCount(diceRules(s.atk.weapon), shotAttack(s, t), t.cover);
+const saveDie = (v, save) => v === 1 ? "fail" : v === 6 ? "crit" : v >= save ? "hit" : "fail";
+const shotDefense = (t) => {
+  let crits = 0, saves = 0;
+  (t.d.dice || []).forEach(v => { const k = saveDie(v, t.save); if (k === "crit") crits++; else if (k === "hit") saves++; });
+  return { crits, saves: saves + (t.d.kept || 0) };
+};
+const shotDamage = (s, t) => {
+  const a = shotAttack(s, t);
+  if (!a.crits && !a.hits) return 0;
+  const [n, c] = String(s.atk.weapon.dmg).split("/").map(x => parseInt(x, 10) || 0);
+  return damageThrough(a, shotDefense(t), n, c, false, false);
+};
+const shotTotal = (t) => t.dmg == null ? 0 : Math.max(0, t.dmg + (t.adjust || 0));
+const newShotTarget = (owner, op) => ({ owner, op, save: parseInt(op.save, 10) || 4, obscured: false, cover: false, a: { dice: null, rr: [], ready: false }, d: { dice: null, rr: [], ready: false, kept: 0 }, dmg: null, adjust: 0 });
+const newShot = (id, online, mine, atkOp, weapon) => ({
+  id, online, wasOnline: online, mine, roles: online ? [mine] : ["A", "B"], stage: "target", ti: 0, hot: null, changedAt: Date.now(),
+  atk: { op: atkOp, weapon }, targets: [],
+});
+// Who acts for an action: the shooter for the attack side, the target's owner for its defense.
+const shotActor = (s, a) => ["obscured", "next", "hot", "target", "more"].includes(a.type) || ((a.type === "roll" || a.type === "reroll" || a.type === "ready") && a.who === "a") ? "A"
+  : ["cover", "save", "adjust"].includes(a.type) || a.who === "d" ? (s.targets[s.ti] ? s.targets[s.ti].owner : "A") : null;
+function reduceShot(s, a) {
+  if (!s) return s;
+  const t = s.targets[s.ti];
+  const cur = (patch) => ({ ...s, targets: s.targets.map((x, i) => i === s.ti ? { ...x, ...patch } : x) });
+  switch (a.type) {
+    case "target": return s.stage === "target" ? { ...s, targets: [a.target], stage: isMulti(s.atk.weapon) ? "more" : "attack" } : s;
+    case "more": return s.stage === "more" ? { ...s, targets: [...s.targets, ...(a.targets || [])], stage: "attack" } : s;
+    case "obscured": return t && s.stage === "attack" && !t.a.ready ? cur({ obscured: !!a.v }) : s;
+    case "cover": return t && s.stage === "defense" && !t.d.dice ? cur({ cover: !!a.v }) : s;
+    case "save": return t && s.stage === "defense" && !t.d.ready && a.v >= 2 && a.v <= 6 ? cur({ save: a.v }) : s;
+    case "roll": {
+      if (!t || (a.who === "a" ? s.stage !== "attack" || t.a.ready : s.stage !== "defense" || t.d.ready)) return s;
+      const side = { ...t[a.who], dice: a.dice, rr: a.dice.map(() => false) };
+      if (a.who === "d") side.kept = shotDefCount(s, t).coverSave;
+      return cur({ [a.who]: side });
+    }
+    case "reroll": {
+      const side = t && t[a.who];
+      if (!side || !side.dice || side.rr[a.i] || side.ready) return s;
+      return cur({ [a.who]: { ...side, dice: side.dice.map((v, i) => i === a.i ? a.v : v), rr: side.rr.map((r, i) => r || i === a.i) } });
+    }
+    case "ready": {
+      if (!t) return s;
+      if (a.who === "a" && s.stage === "attack" && t.a.dice && !t.a.ready) {
+        const n = cur({ a: { ...t.a, ready: true } }), nt = n.targets[n.ti], res = shotAttack(n, nt);
+        if (res.crits || res.hits) return { ...n, stage: "defense" };
+        return { ...n, targets: n.targets.map((x, i) => i === n.ti ? { ...x, dmg: 0 } : x), stage: "result" };
+      }
+      if (a.who === "d" && s.stage === "defense" && !t.d.ready && (t.d.dice || shotDefCount(s, t).roll === 0)) {
+        const d = { ...t.d, dice: t.d.dice || [], kept: t.d.dice ? t.d.kept : shotDefCount(s, t).coverSave, ready: true };
+        const n = cur({ d });
+        return { ...n, targets: n.targets.map((x, i) => i === n.ti ? { ...x, dmg: shotDamage(n, x) } : x), stage: "result" };
+      }
+      return s;
+    }
+    case "adjust": return t && (s.stage === "result" || s.stage === "done") && t.dmg != null ? cur({ adjust: Math.max(-t.dmg, (t.adjust || 0) + a.delta) }) : s;
+    case "next": return s.stage !== "result" ? s : s.ti + 1 < s.targets.length ? { ...s, ti: s.ti + 1, stage: "attack" } : { ...s, stage: "done" };
+    case "hot": return s.stage === "done" && !s.hot && /\bHot\b/.test(s.atk.weapon.wr || "") ? { ...s, hot: { v: a.v, dmg: a.v < (parseInt(s.atk.weapon.hit, 10) || 6) ? a.v * 2 : 0 } } : s;
+    case "cancel": return { ...s, stage: "canceled" };
+    case "takeover": return { ...s, stage: "takenOver" };
+    default: return s;
+  }
+}
+
+function ShootScreen({ shot, options, others, sideColor, onAct, onClose, onTakeOver, importHint }) {
   const { feat } = React.useContext(FeatureCtx);
-  const [attackDice, setAttackDice] = useState(null);
-  const [defenceDice, setDefenceDice] = useState(null);
-  const [rerolledAttack, setRerolledAttack] = useState(false);
-  const [cmdRerolled, setCmdRerolled] = useState(false);
-  const [defSave, setDefSave] = useState(3);
-  const [hasCover, setHasCover] = useState(false);
-  const [isObscured, setIsObscured] = useState(false);
-  const [coverKept, setCoverKept] = useState(0); // cover save kept without rolling, decided when the defense dice are rolled
-  const [oppDice, setOppDice] = useState(4); // in a fight: how many dice the opponent rolls
-  const [editedDamage, setEditedDamage] = useState(null); // user-overridden damage; null = use estimate
-  const [hotRoll, setHotRoll] = useState(null); // d6 result if Hot weapon was fired
-  const [applied, setApplied] = useState(null); // name of the operative this roll's damage went to; a new roll clears it
-  React.useEffect(() => { setApplied(null); }, [attackDice, defenceDice]);
-  const [history, setHistory] = useLocalStorage("rollHistory", []);
-  const [showHistory, setShowHistory] = useState(false);
-  const attackKind = React.useRef("Attack");
-  const defenceKind = React.useRef("Defense");
-
-  // Parse weapon rules
-  const wr = w.wr || "";
-  const hasBalanced = wr.includes("Balanced");
-  const hasCeaseless = wr.includes("Ceaseless");
-  const hasRelentless = wr.includes("Relentless");
-  const hasBrutal = wr.includes("Brutal");
-  const hasSaturate = wr.includes("Saturate");
-  const hasHot = wr.includes("Hot");
-  const hasStun = wr.includes("Stun");
-  const hasPoison = wr.includes("Poison");
-  const hasToxic = wr.includes("Toxic");
-  const hasLimited = wr.includes("Limited 1");
-  const rules = React.useMemo(() => diceRules(w), [w]);
-  const melee = wtype === "melee";
-  const rollCount = Math.max(0, parseInt(w.atk) - rules.accurate);
-
-  const rollD6 = () => Math.floor(Math.random() * 6) + 1;
-  const rollMultiple = (n) => Array.from({ length: n }, rollD6);
-
-  const classifyAttack = (val) => attackDie(val, rules);
-
-  const doAttackRoll = () => {
-    attackKind.current = "Attack";
-    const rolls = rollMultiple(rollCount);
-    setAttackDice(rolls);
-    setRerolledAttack(false);
-    setCmdRerolled(false);
-    setDefenceDice(null);
-    setEditedDamage(null);
-    setHotRoll(hasHot ? rollD6() : null);
-  };
-
-  const rerollAttack = (indices) => {
-    if (!attackDice || rerolledAttack) return;
-    const newDice = [...attackDice];
-    indices.forEach(i => { newDice[i] = rollD6(); });
-    setAttackDice(newDice);
-    setRerolledAttack(true);
-  };
-
-  // Re-roll helpers
-  const rerollBalanced = () => {
-    if (!attackDice) return;
-    const fails = attackDice.map((d, i) => classifyAttack(d) === "fail" ? i : -1).filter(i => i >= 0);
-    if (fails.length > 0) rerollAttack([fails[0]]);
-    else rerollAttack([0]);
-  };
-  const rerollCeaseless = () => {
-    if (!attackDice) return;
-    const counts = {};
-    attackDice.forEach((d, i) => { if (!counts[d]) counts[d] = []; counts[d].push(i); });
-    let bestTarget = null;
-    let bestCount = 0;
-    Object.entries(counts).forEach(([val, idxs]) => {
-      if (classifyAttack(parseInt(val)) === "fail" && idxs.length > bestCount) { bestTarget = idxs; bestCount = idxs.length; }
-    });
-    if (bestTarget) rerollAttack(bestTarget);
-  };
-  const rerollRelentless = () => {
-    if (!attackDice) return;
-    const fails = attackDice.map((d, i) => classifyAttack(d) === "fail" ? i : -1).filter(i => i >= 0);
-    if (fails.length > 0) rerollAttack(fails);
-  };
-
-  const getAttackResults = () => attackDice ? attackResult(attackDice, rules, isObscured && !melee) : null;
-
-  const doDefenceRoll = () => {
-    let numDice = oppDice, kept = 0;
-    if (!melee) { const d = defenceDiceCount(rules, getAttackResults(), hasCover); numDice = d.roll; kept = d.coverSave; }
-    defenceKind.current = melee ? "Their fight dice" : "Defense";
-    setCoverKept(kept);
-    setDefenceDice(rollMultiple(numDice));
-    setEditedDamage(null);
-  };
-
-  const classifyDefence = (val) => {
-    if (val === 1) return "fail";
-    if (val >= 6) return "crit";
-    if (val >= defSave) return "hit";
-    return "fail";
-  };
-
-  const getDefenceResults = () => {
-    if (!defenceDice) return null;
-    let crits = 0, saves = 0, fails = 0;
-    defenceDice.forEach(d => { const c = classifyDefence(d); if (c === "crit") crits++; else if (c === "hit") saves++; else fails++; });
-    saves += coverKept;
-    return { crits, saves, fails, coverSave: coverKept > 0 };
-  };
-
-  // Log every roll (first rolls and re-rolls) to the shared history, newest first, last 10.
-  const logRoll = (kind, dice, classify) => {
-    const n = (c) => dice.filter(d => classify(d) === c).length;
-    const parts = [[n("crit"), "crit"], [n("hit"), /^Defen[cs]e/.test(kind) ? "save" : "hit"], [n("fail"), /^Defen[cs]e/.test(kind) ? "fail" : "miss"]].filter(([c]) => c > 0).map(([c, l]) => c + " " + l);
-    setHistory(prev => [{ t: Date.now(), weapon: w.name, kind, dice, summary: parts.join(", ") }, ...prev].slice(0, 10));
-  };
+  const s = shot, t = s.targets[s.ti];
+  const mine = (player) => s.roles.includes(player);
+  const local = !s.online;
+  const [now, setNow] = useState(Date.now());
+  const [pop, setPop] = useState(null);
+  const [extra, setExtra] = useState({}); // Blast/Torrent: extra targets ticked, by key
+  const [entry, setEntry] = useState(null); // typing in real dice: { who, vals }
+  React.useEffect(() => { const i = setInterval(() => setNow(Date.now()), 5000); return () => clearInterval(i); }, []);
+  React.useEffect(() => { setEntry(null); }, [s.stage, s.ti]);
+  // When a target's result comes in: the weapon's effect from the shooter to the target, and the damage number.
+  const shown = React.useRef(null);
   React.useEffect(() => {
-    if (!attackDice) return;
-    logRoll(attackKind.current, attackDice, classifyAttack);
-    attackKind.current = "Attack re-roll";
-  }, [attackDice]);
+    const key = s.ti + ":" + s.stage;
+    if (s.stage !== "result" || shown.current === key) return;
+    shown.current = key;
+    const total = shotTotal(t);
+    setPop({ amount: total, key });
+    const from = document.querySelector("[data-shot-card='atk']"), to = document.querySelector("[data-shot-card='t']");
+    const still = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!from || !to || still || !feat.fx || !from.animate || !total) return;
+    const hit = playAttackFx(attackKind(s.atk.weapon), from, to);
+    to.animate([{ transform: "none" }, { transform: "translateX(5px)", offset: 0.3 }, { transform: "translateX(-4px)", offset: 0.6 }, { transform: "none" }], { duration: Math.round(400 * FX_PACE), delay: hit });
+    setTimeout(() => from.getAnimations().forEach(x => x.cancel()), hit + Math.round(500 * FX_PACE));
+  }, [s.stage, s.ti]);
   React.useEffect(() => {
-    if (!defenceDice) return;
-    logRoll(defenceKind.current + (melee ? " (hit " : " (save ") + defSave + "+)", defenceDice, classifyDefence);
-    defenceKind.current = "Defense re-roll";
-  }, [defenceDice]);
+    if (!s.hot || !s.hot.dmg) return;
+    const card = document.querySelector("[data-shot-card='atk']"), still = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (card && card.animate && feat.fx && !still) playHotFx(card);
+  }, [s.hot && s.hot.v]);
 
-  const dieColor = (val, classify) => {
-    const c = classify(val);
-    if (c === "crit") return "var(--accent)";
-    if (c === "hit") return "#3D6B3F";
-    return "#B8341C";
+  const sideOf = (owner) => owner === s.mine ? "mine" : "opp";
+  const slow = s.online && now - s.changedAt > 60000;
+  const big = { padding: "10px 14px", fontSize: 13 };
+  const wait = (text, key) => (
+    <div key={key} style={{ ...mu, fontSize: 14, padding: "8px 0" }}>{text}
+      {slow && <div style={{ marginTop: 8 }}><button onClick={onTakeOver} style={{ ...bs("var(--muted)"), ...big }}>Do it for them</button><div style={{ fontSize: 12, marginTop: 4 }}>No answer for a minute. You can finish this shot on your device.</div></div>}
+    </div>
+  );
+  const atkRules = shotRules(s);
+  const dieBtn = (v, kind, i, canRe, onRe, rr) => {
+    const col = kind === "crit" ? "var(--gold)" : kind === "hit" ? "#5A9C3A" : kind === "fail" ? "#B8341C" : "var(--line)";
+    return <button key={i} disabled={!canRe || rr} onClick={onRe} aria-label={v == null ? "Not rolled" : "Die " + (i + 1) + ": " + v + (canRe && !rr ? ", tap to re-roll" : "")}
+      className="compact-btn" style={{ width: 30, height: 30, padding: 0, borderRadius: 5, border: "2px " + (rr ? "dashed " : "solid ") + col, background: v == null ? "transparent" : al(col, "18"), color: col, fontSize: 15, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", cursor: canRe && !rr ? "pointer" : "default" }}>{v == null ? "" : v}</button>;
   };
-
-  const DieBox = ({ val, classify, size }) => (
-    <div style={{ width: size || 40, height: size || 40, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 3, background: "var(--bg)", border: "2px solid " + dieColor(val, classify), fontSize: size ? size * 0.5 : 16, fontWeight: 700, color: dieColor(val, classify), fontFamily: "'Courier New', monospace", boxShadow: "0 2px 6px rgba(0,0,0,0.5), inset 0 1px 0 " + al(dieColor(val, classify), "20") }}>{val}</div>
+  const diceRow = (who2) => {
+    if (!t) return null;
+    const side = t[who2], count = who2 === "a" ? fightDiceCount(s.atk.weapon) : shotDefCount(s, t).roll;
+    const player = who2 === "a" ? "A" : t.owner;
+    const canRe = mine(player) && side.dice && !side.ready && s.stage === (who2 === "a" ? "attack" : "defense");
+    const kind = (v) => who2 === "a" ? attackDie(v, atkRules) : saveDie(v, t.save);
+    if (entry && entry.who === who2) return (
+      <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 6 }}>
+        {entry.vals.map((v, i) => <button key={i} onClick={() => setEntry({ ...entry, vals: entry.vals.map((x, j) => j === i ? (x || 0) % 6 + 1 : x) })} aria-label={"Die " + (i + 1) + (v ? ": " + v : ": not set") + ", tap to change"} className="compact-btn"
+          style={{ width: 30, height: 30, padding: 0, borderRadius: 5, border: "2px solid var(--accent)", background: "transparent", color: "var(--text)", fontSize: 15, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", cursor: "pointer" }}>{v || "?"}</button>)}
+      </div>
+    );
+    return (
+      <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 6, alignItems: "center" }}>
+        {(side.dice || Array(count).fill(null)).map((v, i) => dieBtn(v, v == null ? null : kind(v), i, canRe, () => onAct({ type: "reroll", who: who2, i, v: Math.floor(Math.random() * 6) + 1 }), side.rr[i]))}
+        {who2 === "d" && (side.dice ? side.kept : shotDefCount(s, t).coverSave) > 0 && <span style={{ fontSize: 12, fontWeight: 700, padding: "4px 7px", borderRadius: 4, border: "1px solid #5A9C3A", color: "#5A9C3A" }}>+1 cover save</span>}
+      </div>
+    );
+  };
+  const card = (role) => {
+    const isAtk = role === "atk";
+    const op = isAtk ? s.atk.op : t && t.op;
+    if (!op) return (
+      <div style={{ ...cd, marginBottom: 0, padding: 10, borderLeft: "3px solid var(--line)" }}>
+        <div style={{ ...h3, marginBottom: 2 }}>Target</div>
+        <div style={{ ...mu, fontSize: 13 }}>Pick who {s.atk.op.name} is shooting.</div>
+      </div>
+    );
+    const owner = isAtk ? "A" : t.owner, col = sideColor(sideOf(owner));
+    const hp = isAtk ? Math.max(0, op.start - (s.hot ? s.hot.dmg : 0)) : Math.max(0, op.start - shotTotal(t));
+    return (
+      <div data-shot-card={isAtk ? "atk" : "t"} style={{ ...cd, marginBottom: 0, padding: 10, borderLeft: "3px solid " + col, position: "relative", opacity: hp <= 0 ? 0.55 : 1 }}>
+        <div style={{ ...h3, marginBottom: 2, color: col }}>{isAtk ? "Shooting" : s.targets.length > 1 ? "Target " + (s.ti + 1) + " of " + s.targets.length : "Target"}{s.online && mine(owner) ? " (you)" : ""}</div>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+          <span style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif", textDecoration: hp <= 0 ? "line-through" : "none" }}>{op.name}</span>
+          <span style={{ fontSize: 15, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", color: hp <= 0 ? "#B8341C" : hp < op.max / 2 ? "var(--gold)" : "var(--text)" }}>{hp}/{op.max}W</span>
+        </div>
+        <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
+          {isAtk ? <>{s.atk.weapon.name} {"·"} {s.atk.weapon.atk} {"·"} {s.atk.weapon.hit} {"·"} {s.atk.weapon.dmg}{s.atk.weapon.wr && s.atk.weapon.wr !== "-" ? " · " + s.atk.weapon.wr : ""}{op.injured ? " · injured: hits on 1 worse" : ""}</>
+            : <>Save {t.save}+{t.cover ? " · in cover" : ""}{t.obscured ? " · obscured" : ""}</>}
+        </div>
+        {isAtk ? (t && diceRow("a")) : diceRow("d")}
+        {!isAtk && pop && <span key={pop.key} className="ks-pop" style={{ position: "absolute", right: 10, top: 8, fontSize: 20, fontWeight: 700, color: "#E0664A", fontFamily: "'Rajdhani', sans-serif", pointerEvents: "none" }}>-{pop.amount}</span>}
+      </div>
+    );
+  };
+  // Roll, or type in the real dice rolled at the table.
+  const rollControls = (who2, count, label, color) => entry && entry.who === who2 ? (
+    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+      <button disabled={entry.vals.some(v => !v)} onClick={() => { onAct({ type: "roll", who: who2, dice: entry.vals }); setEntry(null); }} style={{ ...bs("var(--accent)"), ...big, opacity: entry.vals.some(v => !v) ? 0.5 : 1 }}>Use these dice</button>
+      <button onClick={() => setEntry(null)} style={{ ...bs("var(--muted)"), ...big }}>Back</button>
+      <span style={{ fontSize: 12, color: "var(--muted)" }}>Tap each die until it shows what you rolled.</span>
+    </div>
+  ) : (
+    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+      <button onClick={() => onAct({ type: "roll", who: who2, dice: Array.from({ length: count }, () => Math.floor(Math.random() * 6) + 1) })} style={{ ...bs(color), ...big }}><Icon name="dice" size={14} /> {label}</button>
+      <button onClick={() => setEntry({ who: who2, vals: Array(count).fill(0) })} style={{ ...bs("var(--muted)"), ...big }}>Enter real dice</button>
+    </div>
+  );
+  const toggle = (on, label, onClick, disabled) => (
+    <button role="switch" aria-checked={on} disabled={disabled} onClick={onClick} style={{ ...bs(on ? "var(--accent)" : "var(--muted)"), padding: "8px 12px", fontSize: 12, background: on ? "color-mix(in srgb, var(--accent) 12%, transparent)" : "transparent", opacity: disabled ? 0.5 : 1 }}>{label}{on ? ": on" : ""}</button>
   );
 
-  const toggleChip = (on, col) => ({ display: "inline-flex", alignItems: "center", gap: 5, padding: "8px 12px", borderRadius: 6, cursor: "pointer", fontSize: 13, fontWeight: 600, border: "1px solid " + (on ? col : "var(--line)"), background: on ? al(col, "20") : "transparent", color: on ? col : "var(--text2)" });
-  const atkResults = getAttackResults();
-  const defResults = getDefenceResults();
-
-  return (
-    <div style={{ background: "var(--bg)", borderRadius: 8, padding: 14, marginTop: 8, border: "1px solid color-mix(in srgb, var(--accent) 25%, transparent)" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-        <div style={{ fontSize: 16, fontWeight: 700, color: "var(--accent)", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.04em" }}>Dice roller</div>
-        <button onClick={onClose} style={{ ...bs("var(--muted)"), fontSize: 13, padding: "8px 12px" }}><Icon name="x" size={12} /> Close</button>
-      </div>
-
-      {/* Attack Roll */}
-      <div style={{ marginBottom: 8 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-          <button onClick={doAttackRoll} style={{ ...bs("var(--accent)"), fontSize: 13, padding: "8px 12px" }}><Icon name="dice" size={13} /> Roll {rollCount} attack dice</button>
-          <div style={{ fontSize: 13, color: "var(--muted)" }}>Hit: {w.hit}{rules.lethal ? " (Lethal " + rules.lethal + "+)" : ""}</div>
+  let body;
+  if (s.stage === "target") {
+    body = options.length ? (
+      <div>
+        <div style={{ ...mu, fontSize: 14, marginBottom: 8 }}>Who is {s.atk.op.name} shooting? Pick a valid target: visible, and not on Conceal in cover.</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 6 }}>
+          {options.map(o => (
+            <button key={o.key} onClick={() => onAct({ type: "target", target: newShotTarget(o.owner, o.info) })} style={{ ...cd, marginBottom: 0, padding: "8px 10px", textAlign: "left", cursor: "pointer", borderLeft: "3px solid " + sideColor(sideOf(o.owner)), display: "flex", alignItems: "baseline", gap: 6 }}>
+              <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif" }}>{o.info.name}</span>
+              <span style={{ fontSize: 13, color: "var(--muted)" }}>{o.info.start}/{o.info.max}</span>
+            </button>
+          ))}
         </div>
-
-        {attackDice && (
+      </div>
+    ) : <div style={{ ...mu, fontSize: 14 }}>{importHint}</div>;
+  } else if (s.stage === "more") {
+    const blast = /\bBlast\b/.test(s.atk.weapon.wr || ""), m = (s.atk.weapon.wr || "").match(/\b(Blast|Torrent) (\d+)"/);
+    const dist = m ? m[2] + "\"" : "range";
+    const list = blast ? others : others.filter(o => o.owner !== "A");
+    body = (
+      <div>
+        <div style={{ ...mu, fontSize: 14, marginBottom: 8 }}>{blast
+          ? <>Blast: every other operative within {dist} of {t.op.name} is hit too, friend or foe. Tick each one.</>
+          : <>Torrent: you can also shoot any other enemies within {dist} of {t.op.name}. Tick the ones you shoot.</>} Each gets its own attack and defense roll.</div>
+        {list.map(o => (
+          <label key={o.key} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderTop: "1px solid var(--raised)", cursor: "pointer" }}>
+            <input type="checkbox" checked={!!extra[o.key]} onChange={() => setExtra(x => ({ ...x, [o.key]: !x[o.key] }))} style={{ width: 18, height: 18 }} />
+            <span style={{ width: 4, alignSelf: "stretch", background: sideColor(sideOf(o.owner)), borderRadius: 2 }} />
+            <span style={{ flex: 1, fontSize: 14, color: "var(--text)" }}>{o.info.name}{o.owner === "A" ? " (yours)" : ""}</span>
+            <span style={{ fontSize: 13, color: "var(--muted)" }}>{o.info.start}/{o.info.max}</span>
+          </label>
+        ))}
+        <button onClick={() => onAct({ type: "more", targets: list.filter(o => extra[o.key]).map(o => newShotTarget(o.owner, o.info)) })} style={{ ...bs("var(--accent)"), ...big, marginTop: 10 }}>Start shooting{Object.values(extra).filter(Boolean).length ? " (" + (1 + list.filter(o => extra[o.key]).length) + " targets)" : ""}</button>
+      </div>
+    );
+  } else if (s.stage === "attack") {
+    const count = fightDiceCount(s.atk.weapon);
+    body = mine("A") ? (
+      <div>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+          {toggle(t.obscured, "Obscured", () => onAct({ type: "obscured", v: !t.obscured }), t.a.ready)}
+        </div>
+        {!t.a.dice ? rollControls("a", count, "Roll " + count + " attack dice", "#E0664A") : (
           <div>
-            <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 6 }}>
-              {attackDice.map((d, i) => (<DieBox key={i} val={d} classify={classifyAttack} />))}
+            {(() => { const r = shotAttack(s, t); return <div style={{ fontSize: 14, color: "var(--text)", marginBottom: 8 }}><b style={{ color: "var(--gold)" }}>{r.crits} crit{r.crits === 1 ? "" : "s"}</b>, <b style={{ color: "#5A9C3A" }}>{r.hits} hit{r.hits === 1 ? "" : "s"}</b>{r.obscuredLost ? " (obscured: crits count as hits, one lost)" : ""}.</div>; })()}
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+              <button onClick={() => onAct({ type: "ready", who: "a" })} style={{ ...bs("var(--accent)"), ...big }}>{s.online ? "Send to defender" : "Done: defense next"}</button>
+              <span style={{ fontSize: 12, color: "var(--muted)" }}>Tap a die to re-roll it (Balanced, Ceaseless, Relentless, Command Re-roll). Each die only once.</span>
             </div>
-
-            {/* Re-roll buttons */}
-            {/* Weapon re-roll buttons (free, from weapon rules) */}
-            {!rerolledAttack && (hasBalanced || hasCeaseless || hasRelentless) && (
-              <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 4 }}>
-                <span style={{ fontSize: 13, color: "var(--muted)", alignSelf: "center" }}>Free re-roll:</span>
-                {hasBalanced && <button onClick={rerollBalanced} style={{ ...bs("#3D6B3F"), fontSize: 13, padding: "8px 12px" }}>Balanced (re-roll 1)</button>}
-                {hasCeaseless && <button onClick={rerollCeaseless} style={{ ...bs("#3D6B3F"), fontSize: 13, padding: "8px 12px" }}>Ceaseless (re-roll same)</button>}
-                {hasRelentless && <button onClick={rerollRelentless} style={{ ...bs("#3D6B3F"), fontSize: 13, padding: "8px 12px" }}>Relentless (re-roll all fails)</button>}
-              </div>
-            )}
-            {/* Command Re-roll (1CP, separate from weapon re-rolls) */}
-            {!cmdRerolled && (
-              <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 6 }}>
-                <span style={{ fontSize: 13, color: "var(--muted)", alignSelf: "center" }}>For 1CP:</span>
-                <button onClick={() => {
-                  if (cp <= 0) return;
-                  const fails = attackDice.map((d, i) => classifyAttack(d) === "fail" ? i : -1).filter(i => i >= 0);
-                  const target = fails.length > 0 ? [fails[0]] : [0];
-                  const newDice = [...attackDice];
-                  target.forEach(i => { newDice[i] = rollD6(); });
-                  setAttackDice(newDice);
-                  setCmdRerolled(true);
-                  setCp(cp - 1);
-                }} style={{ ...bs(cp > 0 ? "var(--accent)" : "var(--line)"), fontSize: 13, padding: "8px 12px", opacity: cp > 0 ? 1 : 0.35, cursor: cp > 0 ? "pointer" : "not-allowed" }}>Command Re-roll ({cp}CP left)</button>
-              </div>
-            )}
-
-            {/* Results summary */}
-            {atkResults && (
-              <div style={{ background: "var(--card)", borderRadius: 6, padding: "8px 12px", border: "1px solid var(--raised)" }}>
-                <div style={{ display: "flex", gap: 10, fontSize: 13, fontWeight: 700 }}>
-                  <span style={{ color: "var(--accent)" }}>{atkResults.crits} Crit{atkResults.crits !== 1 ? "s" : ""}</span>
-                  <span style={{ color: "#5A9C3A" }}>{atkResults.hits} Hit{atkResults.hits !== 1 ? "s" : ""}</span>
-                  <span style={{ color: "#E0664A" }}>{atkResults.fails} Miss{atkResults.fails !== 1 ? "es" : ""}</span>
-                </div>
-                <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 2 }}>
-                  Damage if nothing is blocked: {atkResults.crits}×{w.dmg.split("/")[1]} + {atkResults.hits}×{w.dmg.split("/")[0]}{atkResults.devastatingDmg > 0 ? " + " + atkResults.devastatingDmg + " (Dev)" : ""} = {atkResults.crits * parseInt(w.dmg.split("/")[1]) + atkResults.hits * parseInt(w.dmg.split("/")[0]) + atkResults.devastatingDmg} total.
-                </div>
-                {atkResults.accurateBonus > 0 && <div style={{ fontSize: 13, color: "#5A9C3A" }}>Accurate {atkResults.accurateBonus}: {atkResults.accurateBonus === 1 ? "one die was" : atkResults.accurateBonus + " dice were"} set aside as a normal success instead of rolled.</div>}
-                {atkResults.severeApplied && <div style={{ fontSize: 13, color: "var(--accent)" }}>Severe: one normal success became a critical success, since you rolled no natural crits.</div>}
-                {atkResults.rendingApplied && <div style={{ fontSize: 13, color: "var(--accent)" }}>Rending: one normal success became a critical success.</div>}
-                {atkResults.punishingApplied && <div style={{ fontSize: 13, color: "var(--accent)" }}>Punishing: one failed die became a normal success.</div>}
-                {atkResults.devastatingDmg > 0 && <div style={{ fontSize: 13, color: "#E0664A" }}>Devastating {atkResults.devastating}: {atkResults.crits} crit(s) × {atkResults.devastating} = {atkResults.devastatingDmg} extra damage, dealt before defense dice.</div>}
-                {hasBrutal && <div style={{ fontSize: 13, color: "#E0664A" }}>Brutal: your opponent can only block with critical successes.</div>}
-                {hasStun && atkResults.crits > 0 && <div style={{ fontSize: 13, color: "#9B59B6" }}>Stun: the target gets -1 APL until the end of its next activation.</div>}
-                {hasPoison && (atkResults.crits + atkResults.hits) > 0 && <div style={{ fontSize: 13, color: "#7BC242" }}>Poison: if this deals any damage, the target gains your Poison token and takes 1 damage each time it activates.</div>}
-                {hasToxic && <div style={{ fontSize: 13, color: "#7BC242" }}>Toxic: +1 Normal and Critical Dmg if the target already has your Poison token.</div>}
-                {hasLimited && <div style={{ fontSize: 13, color: "var(--accent)" }}>Limited 1: this weapon can only be used once per battle.</div>}
-              </div>
-            )}
-
-            {/* Hot self-damage roll */}
-            {hasHot && hotRoll !== null && (() => {
-              const hitInt = parseInt(w.hit);
-              const triggered = hotRoll < hitInt;
-              const selfDmg = triggered ? hotRoll * 2 : 0;
-              return (
-                <div style={{ marginTop: 6, padding: "8px 12px", background: triggered ? "#B8341C10" : "#3D6B3F10", border: "1px solid " + al((triggered ? "#B8341C" : "#3D6B3F"), "40"), borderRadius: 6 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <span style={{ fontSize: 13, color: "var(--muted)", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.06em" }}>HOT D6:</span>
-                      <div style={{ width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 3, background: "var(--bg)", border: "2px solid " + (triggered ? "#B8341C" : "#3D6B3F"), fontSize: 13, fontWeight: 700, color: triggered ? "#B8341C" : "#3D6B3F", fontFamily: "'Courier New', monospace" }}>{hotRoll}</div>
-                      <span style={{ fontSize: 13, color: triggered ? "#B8341C" : "#3D6B3F" }}>{triggered ? hotRoll + " < " + w.hit + " → " + selfDmg + " self-damage" : hotRoll + " ≥ " + w.hit + " → safe"}</span>
-                    </div>
-                    {triggered && (
-                      <button disabled={!applySelfDamage} onClick={(e) => {
-                        if (!applySelfDamage) return;
-                        const card = e.currentTarget.closest(".datacard-print"), still = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-                        if (card && card.animate && feat.fx && !still) playHotFx(card, e.currentTarget);
-                        applySelfDamage(selfDmg);
-                      }} style={{ ...bs("#B8341C"), fontSize: 13, padding: "8px 12px", opacity: applySelfDamage ? 1 : 0.4 }}><Icon name="skull" size={12} /> Apply {selfDmg} self-damage</button>
-                    )}
-                  </div>
-                </div>
-              );
-            })()}
           </div>
         )}
       </div>
-
-      {/* Defense Roll */}
-      {attackDice && atkResults && (atkResults.crits + atkResults.hits > 0) && (
-        <div style={{ borderTop: "1px solid var(--raised)", paddingTop: 8 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, flexWrap: "wrap" }}>
-            <div style={{ ...h3, color: "var(--blue)", marginBottom: 0 }}>{melee ? "Their fight dice" : "Defense"}</div>
-            <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
-              <span style={{ fontSize: 13, color: "var(--muted)" }}>{melee ? "Their Hit:" : "Save:"}</span>
-              <select value={defSave} onChange={(e) => setDefSave(parseInt(e.target.value))} style={{ background: "var(--raised)", border: "1px solid var(--line)", borderRadius: 6, color: "var(--text)", fontSize: 13, padding: "8px 12px" }}>
-                {[2,3,4,5,6].map(v => <option key={v} value={v}>{v}+</option>)}
-              </select>
-            </div>
-            {!melee && <button onClick={() => setHasCover(!hasCover)} style={toggleChip(hasCover, "#5A9C3A")}>{hasCover && <Icon name="check" size={13} />}Cover{hasSaturate ? " (Saturated)" : ""}</button>}
-            {!melee && <button onClick={() => setIsObscured(!isObscured)} style={toggleChip(isObscured, "var(--blue)")}>{isObscured && <Icon name="check" size={13} />}Obscured</button>}
-            {melee && (
-              <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
-                <span style={{ fontSize: 13, color: "var(--muted)" }}>Their Atk:</span>
-                <select value={oppDice} onChange={(e) => setOppDice(parseInt(e.target.value))} aria-label="How many dice your opponent rolls" style={{ background: "var(--raised)", border: "1px solid var(--line)", borderRadius: 6, color: "var(--text)", fontSize: 13, padding: "8px 12px" }}>
-                  {[1, 2, 3, 4, 5, 6, 7].map(v => <option key={v} value={v}>{v}</option>)}
-                </select>
-              </div>
-            )}
-            <button onClick={doDefenceRoll} style={{ ...bs("var(--blue)"), fontSize: 13, padding: "8px 12px" }}><Icon name="dice" size={13} /> {melee ? "Roll their " + oppDice + " dice" : (() => { const d = defenceDiceCount(rules, atkResults, hasCover); return "Roll " + d.roll + " defense " + (d.roll === 1 ? "die" : "dice") + (d.coverSave ? " + 1 cover save" : ""); })()}</button>
-          </div>
-
-          {isObscured && !melee && atkResults && (
-            <div style={{ fontSize: 13, color: "var(--blue)", background: "color-mix(in srgb, var(--blue) 3%, transparent)", padding: "3px 6px", borderRadius: 6, marginBottom: 4, border: "1px solid color-mix(in srgb, var(--blue) 8%, transparent)" }}>
-              Obscured: the attacker's crits count as normal successes and one success is discarded. The totals above include this.
-            </div>
-          )}
-
-          {defenceDice && defResults && (
-            <div>
-              <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 6 }}>
-                {defenceDice.map((d, i) => (<DieBox key={i} val={d} classify={classifyDefence} size={36} />))}
-                {defResults.coverSave && <div style={{ width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 6, background: "#3D6B3F15", border: "2px dashed #5A9C3A80", fontSize: 13, color: "#5A9C3A", fontWeight: 700 }}>CVR</div>}
-              </div>
-              <div style={{ background: "var(--card)", borderRadius: 6, padding: "8px 12px", border: "1px solid var(--raised)" }}>
-                <div style={{ display: "flex", gap: 10, fontSize: 13, fontWeight: 700 }}>
-                  <span style={{ color: "var(--accent)" }}>{defResults.crits} Crit{melee ? "" : " Save"}{defResults.crits !== 1 ? "s" : ""}</span>
-                  <span style={{ color: "#5A9C3A" }}>{defResults.saves} {melee ? "Hit" : "Save"}{defResults.saves !== 1 ? "s" : ""}</span>
-                  <span style={{ color: "#E0664A" }}>{defResults.fails} {melee ? "Miss" + (defResults.fails !== 1 ? "es" : "") : "Fail" + (defResults.fails !== 1 ? "s" : "")}</span>
-                </div>
-              </div>
-
-              {/* Final damage estimate + Apply */}
-              {(() => {
-                const critDmg = parseInt(w.dmg.split("/")[1]);
-                const normalDmg = parseInt(w.dmg.split("/")[0]);
-                const estimate = damageThrough(atkResults, defResults, normalDmg, critDmg, melee, rules.brutal);
-                const finalDamage = editedDamage !== null ? editedDamage : estimate;
-                return (
-                  <div style={{ marginTop: 6, padding: "8px 12px", background: "var(--raised)", borderRadius: 6, border: "1px solid color-mix(in srgb, var(--accent) 19%, transparent)" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                      <div style={{ ...h3, color: "var(--accent)", marginBottom: 0 }}>Final damage</div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                        <button onClick={() => setEditedDamage(Math.max(0, finalDamage - 1))} style={{ width: 34, height: 34, border: "1px solid var(--line)", borderRadius: 6, background: "var(--bg)", color: "#E0664A", cursor: "pointer", fontSize: 14, fontWeight: 700, padding: 0 }}>{"\u2212"}</button>
-                        <input type="number" value={finalDamage} onChange={(e) => { const v = parseInt(e.target.value); setEditedDamage(isNaN(v) ? 0 : Math.max(0, v)); }} aria-label="Final damage" style={{ width: 56, height: 34, boxSizing: "border-box", textAlign: "center", background: "var(--bg)", border: "1px solid color-mix(in srgb, var(--accent) 50%, transparent)", borderRadius: 6, color: "var(--gold)", fontSize: 20, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", padding: "0 4px", outline: "none" }} />
-                        <button onClick={() => setEditedDamage(finalDamage + 1)} style={{ width: 34, height: 34, border: "1px solid var(--line)", borderRadius: 6, background: "var(--bg)", color: "#5A9C3A", cursor: "pointer", fontSize: 14, fontWeight: 700, padding: 0 }}>+</button>
-                        {editedDamage !== null && editedDamage !== estimate && (
-                          <button onClick={() => setEditedDamage(null)} style={{ ...bs("var(--muted)"), fontSize: 13, padding: "8px 12px" }} title={"Reset to estimate (" + estimate + ")"}><Icon name="reset" size={12} /></button>
-                        )}
-                      </div>
-                      {applied ? (
-                        <button disabled style={{ ...bs("#5A9C3A"), fontSize: 13, padding: "8px 12px", cursor: "default" }}><Icon name="check" size={12} /> Applied to {applied}</button>
-                      ) : (
-                        <button disabled={!requestDamageApply || finalDamage <= 0} onClick={() => { if (requestDamageApply) requestDamageApply(finalDamage, setApplied); }} style={{ ...bs(finalDamage > 0 ? "#E0664A" : "var(--line)"), background: finalDamage > 0 ? "#B8341C30" : "transparent", fontSize: 13, padding: "8px 12px", opacity: (requestDamageApply && finalDamage > 0) ? 1 : 0.4, cursor: (requestDamageApply && finalDamage > 0) ? "pointer" : "not-allowed" }}><Icon name="skull" size={12} /> Apply {finalDamage} to target</button>
-                      )}
-                    </div>
-                    <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 3 }}>
-                      {melee ? "Assumes your opponent uses all their successes to block. In the fight they strike back too, so change it to match what happened." : "Assumes the defender blocks as well as they can. Change it if another rule applies."}
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-          )}
+    ) : wait("Waiting for your opponent to roll attack dice for " + s.atk.op.name + ".");
+  } else if (s.stage === "defense") {
+    const n = shotDefCount(s, t), r = shotAttack(s, t), saturate = diceRules(s.atk.weapon).saturate;
+    const handOver = local && t.owner !== "A"; // one device: the other player rolls their own saves
+    body = mine(t.owner) ? (
+      <div>
+        <div style={{ fontSize: 14, color: "var(--text)", marginBottom: 6 }}>{s.online ? s.atk.op.name + " is shooting your " + t.op.name + " with " + s.atk.weapon.name + ": " : ""}<b style={{ color: "var(--gold)" }}>{r.crits} crit{r.crits === 1 ? "" : "s"}</b>, <b style={{ color: "#5A9C3A" }}>{r.hits} hit{r.hits === 1 ? "" : "s"}</b>. {n.roll ? "Roll " + n.roll + " defense " + (n.roll === 1 ? "die" : "dice") + ", " + t.save + "+ to save." : "No defense dice to roll."}</div>
+        {handOver && !t.d.dice && <div style={{ ...mu, fontSize: 13, color: "var(--gold)", marginBottom: 6 }}>Hand the phone to {t.op.name}'s player, or roll your own dice and enter them.</div>}
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8, alignItems: "center" }}>
+          {toggle(t.cover, "Cover", () => onAct({ type: "cover", v: !t.cover }), !!t.d.dice || saturate)}
+          <label style={{ fontSize: 12, color: "var(--muted)", display: "inline-flex", alignItems: "center", gap: 4 }}>Save
+            <select value={t.save} disabled={t.d.ready} onChange={e => onAct({ type: "save", v: parseInt(e.target.value, 10) })} style={{ background: "var(--raised)", color: "var(--text)", border: "1px solid var(--line)", borderRadius: 4, padding: "4px 6px" }}>
+              {[2, 3, 4, 5, 6].map(v => <option key={v} value={v}>{v}+</option>)}
+            </select></label>
+          {saturate && <span style={{ fontSize: 12, color: "var(--muted)" }}>Saturate: no cover save.</span>}
         </div>
-      )}
-
-      {/* Recent rolls */}
-      {history.length > 0 && (
-        <div style={{ marginTop: 10, borderTop: "1px solid var(--raised)", paddingTop: 8 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <button onClick={() => setShowHistory(!showHistory)} style={{ flex: 1, background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, color: "var(--muted)", fontSize: 12, fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.08em", textTransform: "uppercase", textAlign: "left" }}>
-              <Arrow open={showHistory} /> Recent rolls ({history.length})
-            </button>
-            {showHistory && <button onClick={() => setHistory([])} style={{ ...bs("var(--muted)"), fontSize: 11, padding: "2px 8px" }}>Clear</button>}
+        {!t.d.dice && n.roll > 0 ? rollControls("d", n.roll, "Roll " + n.roll + " defense " + (n.roll === 1 ? "die" : "dice"), "var(--blue)") : (
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+            <button onClick={() => onAct({ type: "ready", who: "d" })} style={{ ...bs("var(--accent)"), ...big }}>{n.roll ? "Done: see the damage" : "Continue"}</button>
+            {t.d.dice && <span style={{ fontSize: 12, color: "var(--muted)" }}>Tap a die to re-roll it (Command Re-roll). Each die only once.</span>}
           </div>
-          {showHistory && history.map((h, i) => (
-            <div key={h.t + "-" + i} style={{ padding: "6px 0", borderTop: i ? "1px solid var(--raised)" : "none", marginTop: i ? 0 : 6 }}>
-              <div style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
-                <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: "var(--text)", fontWeight: 600 }}>{h.weapon} <span style={{ color: /^Defen[cs]e/.test(h.kind) ? "var(--blue)" : "var(--accent)", fontWeight: 500 }}>{h.kind}</span></span>
-                <span style={{ fontSize: 11, color: "var(--muted)", whiteSpace: "nowrap" }}>{new Date(h.t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</span>
-              </div>
-              <div style={{ fontSize: 12, color: "var(--text2)", marginTop: 2 }}>
-                <span style={{ fontFamily: "monospace", letterSpacing: "0.1em", color: "var(--text)" }}>{h.dice.join(" ")}</span>{h.summary ? " \u00b7 " + h.summary : ""}
-              </div>
-            </div>
-          ))}
+        )}
+      </div>
+    ) : wait((s.online ? "Waiting for your opponent to roll defense for " : "Defense for ") + t.op.name + ".");
+  } else if (s.stage === "result") {
+    const total = shotTotal(t), dead = t.op.start - total <= 0, more = s.ti + 1 < s.targets.length;
+    body = (
+      <div>
+        <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif" }}>{total ? total + " damage to " + t.op.name : t.op.name + " takes no damage"}{dead ? ": incapacitated" : ""}</div>
+        {mine(t.owner) && t.dmg != null && <div style={{ display: "flex", alignItems: "center", gap: 6, margin: "6px 0", fontSize: 12, color: "var(--muted)" }}>Another rule changes it?
+          <button aria-label="One less damage" disabled={total <= 0} onClick={() => onAct({ type: "adjust", delta: -1 })} className="compact-btn" style={{ ...bs("var(--muted)"), padding: "2px 10px" }}>−</button>
+          <button aria-label="One more damage" onClick={() => onAct({ type: "adjust", delta: 1 })} className="compact-btn" style={{ ...bs("var(--muted)"), padding: "2px 10px" }}>+</button></div>}
+        {mine("A") ? <button onClick={() => onAct({ type: "next" })} style={{ ...bs("var(--accent)"), ...big, marginTop: 6 }}>{more ? "Next target" : "Finish"}</button> : wait(more ? "Waiting for your opponent to shoot the next target." : "Waiting for your opponent to finish.")}
+      </div>
+    );
+  } else {
+    const hot = /\bHot\b/.test(s.atk.weapon.wr || "");
+    body = (
+      <div>
+        <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif" }}>Shooting done</div>
+        <div style={{ ...mu, fontSize: 14, margin: "4px 0 10px" }}>{s.targets.map(x => x.op.name + ": " + shotTotal(x) + " damage").join(" · ")}</div>
+        {hot && !s.hot && (mine("A")
+          ? <button onClick={() => onAct({ type: "hot", v: Math.floor(Math.random() * 6) + 1 })} style={{ ...bs("#E0664A"), ...big, marginBottom: 8 }}>Roll for Hot</button>
+          : wait("Waiting for your opponent's Hot roll."))}
+        {s.hot && <div style={{ fontSize: 14, color: s.hot.dmg ? "#E0664A" : "#5A9C3A", marginBottom: 8 }}>Hot: rolled {s.hot.v}. {s.hot.dmg ? s.atk.op.name + " takes " + s.hot.dmg + " damage." : "No damage."}</div>}
+        {(!hot || s.hot || !mine("A")) && <button onClick={onClose} style={{ ...bs("var(--accent)"), ...big }}>Close</button>}
+      </div>
+    );
+  }
+  const early = s.stage === "target" || s.stage === "more" || s.stage === "attack";
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 10000, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "40px 12px", overflowY: "auto" }}>
+      <div role="dialog" aria-modal="true" aria-label="Shoot" style={{ ...cd, width: "100%", maxWidth: 620, padding: 14, borderTop: "3px solid var(--accent)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "var(--accent)", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.06em", display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="ranged" size={14} /> SHOOT{s.online ? " (ONLINE)" : ""}</div>
+          {s.stage !== "done" && <button autoFocus onClick={() => onAct({ type: "cancel" })} style={{ ...bs("var(--muted)"), fontSize: 11, padding: "3px 8px" }}><Icon name="x" size={12} /> {early ? "Cancel" : "Stop"}</button>}
         </div>
-      )}
+        {s.note && <div style={{ ...mu, fontSize: 13, color: "var(--gold)", marginBottom: 8 }}>{s.note}</div>}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
+          {card("atk")}{card("t")}
+        </div>
+        {body}
+      </div>
     </div>
   );
 }
@@ -7481,8 +7435,8 @@ function playHotFx(card, fromEl) {
 }
 
 /* ═══ WEAPON DISPLAY ═══ */
-function WeaponBox({ w, tag, wtype, cp, setCp, requestDamageApply, applySelfDamage, local, requestFight }) {
-  const [rolling, setRolling] = useState(false);
+// requestAttack opens the Shoot screen (ranged) or the Fight screen (melee); without it, no dice button.
+function WeaponBox({ w, tag, wtype, local, requestAttack }) {
   const { feat } = React.useContext(FeatureCtx);
   const color = wtype === "melee" ? "#D0573A" : "var(--accent)";
   return (
@@ -7499,13 +7453,9 @@ function WeaponBox({ w, tag, wtype, cp, setCp, requestDamageApply, applySelfDama
               <span style={{ fontSize: 19, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif" }}>{val}</span>
             </span>
           ))}
-          {feat.dice && requestFight && <button onClick={(e) => { e.stopPropagation(); requestFight(); }} aria-label={"Fight with " + w.name}
+          {feat.dice && requestAttack && <button onClick={(e) => { e.stopPropagation(); requestAttack(); }} aria-label={(wtype === "melee" ? "Fight with " : "Shoot with ") + w.name}
             style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, padding: "6px 10px", border: "1px solid " + al(color, "80"), borderRadius: 6, background: al(color, "18"), color, cursor: "pointer", fontWeight: 600, fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.06em" }}>
-            <Icon name="melee" size={14} />Fight
-          </button>}
-          {feat.dice && !requestFight && <button onClick={(e) => { e.stopPropagation(); setRolling(!rolling); }} aria-label={rolling ? "Close dice roller" : "Roll dice for " + w.name}
-            style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, padding: "6px 10px", border: "1px solid " + (rolling ? al(color, "80") : "var(--line)"), borderRadius: 6, background: rolling ? al(color, "18") : "transparent", color: rolling ? color : "var(--text2)", cursor: "pointer", fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, letterSpacing: "0.04em" }}>
-            <Icon name={rolling ? "x" : "dice"} size={14} />{rolling ? "Close" : "Roll"}
+            <Icon name={wtype === "melee" ? "melee" : "ranged"} size={14} />{wtype === "melee" ? "Fight" : "Shoot"}
           </button>}
         </div>
       </div>
@@ -7517,7 +7467,6 @@ function WeaponBox({ w, tag, wtype, cp, setCp, requestDamageApply, applySelfDama
           ))}
         </div>
       )}
-      {rolling && feat.dice && <DiceRoller w={w} wtype={wtype} onClose={() => setRolling(false)} cp={cp} setCp={setCp} requestDamageApply={requestDamageApply} applySelfDamage={applySelfDamage} />}
     </div>
   );
 }
@@ -7556,7 +7505,7 @@ const abilityText = (a, f) => {
   const m = a.match(/^([^:.]{2,40}):\s(.*)$/s);
   return m ? <React.Fragment><strong style={{ color: "var(--text)", fontWeight: 700 }}>{m[1]}:</strong> <RefText text={m[2]} f={f} self={m[1].replace(/\s*\([^)]*\)\s*$/, "")} /></React.Fragment> : <RefText text={a} f={f} />;
 };
-function Datacard({ op, f, fc, equipWeapons, equipEffects, curWounds, onWound, collapsed, onToggle, ignoreInjured, cp, setCp, isActivated, onActivate, requestDamageApply, applySelfDamage, order, onOrder, uses, setUse, carried, onCarried, narrow, requestFight }) {
+function Datacard({ op, f, fc, equipWeapons, equipEffects, curWounds, onWound, collapsed, onToggle, ignoreInjured, cp, setCp, isActivated, onActivate, order, onOrder, uses, setUse, carried, onCarried, narrow, requestFight, requestShoot }) {
   const [pickWeapons, setPickWeapons] = useState(false);
   const { feat } = React.useContext(FeatureCtx);
   const opRules = React.useMemo(() => opWeaponRules(op), [op]);
@@ -7578,8 +7527,6 @@ function Datacard({ op, f, fc, equipWeapons, equipEffects, curWounds, onWound, c
     const key = op.id + "|w|" + w.name;
     return <UsePips label={"Limited " + max} used={uses[key] || 0} max={max} onSet={(n) => setUse(key, n)} />;
   };
-  // The target screen shows who attacked and with which weapon.
-  const damageFrom = (w) => requestDamageApply ? (amount, done) => requestDamageApply(amount, done, { attacker: op.name, weapon: w.name, kind: attackKind(w), shock: /\bShock\b/.test(w.wr || "") }) : undefined;
   const allRanged = [...op.ranged.filter(carries).map(w => ({ ...w, type: "ranged" })), ...equipWeapons.filter(w => w.type === "ranged")];
   const allMelee = [...op.melee.filter(carries).map(w => ({ ...w, type: "melee" })), ...equipWeapons.filter(w => w.type === "melee")];
 
@@ -7732,13 +7679,13 @@ function Datacard({ op, f, fc, equipWeapons, equipEffects, curWounds, onWound, c
               {allRanged.length > 0 && (
                 <div style={{ marginBottom: allMelee.length > 0 || op.abilities.length > 0 || equipEffects.length > 0 ? 14 : 0 }}>
                   <div style={{ fontFamily: DS.fontDisplay, fontSize: 11, fontWeight: 600, color: DS.textSecondary, letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 8 }}>Ranged</div>
-                  {allRanged.map((w, i) => (<React.Fragment key={"r" + i}><WeaponBox w={w} tag={w.note || null} wtype="ranged" cp={cp} setCp={setCp} requestDamageApply={damageFrom(w)} applySelfDamage={applySelfDamage} local={opRules} />{weaponUses(w)}</React.Fragment>))}
+                  {allRanged.map((w, i) => (<React.Fragment key={"r" + i}><WeaponBox w={w} tag={w.note || null} wtype="ranged" requestAttack={requestShoot ? () => requestShoot(op, w) : undefined} local={opRules} />{weaponUses(w)}</React.Fragment>))}
                 </div>
               )}
               {allMelee.length > 0 && (
                 <div style={{ marginBottom: op.abilities.length > 0 || equipEffects.length > 0 ? 14 : 0 }}>
                   <div style={{ fontFamily: DS.fontDisplay, fontSize: 11, fontWeight: 600, color: DS.textSecondary, letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 8 }}>Melee</div>
-                  {allMelee.map((w, i) => (<React.Fragment key={"m" + i}><WeaponBox w={w} tag={w.note || null} wtype="melee" cp={cp} setCp={setCp} requestDamageApply={damageFrom(w)} requestFight={requestFight ? () => requestFight(op, w) : undefined} applySelfDamage={applySelfDamage} local={opRules} />{weaponUses(w)}</React.Fragment>))}
+                  {allMelee.map((w, i) => (<React.Fragment key={"m" + i}><WeaponBox w={w} tag={w.note || null} wtype="melee" requestAttack={requestFight ? () => requestFight(op, w) : undefined} local={opRules} />{weaponUses(w)}</React.Fragment>))}
                 </div>
               )}
               {op.abilities.length > 0 && (
@@ -8114,13 +8061,15 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   React.useEffect(() => {
     if (hasData && navigator.storage && navigator.storage.persist) navigator.storage.persisted().then(p => p || navigator.storage.persist()).catch(() => {});
   }, [hasData]);
-  const [damageRequest, setDamageRequest] = useState(null); // { amount, side: "mine" | "opp" (whose weapon), onApplied(name), meta: { attacker, weapon } } | null
-  const [struck, setStruck] = useState(null); // { key, after }: the row just hit, while the attack plays
   // Fights (melee): the Fight screen's state (see reduceFight). fightRef is the latest copy, for messages that arrive between renders;
   // fightApi holds the handlers, which are defined further down.
   const [fight, setFight] = useState(null);
   const fightRef = React.useRef(null);
   const fightApi = React.useRef(null);
+  // Shooting: the Shoot screen's state (see reduceShot), kept the same way.
+  const [shot, setShot] = useState(null);
+  const shotRef = React.useRef(null);
+  const shotApi = React.useRef(null);
   // Battle log: every change to an operative's wounds this game, oldest first.
   // { side: "mine" | "opp" (whose operative), target, max, before, after, how: "dice" | "hand" | "self", by, weapon, tp, t }
   const [battleLog, setBattleLog] = useLocalStorage("battleLog", []);
@@ -8140,8 +8089,8 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   React.useEffect(() => {
     const onKey = (e) => {
       if (e.key !== "Escape") return;
-      if (fight && fightApi.current) fightApi.current.escape();
-      else if (damageRequest) setDamageRequest(null);
+      if (shot && shotApi.current) shotApi.current.escape();
+      else if (fight && fightApi.current) fightApi.current.escape();
       else if (showLog) setShowLog(false);
       else if (showMP) setShowMP(false);
       else if (cardsMenu) setCardsMenu(false);
@@ -8149,17 +8098,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [fight, damageRequest, showLog, showMP, cardsMenu, gameMenu]);
-  const attackerRef = React.useRef(null);
-  const strikeTimer = React.useRef(null);
-  const [damageOther, setDamageOther] = useState(false); // also list the shooter's own side (Blast and Torrent hit friends too)
-  const requestDamageApply = (amount, side, onApplied, meta) => {
-    if (typeof amount !== "number" || amount < 0) return;
-    clearTimeout(strikeTimer.current);
-    setStruck(null);
-    setDamageOther(false);
-    setDamageRequest({ amount: Math.floor(amount), side, onApplied, meta });
-  };
+  }, [shot, fight, showLog, showMP, cardsMenu, gameMenu]);
   const [joinCodeInput, setJoinCodeInput] = useState("");
   const [chatHistory, setChatHistory] = useState([]); // {from: 'me'|'them', text, ts}
   const [chatDraft, setChatDraft] = useState("");
@@ -8177,6 +8116,10 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
     // Fights: the other player started one against us, or took an action in the one we share.
     if ((msg.type === "fightStart" || msg.type === "fight") && typeof msg.id === "string") {
       if (fightApi.current) fightApi.current.receive(msg);
+      return;
+    }
+    if ((msg.type === "shootStart" || msg.type === "shot") && typeof msg.id === "string") {
+      if (shotApi.current) shotApi.current.receive(msg);
       return;
     }
     // The opponent hit or healed one of our operatives. We own our wounds, so apply it here; the change is
@@ -8804,6 +8747,90 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
       dispatchFight(a, true);
     },
   };
+  // ── Shooting ──
+  const showShot = (x) => { shotRef.current = x; setShot(x); };
+  const shotOpInfo = (side, op) => ({ ...fightOpInfo(side, op), save: op.save });
+  const startShot = (side, op, weapon) => {
+    const online = side === "mine" && (!!fightTestSend() || (mp && mp.status === "connected"));
+    showShot(newShot("s" + Date.now() + Math.floor(Math.random() * 1000), online, side === "mine" ? "A" : "B", shotOpInfo(side, op), fightWeapon(weapon)));
+  };
+  // Damage (or a correction) on one operative. Online, the other device changes its own operatives; if the shared
+  // action was finished here, theirs is sent as a normal hit or heal.
+  const hitOperative = (side, opId, d, extra, x, how) => {
+    if (!d) return;
+    if (side === "mine") {
+      const op = roster.find(o => o.id === opId);
+      if (op) { logMine(op, -d, how || "dice", extra); setOpWounds(op.id, op.wounds, -d); }
+      return;
+    }
+    const op = oppOps().find(o => o.id === opId);
+    if (!op) return;
+    logOpp(op, -d, how || "dice", extra);
+    if (!x.wasOnline) setOppWound(op.id, op.wounds, -d);
+    else if (!x.online && mp) mp.sendOrQueue(d > 0 ? { type: "applyRemoteDamage", opId: op.id, amount: d, ...extra } : { type: "applyRemoteHeal", opId: op.id, amount: -d });
+  };
+  const shotDamageApply = (prev, next) => {
+    const sideOf = (owner) => owner === next.mine ? "mine" : "opp", extra = { by: next.atk.op.name, weapon: next.atk.weapon.name };
+    next.targets.forEach((t, i) => {
+      const p = prev.targets[i] || { dmg: null, adjust: 0 };
+      hitOperative(sideOf(t.owner), t.op.id, (t.dmg || 0) - (p.dmg || 0), extra, next);              // the hit
+      hitOperative(sideOf(t.owner), t.op.id, (t.adjust || 0) - (p.adjust || 0), {}, next, "hand");  // a correction after it
+    });
+    const hot = (next.hot ? next.hot.dmg : 0) - (prev.hot ? prev.hot.dmg : 0);
+    if (hot) { hitOperative(sideOf("A"), next.atk.op.id, hot, {}, next, "self"); showToast(next.atk.op.name + " took " + hot + " damage from Hot", 3000); }
+  };
+  const dispatchShot = (action, remote) => {
+    const cur = shotRef.current;
+    if (!cur) return;
+    let next = reduceShot(cur, action);
+    if (next === cur) return;
+    next = { ...next, changedAt: Date.now() };
+    if (!remote && cur.online) {
+      let ok = true;
+      // Picking targets stays on this device until the attack starts; then both devices get the whole card.
+      if (action.type === "target" || action.type === "more") {
+        if (next.stage === "attack") ok = fightSend({ type: "shootStart", id: cur.id, atk: { opId: cur.atk.op.id, weapon: cur.atk.weapon }, targets: next.targets.map(t => ({ owner: t.owner, opId: t.op.id })) });
+      } else ok = fightSend({ type: "shot", id: cur.id, action });
+      if (!ok) next = { ...next, online: false, roles: ["A", "B"], note: "The connection dropped, so finish this here." };
+    }
+    if (next.stage === "canceled" || next.stage === "takenOver") {
+      showShot(null);
+      if (remote) showToast(next.stage === "canceled" ? "Your opponent canceled the shot" : "Your opponent finished the shot on their device", 4000);
+      return;
+    }
+    showShot(next);
+    shotDamageApply(cur, next);
+  };
+  shotApi.current = {
+    escape: () => { const x = shotRef.current; if (!x) return; if (x.stage === "done") showShot(null); else dispatchShot({ type: "cancel" }); },
+    receive: (msg) => {
+      if (msg.type === "shootStart") {
+        const atkOp = oppOps().find(o => o.id === (msg.atk && msg.atk.opId));
+        if (!atkOp || !msg.atk.weapon || !Array.isArray(msg.targets) || !msg.targets.length) return;
+        const targets = msg.targets.map(x => {
+          const owner = x.owner === "A" ? "A" : "B", side = owner === "B" ? "mine" : "opp";
+          const op = (side === "mine" ? roster : oppOps()).find(o => o.id === x.opId);
+          return op ? newShotTarget(owner, shotOpInfo(side, op)) : null;
+        });
+        if (targets.some(x => !x)) return;
+        showShot({ ...newShot(msg.id, true, "B", shotOpInfo("opp", atkOp), fightWeapon(msg.atk.weapon)), targets, stage: "attack" });
+        if (showBattle) showBattle();
+        return;
+      }
+      const a = msg.action, cur = shotRef.current;
+      if (!cur || cur.id !== msg.id || !a || typeof a.type !== "string") return;
+      const actor = shotActor(cur, a);
+      if (a.type !== "cancel" && a.type !== "takeover" && (!actor || cur.roles.includes(actor))) return; // each device only moves its own side
+      if ((a.type === "roll" && !okDice(a.dice)) || ((a.type === "reroll" || a.type === "hot") && !okDice([a.v]))) return;
+      dispatchShot(a, true);
+    },
+  };
+  const takeOverShot = () => {
+    const cur = shotRef.current;
+    if (!cur) return;
+    fightSend({ type: "shot", id: cur.id, action: { type: "takeover" } });
+    showShot({ ...cur, online: false, roles: ["A", "B"], note: "You're finishing this for both sides.", changedAt: Date.now() });
+  };
   const takeOverFight = () => {
     const cur = fightRef.current;
     if (!cur) return;
@@ -9137,6 +9164,20 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
       {toast && (
         <div style={{ position: "fixed", top: 80, left: 16, right: 16, margin: "0 auto", width: "fit-content", maxWidth: 560, textAlign: "center", zIndex: 9999, background: "#3D6B3F", color: "white", padding: "10px 20px", borderRadius: 4, fontSize: 12, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.06em", boxShadow: "0 4px 20px rgba(0,0,0,0.6)", animation: "fadeIn 0.2s ease" }}>{toast}</div>
       )}
+      {shot && (() => {
+        const sideOf = (owner) => owner === shot.mine ? "mine" : "opp";
+        const opsOf = (owner) => sideOf(owner) === "mine" ? roster : oppOps();
+        const entry = (owner, op) => ({ key: owner + op.id, owner, info: shotOpInfo(sideOf(owner), op) });
+        const alive = (e) => e.info.start > 0;
+        const options = shot.stage === "target" ? opsOf("B").map(op => entry("B", op)).filter(alive) : [];
+        const taken = new Set(shot.targets.map(t => t.owner + t.op.id).concat("A" + shot.atk.op.id));
+        const others = shot.stage === "more" ? [...opsOf("B").map(op => entry("B", op)), ...opsOf("A").map(op => entry("A", op))].filter(e => alive(e) && !taken.has(e.key)) : [];
+        const oppColor = oppF ? oppF.color : "var(--muted)";
+        return <ShootScreen shot={shot} options={options} others={others}
+          sideColor={(side) => side === "mine" ? (f ? f.color : "var(--accent)") : oppColor}
+          onAct={(a) => dispatchShot(a, false)} onClose={() => showShot(null)} onTakeOver={takeOverShot}
+          importHint={sideOf("B") === "opp" ? "Their team isn't in KillSheet yet. Import their roster from the ⋯ menu on the team bar, or play online, to shoot their operatives here." : "None of your operatives can be shot."} />;
+      })()}
       {fight && (() => {
         const enemySide = fight.atk.side === "mine" ? "opp" : "mine";
         const enemyOps = enemySide === "opp" ? oppOps() : roster;
@@ -9148,114 +9189,6 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
           onAct={(a) => dispatchFight(a, false)} onClose={() => showFight(null)} onTakeOver={takeOverFight}
           importHint={enemySide === "opp" ? "Their team isn't in KillSheet yet. Import their roster from the ⋯ menu on the team bar, or play online, to fight their operatives here." : "None of your operatives can fight back."} />;
       })()}
-      {/* Damage target picker */}
-      {damageRequest && f && (
-        <div onClick={() => setDamageRequest(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 10000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-          <div role="dialog" aria-modal="true" aria-label={"Apply " + damageRequest.amount + " damage"} onClick={(e) => { e.stopPropagation(); if (struck) setDamageRequest(null); }} style={{ background: "var(--card)", border: "1px solid color-mix(in srgb, var(--accent) 25%, transparent)", borderRadius: 4, padding: 16, maxWidth: damageRequest.meta && !mobile ? 640 : 480, width: "100%", maxHeight: "80vh", overflowY: "auto", boxShadow: "0 8px 40px rgba(0,0,0,0.7)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--accent)", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.06em" }}>Apply {damageRequest.amount} Damage</div>
-              <button autoFocus onClick={() => setDamageRequest(null)} style={{ ...bs("var(--muted)"), fontSize: 11, padding: "3px 8px" }}><Icon name="x" size={12} /> Cancel</button>
-            </div>
-            {(() => {
-              const amt = damageRequest.amount;
-              const meta = damageRequest.meta;
-              const hitBy = meta ? { by: meta.attacker, weapon: meta.weapon } : {};
-              const online = mp && mp.status === "connected";
-              const oppOps = oppRoster && oppRoster.operatives ? oppRoster.operatives : [];
-              // The attacker card lunges at the row you tap, the row flashes, then the screen closes.
-              // Tapping again skips it; reduced motion skips it entirely.
-              const strike = (e, key, after) => {
-                const rowEl = e.currentTarget, card = attackerRef.current;
-                const still = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-                if (!card || still || !feat.fx || !rowEl.animate) { setDamageRequest(null); return; }
-                setStruck({ key, after });
-                const hitAt = playAttackFx(damageRequest.meta.kind || "melee", card, rowEl, { shock: !!damageRequest.meta.shock });
-                rowEl.animate([
-                  { background: "var(--raised)", transform: "none" },
-                  { background: "#B8341C", transform: "translateX(5px)", offset: 0.25 },
-                  { background: "#5A1F14", transform: "translateX(-4px)", offset: 0.55 },
-                  { background: "var(--raised)", transform: "none" },
-                ], { duration: Math.round(450 * FX_PACE), delay: hitAt });
-                strikeTimer.current = setTimeout(() => setDamageRequest(null), hitAt + Math.round(800 * FX_PACE));
-              };
-              const row = (op, cw, onHit, sideKey) => {
-                const key = sideKey + op.id;
-                const hit = struck && struck.key === key;
-                const shown = hit ? struck.after : cw;
-                return (
-                  <button key={op.id} disabled={!!struck && !hit} onClick={(e) => { e.stopPropagation(); if (struck) { setDamageRequest(null); return; } onHit(); if (damageRequest.onApplied) damageRequest.onApplied(op.name); strike(e, key, Math.max(0, cw - amt)); }} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", padding: "10px 12px", marginBottom: 4, background: "var(--raised)", border: "1px solid var(--line)", borderRadius: 4, color: "var(--text)", cursor: "pointer", fontSize: 13, textAlign: "left" }}>
-                    <span>{op.name}</span>
-                    <span style={{ fontFamily: "monospace", color: shown <= op.wounds / 2 ? "#E0664A" : "#5A9C3A" }}>{shown}/{op.wounds}{hit && shown <= 0 ? " (down)" : ""}</span>
-                  </button>
-                );
-              };
-              // Operatives already down can't be hit, so they aren't listed.
-              const alive = (ops, wounds, sideKey) => ops.filter(op => wounds(op.id, op.wounds) > 0 || (struck && struck.key === sideKey + op.id));
-              const noneLeft = <div style={{ fontSize: 13, color: "var(--muted)", padding: "6px 0" }}>Every operative on this side is down.</div>;
-              const head = (text, color) => <div style={{ fontSize: 11, color, margin: "4px 0", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.1em" }}>{text}</div>;
-              const mine = roster.length > 0 && (
-                <div key="mine" style={{ marginBottom: 10 }}>
-                  {head("YOUR TEAM", "var(--blue)")}
-                  {alive(roster, getWounds, "mine-").length === 0 ? noneLeft : alive(roster, getWounds, "mine-").map(op => row(op, getWounds(op.id, op.wounds), () => { logMine(op, -amt, "dice", hitBy); setOpWounds(op.id, op.wounds, -amt); showToast(op.name + " took " + amt + " damage"); }, "mine-"))}
-                </div>
-              );
-              const theirs = oppOps.length > 0 ? (
-                <div key="theirs" style={{ marginBottom: 10 }}>
-                  {head(online ? "OPPONENT (ONLINE)" : "OPPONENT", "#E0664A")}
-                  {alive(oppOps, getOppWounds, "opp-").length === 0 ? noneLeft : alive(oppOps, getOppWounds, "opp-").map(op => row(op, getOppWounds(op.id, op.wounds), () => {
-                    logOpp(op, -amt, "dice", hitBy);
-                    if (online) {
-                      // They own their wounds: their app applies it and sends the new total back to this card.
-                      mp.send({ type: "applyRemoteDamage", opId: op.id, amount: amt, ...hitBy });
-                      showToast("Sent " + amt + " damage to " + op.name);
-                    } else {
-                      setOppWound(op.id, op.wounds, -amt);
-                      mp.sendOrQueue({ type: "applyRemoteDamage", opId: op.id, amount: amt, ...hitBy });
-                      showToast(op.name + " took " + amt + " damage");
-                    }
-                  }, "opp-"))}
-                </div>
-              ) : (
-                <div key="theirs" style={{ marginBottom: 10, padding: "10px 12px", borderRadius: 6, background: "var(--bg)", border: "1px solid var(--line)", fontSize: 13, color: "var(--text2)", lineHeight: 1.5 }}>
-                  Your opponent's team isn't in KillSheet. Tell them the operative you hit takes {amt} damage.
-                  <div style={{ color: "var(--muted)", marginTop: 6 }}>To track their wounds here too, add their team:</div>
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
-                    <button onClick={() => { setDamageRequest(null); setShowImport(true); setTimeout(() => { const el = document.getElementById("ks-import"); if (el) el.scrollIntoView({ behavior: "smooth", block: "nearest" }); }, 60); }} style={{ ...bs("var(--accent)"), fontSize: 13, padding: "8px 12px" }}>Import their roster</button>
-                    {feat.online && mp.status === "idle" && <button onClick={() => { setDamageRequest(null); setShowMP(true); }} style={{ ...bs("var(--blue)"), fontSize: 13, padding: "8px 12px" }}>Play online</button>}
-                  </div>
-                </div>
-              );
-              // Show the side that was shot at first. The shooter's own side is one tap away, since Blast and Torrent can hit friends.
-              const side = damageRequest.side;
-              if (!side) return <React.Fragment>{mine}{theirs}</React.Fragment>;
-              const [first, other, otherLabel, otherHas] = side === "mine" ? [theirs, mine, "One of your own was hit (Blast or Torrent)", roster.length > 0] : [mine, theirs, "One of theirs was hit (Blast or Torrent)", oppOps.length > 0];
-              const targets = (
-                <div style={{ minWidth: 0 }}>
-                  {head("WHO TOOK THE DAMAGE?", "var(--muted)")}
-                  {first}
-                  {otherHas && !struck && (damageOther ? other : (
-                    <button className="link-btn" onClick={() => setDamageOther(true)} style={{ background: "none", border: "none", padding: "6px 0", cursor: "pointer", color: "var(--muted)", fontSize: 13, textDecoration: "underline", textUnderlineOffset: 3 }}>{otherLabel}</button>
-                  ))}
-                </div>
-              );
-              if (!meta) return targets;
-              const tone = side === "mine" ? "var(--blue)" : "#E0664A";
-              // Attacker on the left (on top on phones), targets beside it.
-              return (
-                <div style={{ display: mobile ? "block" : "grid", gridTemplateColumns: "190px 1fr", gap: 16, alignItems: "start" }}>
-                  <div ref={attackerRef} data-attack={meta.kind} aria-label={"Attacker: " + meta.attacker + " with " + meta.weapon} style={{ position: "relative", zIndex: 2, padding: "10px 12px", marginBottom: mobile ? 12 : 0, borderRadius: 4, background: "var(--raised)", border: "1px solid " + al(tone, "80"), boxShadow: "0 4px 16px rgba(0,0,0,0.4)" }}>
-                    {head("ATTACKER", tone)}
-                    <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif", lineHeight: 1.2 }}>{meta.attacker}</div>
-                    <div style={{ fontSize: 13, color: "var(--text2)", marginTop: 2 }}>{meta.weapon}</div>
-                    <div style={{ fontSize: 13, color: "var(--accent)", fontWeight: 700, marginTop: 6 }}>{amt} damage</div>
-                  </div>
-                  {targets}
-                </div>
-              );
-            })()}
-          </div>
-        </div>
-      )}
       {/* Battle log: their operatives' changes on the right (what you did), yours on the left. */}
       {showLog && (
         <div onClick={() => setShowLog(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 10000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
@@ -10216,7 +10149,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                   return aAlive - bAlive;
                 }).map(op => {
                   const result = getEquipForOp(op);
-                  return (<Datacard key={op.id} op={op} f={f} fc={f.color} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getWounds(op.id, op.wounds)} onWound={(delta) => { logMine(op, delta, "hand"); setOpWounds(op.id, op.wounds, delta); }} collapsed={cardCollapsed[op.id] || false} onToggle={() => toggleCardCollapse(op.id)} ignoreInjured={result.ignoreInjured} cp={cp} setCp={setCp} isActivated={activated[op.id] || false} onActivate={() => setActivated(prev => ({ ...prev, [op.id]: !prev[op.id] }))} requestDamageApply={(a, done, meta) => requestDamageApply(a, "mine", done, meta)} requestFight={(o, w) => startFight("mine", o, w)} applySelfDamage={(amount) => { logMine(op, -amount, "self"); setOpWounds(op.id, op.wounds, -amount); showToast(op.name + " took " + amount + " self-dmg"); }} order={orders[op.id] || "conceal"} onOrder={() => setOrders(prev => ({ ...prev, [op.id]: prev[op.id] === "engage" ? "conceal" : "engage" }))} uses={feat.uses ? battleUses : null} setUse={(k, n) => setBattleUses(prev => ({ ...prev, [k]: n }))} carried={carried[op.id]} onCarried={(list) => setCarried(prev => ({ ...prev, [op.id]: list }))} />);
+                  return (<Datacard key={op.id} op={op} f={f} fc={f.color} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getWounds(op.id, op.wounds)} onWound={(delta) => { logMine(op, delta, "hand"); setOpWounds(op.id, op.wounds, delta); }} collapsed={cardCollapsed[op.id] || false} onToggle={() => toggleCardCollapse(op.id)} ignoreInjured={result.ignoreInjured} cp={cp} setCp={setCp} isActivated={activated[op.id] || false} onActivate={() => setActivated(prev => ({ ...prev, [op.id]: !prev[op.id] }))} requestFight={(o, w) => startFight("mine", o, w)} requestShoot={(o, w) => startShot("mine", o, w)} order={orders[op.id] || "conceal"} onOrder={() => setOrders(prev => ({ ...prev, [op.id]: prev[op.id] === "engage" ? "conceal" : "engage" }))} uses={feat.uses ? battleUses : null} setUse={(k, n) => setBattleUses(prev => ({ ...prev, [k]: n }))} carried={carried[op.id]} onCarried={(list) => setCarried(prev => ({ ...prev, [op.id]: list }))} />);
                 })}
 
               </div>
@@ -10244,7 +10177,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                     {oppRoster.operatives.map(op => {
                       const result = oppEquip(op);
                       const oCollapsed = oppCollapsed[op.id] || false;
-                      return (<Datacard key={"opp-" + op.id} narrow op={op} f={oppF} fc={oppF ? oppF.color : "var(--muted)"} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getOppWounds(op.id, op.wounds)} onWound={(delta) => { logOpp(op, delta, "hand"); if (mp && mp.status === "connected" && delta < 0) { mp.send({ type: "applyRemoteDamage", opId: op.id, amount: -delta }); } else if (mp && mp.status === "connected" && delta > 0) { mp.send({ type: "applyRemoteHeal", opId: op.id, amount: delta }); } else { setOppWound(op.id, op.wounds, delta); if (delta) mp.sendOrQueue({ type: delta < 0 ? "applyRemoteDamage" : "applyRemoteHeal", opId: op.id, amount: Math.abs(delta) }); } }} collapsed={oCollapsed} onToggle={() => setOppCollapsed(prev => ({ ...prev, [op.id]: !oCollapsed }))} ignoreInjured={result.ignoreInjured} cp={0} setCp={() => {}} requestDamageApply={(a, done, meta) => requestDamageApply(a, "opp", done, meta)} requestFight={mp && mp.status === "connected" ? undefined : (o, w) => startFight("opp", o, w)} applySelfDamage={(amount) => { logOpp(op, -amount, "self"); if (mp && mp.status === "connected") { mp.send({ type: "applyRemoteDamage", opId: op.id, amount }); showToast(op.name + " took " + amount + " self-dmg (sent)"); } else { setOppWound(op.id, op.wounds, -amount); mp.sendOrQueue({ type: "applyRemoteDamage", opId: op.id, amount }); showToast(op.name + " took " + amount + " self-dmg"); } }} />);
+                      return (<Datacard key={"opp-" + op.id} narrow op={op} f={oppF} fc={oppF ? oppF.color : "var(--muted)"} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getOppWounds(op.id, op.wounds)} onWound={(delta) => { logOpp(op, delta, "hand"); if (mp && mp.status === "connected" && delta < 0) { mp.send({ type: "applyRemoteDamage", opId: op.id, amount: -delta }); } else if (mp && mp.status === "connected" && delta > 0) { mp.send({ type: "applyRemoteHeal", opId: op.id, amount: delta }); } else { setOppWound(op.id, op.wounds, delta); if (delta) mp.sendOrQueue({ type: delta < 0 ? "applyRemoteDamage" : "applyRemoteHeal", opId: op.id, amount: Math.abs(delta) }); } }} collapsed={oCollapsed} onToggle={() => setOppCollapsed(prev => ({ ...prev, [op.id]: !oCollapsed }))} ignoreInjured={result.ignoreInjured} cp={0} setCp={() => {}} requestFight={mp && mp.status === "connected" ? undefined : (o, w) => startFight("opp", o, w)} requestShoot={mp && mp.status === "connected" ? undefined : (o, w) => startShot("opp", o, w)} />);
                     })}
                   </div>
                 </div>
@@ -10304,7 +10237,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                       {oppRoster.operatives.map(op => {
                         const result = oppEquip(op);
                         const oCollapsed = oppCollapsed[op.id] || false;
-                        return (<Datacard key={"opp-m-" + op.id} op={op} f={oppF} fc={oppF ? oppF.color : "var(--muted)"} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getOppWounds(op.id, op.wounds)} onWound={(delta) => { logOpp(op, delta, "hand"); if (mp && mp.status === "connected" && delta < 0) { mp.send({ type: "applyRemoteDamage", opId: op.id, amount: -delta }); } else if (mp && mp.status === "connected" && delta > 0) { mp.send({ type: "applyRemoteHeal", opId: op.id, amount: delta }); } else { setOppWound(op.id, op.wounds, delta); if (delta) mp.sendOrQueue({ type: delta < 0 ? "applyRemoteDamage" : "applyRemoteHeal", opId: op.id, amount: Math.abs(delta) }); } }} collapsed={oCollapsed} onToggle={() => setOppCollapsed(prev => ({ ...prev, [op.id]: !oCollapsed }))} ignoreInjured={result.ignoreInjured} cp={0} setCp={() => {}} requestDamageApply={(a, done, meta) => requestDamageApply(a, "opp", done, meta)} requestFight={mp && mp.status === "connected" ? undefined : (o, w) => startFight("opp", o, w)} applySelfDamage={(amount) => { logOpp(op, -amount, "self"); if (mp && mp.status === "connected") { mp.send({ type: "applyRemoteDamage", opId: op.id, amount }); showToast(op.name + " took " + amount + " self-dmg (sent)"); } else { setOppWound(op.id, op.wounds, -amount); mp.sendOrQueue({ type: "applyRemoteDamage", opId: op.id, amount }); showToast(op.name + " took " + amount + " self-dmg"); } }} />);
+                        return (<Datacard key={"opp-m-" + op.id} op={op} f={oppF} fc={oppF ? oppF.color : "var(--muted)"} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getOppWounds(op.id, op.wounds)} onWound={(delta) => { logOpp(op, delta, "hand"); if (mp && mp.status === "connected" && delta < 0) { mp.send({ type: "applyRemoteDamage", opId: op.id, amount: -delta }); } else if (mp && mp.status === "connected" && delta > 0) { mp.send({ type: "applyRemoteHeal", opId: op.id, amount: delta }); } else { setOppWound(op.id, op.wounds, delta); if (delta) mp.sendOrQueue({ type: delta < 0 ? "applyRemoteDamage" : "applyRemoteHeal", opId: op.id, amount: Math.abs(delta) }); } }} collapsed={oCollapsed} onToggle={() => setOppCollapsed(prev => ({ ...prev, [op.id]: !oCollapsed }))} ignoreInjured={result.ignoreInjured} cp={0} setCp={() => {}} requestFight={mp && mp.status === "connected" ? undefined : (o, w) => startFight("opp", o, w)} requestShoot={mp && mp.status === "connected" ? undefined : (o, w) => startShot("opp", o, w)} />);
                       })}
                     </div>
                   )}
@@ -17091,7 +17024,7 @@ const FEATURE_GROUPS = [
     { k: "guide", name: "Turning point guide opens by itself", desc: "The step-by-step guide opens at the start of every turning point, so you can follow along. With it off, the guide stays the way you left it." },
     { k: "labels", name: "Learning help", desc: "Labels on closed datacards, a dotted underline under words you can tap for an explanation, and an ⓘ next to the Ready and order buttons." },
     { k: "tips", name: "Rule tips", desc: "Tap a bold orange word, or hover over it on a computer, to see what it means in one sentence, with a link to more information in Rules." },
-    { k: "dice", name: "Dice roller", desc: "A Roll button on every weapon. It rolls the attack and defense dice and works out the damage." },
+    { k: "dice", name: "Dice roller", desc: "A Shoot button on ranged weapons and a Fight button on melee weapons. Pick the target, roll the dice, and the damage goes on. Online, each player rolls on their own device." },
     { k: "fx", name: "Attack animations", desc: "Shots, slashes and blasts on the target screen when you apply damage from the dice roller. With it off, the damage goes on and the screen closes straight away." },
     { k: "awake", name: "Keep the screen on", desc: "While a game is in progress, your phone or tablet doesn't dim or lock. It goes back to normal when the game ends. Uses a little more battery." },
     { k: "uses", name: "Use tracking", desc: "Checkboxes for once-per-battle abilities and ploys, limited weapons and grenades, so you know what's been used." },
@@ -17630,44 +17563,110 @@ async function runSelfTest(hooks) {
   });
 
   // Dice damage goes to the side that was shot at. With no opponent team loaded, it says to tell them instead.
-  await step("Dice damage target", async () => {
+  await step("Shooting: rules, one device and online", async () => {
+    // 1. The rules, with fixed dice.
+    const W = (atk, hit, dmg, wr) => ({ name: "gun", atk, hit, dmg, wr: wr || "-" });
+    const op = (id, save) => ({ id, name: id, max: 12, start: 12, injured: false, save: save || "4+" });
+    const go = (w, ad, dd, opts) => {
+      let x = reduceShot(newShot("t", false, "A", op("shooter"), w), { type: "target", target: newShotTarget("B", op("target", (opts || {}).save)) });
+      if (x.stage === "more") x = reduceShot(x, { type: "more", targets: [] });
+      if ((opts || {}).obscured) x = reduceShot(x, { type: "obscured", v: true });
+      x = reduceShot(reduceShot(x, { type: "roll", who: "a", dice: ad }), { type: "ready", who: "a" });
+      if (x.stage === "defense") {
+        if ((opts || {}).cover) x = reduceShot(x, { type: "cover", v: true });
+        if (dd) x = reduceShot(x, { type: "roll", who: "d", dice: dd });
+        x = reduceShot(x, { type: "ready", who: "d" });
+      }
+      return x;
+    };
+    const bad = [];
+    let x = go(W(4, "3+", "3/4", "Piercing 1"), [6, 4, 3, 1], [6], { cover: true });
+    if (x.stage !== "result" || x.targets[0].dmg !== 3 || x.targets[0].d.kept !== 1) bad.push("Piercing 1 in cover: expected 3 damage with one cover save, got " + x.targets[0].dmg);
+    if (go(W(4, "3+", "3/4"), [1, 2, 1, 2]).targets[0].dmg !== 0) bad.push("no hits should skip defense with 0 damage");
+    if (go(W(4, "3+", "3/4", "Saturate"), [6, 4, 3, 1], [1, 1, 1], { cover: true }).targets[0].d.kept !== 0) bad.push("Saturate still gave a cover save");
+    if (shotAttack(go(W(2, "3+", "3/4"), [6, 6], null, { obscured: true }), { a: { dice: [6, 6] }, obscured: true }).hits !== 1) bad.push("obscured");
+    if (reduceShot(newShot("t", false, "A", op("s"), W(4, "3+", "2/4", "Blast 2\"")), { type: "target", target: newShotTarget("B", op("t")) }).stage !== "more") bad.push("Blast doesn't ask for extra targets");
+    let h = { ...go(W(4, "3+", "3/4", "Hot"), [1, 1, 1, 1]) }; h = reduceShot(reduceShot(h, { type: "next" }), { type: "hot", v: 1 });
+    if (!h.hot || h.hot.dmg !== 2) bad.push("Hot: a 1 under Hit 3+ should deal 2");
+    if (bad.length) throw new Error(bad.join("; "));
+    // 2. On one device, against an opponent's team (sent as if they'd connected).
+    const K = FACTIONS.kommandos, theirOps = K.operatives.slice(0, 3).map(o => ({ ...o }));
+    hooks.mpMessage({ type: "snapshot", payload: { fid: "kommandos", roster: theirOps, wounds: {} } }); await settle(20);
     await nav("Battle");
     const dc = btn("Datacards", true); if (dc) await click(dc, "Datacards");
-    let roll = all("[aria-label^='Roll dice for ']")[0];
-    if (!roll) { await click(all(".datacard-print [role=button]")[0], "a datacard"); roll = all("[aria-label^='Roll dice for ']")[0]; }
-    if (!roll) throw new Error("no Roll button on an open datacard");
-    await click(roll, "Roll");
-    const defBtn = () => all("button").find(b => /^Roll (\d+ defense (die|dice)|their \d+ dice)/.test(b.textContent.trim()));
-    for (let i = 0; i < 20 && !defBtn(); i++) await click(all("button").find(b => /^Roll \d+ attack dice/.test(b.textContent.trim())), "Roll attack dice");
-    await click(defBtn(), "Roll defense");
-    let apply = all("button").find(b => /^Apply \d+ to target/.test(b.textContent.trim()));
-    if (apply && apply.disabled) { const n = all("input[type=number]").find(i => i.nextElementSibling && i.nextElementSibling.textContent.trim() === "+"); await click(n && n.nextElementSibling, "+1 damage"); apply = all("button").find(b => /^Apply \d+ to target/.test(b.textContent.trim())); }
-    await click(apply, "Apply to target");
-    const text = () => document.body.innerText;
-    if (!/WHO TOOK THE DAMAGE\?/.test(text())) throw new Error("the target list didn't open");
-    const attacker = all("[aria-label^='Attacker: ']")[0];
-    if (!attacker || !/ with \S/.test(attacker.getAttribute("aria-label"))) throw new Error("the target screen doesn't show the attacker and weapon");
-    if (!/^(melee|grenade|flame|sweep|psychic|blast|shoot)$/.test(attacker.dataset.attack || "")) throw new Error("the attack has no effect type");
-    if (!/team isn't in KillSheet/.test(text()) || !btn("Import their roster")) throw new Error("with no opponent team, it doesn't say to tell them or offer to import");
-    if (/YOUR TEAM/.test(text())) throw new Error("your own operatives show first after shooting with your own weapon");
-    await click(btn("One of your own was hit"), "One of your own was hit");
-    const target = all("button").find(b => /^\S.*\d+\/\d+$/.test(b.textContent.trim()) && !b.disabled && b.closest("[style*='z-index: 10000']"));
-    if (!/YOUR TEAM/.test(text()) || !target) throw new Error("your own operatives didn't appear");
-    const [cur] = target.textContent.match(/(\d+)\/\d+$/).slice(1).map(Number);
-    await click(target, "your operative");
-    for (let i = 0; i < 90 && /WHO TOOK THE DAMAGE\?/.test(text()); i++) await new Promise(r => setTimeout(r, 50));
-    if (/WHO TOOK THE DAMAGE\?/.test(text())) throw new Error("the target list didn't close after the attack");
-    if (!/took \d+ damage/.test(text())) throw new Error("no message that the damage was applied");
-    const targetName = target.textContent.trim().replace(/\d+\/\d+$/, "").trim();
-    if (all("button").some(b => /^Apply \d+ to target/.test(b.textContent.trim()))) throw new Error("the same roll can still be applied again");
-    if (!all("button").some(b => /^Applied to /.test(b.textContent.trim()) && b.disabled)) throw new Error("the roller doesn't say who the damage went to");
-    await click(all("[aria-label='Battle log']")[0], "Log button");
-    const logBox = all("[role=dialog][aria-label='Battle log']")[0];
-    if (!logBox || !logBox.innerText.includes(targetName) || !/ hit .* with .*: \d+ damage/.test(logBox.innerText)) throw new Error("the battle log doesn't show the hit on " + targetName);
+    const dlg = () => document.querySelector("[role=dialog][aria-label='Shoot']");
+    const inDlg = (re) => dlg() && [...dlg().querySelectorAll("button")].find(b => re.test(b.textContent.trim()) && !b.disabled);
+    const openShot = async () => {
+      let sb = all("[aria-label^='Shoot with ']")[0];
+      if (!sb) { await click(all(".datacard-print [role=button]")[0], "a datacard"); sb = all("[aria-label^='Shoot with ']")[0]; }
+      if (!sb) throw new Error("no Shoot button on an open datacard");
+      await click(sb, "Shoot");
+      if (!dlg()) throw new Error("the Shoot screen didn't open");
+    };
+    const pickEnemy = async () => {
+      await click([...dlg().querySelectorAll("button")].find(b => theirOps.some(o => b.textContent.startsWith(o.name))), "an enemy");
+      if (inDlg(/^Start shooting/)) await click(inDlg(/^Start shooting/), "Start shooting");
+    };
+    // Plays every step this device controls; theirStep handles a step waiting on the other player.
+    const playOut = async (theirStep) => {
+      for (let i = 0; i < 40 && dlg() && !/Shooting done/.test(dlg().innerText); i++) {
+        const next = inDlg(/^Roll \d+ (attack|defense) (die|dice)$/) || inDlg(/^(Done: defense next|Send to defender|Done: see the damage|Continue|Next target|Finish)$/);
+        if (next) await click(next, next.textContent.trim());
+        else if (theirStep && /Waiting for your opponent/.test(dlg().innerText)) await theirStep();
+        else throw new Error("shooting got stuck: " + dlg().innerText.slice(0, 160));
+      }
+      if (!dlg() || !/Shooting done/.test(dlg().innerText)) throw new Error("shooting didn't finish");
+      if (inDlg(/^Roll for Hot$/)) await click(inDlg(/^Roll for Hot$/), "Roll for Hot");
+    };
+    await openShot();
+    if (!/Who is .* shooting\?/.test(dlg().innerText)) throw new Error("the Shoot screen doesn't ask for a target first");
+    await pickEnemy();
+    if (!inDlg(/^Enter real dice$/)) throw new Error("no way to enter real dice");
+    await playOut();
+    const logText = () => (store("battleLog") || []).map(e => e.target + " by " + e.by + " with " + e.weapon).join("; ");
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })); await settle();
-    if (all("[role=dialog][aria-label='Battle log']")[0]) throw new Error("Escape didn't close the battle log");
-    const closeRoll = all("[aria-label='Close dice roller']")[0]; if (closeRoll) await click(closeRoll, "close dice roller");
-    return "own weapon: opponent first, tell-them note with Import, own operatives on request (" + cur + " wounds before), one apply per roll, attacker card, battle log closes with Escape";
+    if (dlg()) throw new Error("Escape didn't close the finished Shoot screen");
+    const sent = []; window.__ksMpTestSend = (m) => sent.push(m);
+    try {
+      // 3. Online, defending: their attack card opens here, then we roll our own saves.
+      const mineOp = (store("roster") || []).find(o => ((store("wounds") || {})[o.id] ?? o.wounds) > 0);
+      const before = (store("wounds") || {})[mineOp.id] ?? mineOp.wounds;
+      const gun = theirOps.find(o => o.ranged.length).ranged[0];
+      hooks.mpMessage({ type: "shootStart", id: "ss1", atk: { opId: theirOps.find(o => o.ranged.length).id, weapon: gun }, targets: [{ owner: "B", opId: mineOp.id }] }); await settle(20);
+      if (!dlg() || !/Waiting for your opponent to roll attack dice/.test(dlg().innerText)) throw new Error("their attack card didn't open here, waiting for their roll");
+      hooks.mpMessage({ type: "shot", id: "ss1", action: { type: "roll", who: "a", dice: [6, 6, 6, 6] } });
+      hooks.mpMessage({ type: "shot", id: "ss1", action: { type: "ready", who: "a" } }); await settle(20);
+      if (!/is shooting your/.test(dlg().innerText)) throw new Error("no defense prompt after their roll");
+      await playOut(async () => { hooks.mpMessage({ type: "shot", id: "ss1", action: { type: "next" } }); await settle(20); });
+      const after = (store("wounds") || {})[mineOp.id];
+      if (!(after < before)) throw new Error("four crits didn't take wounds off " + mineOp.name + " (" + before + " to " + after + ")");
+      if (!sent.some(m => m.type === "shot" && m.action.type === "roll" && m.action.who === "d")) throw new Error("our defense roll wasn't sent");
+      if (sent.some(m => m.type === "shot" && m.action.who === "a")) throw new Error("we sent a move for their side");
+      if (!/by .* with /.test(logText())) throw new Error("their hit isn't in the battle log");
+      await click(inDlg(/^Close$/), "Close");
+      // 4. Online, attacking: our card goes to them once the targets are picked; their saves come back.
+      sent.length = 0;
+      const oppBefore = JSON.stringify(store("oppWounds") || {});
+      await openShot();
+      if (!/ONLINE/.test(dlg().innerText)) throw new Error("the shot isn't marked online");
+      await pickEnemy();
+      const start = sent.find(m => m.type === "shootStart");
+      if (!start || !start.targets.length) throw new Error("no shootStart was sent");
+      let rolled = false;
+      await playOut(async () => {
+        if (rolled) throw new Error("still waiting on them");
+        hooks.mpMessage({ type: "shot", id: start.id, action: { type: "roll", who: "d", dice: [1, 1, 1] } });
+        hooks.mpMessage({ type: "shot", id: start.id, action: { type: "ready", who: "d" } }); await settle(20);
+        rolled = !/Waiting for your opponent to roll defense/.test(dlg().innerText) ? false : true;
+      });
+      if (JSON.stringify(store("oppWounds") || {}) !== oppBefore) throw new Error("online, we changed their wounds ourselves (their device owns them)");
+      await click(inDlg(/^Close$/), "Close");
+      await openShot(); await pickEnemy();
+      const start2 = sent.filter(m => m.type === "shootStart").slice(-1)[0];
+      hooks.mpMessage({ type: "shot", id: start2.id, action: { type: "cancel" } }); await settle(20);
+      if (dlg()) throw new Error("their cancel didn't close the Shoot screen");
+    } finally { delete window.__ksMpTestSend; }
+    return "rules with fixed dice, one device with Escape, and both sides online";
   });
 
   // The dice maths with fixed dice: each weapon rule, cover, obscured and blocking.

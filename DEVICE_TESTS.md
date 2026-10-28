@@ -22,7 +22,7 @@ mobile data instead of Wi-Fi, so the two are on different networks.
 |---|---|---|
 | 1 | On device A, pick a team, start the game, then ⋯ > Play online > Host a new game. | A room code appears. |
 | 2 | On device B, pick a different team, then Play online, type the code, Join. | Both say Connected, and each shows the other's team in the opponent column. |
-| 3 | On A, open a weapon's Roll, roll the attack and defence, Apply to target, pick one of B's operatives. | A plays the attack animation. B shows "(A's operative) hit your (operative) with (weapon): N damage", and that card loses the wounds on both screens. |
+| 3 | On A, open a datacard, tap Shoot on a ranged weapon and pick one of B's operatives. Roll and tap Send to defender. | B switches to the Battle tab and shows the attack card with A's dice, then asks B to roll defense (with Cover and Save). After B rolls and taps Done, both screens show the damage with the attack effect, and B's operative loses the wounds on both screens. |
 | 4 | On both, tap Log on the team bar. | A has the hit on the right, B has it on the left. |
 | 5 | Lock the phone for one minute, then unlock it and go back to KillSheet. | It reconnects by itself, or shows "Your online game dropped" with a Rejoin button. Rejoin works. |
 | 6 | On B, while disconnected, tap − on one of A's operatives twice. | B's bar says "2 changes to send". After rejoining, A's operative has lost those 2 wounds. |
