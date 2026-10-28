@@ -6795,6 +6795,16 @@ function FightScreen({ fight, dropped, enemies, defWeapons, sideColor, onAct, on
     if (f.log.length <= seen.current) { seen.current = f.log.length; return; }
     seen.current = f.log.length;
     const e = f.log[f.log.length - 1];
+    if (e.kind === "block") {
+      const other = otherRole(e.role);
+      const blocker = document.querySelector("[data-fight-card='" + e.role + "']"), them = document.querySelector("[data-fight-card='" + other + "']");
+      const said = () => setPop({ role: other, text: "Blocked", key: f.log.length });
+      if (!blocker || !them || !feat.fx || !blocker.animate) { said(); return; }
+      blocker.scrollIntoView({ block: "nearest" });
+      if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) { blocker.animate([{ boxShadow: "0 0 0 3px #9FDCFF" }, { boxShadow: "0 0 0 0 transparent" }], { duration: 1200, easing: "ease-out" }); said(); return; }
+      setTimeout(said, playBlockFx(f[e.role].weapon, blocker, them));
+      return;
+    }
     if (e.kind !== "strike") return;
     const target = otherRole(e.role);
     const pop = () => setPop({ role: target, amount: e.dmg, key: f.log.length });
@@ -6873,7 +6883,7 @@ function FightScreen({ fight, dropped, enemies, defWeapons, sideColor, onAct, on
           ? <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{s.weapon.name} {"·"} {s.weapon.atk} {"·"} {s.weapon.hit} {"·"} {s.weapon.dmg}{s.weapon.wr && s.weapon.wr !== "-" ? " · " + s.weapon.wr : ""}{s.op.injured ? " · injured: hits on 1 worse" : ""}</div>
           : <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>Picking a weapon</div>}
         {dice(role)}
-        {pop && pop.role === role && <span key={pop.key} className="ks-pop" style={{ position: "absolute", right: 10, top: 8, fontSize: 20, fontWeight: 700, color: "#E0664A", fontFamily: "'Rajdhani', sans-serif", pointerEvents: "none" }}>-{pop.amount}</span>}
+        {pop && pop.role === role && <span key={pop.key} className="ks-pop" style={{ position: "absolute", right: 10, top: 8, fontSize: 20, fontWeight: 700, color: "#E0664A", fontFamily: "'Rajdhani', sans-serif", pointerEvents: "none", ...(pop.text ? { color: "#9FDCFF", letterSpacing: "0.06em" } : {}) }}>{pop.text ? pop.text.toUpperCase() : "-" + pop.amount}</span>}
       </div>
     );
   };
@@ -7520,6 +7530,16 @@ const FX = (() => {
         g.addColorStop(0, hexA(p.color, 0)); g.addColorStop(1, hexA(p.color, a));
         c.globalCompositeOperation = "source-over"; c.fillStyle = g; c.fillRect(0, 0, innerWidth, innerHeight); break;
       }
+      case "shield": {
+        // A glowing arc in front of the blocker, facing the attack: snaps up, holds, fades.
+        const up = Math.min(1, k / 0.15), fade = k < 0.5 ? 1 : 1 - (k - 0.5) / 0.5, r = p.r * (0.85 + 0.15 * up);
+        c.lineCap = "round"; c.shadowColor = p.color; c.shadowBlur = 22;
+        [[p.w, p.color, 1], [p.w * 0.35, "#FFFFFF", 0.9]].forEach(([w, col, a]) => {
+          c.strokeStyle = hexA(col, a * fade * up); c.lineWidth = w;
+          c.beginPath(); c.arc(p.x, p.y, r, p.ang - 0.95 * up, p.ang + 0.95 * up); c.stroke();
+        });
+        break;
+      }
       case "sight": {
         c.strokeStyle = hexA(p.color, 0.5 + Math.random() * 0.4); c.lineWidth = 1; c.setLineDash([6, 5]);
         c.beginPath(); c.moveTo(p.x0, p.y0); c.lineTo(p.x1, p.y1); c.stroke(); c.setLineDash([]);
@@ -7788,6 +7808,38 @@ function playAttackFx(weapon, card, target, opts = {}) {
     if (screen) fxMove.border(screen, "#9FE6FF", 1.4, hit + ms(200));
   }
   return hit;
+}
+
+// A block in a fight: the blocker braces and pushes toward the attacker, a shield arc flares in front of it, the two
+// meet in a clash of sparks, and the attacker's card is knocked back. Returns when the clash lands (ms).
+function playBlockFx(weapon, blocker, other, opts = {}) {
+  const p = fxProfile({ ...weapon, type: "melee" }), add = FX.add, ms = fxMs, rnd = (lo, hi) => lo + Math.random() * (hi - lo);
+  const a = blocker.getBoundingClientRect(), b = other.getBoundingClientRect();
+  const ax = a.left + a.width / 2, ay = a.top + a.height / 2, bx = b.left + b.width / 2, by = b.top + b.height / 2;
+  const dx = bx - ax, dy = by - ay, dist = Math.hypot(dx, dy) || 1, ux = dx / dist, uy = dy / dist;
+  const col = p.power ? "#9FDCFF" : "#BFD7FF", screen = opts.screen || blocker.closest("[role=dialog]");
+  const dur = ms(820), clash = Math.round(dur * 0.3);
+  // the brace: a quick crouch back, a hard push toward the attacker, then an easing settle
+  blocker.animate([
+    { transform: "none", easing: "cubic-bezier(.3,0,.2,1)" },
+    { transform: "translate(" + (-ux * 6) + "px," + (-uy * 6) + "px) scale(0.97)", offset: 0.14, easing: "cubic-bezier(.5,0,.9,.5)" },
+    { transform: "translate(" + ux * dist * 0.16 + "px," + uy * dist * 0.16 + "px) rotate(" + (ux > 0 ? 2 : -2) + "deg) scale(1.04)", offset: 0.3, easing: "cubic-bezier(.2,.7,.3,1)" },
+    { transform: "translate(" + ux * dist * 0.1 + "px," + uy * dist * 0.1 + "px)", offset: 0.45, easing: "cubic-bezier(.45,0,.25,1)" },
+    { transform: "none" },
+  ], { duration: dur });
+  // where they meet: just past the front edge of the blocker's pushed card
+  const fx0 = ax + ux * (a.width * 0.5 + dist * 0.16), fy0 = ay + uy * (a.height * 0.5 + dist * 0.16);
+  const cx = fx0 + (bx - b.width * 0.5 * ux - fx0) * 0.5, cy = (fy0 + by) / 2;
+  add({ type: "shield", delay: clash - ms(80), life: ms(700), x: fx0 - ux * 34, y: fy0 - uy * 34, r: Math.min(64, a.height * 0.75), ang: Math.atan2(uy, ux), color: col, w: 7 });
+  add({ type: "glow", delay: clash, life: 240, x: cx, y: cy, r0: 20, r1: 60, color: col, pow: 1.4 });
+  add({ type: "glow", delay: clash, life: 140, x: cx, y: cy, r0: 8, r1: 26, color: "#FFFFFF", pow: 2 });
+  add({ type: "ring", delay: clash, life: 420, x: cx, y: cy, r0: 6, r1: 70, color: col, w: 3 });
+  const base = Math.atan2(uy, ux) + Math.PI / 2;
+  [[-0.8, 0.8], [0.8, -0.8]].forEach(([a0, a1], i) => add({ type: "slash", delay: clash + i * ms(40), life: 220, x: cx, y: cy, r: 26, a0: base + a0, a1: base + a1, color: "#FFFFFF", w: 3 }));
+  for (let i = 0; i < 26; i++) { const ang = base + (i % 2 ? 0 : Math.PI) + rnd(-0.7, 0.7), sp = rnd(0.35, 0.9); add({ type: "spark", delay: clash, life: rnd(300, 600), x: cx, y: cy, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, drag: 0.92, g: 0.0011, color: i % 3 ? col : "#FFFFFF", w: rnd(1.6, 3), len: 20 }); }
+  setTimeout(() => fxMove.jolt(other, ux, uy, 12), clash);
+  if (screen) { fxMove.shake(screen, 6, clash, 320); fxMove.border(screen, col, 1.1, clash); }
+  return clash;
 }
 
 // With the phone set to reduce motion: no movement, just a glow around the card that was hit and on the screen frame.
@@ -18355,6 +18407,8 @@ async function runSelfTest(hooks) {
         if (!(hit > 0 && hit < 4000)) bad.push(k + ": hit time " + hit);
         if (!FX.count()) bad.push(k + ": nothing drawn");
       }
+      FX.clear(); playBlockFx({ name: "Chainsword", wr: "-" }, b, a, { screen });
+      if (!FX.count("shield") || !FX.count("spark")) bad.push("a block draws no shield or clash");
       FX.clear(); playAttackFx({ name: "Power fist", type: "melee", wr: "Brutal, Shock" }, a, b, { shock: true, screen });
       if (!FX.count("bolt")) bad.push("Shock: no lightning");
       if (!screen.getAnimations().length) bad.push("the screen doesn't shake or flash");
