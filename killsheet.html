@@ -8324,7 +8324,7 @@ function TurnGuide({ tp, numTPs, setTp, hasInitiative, onInitiative, cp, f, rost
 }
 
 function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen, setTutorialSeen, openTutorial, campaign, setCampaign, onTeamColor, showBattle }) {
-  const mobile = useIsMobile();
+  const phone = useIsMobile();
   const compactBar = useIsMobile(1000); // the full score bar needs about 1000px; below that it uses the phone layout
   const navH = "var(--pinned-h, 54px)"; // height of the pinned tabs and online banner, measured by App
   // Persisted game state
@@ -8351,6 +8351,9 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   const [tacOps, setTacOps] = useLocalStorage("tacOps", []);
   const [missionScore, setMissionScore] = useLocalStorage("missionScore", {}); // MissionScoring ticks and counts
   const [oppRoster, setOppRoster] = useLocalStorage("oppRoster", null);
+  // Ploys, your datacards and theirs side by side need about 1000px. Narrower (an upright iPad), with their team
+  // showing, use the stacked phone layout so the page doesn't scroll sideways.
+  const mobile = phone || (compactBar && !!oppRoster);
   const [oppWounds, setOppWounds] = useLocalStorage("oppWounds", {});
   const [oppCollapsed, setOppCollapsed] = useLocalStorage("oppCollapsed", {});
   const [activated, setActivated] = useLocalStorage("activated", {});
@@ -17770,6 +17773,7 @@ async function runSelfTest(hooks) {
 
   await step("Every tab opens", async () => {
     for (const t of ["Rules", "Missions", "Battle", "Community"]) { await nav(t); if (!all("h1,h2,div").length) throw new Error(t + " is empty"); }
+    if (document.documentElement.scrollWidth > window.innerWidth + 1) throw new Error("the page scrolls sideways (" + document.documentElement.scrollWidth + "px wide in a " + window.innerWidth + "px window)");
     // The tabs and the online banner are pinned together, so the banner can't slide over the tabs.
     const bar = document.querySelector("nav");
     if (getComputedStyle(bar).position === "sticky" || getComputedStyle(bar.parentElement).position !== "sticky") throw new Error("the tab bar isn't pinned together with the online banner");
@@ -18166,6 +18170,7 @@ async function runSelfTest(hooks) {
     const K = FACTIONS.kommandos, theirOps = K.operatives.slice(0, 3).map(o => ({ ...o }));
     hooks.mpMessage({ type: "snapshot", payload: { fid: "kommandos", roster: theirOps, wounds: {} } }); await settle(20);
     await nav("Battle");
+    if (document.documentElement.scrollWidth > window.innerWidth + 1) throw new Error("with their team showing, the Battle page scrolls sideways (" + document.documentElement.scrollWidth + "px in a " + window.innerWidth + "px window)");
     const dlg = () => document.querySelector("[role=dialog][aria-label='Fight']");
     const inDlg = (re) => dlg() && [...dlg().querySelectorAll("button")].find(b => re.test(b.textContent.trim()) && !b.disabled);
     const openFight = async () => {
