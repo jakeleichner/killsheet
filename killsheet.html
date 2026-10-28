@@ -6729,7 +6729,7 @@ const newFight = (id, online, roles, atk) => ({
 const newFightSide = (side, op, weapon) => ({ side, op, weapon: weapon || null, dice: null, rr: [], ready: false });
 const fightWords = (s) => s === "crit" ? "crit" : "normal success";
 
-function FightScreen({ fight, enemies, defWeapons, sideColor, onAct, onClose, onTakeOver, importHint }) {
+function FightScreen({ fight, dropped, enemies, defWeapons, sideColor, onAct, onClose, onTakeOver, importHint }) {
   const { feat } = React.useContext(FeatureCtx);
   const f = fight;
   const mine = (role) => f.roles.includes(role);
@@ -6758,7 +6758,7 @@ function FightScreen({ fight, enemies, defWeapons, sideColor, onAct, onClose, on
   const name = (role) => f[role] && f[role].op ? f[role].op.name : "";
   const who = (role) => mine(role) && f.online ? "You" : name(role);
   const waitingOn = (role) => f.online && !mine(role);
-  const slow = f.online && now - f.changedAt > 60000;
+  const slow = dropped || (f.online && now - f.changedAt > 60000);
   const dieKind = (role, v) => attackDie(v, fightRules(f[role].weapon, f[role].op.injured));
   // Plain functions, not components, so the cards keep the same elements between renders and the animations land on them.
   const dice = (role) => {
@@ -6814,7 +6814,7 @@ function FightScreen({ fight, enemies, defWeapons, sideColor, onAct, onClose, on
   const big = { padding: "10px 14px", fontSize: 13 };
   const wait = (text, key) => (
     <div key={key} style={{ ...mu, fontSize: 14, padding: "8px 0" }}>{text}
-      {slow && <div style={{ marginTop: 8 }}><button onClick={onTakeOver} style={{ ...bs("var(--muted)"), ...big }}>Do it for them</button><div style={{ fontSize: 12, marginTop: 4 }}>No answer for a minute. You can finish this fight on your device.</div></div>}
+      {slow && <div style={{ marginTop: 8 }}><button onClick={onTakeOver} style={{ ...bs("var(--muted)"), ...big }}>Do it for them</button><div style={{ fontSize: 12, marginTop: 4 }}>{dropped ? "Or wait: when you're connected again, it carries on." : "No answer for a minute. You can finish this fight on your device."}</div></div>}
     </div>
   );
 
@@ -6899,6 +6899,7 @@ function FightScreen({ fight, enemies, defWeapons, sideColor, onAct, onClose, on
           <div style={{ fontSize: 14, fontWeight: 700, color: "#E0664A", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.06em", display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="melee" size={14} /> FIGHT{f.online ? " (ONLINE)" : ""}</div>
           {f.stage !== "done" && <button autoFocus onClick={() => onAct({ type: "cancel" })} style={{ ...bs("var(--muted)"), fontSize: 11, padding: "3px 8px" }}><Icon name="x" size={12} /> {live ? "Cancel" : "Stop fight"}</button>}
         </div>
+        {dropped && <div role="status" style={{ ...mu, fontSize: 13, color: "var(--gold)", marginBottom: 8 }}>Connection lost. Your dice and moves are saved here and go to your opponent when you're back online.</div>}
         {f.note && <div style={{ ...mu, fontSize: 13, color: "var(--gold)", marginBottom: 8 }}>{f.note}</div>}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
           {card("atk")}{card("def")}
@@ -6991,7 +6992,7 @@ function reduceShot(s, a) {
   }
 }
 
-function ShootScreen({ shot, options, others, sideColor, onAct, onClose, onTakeOver, importHint }) {
+function ShootScreen({ shot, dropped, options, others, sideColor, onAct, onClose, onTakeOver, importHint }) {
   const { feat } = React.useContext(FeatureCtx);
   const s = shot, t = s.targets[s.ti];
   const mine = (player) => s.roles.includes(player);
@@ -7024,11 +7025,11 @@ function ShootScreen({ shot, options, others, sideColor, onAct, onClose, onTakeO
   }, [s.hot && s.hot.v]);
 
   const sideOf = (owner) => owner === s.mine ? "mine" : "opp";
-  const slow = s.online && now - s.changedAt > 60000;
+  const slow = dropped || (s.online && now - s.changedAt > 60000);
   const big = { padding: "10px 14px", fontSize: 13 };
   const wait = (text, key) => (
     <div key={key} style={{ ...mu, fontSize: 14, padding: "8px 0" }}>{text}
-      {slow && <div style={{ marginTop: 8 }}><button onClick={onTakeOver} style={{ ...bs("var(--muted)"), ...big }}>Do it for them</button><div style={{ fontSize: 12, marginTop: 4 }}>No answer for a minute. You can finish this shot on your device.</div></div>}
+      {slow && <div style={{ marginTop: 8 }}><button onClick={onTakeOver} style={{ ...bs("var(--muted)"), ...big }}>Do it for them</button><div style={{ fontSize: 12, marginTop: 4 }}>{dropped ? "Or wait: when you're connected again, it carries on." : "No answer for a minute. You can finish this shot on your device."}</div></div>}
     </div>
   );
   const atkRules = shotRules(s);
@@ -7209,6 +7210,7 @@ function ShootScreen({ shot, options, others, sideColor, onAct, onClose, onTakeO
           <div style={{ fontSize: 14, fontWeight: 700, color: "var(--accent)", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.06em", display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="ranged" size={14} /> SHOOT{s.online ? " (ONLINE)" : ""}</div>
           {s.stage !== "done" && <button autoFocus onClick={() => onAct({ type: "cancel" })} style={{ ...bs("var(--muted)"), fontSize: 11, padding: "3px 8px" }}><Icon name="x" size={12} /> {early ? "Cancel" : "Stop"}</button>}
         </div>
+        {dropped && <div role="status" style={{ ...mu, fontSize: 13, color: "var(--gold)", marginBottom: 8 }}>Connection lost. Your dice and moves are saved here and go to your opponent when you're back online.</div>}
         {s.note && <div style={{ ...mu, fontSize: 13, color: "var(--gold)", marginBottom: 8 }}>{s.note}</div>}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
           {card("atk")}{card("t")}
@@ -8063,13 +8065,20 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   }, [hasData]);
   // Fights (melee): the Fight screen's state (see reduceFight). fightRef is the latest copy, for messages that arrive between renders;
   // fightApi holds the handlers, which are defined further down.
-  const [fight, setFight] = useState(null);
-  const fightRef = React.useRef(null);
+  // Both are saved, so a reload (a phone often reloads the page after being locked) brings the screen back with its dice.
+  const [fight, setFight] = useLocalStorage("fight", null);
+  const fightRef = React.useRef(fight);
   const fightApi = React.useRef(null);
   // Shooting: the Shoot screen's state (see reduceShot), kept the same way.
-  const [shot, setShot] = useState(null);
-  const shotRef = React.useRef(null);
+  const [shot, setShot] = useLocalStorage("shot", null);
+  const shotRef = React.useRef(shot);
   const shotApi = React.useRef(null);
+  // Back online: send our moves in the shared fight or shot again; the other device skips any it already has.
+  React.useEffect(() => {
+    if (!mp || mp.status !== "connected") return;
+    if (fightApi.current) fightApi.current.resend();
+    if (shotApi.current) shotApi.current.resend();
+  }, [mp && mp.status]);
   // Battle log: every change to an operative's wounds this game, oldest first.
   // { side: "mine" | "opp" (whose operative), target, max, before, after, how: "dice" | "hand" | "self", by, weapon, tp, t }
   const [battleLog, setBattleLog] = useLocalStorage("battleLog", []);
@@ -8114,11 +8123,11 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   const handleMpMessage = (msg) => {
     if (!msg || typeof msg !== "object") return;
     // Fights: the other player started one against us, or took an action in the one we share.
-    if ((msg.type === "fightStart" || msg.type === "fight") && typeof msg.id === "string") {
+    if ((msg.type === "fightStart" || msg.type === "fight" || msg.type === "fightResync") && typeof msg.id === "string") {
       if (fightApi.current) fightApi.current.receive(msg);
       return;
     }
-    if ((msg.type === "shootStart" || msg.type === "shot") && typeof msg.id === "string") {
+    if ((msg.type === "shootStart" || msg.type === "shot" || msg.type === "shotResync") && typeof msg.id === "string") {
       if (shotApi.current) shotApi.current.receive(msg);
       return;
     }
@@ -8671,6 +8680,22 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   // One device runs both sides. Online, each player runs their own side and every action travels as a "fight" message.
   const fightTestSend = () => window.__ksMpTestSend; // the self-test plays the other device
   const fightSend = (msg) => fightTestSend() ? (fightTestSend()(msg), true) : !!(mp && mp.status === "connected" && mp.send(msg));
+  const linkUp = () => !!fightTestSend() || !!(mp && mp.status === "connected");
+  // Moves in a shared fight or shot are numbered (n) and kept in state.out. If the connection drops they wait there;
+  // when it's back, or the other device asks (a gap in the numbers), they're sent again and the other side skips repeats.
+  const postAttack = (state, msg) => {
+    const m = { ...msg, n: (state.out ? state.out.length : 0) + 1 };
+    fightSend(m);
+    return { ...state, out: [...(state.out || []), m] };
+  };
+  const resendAttack = (state) => { if (state && state.wasOnline && state.out) state.out.forEach(m => fightSend(m)); };
+  // Applies the other device's numbered move only in order; a gap asks them to send everything again.
+  const inOrder = (cur, msg, kind) => {
+    if (!msg.n) return true;
+    if (msg.n <= (cur.inN || 0)) return false;
+    if (msg.n > (cur.inN || 0) + 1) { fightSend({ type: kind + "Resync", id: cur.id }); return false; }
+    return true;
+  };
   const oppOps = () => (oppRoster && oppRoster.operatives) || [];
   const fightOpInfo = (side, op) => {
     const start = side === "mine" ? getWounds(op.id, op.wounds) : getOppWounds(op.id, op.wounds);
@@ -8707,17 +8732,16 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
       }
     });
   };
-  const dispatchFight = (action, remote) => {
+  const dispatchFight = (action, remote, n) => {
     const cur = fightRef.current;
     if (!cur) return;
     let next = reduceFight(cur, action);
-    if (next === cur) return;
-    next = { ...next, changedAt: Date.now() };
+    if (next === cur) { if (n) showFight({ ...cur, inN: n }); return; }
+    next = { ...next, changedAt: Date.now(), ...(n ? { inN: n } : {}) };
     if (!remote && cur.online) {
-      const ok = action.type === "target"
-        ? fightSend({ type: "fightStart", id: cur.id, atk: { opId: cur.atk.op.id, weapon: cur.atk.weapon }, def: { opId: action.def.op.id } })
-        : fightSend({ type: "fight", id: cur.id, action });
-      if (!ok) next = { ...next, online: false, roles: ["atk", "def"], note: "The connection dropped, so finish this fight here." };
+      next = postAttack(next, action.type === "target"
+        ? { type: "fightStart", id: cur.id, atk: { opId: cur.atk.op.id, weapon: cur.atk.weapon }, def: { opId: action.def.op.id } }
+        : { type: "fight", id: cur.id, action });
     }
     if (next.stage === "canceled" || next.stage === "takenOver") {
       showFight(null);
@@ -8730,21 +8754,28 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   const okDice = (d) => Array.isArray(d) && d.length <= 20 && d.every(v => Number.isInteger(v) && v >= 1 && v <= 6);
   fightApi.current = {
     escape: () => { const f = fightRef.current; if (!f) return; if (f.stage === "done") showFight(null); else dispatchFight({ type: "cancel" }); },
+    resend: () => resendAttack(fightRef.current),
     receive: (msg) => {
+      const cur = fightRef.current;
+      if (msg.type === "fightResync") { if (cur && cur.id === msg.id) resendAttack(cur); return; }
       if (msg.type === "fightStart") {
+        if (cur && cur.id === msg.id) return; // sent again after a reconnect
         const atkOp = oppOps().find(o => o.id === (msg.atk && msg.atk.opId)), defOp = roster.find(o => o.id === (msg.def && msg.def.opId));
         if (!atkOp || !defOp || !msg.atk.weapon) return;
-        const f = { ...newFight(msg.id, true, ["def"], newFightSide("opp", fightOpInfo("opp", atkOp), fightWeapon(msg.atk.weapon))), wasOnline: true };
+        const f = { ...newFight(msg.id, true, ["def"], newFightSide("opp", fightOpInfo("opp", atkOp), fightWeapon(msg.atk.weapon))), wasOnline: true, inN: msg.n || 0 };
         showFight({ ...f, def: newFightSide("mine", fightOpInfo("mine", defOp)), stage: "weapon" });
         if (showBattle) showBattle();
         return;
       }
-      const a = msg.action, cur = fightRef.current;
-      if (!cur || cur.id !== msg.id || !a || typeof a.type !== "string") return;
-      if (a.role && cur.roles.includes(a.role) && a.type !== "takeover") return; // our own side is only moved from this device
-      if ((a.type === "roll" && !okDice(a.dice)) || (a.type === "reroll" && !okDice([a.v]))) return;
+      const a = msg.action;
+      if (!cur || cur.id !== msg.id) { if (!cur || cur.stage === "done") fightSend({ type: "fightResync", id: msg.id }); return; } // we missed the start
+      if (!a || typeof a.type !== "string" || !inOrder(cur, msg, "fight")) return;
+      // A move we won't apply still counts as received, so the numbers don't look like a gap.
+      const skip = () => { if (msg.n) showFight({ ...cur, inN: msg.n }); };
+      if (a.role && cur.roles.includes(a.role) && a.type !== "takeover") return skip(); // our own side is only moved from this device
+      if ((a.type === "roll" && !okDice(a.dice)) || (a.type === "reroll" && !okDice([a.v]))) return skip();
       if (a.type === "weapon") a.weapon = fightWeapon(a.weapon || {});
-      dispatchFight(a, true);
+      dispatchFight(a, true, msg.n);
     },
   };
   // ── Shooting ──
@@ -8779,19 +8810,17 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
     const hot = (next.hot ? next.hot.dmg : 0) - (prev.hot ? prev.hot.dmg : 0);
     if (hot) { hitOperative(sideOf("A"), next.atk.op.id, hot, {}, next, "self"); showToast(next.atk.op.name + " took " + hot + " damage from Hot", 3000); }
   };
-  const dispatchShot = (action, remote) => {
+  const dispatchShot = (action, remote, n) => {
     const cur = shotRef.current;
     if (!cur) return;
     let next = reduceShot(cur, action);
-    if (next === cur) return;
-    next = { ...next, changedAt: Date.now() };
+    if (next === cur) { if (n) showShot({ ...cur, inN: n }); return; }
+    next = { ...next, changedAt: Date.now(), ...(n ? { inN: n } : {}) };
     if (!remote && cur.online) {
-      let ok = true;
       // Picking targets stays on this device until the attack starts; then both devices get the whole card.
       if (action.type === "target" || action.type === "more") {
-        if (next.stage === "attack") ok = fightSend({ type: "shootStart", id: cur.id, atk: { opId: cur.atk.op.id, weapon: cur.atk.weapon }, targets: next.targets.map(t => ({ owner: t.owner, opId: t.op.id })) });
-      } else ok = fightSend({ type: "shot", id: cur.id, action });
-      if (!ok) next = { ...next, online: false, roles: ["A", "B"], note: "The connection dropped, so finish this here." };
+        if (next.stage === "attack") next = postAttack(next, { type: "shootStart", id: cur.id, atk: { opId: cur.atk.op.id, weapon: cur.atk.weapon }, targets: next.targets.map(t => ({ owner: t.owner, opId: t.op.id })) });
+      } else next = postAttack(next, { type: "shot", id: cur.id, action });
     }
     if (next.stage === "canceled" || next.stage === "takenOver") {
       showShot(null);
@@ -8803,8 +8832,11 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   };
   shotApi.current = {
     escape: () => { const x = shotRef.current; if (!x) return; if (x.stage === "done") showShot(null); else dispatchShot({ type: "cancel" }); },
+    resend: () => resendAttack(shotRef.current),
     receive: (msg) => {
+      if (msg.type === "shotResync") { if (shotRef.current && shotRef.current.id === msg.id) resendAttack(shotRef.current); return; }
       if (msg.type === "shootStart") {
+        if (shotRef.current && shotRef.current.id === msg.id) return; // sent again after a reconnect
         const atkOp = oppOps().find(o => o.id === (msg.atk && msg.atk.opId));
         if (!atkOp || !msg.atk.weapon || !Array.isArray(msg.targets) || !msg.targets.length) return;
         const targets = msg.targets.map(x => {
@@ -8813,29 +8845,31 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
           return op ? newShotTarget(owner, shotOpInfo(side, op)) : null;
         });
         if (targets.some(x => !x)) return;
-        showShot({ ...newShot(msg.id, true, "B", shotOpInfo("opp", atkOp), fightWeapon(msg.atk.weapon)), targets, stage: "attack" });
+        showShot({ ...newShot(msg.id, true, "B", shotOpInfo("opp", atkOp), fightWeapon(msg.atk.weapon)), targets, stage: "attack", inN: msg.n || 0 });
         if (showBattle) showBattle();
         return;
       }
       const a = msg.action, cur = shotRef.current;
-      if (!cur || cur.id !== msg.id || !a || typeof a.type !== "string") return;
+      if (!cur || cur.id !== msg.id) { if (!cur || cur.stage === "done") fightSend({ type: "shotResync", id: msg.id }); return; } // we missed the start
+      if (!a || typeof a.type !== "string" || !inOrder(cur, msg, "shot")) return;
       const actor = shotActor(cur, a);
-      if (a.type !== "cancel" && a.type !== "takeover" && (!actor || cur.roles.includes(actor))) return; // each device only moves its own side
-      if ((a.type === "roll" && !okDice(a.dice)) || ((a.type === "reroll" || a.type === "hot") && !okDice([a.v]))) return;
-      dispatchShot(a, true);
+      const skip = () => { if (msg.n) showShot({ ...cur, inN: msg.n }); }; // still counts as received
+      if (a.type !== "cancel" && a.type !== "takeover" && (!actor || cur.roles.includes(actor))) return skip(); // each device only moves its own side
+      if ((a.type === "roll" && !okDice(a.dice)) || ((a.type === "reroll" || a.type === "hot") && !okDice([a.v]))) return skip();
+      dispatchShot(a, true, msg.n);
     },
   };
   const takeOverShot = () => {
     const cur = shotRef.current;
     if (!cur) return;
-    fightSend({ type: "shot", id: cur.id, action: { type: "takeover" } });
-    showShot({ ...cur, online: false, roles: ["A", "B"], note: "You're finishing this for both sides.", changedAt: Date.now() });
+    const sent = postAttack(cur, { type: "shot", id: cur.id, action: { type: "takeover" } }); // reaches them when they're back
+    showShot({ ...sent, online: false, roles: ["A", "B"], note: "You're finishing this for both sides.", changedAt: Date.now() });
   };
   const takeOverFight = () => {
     const cur = fightRef.current;
     if (!cur) return;
-    fightSend({ type: "fight", id: cur.id, action: { type: "takeover" } });
-    showFight({ ...cur, online: false, roles: ["atk", "def"], note: "You're finishing this fight for both sides.", changedAt: Date.now() });
+    const sent = postAttack(cur, { type: "fight", id: cur.id, action: { type: "takeover" } }); // reaches them when they're back
+    showFight({ ...sent, online: false, roles: ["atk", "def"], note: "You're finishing this fight for both sides.", changedAt: Date.now() });
   };
 
   const printRoster = () => {
@@ -9173,7 +9207,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
         const taken = new Set(shot.targets.map(t => t.owner + t.op.id).concat("A" + shot.atk.op.id));
         const others = shot.stage === "more" ? [...opsOf("B").map(op => entry("B", op)), ...opsOf("A").map(op => entry("A", op))].filter(e => alive(e) && !taken.has(e.key)) : [];
         const oppColor = oppF ? oppF.color : "var(--muted)";
-        return <ShootScreen shot={shot} options={options} others={others}
+        return <ShootScreen shot={shot} dropped={shot.online && !linkUp()} options={options} others={others}
           sideColor={(side) => side === "mine" ? (f ? f.color : "var(--accent)") : oppColor}
           onAct={(a) => dispatchShot(a, false)} onClose={() => showShot(null)} onTakeOver={takeOverShot}
           importHint={sideOf("B") === "opp" ? "Their team isn't in KillSheet yet. Import their roster from the ⋯ menu on the team bar, or play online, to shoot their operatives here." : "None of your operatives can be shot."} />;
@@ -9184,7 +9218,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
         const enemies = fight.stage === "target" ? enemyOps.map(op => ({ op, side: enemySide, info: fightOpInfo(enemySide, op) })).filter(e => e.info.start > 0) : [];
         const defOp = fight.def && (fight.def.side === "mine" ? roster : oppOps()).find(o => o.id === fight.def.op.id);
         const oppColor = oppF ? oppF.color : "var(--muted)";
-        return <FightScreen fight={fight} enemies={enemies} defWeapons={fight.stage === "weapon" && defOp && fight.roles.includes("def") ? meleeFor(fight.def.side, defOp) : []}
+        return <FightScreen fight={fight} dropped={fight.online && !linkUp()} enemies={enemies} defWeapons={fight.stage === "weapon" && defOp && fight.roles.includes("def") ? meleeFor(fight.def.side, defOp) : []}
           sideColor={(side) => side === "mine" ? (f ? f.color : "var(--accent)") : oppColor}
           onAct={(a) => dispatchFight(a, false)} onClose={() => showFight(null)} onTakeOver={takeOverFight}
           importHint={enemySide === "opp" ? "Their team isn't in KillSheet yet. Import their roster from the ⋯ menu on the team bar, or play online, to fight their operatives here." : "None of your operatives can fight back."} />;
@@ -17632,12 +17666,25 @@ async function runSelfTest(hooks) {
       const mineOp = (store("roster") || []).find(o => ((store("wounds") || {})[o.id] ?? o.wounds) > 0);
       const before = (store("wounds") || {})[mineOp.id] ?? mineOp.wounds;
       const gun = theirOps.find(o => o.ranged.length).ranged[0];
-      hooks.mpMessage({ type: "shootStart", id: "ss1", atk: { opId: theirOps.find(o => o.ranged.length).id, weapon: gun }, targets: [{ owner: "B", opId: mineOp.id }] }); await settle(20);
+      hooks.mpMessage({ type: "shootStart", id: "ss1", n: 1, atk: { opId: theirOps.find(o => o.ranged.length).id, weapon: gun }, targets: [{ owner: "B", opId: mineOp.id }] }); await settle(20);
       if (!dlg() || !/Waiting for your opponent to roll attack dice/.test(dlg().innerText)) throw new Error("their attack card didn't open here, waiting for their roll");
-      hooks.mpMessage({ type: "shot", id: "ss1", action: { type: "roll", who: "a", dice: [6, 6, 6, 6] } });
-      hooks.mpMessage({ type: "shot", id: "ss1", action: { type: "ready", who: "a" } }); await settle(20);
-      if (!/is shooting your/.test(dlg().innerText)) throw new Error("no defense prompt after their roll");
-      await playOut(async () => { hooks.mpMessage({ type: "shot", id: "ss1", action: { type: "next" } }); await settle(20); });
+      // A lost message: their "ready" (3) arrives without the roll (2). We wait and ask them to send everything again.
+      hooks.mpMessage({ type: "shot", id: "ss1", n: 3, action: { type: "ready", who: "a" } }); await settle(20);
+      if (!sent.some(m => m.type === "shotResync" && m.id === "ss1")) throw new Error("a gap in their moves didn't ask for a resend");
+      if (/is shooting your/.test(dlg().innerText)) throw new Error("a move was applied out of order");
+      if (!store("shot") || store("shot").id !== "ss1") throw new Error("the shot in progress isn't saved for a reload");
+      hooks.mpMessage({ type: "shootStart", id: "ss1", n: 1, atk: { opId: theirOps.find(o => o.ranged.length).id, weapon: gun }, targets: [{ owner: "B", opId: mineOp.id }] });
+      hooks.mpMessage({ type: "shot", id: "ss1", n: 2, action: { type: "roll", who: "a", dice: [6, 6, 6, 6] } });
+      hooks.mpMessage({ type: "shot", id: "ss1", n: 3, action: { type: "ready", who: "a" } });
+      hooks.mpMessage({ type: "shot", id: "ss1", n: 2, action: { type: "roll", who: "a", dice: [1, 1, 1, 1] } }); await settle(20); // a repeat: skipped
+      if (!/is shooting your/.test(dlg().innerText)) throw new Error("no defense prompt after their resent roll");
+      if (!/4 crits/.test(dlg().innerText)) throw new Error("a repeated message changed their dice");
+      await playOut(async () => { hooks.mpMessage({ type: "shot", id: "ss1", n: 4, action: { type: "next" } }); await settle(20); });
+      // They ask us to resend (they lost something): our moves go again with the same numbers.
+      const ours = sent.filter(m => m.type === "shot").length;
+      hooks.mpMessage({ type: "shotResync", id: "ss1" }); await settle(20);
+      const again = sent.filter(m => m.type === "shot").slice(ours);
+      if (!again.length || again[0].n !== 1) throw new Error("a resend request didn't send our moves again from the start");
       const after = (store("wounds") || {})[mineOp.id];
       if (!(after < before)) throw new Error("four crits didn't take wounds off " + mineOp.name + " (" + before + " to " + after + ")");
       if (!sent.some(m => m.type === "shot" && m.action.type === "roll" && m.action.who === "d")) throw new Error("our defense roll wasn't sent");

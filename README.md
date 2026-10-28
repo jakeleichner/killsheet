@@ -182,6 +182,11 @@ Planned implementation:
 Estimated 2-3 hours. Should be its own focused session with its own QA pass (mixing infra + UI changes tends to combine bugs confusingly).
 
 ### Done recently
+- Fixed (owner report, Oct 27): losing the connection lost the dice in a shared shot or fight. The Fight and Shoot screens only lived in memory, and a phone that loses connection has usually been locked, which often reloads the page; a move sent just as the link died could also vanish, leaving both sides waiting. Now:
+  - The screen in progress is saved (`ks_fight`, `ks_shot`), so a reload brings it back with its dice. This also helps on one device.
+  - Every move sent is numbered (`n`) and kept in `state.out`. The receiver applies them strictly in order (`inN`); a gap sends `fightResync`/`shotResync`, and the other side sends all its moves again; repeats are skipped. A start message for a fight we already have is ignored; a move for a fight we don't have asks for a resend.
+  - When the connection comes back (`mp.status` becomes connected) both devices resend their moves. While it's down, the screen says the dice and moves are saved, and "Do it for them" shows straight away (it's delivered once back online).
+  - Self-test (Shooting step): a gap triggers a resend request and nothing is applied out of order, the shot in progress is saved, a repeated message doesn't change the dice, and a resend request sends our moves again from 1. Checked by hand: rolled, reloaded, the Shoot screen came back with the same dice. 18 steps; pass at phone and desktop width and on the upload build.
 - Shooting with a shared attack card (shared attacks parts 1 and 3, plus hand-over and real dice; Oct 27). Ranged weapons have a Shoot button; the old `DiceRoller` (with its Roll button, recent-roll history and Balanced/Ceaseless/Relentless buttons) and the old "who took the damage" target screen are gone. The Shoot screen (`ShootScreen`, rules in the pure `reduceShot`):
   - Pick the target first (a valid target reminder). Blast and Torrent then ask for the extra targets (Blast lists friends too); each target gets its own attack roll and defense roll, "Target 2 of 3".
   - Attack: Obscured switch, Roll or "Enter real dice" (tap each die to set it), tap a die to re-roll it once, then "Send to defender" (online) or "Done: defense next". No hits skips defense.

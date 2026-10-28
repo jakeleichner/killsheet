@@ -30,7 +30,8 @@ mobile data instead of Wi-Fi, so the two are on different networks.
 | 8 | On A, open a datacard and tap Fight on a melee weapon, then pick one of B's operatives. | B switches to the Battle tab and shows the Fight screen asking which weapon fights back. |
 | 9 | On B, pick a weapon. Each roll on your own device and tap Done rolling. Then take turns: Strike or Block. | Both screens show both sets of dice, whose turn it is, and the slash and damage number on every strike. Wounds drop on both screens. |
 | 10 | Start another fight, and on B don't answer for a minute. | A shows "Do it for them"; tapping it lets A finish the fight, and B's screen closes. |
-| 11 | On A, tap Disconnect. | B says "Your opponent ended the online game" and doesn't keep trying. |
+| 11 | Start a shot on A and roll the attack dice. Before B rolls defense, put B on Airplane Mode for 20 seconds (or lock it for a minute), then reconnect and rejoin. | B's attack card is still there with A's dice; B can roll defense and A gets the result. Same if A's phone reloads the page: the screen comes back with its dice. |
+| 12 | On A, tap Disconnect. | B says "Your opponent ended the online game" and doesn't keep trying. |
 
 ## 3. Screen and saved data on your phone
 
