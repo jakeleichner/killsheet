@@ -182,6 +182,7 @@ Planned implementation:
 Estimated 2-3 hours. Should be its own focused session with its own QA pass (mixing infra + UI changes tends to combine bugs confusingly).
 
 ### Done recently
+- Phones: the pinned tabs and online banner slide away when you scroll down and come back when you scroll up (owner agreed, Oct 27). Ignores jitters (30px down to hide, 15px up to show), always shown within 120px of the top, on tab change, and when an online game drops. No slide with reduced motion. Computers keep them pinned. App measures the pinned block into `--pinned-h` (0 while hidden), and the Battle score bar and side panels use it instead of the old fixed 54px, which also fixes the score bar sitting under the online banner. New self-test step "Tabs slide away when scrolling on phones" (17 steps).
 - Fixed (owner report, Oct 27): while online, the connection banner covered the tab bar (and the desktop cog) once you scrolled, because both were pinned to the top on their own. They now sit in one pinned block: tabs on top, banner as a strip underneath. On phones the logo and cog still scroll away with the page, as before. "Every tab opens" checks the pinned block.
 - Keep the screen on, crash safety net, protect saved data (Oct 26).
   - Screen on: `useKeepAwake(rosterLocked && feat.awake)` in Builder holds a Screen Wake Lock while a game is in progress and asks again when the page comes back into view. New switch "Keep the screen on" (While you play, on in both presets). The preview browser refuses wake locks for every page, so it's only been seen as "refused" there; DEVICE_TESTS.md has a phone check.
@@ -308,7 +309,7 @@ Estimated 2-3 hours. Should be its own focused session with its own QA pass (mix
 
 Four layers, from cheapest to most effort:
 1. `python3 tools/check.py` before every push (structure: hooks before early returns, tab icons, storage keys, print classes, setters).
-2. The self-test (`?selftest`, 16 steps) at phone and desktop width on the editable copy, and on the compiled `deploy/` build (copy `deploy/` to `/tmp/killsheet-preview/live/` and load `/live/?selftest`). It clicks through every tab, pack, map and team, and has pure checks with fixed inputs: "Dice maths" (26 cases covering each weapon rule, cover, Obscured, blocking and fights) and "Old saves get current datacards".
+2. The self-test (`?selftest`, 17 steps) at phone and desktop width on the editable copy, and on the compiled `deploy/` build (copy `deploy/` to `/tmp/killsheet-preview/live/` and load `/live/?selftest`). It clicks through every tab, pack, map and team, and has pure checks with fixed inputs: "Dice maths" (26 cases covering each weapon rule, cover, Obscured, blocking and fights) and "Old saves get current datacards".
 3. Offline mode: serve `deploy/`, load with `?sw=1`, stop the server, reload. Unregister the service worker afterwards.
 4. Device tests the owner runs: `DEVICE_TESTS.md` (the self-test in iPhone Safari, online play on two devices and two networks, offline on a phone).
 

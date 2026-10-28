@@ -7535,7 +7535,7 @@ const TEAM_SEARCH_WORDS = { gellerpox: "nurgle", goremongers: "khorne", warpcove
 const searchNorm = (t) => t.toLowerCase().replace(/\u00ad/g, "").replace(/[^a-z0-9 ]/g, "");
 const factionSearchText = (fc) => searchNorm([fc.name, fc.badge, factionGroup(fc), BADGE_SEARCH_WORDS[fc.badge] || "", TEAM_SEARCH_WORDS[fc.id] || ""].join(" "));
 
-// Builder score bar: sticky under the nav (navH is set in Builder). BAR_H offsets the other sticky panels.
+// Builder score bar: sticky under the pinned tabs (App measures them into --pinned-h; 0 while they're hidden). BAR_H offsets the other sticky panels.
 const BAR_H = 66;
 function Stepper({ label, value, color, onMinus, onPlus, compact, term }) {
   const btn = { width: 34, height: 34, border: "1px solid var(--line)", borderRadius: 6, background: "var(--card)", cursor: "pointer", fontSize: 18, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 };
@@ -7718,7 +7718,7 @@ function TurnGuide({ tp, numTPs, setTp, hasInitiative, onInitiative, cp, f, rost
 function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen, setTutorialSeen, openTutorial, campaign, setCampaign, onTeamColor }) {
   const mobile = useIsMobile();
   const compactBar = useIsMobile(1000); // the full score bar needs about 1000px; below that it uses the phone layout
-  const navH = mobile ? 54 : 52; // height of the sticky tab bar
+  const navH = "var(--pinned-h, 54px)"; // height of the pinned tabs and online banner, measured by App
   // Persisted game state
   const [gameConfig, setGameConfig] = useLocalStorage("gameConfig", null);
   const [fid, setFid] = useLocalStorage("fid", null);
@@ -9286,7 +9286,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
       {f && !pickerOpen && (
         <div className="ks-appear">
           {/* Score bar: slim, stays under the nav while you scroll. Only during a game. */}
-          <div style={{ position: "sticky", top: navH, zIndex: 9, background: "var(--bg)", padding: "6px 0", marginBottom: 6, display: rosterLocked ? "block" : "none" }}>
+          <div style={{ position: "sticky", top: navH, zIndex: 9, background: "var(--bg)", padding: "6px 0", marginBottom: 6, display: rosterLocked ? "block" : "none", transition: "top 0.2s ease-out" }}>
             <div style={{ ...cd, marginBottom: 0, padding: mobile ? "8px 8px" : "8px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: compactBar ? 6 : 14 }}>
               {compactBar ? (
                 <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
@@ -9422,7 +9422,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
 
         <div style={{ display: "flex", gap: 14, flexWrap: mobile ? "wrap" : "nowrap", alignItems: "flex-start" }}>
           {/* LEFT PANEL */}
-          <div style={{ width: mobile ? "100%" : 260, flexShrink: 0, display: mobile && mobilePanel !== "roster" ? "none" : "block", position: mobile ? "static" : "sticky", top: mobile ? "auto" : navH + barH, maxHeight: mobile ? "none" : "calc(100vh - " + (navH + barH + 10) + "px)", overflowY: mobile ? "visible" : "auto", overflowX: "hidden" }}>
+          <div style={{ width: mobile ? "100%" : 260, flexShrink: 0, display: mobile && mobilePanel !== "roster" ? "none" : "block", position: mobile ? "static" : "sticky", top: mobile ? "auto" : "calc(" + navH + " + " + barH + "px)", maxHeight: mobile ? "none" : "calc(100vh - " + navH + " - " + (barH + 10) + "px)", overflowY: mobile ? "visible" : "auto", overflowX: "hidden" }}>
 
             {/* Roster Section: collapsible when locked */}
             {rosterLocked ? (
@@ -9757,7 +9757,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
             ) : (
               <div>
                 {/* Sticky faction bar */}
-                <div style={{ position: mobile ? "static" : "sticky", top: navH + barH, zIndex: 8, background: "var(--bg)", paddingBottom: 6 }}>
+                <div style={{ position: mobile ? "static" : "sticky", top: "calc(" + navH + " + " + barH + "px)", zIndex: 8, background: "var(--bg)", paddingBottom: 6 }}>
                   <div style={{ background: "linear-gradient(135deg, " + f.color + "18, var(--card))", border: "1px solid " + al(f.color, "35"), borderRadius: 4, padding: "8px 12px", display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "0 3px 12px rgba(0,0,0,0.6)" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
                       {!mobile && <div style={bg(f.color)}>{f.badge}</div>}
@@ -9847,7 +9847,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
             <div style={{ width: oppRoster ? 320 : 0, flexShrink: 0, transition: "width 0.3s", overflow: "hidden" }}>
               {oppRoster ? (
                 <div style={{ width: 320 }}>
-                  <div style={{ position: "sticky", top: navH + barH, maxHeight: "calc(100vh - " + (navH + barH + 10) + "px)", overflowY: "auto", overflowX: "hidden" }}>
+                  <div style={{ position: "sticky", top: "calc(" + navH + " + " + barH + "px)", maxHeight: "calc(100vh - " + navH + " - " + (barH + 10) + "px)", overflowY: "auto", overflowX: "hidden" }}>
                     <div style={{ background: "linear-gradient(135deg, " + "#B8341C" + "18, var(--card))", border: "1px solid " + al("#B8341C", "35"), borderRadius: 4, padding: "8px 12px", marginBottom: 6, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <div>
                         <div style={{ fontSize: 14, fontWeight: 700, color: "#E0664A", fontFamily: "'Rajdhani', sans-serif" }}>{oppF ? oppF.name : "Opponent"}</div>
@@ -17318,6 +17318,22 @@ async function runSelfTest(hooks) {
     if (all("[role=alert]").some(a => /Something went wrong/.test(a.textContent))) throw new Error("Try again didn't bring the tab back");
     return "screen lock " + window.__ksAwake + "; crash screen shows and recovers";
   });
+  await step("Tabs slide away when scrolling on phones", async () => {
+    await nav("Battle");
+    const bar = document.querySelector("[data-pinned]");
+    const pinned = () => getComputedStyle(document.documentElement).getPropertyValue("--pinned-h").trim();
+    const go = async (y) => { window.scrollTo(0, y); await wait(60); await settle(); };
+    await go(0);
+    if (document.documentElement.scrollHeight - window.innerHeight < 800) return "page too short to scroll here, skipped";
+    for (const y of [200, 400, 700]) await go(y);
+    const phone = window.innerWidth < 700;
+    if (phone && (bar.dataset.pinned !== "hidden" || pinned() !== "0px")) throw new Error("scrolling down on a phone didn't hide the tabs");
+    if (!phone && bar.dataset.pinned !== "shown") throw new Error("the tabs hid on a computer");
+    await go(650);
+    if (bar.dataset.pinned !== "shown" || pinned() === "0px") throw new Error("scrolling up didn't bring the tabs back");
+    await go(0);
+    return phone ? "hide on scroll down, back on scroll up" : "stay pinned on a computer";
+  });
   await step("Appearance: themes and Match my team", async () => {
     const rgb = (h) => "rgb(" + hexRgb(h).join(", ") + ")";
     await click(all("button[aria-label='Settings']")[0], "Settings cog");
@@ -17488,6 +17504,36 @@ function App() {
   }, [tab]);
   const [tp, setTp] = useLocalStorage("tp", 1);
   const mobile = useIsMobile();
+  // Phones: the pinned tabs (and online banner) slide away when you scroll down and come back when you scroll up.
+  // Small jitters don't count; near the top they always show. --pinned-h tells the Battle score bar where to sit.
+  const [barHidden, setBarHidden] = useState(false);
+  const pinnedRef = React.useRef(null);
+  const scrollState = React.useRef({ y: 0, anchor: 0, dir: 0 });
+  React.useEffect(() => {
+    if (!mobile) { setBarHidden(false); return; }
+    const onScroll = () => {
+      const r = scrollState.current, y = window.scrollY, dir = y > r.y ? 1 : y < r.y ? -1 : 0;
+      if (dir && dir !== r.dir) { r.dir = dir; r.anchor = r.y; }
+      r.y = y;
+      if (y < 120) setBarHidden(false);
+      else if (dir > 0 && y - r.anchor > 30) setBarHidden(true);
+      else if (dir < 0 && r.anchor - y > 15) setBarHidden(false);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [mobile]);
+  const [pinnedH, setPinnedH] = useState(54);
+  React.useLayoutEffect(() => {
+    const el = pinnedRef.current;
+    if (!el) return;
+    const measure = () => setPinnedH(el.offsetHeight);
+    measure();
+    const ro = window.ResizeObserver ? new ResizeObserver(measure) : null;
+    if (ro) ro.observe(el);
+    return () => ro && ro.disconnect();
+  }, []);
+  React.useLayoutEffect(() => { document.documentElement.style.setProperty("--pinned-h", (barHidden ? 0 : pinnedH) + "px"); }, [barHidden, pinnedH]);
+  React.useEffect(() => { setBarHidden(false); }, [tab]);
   // Enter or Space on a focused role="button" element acts like a click (buttons do this already).
   React.useEffect(() => {
     const onKey = (e) => {
@@ -17502,6 +17548,8 @@ function App() {
   const mpHandlerRef = React.useRef(null);
   const mp = useMultiplayer((msg) => { if (mpHandlerRef.current) mpHandlerRef.current(msg); });
   const [showMP, setShowMP] = useState(false);
+  // A dropped online game brings the hidden tabs back, so the Rejoin banner is seen.
+  React.useEffect(() => { if (mp.status === "idle" || mp.status === "error" || mp.lost) setBarHidden(false); }, [mp.status, mp.lost]);
 
   return (
     <FeatureCtx.Provider value={featureCtx}>
@@ -17518,7 +17566,7 @@ function App() {
       )}
 
       {/* Tabs and the online banner stay pinned at the top together */}
-      <div style={{ position: "sticky", top: 0, zIndex: 10 }}>
+      <div ref={pinnedRef} data-pinned={barHidden ? "hidden" : "shown"} style={{ position: "sticky", top: 0, zIndex: 10, transform: barHidden ? "translateY(-100%)" : "none", transition: window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "none" : "transform 0.2s ease-out" }}>
       {/* NAV */}
       <nav style={{ display: "flex", background: "var(--card)", borderBottom: "1px solid var(--line)", boxShadow: "0 2px 12px rgba(0,0,0,0.5)" }}>
         {!mobile && (
