@@ -6663,10 +6663,21 @@ const otherRole = (r) => r === "atk" ? "def" : "atk";
 const fightDmg = (w, s) => { const [n, c] = String(w.dmg).split("/").map(x => parseInt(x, 10) || 0); return s === "crit" ? c : n; };
 const fightRules = (w, injured) => { const r = diceRules(w); if (injured) r.hit = Math.min(6, r.hit + 1); return r; };
 const fightDiceCount = (w) => Math.max(0, (parseInt(w.atk, 10) || 0) - diceRules(w).accurate);
-function fightSuccesses(side) {
-  const x = attackResult(side.dice || [], fightRules(side.weapon, side.op.injured), false);
-  return [...Array(x.crits).fill("crit"), ...Array(x.hits).fill("norm")];
+// Each die as a slot { v, kind: "crit" | "norm" | "fail", auto?, rule? }, with Accurate's kept dice added (no value)
+// and Severe, Rending and Punishing applied to particular dice, matching attackResult's counts. This is what lets
+// the screen show which die struck, blocked or was lost.
+function fightSlots(side) {
+  const r = fightRules(side.weapon, side.op.injured);
+  const slots = (side.dice || []).map(v => { const k = attackDie(v, r); return { v, kind: k === "hit" ? "norm" : k }; });
+  for (let i = 0; i < r.accurate; i++) slots.push({ v: null, kind: "norm", auto: true, rule: "Accurate" });
+  const first = (kind) => slots.findIndex(x => x.kind === kind);
+  let severe = false;
+  if (r.severe && first("crit") < 0 && first("norm") >= 0) { slots[first("norm")] = { ...slots[first("norm")], kind: "crit", rule: "Severe" }; severe = true; }
+  if (r.rending && !severe && first("crit") >= 0 && first("norm") >= 0) slots[first("norm")] = { ...slots[first("norm")], kind: "crit", rule: "Rending" };
+  if (r.punishing && !severe && first("crit") >= 0 && first("fail") >= 0) slots[first("fail")] = { ...slots[first("fail")], kind: "norm", rule: "Punishing" };
+  return slots;
 }
+const fightSuccesses = (side) => fightSlots(side).filter(x => x.kind !== "fail").sort((a, b) => (a.kind === "crit" ? 0 : 1) - (b.kind === "crit" ? 0 : 1)).map(x => x.kind);
 // Brutal: the opponent can only block this weapon's successes with crits.
 const canFightBlock = (use, hit, theirWeapon) => (use === "crit" || hit === "norm") && (use === "crit" || !/\bBrutal\b/.test(theirWeapon.wr || ""));
 const fightHp = (f, role) => f[role].op.start - f.dmg[role];
@@ -6684,35 +6695,40 @@ function reduceFight(f, a) {
     case "ready": {
       const n = { ...f, [a.role]: { ...f[a.role], ready: true } };
       if (!n.atk.ready || !n.def.ready) return n;
-      const left = { atk: fightSuccesses(n.atk), def: fightSuccesses(n.def) };
+      const slots = { atk: fightSlots(n.atk), def: fightSlots(n.def) };
+      const order = (sl) => sl.map((x, i) => i).filter(i => sl[i].kind !== "fail").sort((x, y) => (sl[x].kind === "crit" ? 0 : 1) - (sl[y].kind === "crit" ? 0 : 1) || x - y);
+      const left = { atk: order(slots.atk), def: order(slots.def) };
       const stage = left.atk.length || left.def.length ? "resolve" : "done";
-      return { ...n, left, stage, turn: left.atk.length ? "atk" : "def" };
+      return { ...n, slots, left, used: { atk: {}, def: {} }, stage, turn: left.atk.length ? "atk" : "def" };
     }
     case "act": {
       const me = a.role, them = otherRole(me);
       if (f.stage !== "resolve" || f.turn !== me) return f;
-      const left = { atk: [...f.left.atk], def: [...f.left.def] };
-      const i = left[me].indexOf(a.use);
-      if (i < 0) return f;
-      const dmg = { ...f.dmg }, shockUsed = { ...f.shockUsed }, entry = { role: me, kind: a.kind, use: a.use };
+      const sl = f.slots, kindOf = (r, i) => sl[r][i].kind;
+      // a.i / a.j are slot indices; older messages name a kind (use / hit) and take the first one of it.
+      const i = Number.isInteger(a.i) ? a.i : f.left[me].find(x => kindOf(me, x) === a.use);
+      if (!f.left[me].includes(i)) return f;
+      const left = { atk: [...f.left.atk], def: [...f.left.def] }, used = { atk: { ...f.used.atk }, def: { ...f.used.def } };
+      const dmg = { ...f.dmg }, shockUsed = { ...f.shockUsed }, entry = { role: me, kind: a.kind, use: kindOf(me, i), i };
+      const take = (r, x) => { left[r] = left[r].filter(y => y !== x); };
       if (a.kind === "strike") {
-        left[me].splice(i, 1);
-        entry.dmg = fightDmg(f[me].weapon, a.use);
+        take(me, i); used[me][i] = "Strike";
+        entry.dmg = fightDmg(f[me].weapon, entry.use);
         dmg[them] += entry.dmg;
         // Shock: the first crit you strike with also discards one of their normal successes (a crit if they have no normals).
-        if (a.use === "crit" && /\bShock\b/.test(f[me].weapon.wr || "") && !shockUsed[me]) {
+        if (entry.use === "crit" && /\bShock\b/.test(f[me].weapon.wr || "") && !shockUsed[me]) {
           shockUsed[me] = true;
-          const j = left[them].indexOf("norm") >= 0 ? left[them].indexOf("norm") : left[them].indexOf("crit");
-          if (j >= 0) entry.shock = left[them].splice(j, 1)[0];
+          const j = left[them].find(x => kindOf(them, x) === "norm") ?? left[them].find(x => kindOf(them, x) === "crit");
+          if (j !== undefined) { take(them, j); used[them][j] = "Lost"; entry.shock = kindOf(them, j); }
         }
       } else {
-        const j = left[them].indexOf(a.hit);
-        if (j < 0 || !canFightBlock(a.use, a.hit, f[them].weapon)) return f;
-        left[me].splice(i, 1);
-        left[them].splice(j, 1);
-        entry.hit = a.hit;
+        const j = Number.isInteger(a.j) ? a.j : left[them].find(x => kindOf(them, x) === a.hit);
+        if (!left[them].includes(j) || !canFightBlock(entry.use, kindOf(them, j), f[them].weapon)) return f;
+        take(me, i); used[me][i] = "Block";
+        take(them, j); used[them][j] = "Lost";
+        entry.hit = kindOf(them, j); entry.j = j;
       }
-      const n = { ...f, left, dmg, shockUsed, log: [...f.log, entry] };
+      const n = { ...f, left, used, dmg, shockUsed, log: [...f.log, entry] };
       const over = fightHp(n, "atk") <= 0 || fightHp(n, "def") <= 0 || (!left.atk.length && !left.def.length);
       return { ...n, stage: over ? "done" : "resolve", turn: left[them].length ? them : me };
     }
@@ -6730,6 +6746,37 @@ const newFight = (id, online, roles, atk) => ({
 const newFightSide = (side, op, weapon) => ({ side, op, weapon: weapon || null, dice: null, rr: [], ready: false });
 const fightWords = (s) => s === "crit" ? "crit" : "normal success";
 
+// The ⓘ on the Fight and Shoot screens: how it works, in a few lines, inside the screen (not another pop-up).
+const ATTACK_HELP = {
+  fight: [
+    "Both players roll attack dice with a melee weapon: a 6 is a crit, at or above Hit is a normal success, a 1 always fails.",
+    "Then, starting with the attacker, take turns using one success. Strike deals its damage now. Block cancels one of the opponent's successes: a normal blocks a normal, a crit blocks either.",
+    "When one side runs out, the other uses the rest. The fight ends when both are out or someone is incapacitated.",
+    "Brutal: only crits can block it. Shock: the first crit you strike with also knocks out one of their normal successes.",
+    "Dice: bright ones are still to use, faded ones are used, lost or failed. Before you're done rolling, tap a die to re-roll it (each die once). A Command Re-roll costs 1CP: take it off yourself.",
+  ],
+  shoot: [
+    "Pick the target first. It has to be visible, and an operative on Conceal in cover can't be picked.",
+    "Attack dice: at or above Hit is a hit, a 6 is a crit, a 1 always misses. Obscured: crits count as hits and one hit is lost.",
+    "The target's player rolls 3 defense dice (fewer with Piercing): at or above Save is a save, a 6 is a crit save. In cover, one save is kept without rolling (not against Saturate).",
+    "Saves block hits: a normal save blocks a normal hit, two normal saves block a crit, a crit save blocks either. Whatever gets through deals damage.",
+    "Blast and Torrent: each extra target gets its own attack and defense roll.",
+    "Tap a die to re-roll it once (the attacker can until the defender rolls). Rolled real dice at the table? Use Enter real dice. A Command Re-roll costs 1CP: take it off yourself.",
+  ],
+};
+function AttackHelp({ kind, open }) {
+  if (!open) return null;
+  return (
+    <div className="ks-appear" style={{ background: "var(--bg)", border: "1px solid var(--raised)", borderRadius: 6, padding: "8px 12px", marginBottom: 10 }}>
+      {ATTACK_HELP[kind].map((t, i) => <div key={i} style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.5, marginBottom: 4 }}>{t}</div>)}
+    </div>
+  );
+}
+const helpButton = (open, onClick) => (
+  <button onClick={onClick} aria-label="How this works" aria-expanded={open} className="compact-btn"
+    style={{ background: "none", border: "none", padding: 4, cursor: "pointer", color: open ? "var(--accent)" : "var(--muted)", display: "inline-flex" }}><Icon name="info" size={16} /></button>
+);
+
 function FightScreen({ fight, dropped, enemies, defWeapons, sideColor, onAct, onClose, onTakeOver, importHint }) {
   const { feat } = React.useContext(FeatureCtx);
   const f = fight;
@@ -6737,8 +6784,11 @@ function FightScreen({ fight, dropped, enemies, defWeapons, sideColor, onAct, on
   const [sel, setSel] = useState(null);
   const [now, setNow] = useState(Date.now());
   const [pop, setPop] = useState(null);
+  const [help, setHelp] = useState(false);
   React.useEffect(() => { const t = setInterval(() => setNow(Date.now()), 5000); return () => clearInterval(t); }, []);
   React.useEffect(() => { setSel(null); }, [f.turn, f.log.length]);
+  const myTurnLeft = f.stage === "resolve" ? f.left[f.turn] : [];
+  const pick = myTurnLeft.includes(sel) ? sel : myTurnLeft[0]; // left is in order: crits first
   // Each strike: the slash from the striker's card to the target's, and the damage number pops on the target.
   const seen = React.useRef(f.log.length);
   React.useEffect(() => {
@@ -6763,22 +6813,42 @@ function FightScreen({ fight, dropped, enemies, defWeapons, sideColor, onAct, on
   const slow = dropped || (f.online && now - f.changedAt > 60000);
   const dieKind = (role, v) => attackDie(v, fightRules(f[role].weapon, f[role].op.injured));
   // Plain functions, not components, so the cards keep the same elements between renders and the animations land on them.
+  const kindCol = (k) => k === "crit" ? "var(--gold)" : k === "hit" || k === "norm" ? "#5A9C3A" : k === "fail" ? "#B8341C" : "var(--line)";
   const dice = (role) => {
     const s = f[role];
     if (!s || !s.weapon) return null;
+    const box = (key, label, col, opts) => (
+      <div key={key} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
+        <button disabled={!opts.onClick} onClick={opts.onClick} aria-label={opts.aria} aria-pressed={opts.pressed}
+          className="compact-btn" style={{ width: 30, height: 30, padding: 0, borderRadius: 5, border: "2px " + (opts.dashed ? "dashed " : "solid ") + col, background: label === "" ? "transparent" : al(col, "18"), color: col, fontSize: 15, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", cursor: opts.onClick ? "pointer" : "default", opacity: opts.faded ? 0.35 : 1, boxShadow: opts.pressed ? "0 0 0 2px var(--text)" : "none" }}>{label}</button>
+        {opts.note && <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.04em", color: "var(--muted)", textTransform: "uppercase", fontFamily: "'Rajdhani', sans-serif" }}>{opts.note}</span>}
+      </div>
+    );
+    if (f.slots && f.stage !== "roll") {
+      // Bright: still to use. Faded: used, lost or failed. On your turn, tap one of your bright dice to pick it.
+      const pickable = f.stage === "resolve" && f.turn === role && mine(role);
+      return (
+        <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 6, alignItems: "flex-start" }}>
+          {f.slots[role].map((x, i) => {
+            const left = f.left[role].includes(i), used = f.used[role][i];
+            const name = (x.auto ? "Kept die (Accurate)" : "Die " + (i + 1) + ": " + x.v) + ", " + (x.kind === "fail" ? "failed" : x.kind === "crit" ? "crit" : "normal success");
+            return box(i, x.auto ? "A" : x.v, kindCol(x.kind), {
+              faded: !left, note: used || (x.rule && left ? x.rule : ""), pressed: pickable && pick === i,
+              onClick: pickable && left ? () => setSel(i) : null,
+              aria: name + (used ? ", " + used.toLowerCase() : left ? ", still to use" : ""),
+            });
+          })}
+        </div>
+      );
+    }
     const count = fightDiceCount(s.weapon);
     const canRe = mine(role) && s.dice && !s.ready && f.stage === "roll";
     return (
       <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 6 }}>
-        {(s.dice || Array(count).fill(null)).map((v, i) => {
-          const k = v == null ? null : dieKind(role, v);
-          const col = k === "crit" ? "var(--gold)" : k === "hit" ? "#5A9C3A" : k === "fail" ? "#B8341C" : "var(--line)";
-          return (
-            <button key={i} disabled={!canRe || s.rr[i]} onClick={() => onAct({ type: "reroll", role, i, v: Math.floor(Math.random() * 6) + 1 })}
-              aria-label={v == null ? "Not rolled" : "Die " + (i + 1) + ": " + v + (canRe && !s.rr[i] ? ", tap to re-roll" : "")}
-              className="compact-btn" style={{ width: 30, height: 30, padding: 0, borderRadius: 5, border: "2px " + (s.rr[i] ? "dashed " : "solid ") + col, background: v == null ? "transparent" : al(col, "18"), color: col, fontSize: 15, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", cursor: canRe && !s.rr[i] ? "pointer" : "default" }}>{v == null ? "" : v}</button>
-          );
-        })}
+        {(s.dice || Array(count).fill(null)).map((v, i) => box(i, v == null ? "" : v, v == null ? "var(--line)" : kindCol(dieKind(role, v)), {
+          dashed: s.rr[i], onClick: canRe && !s.rr[i] ? () => onAct({ type: "reroll", role, i, v: Math.floor(Math.random() * 6) + 1 }) : null,
+          aria: v == null ? "Not rolled" : "Die " + (i + 1) + ": " + v + (canRe && !s.rr[i] ? ", tap to re-roll" : ""),
+        }))}
       </div>
     );
   };
@@ -6803,12 +6873,6 @@ function FightScreen({ fight, dropped, enemies, defWeapons, sideColor, onAct, on
           ? <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{s.weapon.name} {"·"} {s.weapon.atk} {"·"} {s.weapon.hit} {"·"} {s.weapon.dmg}{s.weapon.wr && s.weapon.wr !== "-" ? " · " + s.weapon.wr : ""}{s.op.injured ? " · injured: hits on 1 worse" : ""}</div>
           : <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>Picking a weapon</div>}
         {dice(role)}
-        {f.stage !== "target" && f.stage !== "weapon" && f.stage !== "roll" && (
-          <div style={{ marginTop: 6, display: "flex", gap: 4, flexWrap: "wrap", minHeight: 22 }}>
-            {f.left[role].length ? f.left[role].map((x, i) => <span key={i} style={{ fontSize: 11, fontWeight: 700, padding: "2px 7px", borderRadius: 4, border: "1px solid " + (x === "crit" ? "var(--gold)" : col), color: x === "crit" ? "var(--gold)" : col }}>{x === "crit" ? "Crit" : "Normal"}</span>)
-              : <span style={{ fontSize: 12, color: "var(--muted2)" }}>No successes left</span>}
-          </div>
-        )}
         {pop && pop.role === role && <span key={pop.key} className="ks-pop" style={{ position: "absolute", right: 10, top: 8, fontSize: 20, fontWeight: 700, color: "#E0664A", fontFamily: "'Rajdhani', sans-serif", pointerEvents: "none" }}>-{pop.amount}</span>}
       </div>
     );
@@ -6862,21 +6926,17 @@ function FightScreen({ fight, dropped, enemies, defWeapons, sideColor, onAct, on
     };
     body = <div>{rollRow("atk")}{rollRow("def")}</div>;
   } else if (f.stage === "resolve") {
-    const me = f.turn, them = otherRole(me), myLeft = f.left[me], theirLeft = f.left[them];
-    const use = sel && myLeft.includes(sel) ? sel : myLeft.includes("crit") ? "crit" : "norm";
-    const blocks = ["crit", "norm"].filter(h => theirLeft.includes(h) && canFightBlock(use, h, f[them].weapon));
+    const me = f.turn, them = otherRole(me), theirLeft = f.left[them];
+    const use = f.slots[me][pick].kind;
+    const blocks = ["crit", "norm"].map(h => ({ h, j: theirLeft.find(x => f.slots[them][x].kind === h) })).filter(b => b.j !== undefined && canFightBlock(use, b.h, f[them].weapon));
     const brutal = /\bBrutal\b/.test(f[them].weapon.wr || "") && use === "norm" && theirLeft.length;
     body = mine(me) ? (
       <div>
-        <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif", marginBottom: 6 }}>{f.online ? "Your turn" : name(me) + "'s turn"}: use one success</div>
-        {myLeft.includes("crit") && myLeft.includes("norm") && (
-          <div role="radiogroup" aria-label="Which success" style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-            {["crit", "norm"].map(x => <button key={x} role="radio" aria-checked={use === x} onClick={() => setSel(x)} style={{ ...bs(use === x ? "var(--accent)" : "var(--muted)"), padding: "6px 12px", fontSize: 12, background: use === x ? "color-mix(in srgb, var(--accent) 12%, transparent)" : "transparent" }}>{x === "crit" ? "A crit" : "A normal"}</button>)}
-          </div>
-        )}
+        <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif", marginBottom: 2 }}>{f.online ? "Your turn" : name(me) + "'s turn"}: use one success</div>
+        <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8 }}>Using the {use === "crit" ? "crit" : "normal success"} with the white outline. Tap another of your bright dice to use that instead.</div>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          <button onClick={() => onAct({ type: "act", role: me, kind: "strike", use })} style={{ ...bs("#E0664A"), ...big, background: "#B8341C30" }}><Icon name="melee" size={14} /> Strike: {fightDmg(f[me].weapon, use)} damage</button>
-          {blocks.map(h => <button key={h} onClick={() => onAct({ type: "act", role: me, kind: "block", use, hit: h })} style={{ ...bs("var(--blue)"), ...big }}>Block their {fightWords(h)}</button>)}
+          <button onClick={() => onAct({ type: "act", role: me, kind: "strike", i: pick })} style={{ ...bs("#E0664A"), ...big, background: "#B8341C30" }}><Icon name="melee" size={14} /> Strike: {fightDmg(f[me].weapon, use)} damage</button>
+          {blocks.map(b => <button key={b.h} onClick={() => onAct({ type: "act", role: me, kind: "block", i: pick, j: b.j })} style={{ ...bs("var(--blue)"), ...big }}>Block their {fightWords(b.h)}</button>)}
         </div>
         {brutal ? <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 6 }}>Their weapon is Brutal: only crits can block it.</div> : null}
       </div>
@@ -6905,9 +6965,10 @@ function FightScreen({ fight, dropped, enemies, defWeapons, sideColor, onAct, on
     <div onClick={outside} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 10000, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "40px 12px", overflowY: "auto" }}>
       <div role="dialog" aria-modal="true" aria-label="Fight" style={{ ...cd, width: "100%", maxWidth: 620, padding: 14, borderTop: "3px solid #D0573A" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: "#E0664A", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.06em", display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="melee" size={14} /> FIGHT{f.online ? " (ONLINE)" : ""}</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "#E0664A", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.06em", display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="melee" size={14} /> FIGHT{f.online ? " (ONLINE)" : ""}{helpButton(help, () => setHelp(!help))}</div>
           {f.stage !== "done" && <button autoFocus onClick={() => onAct({ type: "cancel" })} style={{ ...bs("var(--muted)"), fontSize: 11, padding: "3px 8px" }}><Icon name="x" size={12} /> {live ? "Cancel" : "Stop fight"}</button>}
         </div>
+        <AttackHelp kind="fight" open={help} />
         {dropped && <div role="status" style={{ ...mu, fontSize: 13, color: "var(--gold)", marginBottom: 8 }}>Connection lost. Your dice and moves are saved here and go to your opponent when you're back online.</div>}
         {f.note && <div style={{ ...mu, fontSize: 13, color: "var(--gold)", marginBottom: 8 }}>{f.note}</div>}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
@@ -7017,6 +7078,7 @@ function ShootScreen({ shot, dropped, options, others, sideColor, onAct, onClose
   const [pop, setPop] = useState(null);
   const [extra, setExtra] = useState({}); // Blast/Torrent: extra targets ticked, by key
   const [entry, setEntry] = useState(null); // typing in real dice: { who, vals }
+  const [help, setHelp] = useState(false);
   React.useEffect(() => { const i = setInterval(() => setNow(Date.now()), 5000); return () => clearInterval(i); }, []);
   React.useEffect(() => { setEntry(null); }, [s.stage, s.ti]);
   // When a target's result comes in: the weapon's effect from the shooter to the target, and the damage number.
@@ -7233,9 +7295,10 @@ function ShootScreen({ shot, dropped, options, others, sideColor, onAct, onClose
     <div onClick={outside} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 10000, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "40px 12px", overflowY: "auto" }}>
       <div role="dialog" aria-modal="true" aria-label="Shoot" style={{ ...cd, width: "100%", maxWidth: 620, padding: 14, borderTop: "3px solid var(--accent)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: "var(--accent)", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.06em", display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="ranged" size={14} /> SHOOT{s.online ? " (ONLINE)" : ""}</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "var(--accent)", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.06em", display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="ranged" size={14} /> SHOOT{s.online ? " (ONLINE)" : ""}{helpButton(help, () => setHelp(!help))}</div>
           {s.stage !== "done" && <button autoFocus onClick={() => onAct({ type: "cancel" })} style={{ ...bs("var(--muted)"), fontSize: 11, padding: "3px 8px" }}><Icon name="x" size={12} /> {early ? "Cancel" : "Stop"}</button>}
         </div>
+        <AttackHelp kind="shoot" open={help} />
         {dropped && <div role="status" style={{ ...mu, fontSize: 13, color: "var(--gold)", marginBottom: 8 }}>Connection lost. Your dice and moves are saved here and go to your opponent when you're back online.</div>}
         {s.note && <div style={{ ...mu, fontSize: 13, color: "var(--gold)", marginBottom: 8 }}>{s.note}</div>}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
@@ -17776,17 +17839,22 @@ async function runSelfTest(hooks) {
     const base = (aw, ad, dw, dd) => ({ ...newFight("t", false, ["atk", "def"], S("mine", ad, aw)), atk: S("mine", ad, aw), def: S("opp", dd, dw), stage: "roll" });
     let f = ready(base(W(4, "3+", "4/5"), [6, 4, 2, 1], W(3, "4+", "3/4"), [5, 6, 3]));
     const bad = [];
-    if (f.stage !== "resolve" || f.left.atk.join() !== "crit,norm" || f.left.def.join() !== "crit,norm" || f.turn !== "atk") bad.push("successes or first turn");
+    const kinds = (x, r) => x.left[r].map(i => x.slots[r][i].kind).join();
+    if (f.stage !== "resolve" || kinds(f, "atk") !== "crit,norm" || kinds(f, "def") !== "crit,norm" || f.turn !== "atk") bad.push("successes or first turn");
     f = act(f, "atk", "strike", "crit");
     if (f.dmg.def !== 5 || f.turn !== "def") bad.push("strike damage or turn order");
+    if (f.used.atk[0] !== "Strike") bad.push("the die that struck isn't marked (the 6 is die 1)");
     f = act(f, "def", "block", "norm", "norm");
     if (f.left.atk.length || f.turn !== "def") bad.push("block, then the other side resolves the rest");
+    if (f.used.def[0] !== "Block" || f.used.atk[1] !== "Lost") bad.push("the blocking die and the blocked die aren't marked");
     f = act(f, "def", "strike", "crit");
     if (f.dmg.atk !== 4 || f.stage !== "done") bad.push("fight ends when both run out");
     const br = ready(base(W(4, "3+", "4/5"), [4], W(3, "3+", "3/4", "Brutal"), [5, 6]));
     if (act(br, "atk", "block", "norm", "norm") !== br) bad.push("Brutal: a normal blocked it");
     const sh = act(ready(base(W(4, "3+", "4/5", "Shock"), [6], W(3, "3+", "3/4"), [6, 5])), "atk", "strike", "crit");
-    if (sh.left.def.join() !== "crit") bad.push("Shock didn't discard a normal success");
+    if (kinds(sh, "def") !== "crit" || sh.used.def[1] !== "Lost") bad.push("Shock didn't discard (and mark) a normal success");
+    const rend = ready(base(W(4, "3+", "3/4", "Rending"), [6, 4], W(3, "3+", "3/4"), [1]));
+    if (kinds(rend, "atk") !== "crit,crit" || rend.slots.atk[1].rule !== "Rending") bad.push("Rending didn't turn the right die into a crit");
     if (fightSuccesses({ dice: [3], weapon: W(4, "3+", "3/4"), op: { injured: true } }).length) bad.push("injured: still hits on 3+");
     if (fightSuccesses({ dice: [5], weapon: W(4, "3+", "3/4", "Lethal 5+"), op: {} }).join() !== "crit") bad.push("Lethal 5+");
     if (ready(base(W(4, "3+", "4/5"), [1, 2], W(3, "3+", "3/4"), [4])).turn !== "def") bad.push("attacker with no successes still goes first");
@@ -17821,6 +17889,10 @@ async function runSelfTest(hooks) {
     await click(inDlg(/^Roll \d+ dice for/), "defender's roll");
     await click(inDlg(/^Done rolling/), "attacker done"); await click(inDlg(/^Done rolling/), "defender done");
     await fightOut();
+    const states = [...dlg().querySelectorAll("button[aria-label^='Die ']")].map(b => b.getAttribute("aria-label"));
+    if (dlg().innerText.match(/struck with/) && !states.some(l => /, strike$/.test(l))) throw new Error("after the fight, no die is marked as the one that struck");
+    await click(dlg().querySelector("[aria-label='How this works']"), "the ⓘ");
+    if (!/Block cancels one of the opponent's successes/.test(dlg().innerText)) throw new Error("the ⓘ didn't explain the fight");
     await click(inDlg(/^Close$/), "Close");
     // 3. Online, defending: the other player starts a fight against one of ours.
     const sent = []; window.__ksMpTestSend = (m) => sent.push(m);

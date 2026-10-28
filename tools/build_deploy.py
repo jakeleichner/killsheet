@@ -39,7 +39,7 @@ def compile_jsx(src):
             'print(out);\n' % (BABEL, src_path))
         res = subprocess.run([JSC, runner], capture_output=True, text=True)
         if res.returncode != 0 or not res.stdout.strip():
-            sys.exit("Compile failed:\n" + (res.stderr or res.stdout)[-3000:])
+            sys.exit("Compile failed:\n" + (res.stderr or res.stdout)[:1500])  # the error message comes first; the stack after it
         return res.stdout
 
 

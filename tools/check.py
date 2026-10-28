@@ -140,6 +140,23 @@ def check_setters(text):
     return [f"`{name}(...)` is called but never defined (leftover from removed state?)." for name in sorted(used - defined)]
 
 
+def check_compiles(text):
+    """The JSX compiles (same compiler as build_deploy.py). A syntax error, like a name declared twice, blanks the page."""
+    import os
+    if not os.path.exists("/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc"):
+        return []  # not on a Mac: the preview console is the check
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import build_deploy
+    a = text.index(build_deploy.OPEN_TAG) + len(build_deploy.OPEN_TAG)
+    try:
+        build_deploy.compile_jsx(text[a:text.index("</script>", a)])
+    except SystemExit as e:
+        msg = str(e)
+        m = re.search(r"(SyntaxError|Error)[^\n]*", msg)
+        return [(m.group(0) if m else msg[:300]).replace(str(Path(__file__).resolve().parent.parent) + "/", "")]
+    return []
+
+
 def check_us_spelling(lines):
     """App text is US English. Data keys that keep the old spelling (npo.behaviour) are allowed."""
     sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -167,6 +184,7 @@ def main():
         ("JSX script tag intact", check_babel_script(text)),
         ("Every setX() call is defined", check_setters(text)),
         ("US spelling in app text", check_us_spelling(lines)),
+        ("The script compiles", check_compiles(text)),
     ]
     failed = 0
     for label, problems in checks:

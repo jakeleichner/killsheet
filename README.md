@@ -182,6 +182,11 @@ Planned implementation:
 Estimated 2-3 hours. Should be its own focused session with its own QA pass (mixing infra + UI changes tends to combine bugs confusingly).
 
 ### Done recently
+- Fight dice show what happened to them, and an ⓘ on the Fight and Shoot screens (owner, Oct 27).
+  - Fights now track each die (`fightSlots`: kind per die, Accurate's kept dice shown as "A", Severe/Rending/Punishing applied to a particular die and labeled). `left` holds die indices and `used` labels them: the die that struck says Strike, a blocking die Block, a die cancelled by a block or Shock Lost. Bright dice are still to use; used, lost and failed ones fade. On your turn you tap one of your bright dice to pick it (white outline), then Strike or Block; the separate Crit/Normal chips are gone. Actions now carry die indices (`i`, `j`); older `use`/`hit` messages still work.
+  - ⓘ in the header of both screens opens a short "how this works" section inside the screen (`ATTACK_HELP`), for everyone.
+  - `tools/check.py` now compiles the script with the deploy compiler ("The script compiles"), so a JavaScript syntax error (which blanks the page) fails the check. It caught one in this change's test code first.
+  - Self-test: the strike, block and Lost marks with fixed dice, Rending on the right die, dice labels after a real fight, and the ⓘ text. 18 steps; pass at phone and desktop width and on the upload build.
 - Shoot and Fight close on a tap outside only when nothing would be lost (owner agreed, Oct 27): before the attacker has rolled (picking targets is local; after the card was sent, it cancels on both devices) and once it's finished. Not once dice are rolled, and never in an attack the other player started; those use Cancel or Stop. Escape still cancels at any point (a deliberate key). The battle log, Play online, the ⋯ menus and the map viewer already closed on an outside tap; the first-time question and Settings don't. Self-test: outside taps close before rolling and when done, but not mid-fight or on an incoming attack.
 - Shooting without "Send to defender", and attack effects on both screens (owner report, Oct 27).
   - The defense prompt opens as soon as the attack dice show a hit. The attacker can still re-roll dice and switch Obscured until the defender rolls; with no hits it stays the attacker's go ("No hits: done"). The defender's roll carries the attack dice they saw (`atk`, `arr`, `obs`), and `reduceShot` uses those, so a re-roll crossing it online ends up dropped on both devices instead of splitting them.
@@ -326,7 +331,7 @@ Estimated 2-3 hours. Should be its own focused session with its own QA pass (mix
 ## QA approach
 
 Four layers, from cheapest to most effort:
-1. `python3 tools/check.py` before every push (structure: hooks before early returns, tab icons, storage keys, print classes, setters).
+1. `python3 tools/check.py` before every push (structure: hooks before early returns, tab icons, storage keys, print classes, setters, US spelling, and that the script compiles).
 2. The self-test (`?selftest`, 18 steps) at phone and desktop width on the editable copy, and on the compiled `deploy/` build (copy `deploy/` to `/tmp/killsheet-preview/live/` and load `/live/?selftest`). It clicks through every tab, pack, map and team, and has pure checks with fixed inputs: "Dice maths" (26 cases covering each weapon rule, cover, Obscured, blocking and fights) and "Old saves get current datacards".
 3. Offline mode: serve `deploy/`, load with `?sw=1`, stop the server, reload. Unregister the service worker afterwards.
 4. Device tests the owner runs: `DEVICE_TESTS.md` (the self-test in iPhone Safari, online play on two devices and two networks, offline on a phone).
