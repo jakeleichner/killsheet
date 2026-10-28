@@ -6746,7 +6746,7 @@ const newFight = (id, online, roles, atk) => ({
 const newFightSide = (side, op, weapon) => ({ side, op, weapon: weapon || null, dice: null, rr: [], ready: false });
 const fightWords = (s) => s === "crit" ? "crit" : "normal success";
 
-// Add their team without a code: pick the team, then how many of each operative they're fielding (no points or roster
+// Add enemy roster without a code: pick the team, then how many of each operative they're fielding (no points or roster
 // checks: it's their team). Equipment stays on the table.
 function AddTheirTeam({ onAdd, onClose }) {
   const [fidPick, setFidPick] = useState(null);
@@ -6758,9 +6758,9 @@ function AddTheirTeam({ onAdd, onClose }) {
   const bump = (id, d) => setCounts(c => ({ ...c, [id]: Math.max(0, Math.min(10, (c[id] || 0) + d)) }));
   return (
     <div onClick={(e) => { if (e.target === e.currentTarget) onClose(); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 10000, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "40px 12px", overflowY: "auto" }}>
-      <div role="dialog" aria-modal="true" aria-label="Add their team" style={{ ...cd, width: "100%", maxWidth: 560, padding: 14 }}>
+      <div role="dialog" aria-modal="true" aria-label="Add enemy roster" style={{ ...cd, width: "100%", maxWidth: 560, padding: 14 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-          <div style={{ flex: 1, fontSize: 18, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif" }}>{fc ? "Their " + fc.name : "Add their team"}</div>
+          <div style={{ flex: 1, fontSize: 18, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif" }}>{fc ? "Enemy roster: " + fc.name : "Add enemy roster"}</div>
           <button autoFocus onClick={onClose} aria-label="Close" style={{ ...bs("var(--muted)"), padding: "6px 10px", display: "inline-flex" }}><Icon name="x" size={16} /></button>
         </div>
         {!fc ? (
@@ -8494,7 +8494,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   const [showScoring, setShowScoring] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [cardsMenu, setCardsMenu] = useState(false); // ⋯ menu on the datacards bar
-  const [addingOpp, setAddingOpp] = useState(false); // the "Add their team" screen
+  const [addingOpp, setAddingOpp] = useState(false); // the "Add enemy roster" screen
   const [importCode, setImportCode] = useState("");
   const [importError, setImportError] = useState("");
   const [setupRef, setSetupRef] = useState({ pack: "", idx: "" });
@@ -9750,7 +9750,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
         return <ShootScreen shot={shot} dropped={shot.online && !linkUp()} options={options} others={others}
           sideColor={(side) => side === "mine" ? (f ? f.color : "var(--accent)") : oppColor}
           onAct={(a) => dispatchShot(a, false)} onClose={() => showShot(null)} onTakeOver={takeOverShot}
-          importHint={sideOf("B") === "opp" ? "Their team isn't in KillSheet yet. Add it from the ⋯ menu on your team bar (Add their team), or play online, to shoot their operatives here." : "None of your operatives can be shot."} />;
+          importHint={sideOf("B") === "opp" ? "Their team isn't in KillSheet yet. Add it from the ⋯ menu on your team bar (Add enemy roster), or play online, to shoot their operatives here." : "None of your operatives can be shot."} />;
       })()}
       {fight && (() => {
         const enemySide = fight.atk.side === "mine" ? "opp" : "mine";
@@ -9761,7 +9761,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
         return <FightScreen fight={fight} dropped={fight.online && !linkUp()} enemies={enemies} defWeapons={fight.stage === "weapon" && defOp && fight.roles.includes("def") ? meleeFor(fight.def.side, defOp) : []}
           sideColor={(side) => side === "mine" ? (f ? f.color : "var(--accent)") : oppColor}
           onAct={(a) => dispatchFight(a, false)} onClose={() => showFight(null)} onTakeOver={takeOverFight}
-          importHint={enemySide === "opp" ? "Their team isn't in KillSheet yet. Add it from the ⋯ menu on your team bar (Add their team), or play online, to fight their operatives here." : "None of your operatives can fight back."} />;
+          importHint={enemySide === "opp" ? "Their team isn't in KillSheet yet. Add it from the ⋯ menu on your team bar (Add enemy roster), or play online, to fight their operatives here." : "None of your operatives can fight back."} />;
       })()}
       {/* Battle log: their operatives' changes on the right (what you did), yours on the left. */}
       {showLog && (
@@ -10676,7 +10676,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                                 ["Share roster code", "Copy a code a friend can import", exportRoster],
                                 ["Print roster", "Datacards on paper", printRoster],
                                 oppRoster && mp.status !== "connected" ? ["Remove opponent's team", "Clears their cards and wounds", () => withUndo("Opponent removed", () => { setOppRoster(null); setOppWounds({}); setShowImport(false); })] : null,
-                                !oppRoster && mp.status !== "connected" ? ["Add their team", "Pick their team and operatives, no code needed", () => setAddingOpp(true)] : null,
+                                !oppRoster && mp.status !== "connected" ? ["Add enemy roster", "Pick their team and operatives, no code needed", () => setAddingOpp(true)] : null,
                                 !oppRoster ? ["Import a roster", "Load an opponent's or your own code", () => { setShowImport(true); setTimeout(() => { const el = document.getElementById("ks-import"); if (el) el.scrollIntoView({ behavior: "smooth", block: "nearest" }); }, 60); }] : null,
                               ].filter(Boolean).map(([label, hint, run]) => (
                                 <button key={label} className={label === "Print roster" ? "no-print" : undefined} onClick={() => { setCardsMenu(false); run(); }} style={{ display: "block", width: "100%", textAlign: "left", background: "none", border: "none", borderRadius: 4, padding: "10px 10px", cursor: "pointer" }}>
@@ -18537,14 +18537,14 @@ async function runSelfTest(hooks) {
   });
 
   // Teams saved by older versions get today's datacards, keep their ids, and repeats with one id get numbered.
-  await step("Add their team without a code", async () => {
+  await step("Add enemy roster without a code", async () => {
     await nav("Battle");
     const menu = async () => click(document.querySelector("[aria-label='More roster options']"), "the ⋯ menu");
     await menu();
     if (btn("Remove opponent's team")) { await click(btn("Remove opponent's team"), "Remove opponent's team"); await menu(); }
-    await click(btn("Add their team"), "Add their team");
-    const dlg = () => document.querySelector("[role=dialog][aria-label='Add their team']");
-    if (!dlg()) throw new Error("the Add their team screen didn't open");
+    await click(btn("Add enemy roster"), "Add enemy roster");
+    const dlg = () => document.querySelector("[role=dialog][aria-label='Add enemy roster']");
+    if (!dlg()) throw new Error("the Add enemy roster screen didn't open");
     await typeInto(dlg().querySelector("input"), "plague");
     await click([...dlg().querySelectorAll("button")].find(b => b.textContent.includes("Plague Marines")), "Plague Marines");
     const plus = (name) => dlg().querySelector("[aria-label='Add " + name + "']");
