@@ -17019,6 +17019,9 @@ async function runSelfTest(hooks) {
 
   await step("Every tab opens", async () => {
     for (const t of ["Rules", "Missions", "Battle", "Community"]) { await nav(t); if (!all("h1,h2,div").length) throw new Error(t + " is empty"); }
+    // The tabs and the online banner are pinned together, so the banner can't slide over the tabs.
+    const bar = document.querySelector("nav");
+    if (getComputedStyle(bar).position === "sticky" || getComputedStyle(bar.parentElement).position !== "sticky") throw new Error("the tab bar isn't pinned together with the online banner");
   });
   await step("Rules: sections, search and tutorial", async () => {
     await nav("Rules");
@@ -17506,10 +17509,43 @@ function App() {
       {features === null && !returning && <Welcome />}
       {showFeatures && <FeaturesPage focus={showFeatures} onClose={() => setShowFeatures(false)} />}
 
-      {/* CONNECTION BANNER (across all tabs) */}
+      {/* HEADER: phones show the logo above the tabs; desktop puts it inside the tab bar. The cog (Settings) sits top right on both. */}
+      {mobile && (
+        <div style={{ padding: "10px 12px", background: "var(--card)", borderBottom: "1px solid var(--line)", position: "relative" }}>
+          <div style={{ display: "flex", justifyContent: "center" }}><Logo size={20} /></div>
+          <div style={{ position: "absolute", right: 4, top: 0, bottom: 0, display: "flex", alignItems: "center" }}>{cogButton}</div>
+        </div>
+      )}
+
+      {/* Tabs and the online banner stay pinned at the top together */}
+      <div style={{ position: "sticky", top: 0, zIndex: 10 }}>
+      {/* NAV */}
+      <nav style={{ display: "flex", background: "var(--card)", borderBottom: "1px solid var(--line)", boxShadow: "0 2px 12px rgba(0,0,0,0.5)" }}>
+        {!mobile && (
+          <div style={{ display: "flex", alignItems: "center", padding: "0 20px", borderRight: "1px solid var(--line)", flexShrink: 0 }}>
+            <Logo size={24} />
+          </div>
+        )}
+        {tabs.map(([id, label]) => (
+          <button key={id} onClick={() => setTab(id)} style={{
+            flex: 1, padding: mobile ? "10px 2px" : "16px 8px", border: "none", cursor: "pointer",
+            display: "flex", flexDirection: mobile ? "column" : "row", alignItems: "center", justifyContent: "center", gap: mobile ? 3 : 6, minWidth: 0,
+            fontSize: mobile ? 11 : 13, fontWeight: 600, letterSpacing: mobile ? "0.04em" : "0.08em", textTransform: "uppercase",
+            fontFamily: "'Rajdhani', 'Segoe UI', sans-serif",
+            background: tab === id ? "var(--raised)" : "transparent",
+            color: tab === id ? "var(--accent)" : "var(--muted)",
+            borderBottom: tab === id ? "2px solid var(--accent)" : "2px solid transparent",
+            position: "relative", transition: "all 0.15s"
+          }}>
+            <Icon name={TAB_ICONS[id]} size={18} />
+            {label}
+          </button>
+        ))}
+        {!mobile && <div style={{ display: "flex", alignItems: "center", padding: "0 10px", borderLeft: "1px solid var(--line)", flexShrink: 0 }}>{cogButton}</div>}
+      </nav>
+      {/* CONNECTION BANNER (across all tabs): under the tabs, so it never covers them */}
       {(mp.status !== "idle" || mp.lastRoom) && (
         <div style={{
-          position: "sticky", top: 0, zIndex: 9998,
           background: "color-mix(in srgb, " + (mp.status === "connected" ? "#3D6B3F" : mp.status === "error" ? "#B8341C" : "var(--accent)") + " 16%, var(--bg))", // opaque: the page scrolls under it
           borderBottom: "1px solid " + (mp.status === "connected" ? "#3D6B3F" : mp.status === "error" ? "#B8341C" : "var(--accent)"),
           padding: "6px 12px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap"
@@ -17537,39 +17573,7 @@ function App() {
           </div>
         </div>
       )}
-
-      {/* HEADER: phones show the logo above the tabs; desktop puts it inside the tab bar. The cog (Settings) sits top right on both. */}
-      {mobile && (
-        <div style={{ padding: "10px 12px", background: "var(--card)", borderBottom: "1px solid var(--line)", position: "relative" }}>
-          <div style={{ display: "flex", justifyContent: "center" }}><Logo size={20} /></div>
-          <div style={{ position: "absolute", right: 4, top: 0, bottom: 0, display: "flex", alignItems: "center" }}>{cogButton}</div>
-        </div>
-      )}
-
-      {/* NAV */}
-      <nav style={{ display: "flex", background: "var(--card)", borderBottom: "1px solid var(--line)", position: "sticky", top: 0, zIndex: 10, boxShadow: "0 2px 12px rgba(0,0,0,0.5)" }}>
-        {!mobile && (
-          <div style={{ display: "flex", alignItems: "center", padding: "0 20px", borderRight: "1px solid var(--line)", flexShrink: 0 }}>
-            <Logo size={24} />
-          </div>
-        )}
-        {tabs.map(([id, label]) => (
-          <button key={id} onClick={() => setTab(id)} style={{
-            flex: 1, padding: mobile ? "10px 2px" : "16px 8px", border: "none", cursor: "pointer",
-            display: "flex", flexDirection: mobile ? "column" : "row", alignItems: "center", justifyContent: "center", gap: mobile ? 3 : 6, minWidth: 0,
-            fontSize: mobile ? 11 : 13, fontWeight: 600, letterSpacing: mobile ? "0.04em" : "0.08em", textTransform: "uppercase",
-            fontFamily: "'Rajdhani', 'Segoe UI', sans-serif",
-            background: tab === id ? "var(--raised)" : "transparent",
-            color: tab === id ? "var(--accent)" : "var(--muted)",
-            borderBottom: tab === id ? "2px solid var(--accent)" : "2px solid transparent",
-            position: "relative", transition: "all 0.15s"
-          }}>
-            <Icon name={TAB_ICONS[id]} size={18} />
-            {label}
-          </button>
-        ))}
-        {!mobile && <div style={{ display: "flex", alignItems: "center", padding: "0 10px", borderLeft: "1px solid var(--line)", flexShrink: 0 }}>{cogButton}</div>}
-      </nav>
+      </div>
 
       {/* CONTENT: all tabs stay mounted, hidden with display:none to preserve state */}
       <div className="ks-appear" style={{ display: tab === "rules" ? "block" : "none" }}><ErrorBoundary where="Rules"><Rules search={ruleSearch} tutorialOpen={tutorialOpen} openTutorial={openTutorial} closeTutorial={() => { setTutorialOpen(false); window.scrollTo(0, 0); }} /></ErrorBoundary></div>

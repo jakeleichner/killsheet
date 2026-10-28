@@ -182,6 +182,7 @@ Planned implementation:
 Estimated 2-3 hours. Should be its own focused session with its own QA pass (mixing infra + UI changes tends to combine bugs confusingly).
 
 ### Done recently
+- Fixed (owner report, Oct 27): while online, the connection banner covered the tab bar (and the desktop cog) once you scrolled, because both were pinned to the top on their own. They now sit in one pinned block: tabs on top, banner as a strip underneath. On phones the logo and cog still scroll away with the page, as before. "Every tab opens" checks the pinned block.
 - Keep the screen on, crash safety net, protect saved data (Oct 26).
   - Screen on: `useKeepAwake(rosterLocked && feat.awake)` in Builder holds a Screen Wake Lock while a game is in progress and asks again when the page comes back into view. New switch "Keep the screen on" (While you play, on in both presets). The preview browser refuses wake locks for every page, so it's only been seen as "refused" there; DEVICE_TESTS.md has a phone check.
   - Crash safety net: `ErrorBoundary` around the whole app and each tab ("Something went wrong", Reload, Back up my data, Try again, error details). Backup moved into a plain `downloadBackup()` so the crash screen can use it. `CrashTest` + `window.__ksCrashTest` let the self-test crash the Community tab on purpose.
