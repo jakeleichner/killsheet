@@ -41,7 +41,8 @@
     /* Fight screen: the damage number rises and fades over the struck operative. */
     @keyframes ksPop { 0% { opacity: 0; transform: translateY(6px) scale(0.8); } 20% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-18px); } }
     .ks-pop { animation: ksPop 1.4s ease-out forwards; }
-    @media (prefers-reduced-motion: reduce) { .ks-appear { animation: none; } .ks-pop { animation: none; opacity: 0; } }
+    @keyframes ksFade { 0% { opacity: 0; } 15% { opacity: 1; } 75% { opacity: 1; } 100% { opacity: 0; } }
+    @media (prefers-reduced-motion: reduce) { .ks-appear { animation: none; } .ks-pop { animation: ksFade 1.6s ease-out forwards; } }
     [role="button"] { cursor: pointer; }
     /* Number boxes sit between our own - and + buttons, so hide the browser's arrows (Safari draws them over the digits). */
     input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
@@ -6748,8 +6749,9 @@ function FightScreen({ fight, dropped, enemies, defWeapons, sideColor, onAct, on
     const target = otherRole(e.role);
     setPop({ role: target, amount: e.dmg, key: f.log.length });
     const striker = document.querySelector("[data-fight-card='" + e.role + "']"), struck = document.querySelector("[data-fight-card='" + target + "']");
-    const still = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (!striker || !struck || still || !feat.fx || !striker.animate) return;
+    if (!striker || !struck || !feat.fx || !striker.animate) return;
+    striker.scrollIntoView({ block: "nearest" }); // on a phone the buttons below may have scrolled the cards out of view
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) { calmHit(struck); return; }
     const hit = playAttackFx("melee", striker, struck, { shock: !!e.shock });
     struck.animate([{ transform: "none" }, { transform: "translateX(5px)", offset: 0.3 }, { transform: "translateX(-4px)", offset: 0.6 }, { transform: "none" }], { duration: Math.round(400 * FX_PACE), delay: hit });
     setTimeout(() => striker.getAnimations().forEach(x => x.cancel()), hit + Math.round(500 * FX_PACE));
@@ -6921,7 +6923,8 @@ function FightScreen({ fight, dropped, enemies, defWeapons, sideColor, onAct, on
 
 /* ═══ SHOOTING (shared attack card) ═══ */
 // One Shoot action: the attacker picks the target (and, for Blast and Torrent, the extra targets), rolls attack dice,
-// then whoever owns each target rolls its defense dice. Players are "A" (shooting) and "B"; on one device this device
+// then whoever owns each target rolls its defense dice. The defense prompt opens as soon as the attack has hits; the
+// attacker can re-roll until the defender rolls, and the defender's roll carries the attack dice they saw, so both agree. Players are "A" (shooting) and "B"; on one device this device
 // plays both. Online both devices run reduceShot on the same actions, as with fights.
 const isMulti = (w) => /\b(Blast|Torrent)\b/.test(w.wr || "");
 const shotRules = (s) => fightRules(s.atk.weapon, s.atk.op.injured);
@@ -6952,29 +6955,35 @@ function reduceShot(s, a) {
   if (!s) return s;
   const t = s.targets[s.ti];
   const cur = (patch) => ({ ...s, targets: s.targets.map((x, i) => i === s.ti ? { ...x, ...patch } : x) });
+  // With hits the defense prompt is open; without (yet), it's still the attacker's go.
+  const settle = (n) => { const nt = n.targets[n.ti], r = nt.a.dice ? shotAttack(n, nt) : { crits: 0, hits: 0 }; return { ...n, stage: r.crits || r.hits ? "defense" : "attack" }; };
   switch (a.type) {
     case "target": return s.stage === "target" ? { ...s, targets: [a.target], stage: isMulti(s.atk.weapon) ? "more" : "attack" } : s;
     case "more": return s.stage === "more" ? { ...s, targets: [...s.targets, ...(a.targets || [])], stage: "attack" } : s;
-    case "obscured": return t && s.stage === "attack" && !t.a.ready ? cur({ obscured: !!a.v }) : s;
+    case "obscured": return t && (s.stage === "attack" || s.stage === "defense") && !t.d.dice ? settle(cur({ obscured: !!a.v })) : s;
     case "cover": return t && s.stage === "defense" && !t.d.dice ? cur({ cover: !!a.v }) : s;
     case "save": return t && s.stage === "defense" && !t.d.ready && a.v >= 2 && a.v <= 6 ? cur({ save: a.v }) : s;
     case "roll": {
-      if (!t || (a.who === "a" ? s.stage !== "attack" || t.a.ready : s.stage !== "defense" || t.d.ready)) return s;
-      const side = { ...t[a.who], dice: a.dice, rr: a.dice.map(() => false) };
-      if (a.who === "d") side.kept = shotDefCount(s, t).coverSave;
-      return cur({ [a.who]: side });
+      if (!t) return s;
+      if (a.who === "a") return (s.stage === "attack" || s.stage === "defense") && !t.d.dice ? settle(cur({ a: { dice: a.dice, rr: a.dice.map(() => false), ready: false } })) : s;
+      if (s.stage !== "defense" || t.d.ready || t.d.dice) return s;
+      // Their roll locks the attack: use the attack dice the defender saw (a re-roll crossing it online is dropped on both sides).
+      const n = Array.isArray(a.atk) ? cur({ a: { ...t.a, dice: a.atk, rr: a.arr || a.atk.map(() => true) }, obscured: a.obs === undefined ? t.obscured : !!a.obs }) : s;
+      const nt = n.targets[n.ti];
+      return { ...n, targets: n.targets.map((x, i) => i === n.ti ? { ...x, a: { ...x.a, ready: true }, d: { ...x.d, dice: a.dice, rr: a.dice.map(() => false), kept: shotDefCount(n, nt).coverSave } } : x) };
     }
     case "reroll": {
       const side = t && t[a.who];
-      if (!side || !side.dice || side.rr[a.i] || side.ready) return s;
-      return cur({ [a.who]: { ...side, dice: side.dice.map((v, i) => i === a.i ? a.v : v), rr: side.rr.map((r, i) => r || i === a.i) } });
+      if (!side || !side.dice || side.rr[a.i] || side.ready || (a.who === "a" && t.d.dice)) return s;
+      const n = cur({ [a.who]: { ...side, dice: side.dice.map((v, i) => i === a.i ? a.v : v), rr: side.rr.map((r, i) => r || i === a.i) } });
+      return a.who === "a" ? settle(n) : n;
     }
     case "ready": {
       if (!t) return s;
-      if (a.who === "a" && s.stage === "attack" && t.a.dice && !t.a.ready) {
-        const n = cur({ a: { ...t.a, ready: true } }), nt = n.targets[n.ti], res = shotAttack(n, nt);
-        if (res.crits || res.hits) return { ...n, stage: "defense" };
-        return { ...n, targets: n.targets.map((x, i) => i === n.ti ? { ...x, dmg: 0 } : x), stage: "result" };
+      if (a.who === "a" && s.stage === "attack" && t.a.dice) { // no hits: the attacker is done with this target
+        const res = shotAttack(s, t);
+        if (res.crits || res.hits) return s;
+        return { ...cur({ a: { ...t.a, ready: true } }), targets: s.targets.map((x, i) => i === s.ti ? { ...x, a: { ...x.a, ready: true }, dmg: 0 } : x), stage: "result" };
       }
       if (a.who === "d" && s.stage === "defense" && !t.d.ready && (t.d.dice || shotDefCount(s, t).roll === 0)) {
         const d = { ...t.d, dice: t.d.dice || [], kept: t.d.dice ? t.d.kept : shotDefCount(s, t).coverSave, ready: true };
@@ -7010,10 +7019,11 @@ function ShootScreen({ shot, dropped, options, others, sideColor, onAct, onClose
     if (s.stage !== "result" || shown.current === key) return;
     shown.current = key;
     const total = shotTotal(t);
-    setPop({ amount: total, key });
+    if (total) setPop({ amount: total, key });
     const from = document.querySelector("[data-shot-card='atk']"), to = document.querySelector("[data-shot-card='t']");
-    const still = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (!from || !to || still || !feat.fx || !from.animate || !total) return;
+    if (!from || !to || !total || !feat.fx || !from.animate) return;
+    from.scrollIntoView({ block: "nearest" }); // on a phone the buttons below may have scrolled the cards out of view
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) { calmHit(to); return; }
     const hit = playAttackFx(attackKind(s.atk.weapon), from, to);
     to.animate([{ transform: "none" }, { transform: "translateX(5px)", offset: 0.3 }, { transform: "translateX(-4px)", offset: 0.6 }, { transform: "none" }], { duration: Math.round(400 * FX_PACE), delay: hit });
     setTimeout(() => from.getAnimations().forEach(x => x.cancel()), hit + Math.round(500 * FX_PACE));
@@ -7042,7 +7052,7 @@ function ShootScreen({ shot, dropped, options, others, sideColor, onAct, onClose
     if (!t) return null;
     const side = t[who2], count = who2 === "a" ? fightDiceCount(s.atk.weapon) : shotDefCount(s, t).roll;
     const player = who2 === "a" ? "A" : t.owner;
-    const canRe = mine(player) && side.dice && !side.ready && s.stage === (who2 === "a" ? "attack" : "defense");
+    const canRe = mine(player) && side.dice && !side.ready && (who2 === "a" ? (s.stage === "attack" || s.stage === "defense") && !t.d.dice : s.stage === "defense");
     const kind = (v) => who2 === "a" ? attackDie(v, atkRules) : saveDie(v, t.save);
     if (entry && entry.who === who2) return (
       <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 6 }}>
@@ -7136,47 +7146,49 @@ function ShootScreen({ shot, dropped, options, others, sideColor, onAct, onClose
         <button onClick={() => onAct({ type: "more", targets: list.filter(o => extra[o.key]).map(o => newShotTarget(o.owner, o.info)) })} style={{ ...bs("var(--accent)"), ...big, marginTop: 10 }}>Start shooting{Object.values(extra).filter(Boolean).length ? " (" + (1 + list.filter(o => extra[o.key]).length) + " targets)" : ""}</button>
       </div>
     );
-  } else if (s.stage === "attack") {
-    const count = fightDiceCount(s.atk.weapon);
-    body = mine("A") ? (
-      <div>
+  } else if (s.stage === "attack" || s.stage === "defense") {
+    const count = fightDiceCount(s.atk.weapon), r = shotAttack(s, t), n = shotDefCount(s, t), saturate = diceRules(s.atk.weapon).saturate;
+    const summary = <><b style={{ color: "var(--gold)" }}>{r.crits} crit{r.crits === 1 ? "" : "s"}</b>, <b style={{ color: "#5A9C3A" }}>{r.hits} hit{r.hits === 1 ? "" : "s"}</b>{r.obscuredLost ? " (obscured: crits count as hits, one lost)" : ""}</>;
+    // The shooter: roll, then re-roll or switch Obscured until the defender rolls.
+    const shooter = !mine("A") ? (s.stage === "attack" ? wait("Waiting for your opponent to roll attack dice for " + s.atk.op.name + ".") : null) : (
+      <div style={{ marginBottom: s.stage === "defense" ? 12 : 0 }}>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
-          {toggle(t.obscured, "Obscured", () => onAct({ type: "obscured", v: !t.obscured }), t.a.ready)}
+          {toggle(t.obscured, "Obscured", () => onAct({ type: "obscured", v: !t.obscured }), !!t.d.dice)}
         </div>
         {!t.a.dice ? rollControls("a", count, "Roll " + count + " attack dice", "#E0664A") : (
           <div>
-            {(() => { const r = shotAttack(s, t); return <div style={{ fontSize: 14, color: "var(--text)", marginBottom: 8 }}><b style={{ color: "var(--gold)" }}>{r.crits} crit{r.crits === 1 ? "" : "s"}</b>, <b style={{ color: "#5A9C3A" }}>{r.hits} hit{r.hits === 1 ? "" : "s"}</b>{r.obscuredLost ? " (obscured: crits count as hits, one lost)" : ""}.</div>; })()}
+            <div style={{ fontSize: 14, color: "var(--text)", marginBottom: 6 }}>{summary}.{s.stage === "attack" ? " No hits." : ""}</div>
+            {!t.d.dice && <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>Tap a die to re-roll it (Balanced, Ceaseless, Relentless, Command Re-roll), until the defender rolls. Each die only once.</div>}
+            {s.stage === "attack" && <button onClick={() => onAct({ type: "ready", who: "a" })} style={{ ...bs("var(--accent)"), ...big }}>No hits: done</button>}
+          </div>
+        )}
+      </div>
+    );
+    let defender = null;
+    if (s.stage === "defense") {
+      const handOver = local && t.owner !== "A"; // one device: the other player rolls their own saves
+      defender = mine(t.owner) ? (
+        <div style={{ borderTop: mine("A") ? "1px solid var(--raised)" : "none", paddingTop: mine("A") ? 10 : 0 }}>
+          <div style={{ fontSize: 14, color: "var(--text)", marginBottom: 6 }}>{s.online ? s.atk.op.name + " is shooting your " + t.op.name + " with " + s.atk.weapon.name + ": " : ""}{s.online ? <>{summary}. </> : ""}{n.roll ? "Roll " + n.roll + " defense " + (n.roll === 1 ? "die" : "dice") + ", " + t.save + "+ to save." : "No defense dice to roll."}</div>
+          {handOver && !t.d.dice && <div style={{ ...mu, fontSize: 13, color: "var(--gold)", marginBottom: 6 }}>Hand the phone to {t.op.name}'s player, or roll your own dice and enter them.</div>}
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8, alignItems: "center" }}>
+            {toggle(t.cover, "Cover", () => onAct({ type: "cover", v: !t.cover }), !!t.d.dice || saturate)}
+            <label style={{ fontSize: 12, color: "var(--muted)", display: "inline-flex", alignItems: "center", gap: 4 }}>Save
+              <select value={t.save} disabled={t.d.ready} onChange={e => onAct({ type: "save", v: parseInt(e.target.value, 10) })} style={{ background: "var(--raised)", color: "var(--text)", border: "1px solid var(--line)", borderRadius: 4, padding: "4px 6px" }}>
+                {[2, 3, 4, 5, 6].map(v => <option key={v} value={v}>{v}+</option>)}
+              </select></label>
+            {saturate && <span style={{ fontSize: 12, color: "var(--muted)" }}>Saturate: no cover save.</span>}
+          </div>
+          {!t.d.dice && n.roll > 0 ? rollControls("d", n.roll, "Roll " + n.roll + " defense " + (n.roll === 1 ? "die" : "dice"), "var(--blue)") : (
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-              <button onClick={() => onAct({ type: "ready", who: "a" })} style={{ ...bs("var(--accent)"), ...big }}>{s.online ? "Send to defender" : "Done: defense next"}</button>
-              <span style={{ fontSize: 12, color: "var(--muted)" }}>Tap a die to re-roll it (Balanced, Ceaseless, Relentless, Command Re-roll). Each die only once.</span>
+              <button onClick={() => onAct({ type: "ready", who: "d" })} style={{ ...bs("var(--accent)"), ...big }}>{n.roll ? "Done: see the damage" : "Continue"}</button>
+              {t.d.dice && <span style={{ fontSize: 12, color: "var(--muted)" }}>Tap a die to re-roll it (Command Re-roll). Each die only once.</span>}
             </div>
-          </div>
-        )}
-      </div>
-    ) : wait("Waiting for your opponent to roll attack dice for " + s.atk.op.name + ".");
-  } else if (s.stage === "defense") {
-    const n = shotDefCount(s, t), r = shotAttack(s, t), saturate = diceRules(s.atk.weapon).saturate;
-    const handOver = local && t.owner !== "A"; // one device: the other player rolls their own saves
-    body = mine(t.owner) ? (
-      <div>
-        <div style={{ fontSize: 14, color: "var(--text)", marginBottom: 6 }}>{s.online ? s.atk.op.name + " is shooting your " + t.op.name + " with " + s.atk.weapon.name + ": " : ""}<b style={{ color: "var(--gold)" }}>{r.crits} crit{r.crits === 1 ? "" : "s"}</b>, <b style={{ color: "#5A9C3A" }}>{r.hits} hit{r.hits === 1 ? "" : "s"}</b>. {n.roll ? "Roll " + n.roll + " defense " + (n.roll === 1 ? "die" : "dice") + ", " + t.save + "+ to save." : "No defense dice to roll."}</div>
-        {handOver && !t.d.dice && <div style={{ ...mu, fontSize: 13, color: "var(--gold)", marginBottom: 6 }}>Hand the phone to {t.op.name}'s player, or roll your own dice and enter them.</div>}
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8, alignItems: "center" }}>
-          {toggle(t.cover, "Cover", () => onAct({ type: "cover", v: !t.cover }), !!t.d.dice || saturate)}
-          <label style={{ fontSize: 12, color: "var(--muted)", display: "inline-flex", alignItems: "center", gap: 4 }}>Save
-            <select value={t.save} disabled={t.d.ready} onChange={e => onAct({ type: "save", v: parseInt(e.target.value, 10) })} style={{ background: "var(--raised)", color: "var(--text)", border: "1px solid var(--line)", borderRadius: 4, padding: "4px 6px" }}>
-              {[2, 3, 4, 5, 6].map(v => <option key={v} value={v}>{v}+</option>)}
-            </select></label>
-          {saturate && <span style={{ fontSize: 12, color: "var(--muted)" }}>Saturate: no cover save.</span>}
+          )}
         </div>
-        {!t.d.dice && n.roll > 0 ? rollControls("d", n.roll, "Roll " + n.roll + " defense " + (n.roll === 1 ? "die" : "dice"), "var(--blue)") : (
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-            <button onClick={() => onAct({ type: "ready", who: "d" })} style={{ ...bs("var(--accent)"), ...big }}>{n.roll ? "Done: see the damage" : "Continue"}</button>
-            {t.d.dice && <span style={{ fontSize: 12, color: "var(--muted)" }}>Tap a die to re-roll it (Command Re-roll). Each die only once.</span>}
-          </div>
-        )}
-      </div>
-    ) : wait((s.online ? "Waiting for your opponent to roll defense for " : "Defense for ") + t.op.name + ".");
+      ) : wait((s.online ? "Waiting for your opponent to roll defense for " : "Defense for ") + t.op.name + ".");
+    }
+    body = <div>{shooter}{defender}</div>;
   } else if (s.stage === "result") {
     const total = shotTotal(t), dead = t.op.start - total <= 0, more = s.ti + 1 < s.targets.length;
     body = (
@@ -7408,6 +7420,11 @@ function playAttackFx(kind, card, rowEl, opts = {}) {
   }
   setTimeout(() => layer.remove(), hit + ms(1000));
   return hit;
+}
+
+// With the phone set to reduce motion: no movement, just a red glow around the card that was hit.
+function calmHit(card) {
+  card.animate([{ boxShadow: "0 0 0 3px #B8341C" }, { boxShadow: "0 0 0 3px #B8341C", offset: 0.6 }, { boxShadow: "0 0 0 0 transparent" }], { duration: 1400, easing: "ease-out" });
 }
 
 // Hot: when a Hot weapon hurts its own user, the operative's card glows red and shakes, and embers rise from the roll.
@@ -8816,6 +8833,11 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
     let next = reduceShot(cur, action);
     if (next === cur) { if (n) showShot({ ...cur, inN: n }); return; }
     next = { ...next, changedAt: Date.now(), ...(n ? { inN: n } : {}) };
+    if (!remote && action.type === "roll" && action.who === "d") {
+      const t = cur.targets[cur.ti];
+      action = { ...action, atk: t.a.dice, arr: t.a.rr, obs: t.obscured };
+      next = { ...reduceShot(cur, action), changedAt: Date.now() };
+    }
     if (!remote && cur.online) {
       // Picking targets stays on this device until the attack starts; then both devices get the whole card.
       if (action.type === "target" || action.type === "more") {
@@ -17059,7 +17081,7 @@ const FEATURE_GROUPS = [
     { k: "labels", name: "Learning help", desc: "Labels on closed datacards, a dotted underline under words you can tap for an explanation, and an ⓘ next to the Ready and order buttons." },
     { k: "tips", name: "Rule tips", desc: "Tap a bold orange word, or hover over it on a computer, to see what it means in one sentence, with a link to more information in Rules." },
     { k: "dice", name: "Dice roller", desc: "A Shoot button on ranged weapons and a Fight button on melee weapons. Pick the target, roll the dice, and the damage goes on. Online, each player rolls on their own device." },
-    { k: "fx", name: "Attack animations", desc: "Shots, slashes and blasts on the target screen when you apply damage from the dice roller. With it off, the damage goes on and the screen closes straight away." },
+    { k: "fx", name: "Attack animations", desc: "Shots, slashes, blasts and the damage number when an attack lands, on both players' screens. If your phone is set to reduce motion (on iPhone: Settings, Accessibility, Motion), you get a red glow instead." },
     { k: "awake", name: "Keep the screen on", desc: "While a game is in progress, your phone or tablet doesn't dim or lock. It goes back to normal when the game ends. Uses a little more battery." },
     { k: "uses", name: "Use tracking", desc: "Checkboxes for once-per-battle abilities and ploys, limited weapons and grenades, so you know what's been used." },
   ] },
@@ -17240,6 +17262,7 @@ function FeaturesPage({ onClose, focus }) {
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif" }}>{name}</div>
             <div style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.45, marginTop: 2 }}>{desc}</div>
+            {key === "fx" && on && window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches && <div style={{ fontSize: 12, color: "var(--gold)", marginTop: 4 }}>This device is set to reduce motion right now, so attacks show the red glow.</div>}
             {ex && <button className="link-btn" aria-expanded={!!explain[key]} onClick={() => setExplain(x => ({ ...x, [key]: !x[key] }))} style={{ background: "none", border: "none", padding: 0, marginTop: 4, cursor: "pointer", color: "var(--accent)", fontSize: 13, fontWeight: 600, textDecoration: "underline" }}>{explain[key] ? "Hide" : "What is this?"}</button>}
           </div>
           <Switch on={on} onChange={set} label={name} />
@@ -17644,7 +17667,8 @@ async function runSelfTest(hooks) {
     // Plays every step this device controls; theirStep handles a step waiting on the other player.
     const playOut = async (theirStep) => {
       for (let i = 0; i < 40 && dlg() && !/Shooting done/.test(dlg().innerText); i++) {
-        const next = inDlg(/^Roll \d+ (attack|defense) (die|dice)$/) || inDlg(/^(Done: defense next|Send to defender|Done: see the damage|Continue|Next target|Finish)$/);
+        if (inDlg(/^(Send to defender|Done: defense next)$/)) throw new Error("there's still a step to send the attack to the defender");
+        const next = inDlg(/^Roll \d+ (attack|defense) (die|dice)$/) || inDlg(/^(No hits: done|Done: see the damage|Continue|Next target|Finish)$/);
         if (next) await click(next, next.textContent.trim());
         else if (theirStep && /Waiting for your opponent/.test(dlg().innerText)) await theirStep();
         else throw new Error("shooting got stuck: " + dlg().innerText.slice(0, 160));
@@ -17687,7 +17711,9 @@ async function runSelfTest(hooks) {
       if (!again.length || again[0].n !== 1) throw new Error("a resend request didn't send our moves again from the start");
       const after = (store("wounds") || {})[mineOp.id];
       if (!(after < before)) throw new Error("four crits didn't take wounds off " + mineOp.name + " (" + before + " to " + after + ")");
-      if (!sent.some(m => m.type === "shot" && m.action.type === "roll" && m.action.who === "d")) throw new Error("our defense roll wasn't sent");
+      const ourRoll = sent.find(m => m.type === "shot" && m.action.type === "roll" && m.action.who === "d");
+      if (!ourRoll) throw new Error("our defense roll wasn't sent");
+      if (!Array.isArray(ourRoll.action.atk) || ourRoll.action.atk.join() !== "6,6,6,6") throw new Error("our defense roll doesn't carry the attack dice we saw");
       if (sent.some(m => m.type === "shot" && m.action.who === "a")) throw new Error("we sent a move for their side");
       if (!/by .* with /.test(logText())) throw new Error("their hit isn't in the battle log");
       await click(inDlg(/^Close$/), "Close");
@@ -17700,7 +17726,9 @@ async function runSelfTest(hooks) {
       const start = sent.find(m => m.type === "shootStart");
       if (!start || !start.targets.length) throw new Error("no shootStart was sent");
       let rolled = false;
+      const firstWait = () => { const r = sent.find(m => m.type === "shot" && m.action.type === "roll" && m.action.who === "a"); if (r && sent.some(m => m.type === "shot" && m.action.type === "ready" && m.action.who === "a") && /hits?\b/.test(dlg().innerText) && !/No hits/.test(dlg().innerText)) throw new Error("a ready step was sent after an attack with hits"); };
       await playOut(async () => {
+        firstWait();
         if (rolled) throw new Error("still waiting on them");
         hooks.mpMessage({ type: "shot", id: start.id, action: { type: "roll", who: "d", dice: [1, 1, 1] } });
         hooks.mpMessage({ type: "shot", id: start.id, action: { type: "ready", who: "d" } }); await settle(20);
