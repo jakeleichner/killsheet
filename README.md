@@ -182,6 +182,7 @@ Planned implementation:
 Estimated 2-3 hours. Should be its own focused session with its own QA pass (mixing infra + UI changes tends to combine bugs confusingly).
 
 ### Done recently
+- End game: Discard game (owner, Oct 27). Beside Save result and Cancel on the End game card. `discardGame` ends the game without recording it: `resetGame()` (wounds, CP, VP, orders, battle log, battle damage), clears any open Fight or Shoot screen, unlocks the roster and opens the team picker (the current team stays first as "Continue with"). Wrapped in `withUndo`, so the "Game discarded · Undo" bar can put everything back for 8 seconds. New last self-test step "End game: discard" (not recorded, back at the picker, Undo offered); 19 steps.
 - Fixed: the Battle page scrolled sideways between 700 and 1000px (an upright iPad) when an opponent's team was showing: ploys (260) + your datacards (min 320) + their column (320) + gaps came to about 960px. Builder's `mobile` is now `phone || (compactBar && oppRoster)`, so at those widths it uses the stacked phone layout (Datacards / Ploys & rules / Turn & mission, their cards below); three columns from 1000px. Checked at 768, 812, 1024 and 1280px. Self-test: "Every tab opens" and the Fights step (with their team showing) fail if the page is wider than the window.
 - Attack effects rebuilt, all out (owner, Oct 27: "make it cool", players who turn animations on should get the full show). New engine in the ATTACK EFFECTS section:
   - `FX`: a canvas particle layer (sparks, glows, fire, smoke, debris, rounds with glowing tails, beams, shockwave rings, lightning, slash arcs, lobbed grenades, screen-edge flashes), drawn every frame; `window.__ksFxFreeze` holds a frame for screenshots.
@@ -340,7 +341,7 @@ Estimated 2-3 hours. Should be its own focused session with its own QA pass (mix
 
 Four layers, from cheapest to most effort:
 1. `python3 tools/check.py` before every push (structure: hooks before early returns, tab icons, storage keys, print classes, setters, US spelling, and that the script compiles).
-2. The self-test (`?selftest`, 18 steps) at phone and desktop width on the editable copy, and on the compiled `deploy/` build (copy `deploy/` to `/tmp/killsheet-preview/live/` and load `/live/?selftest`). It clicks through every tab, pack, map and team, and has pure checks with fixed inputs: "Dice maths" (26 cases covering each weapon rule, cover, Obscured, blocking and fights) and "Old saves get current datacards".
+2. The self-test (`?selftest`, 19 steps) at phone and desktop width on the editable copy, and on the compiled `deploy/` build (copy `deploy/` to `/tmp/killsheet-preview/live/` and load `/live/?selftest`). It clicks through every tab, pack, map and team, and has pure checks with fixed inputs: "Dice maths" (26 cases covering each weapon rule, cover, Obscured, blocking and fights) and "Old saves get current datacards".
 3. Offline mode: serve `deploy/`, load with `?sw=1`, stop the server, reload. Unregister the service worker afterwards.
 4. Device tests the owner runs: `DEVICE_TESTS.md` (the self-test in iPhone Safari, online play on two devices and two networks, offline on a phone).
 

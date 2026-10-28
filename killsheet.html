@@ -8833,6 +8833,15 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
     resetGame();
     showToast("Game saved to your history");
   };
+  // Discard: end without recording a result, clear the game, and go back to picking a team (Undo puts it all back).
+  const discardGame = () => withUndo("Game discarded", () => {
+    setEndGame(null);
+    resetGame();
+    setFight(null); fightRef.current = null; setShot(null); shotRef.current = null;
+    setRosterLocked(false);
+    setPickerGroup(f ? factionGroup(f) : null); setPickerSearch(""); setPickerOpen(true);
+    window.scrollTo(0, 0);
+  });
   const computedVpOpp = primarySumOpp;
 
   const toggleEq = (id) => {
@@ -9838,9 +9847,10 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
               </div>
             )}
             {campaign && campaign.phase !== "battle" && campaign.phase !== "over" && campaign.phase !== "setup" && <div style={{ fontSize: 13, color: "var(--gold)", marginTop: 10 }}>Your campaign isn't in its Battle phase, so this result won't count there.</div>}
-            <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.5, marginTop: 10 }}>Saving clears wounds, CP, VP and orders for your next game. Your roster stays.{campaign && campaign.phase === "battle" ? " It also records the battle in your campaign." : ""}</div>
+            <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.5, marginTop: 10 }}>Saving clears wounds, CP, VP and orders for your next game. Your roster stays. Discard ends the game without recording it and takes you back to picking a team.{campaign && campaign.phase === "battle" ? " It also records the battle in your campaign." : ""}</div>
             <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
               <button onClick={saveGame} style={{ ...bs("#5A9C3A"), background: "#5A9C3A20", padding: "10px 18px", fontSize: 14 }}>Save result</button>
+              <button onClick={discardGame} style={{ ...bs("#E0664A"), padding: "10px 16px", fontSize: 13 }}>Discard game</button>
               <button onClick={() => setEndGame(null)} style={{ ...bs("var(--muted)"), padding: "10px 16px", fontSize: 13 }}>Cancel</button>
             </div>
           </div>
@@ -18398,6 +18408,19 @@ async function runSelfTest(hooks) {
   });
 
   // Teams saved by older versions get today's datacards, keep their ids, and repeats with one id get numbered.
+  await step("End game: discard", async () => {
+    await nav("Battle");
+    if (!store("rosterLocked")) throw new Error("no game in progress to discard");
+    const games = (store("gameHistory") || []).length;
+    await click(document.querySelector("[aria-label='Game menu']"), "game menu");
+    await click(btn("End game"), "End game");
+    await click(btn("Discard game", true), "Discard game");
+    if (store("rosterLocked")) throw new Error("the game is still in progress after Discard");
+    if ((store("gameHistory") || []).length !== games) throw new Error("Discard recorded the game in the history");
+    if (!all("input").some(i => i.placeholder === "Search teams or factions")) throw new Error("Discard didn't go back to the team picker");
+    if (!btn("Undo")) throw new Error("no Undo after discarding a game");
+    return "not recorded, back at the team picker, with Undo";
+  });
   await step("Old saves get current datacards", async () => {
     const pm = FACTIONS.plaguemarines;
     const old = [{ id: "champion", name: "Plague Champion", wounds: 1 }, { id: "fighter", name: "PM Fighter" }, { id: "fighter", name: "PM Fighter" }, { id: "gone_op", name: "Removed" }];
