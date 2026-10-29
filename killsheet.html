@@ -6752,10 +6752,21 @@ function AddTheirTeam({ onAdd, onClose }) {
   const [fidPick, setFidPick] = useState(null);
   const [q, setQ] = useState("");
   const [counts, setCounts] = useState({});
+  const [limits, setLimits] = useState(true); // the team's selection rules, as in the builder; off for anything unusual
   const fc = fidPick ? FACTIONS[fidPick] : null;
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
   const teams = Object.values(FACTIONS).filter(x => !q.trim() || (x.name + " " + x.badge).toLowerCase().includes(q.trim().toLowerCase())).sort((a, b) => a.name.localeCompare(b.name));
-  const bump = (id, d) => setCounts(c => ({ ...c, [id]: Math.max(0, Math.min(10, (c[id] || 0) + d)) }));
+  const ruled = limits && fc && fc.composition;
+  const asRoster = (c) => fc.operatives.flatMap(op => Array(c[op.id] || 0).fill(0).map(() => ({ id: op.id })));
+  // Their equipment isn't tracked: an operative that needs equipment can be picked, and the group then counts as having it.
+  const allEq = fc ? Object.fromEntries(fc.equipment.map(x => [x.id, true])) : {};
+  const usedEq = ruled ? Object.fromEntries(fc.composition.groups.filter(g => g.equip && asRoster(counts).some(o => g.ids.includes(o.id))).map(g => [g.equip, true])) : {};
+  const check = ruled ? compCheck(fc, asRoster(counts), usedEq) : null;
+  const canAdd = (id) => !ruled || compCanAdd(fc, asRoster(counts), id, allEq);
+  const bump = (id, d) => setCounts(c => {
+    if (d > 0 && ruled && !compCanAdd(fc, asRoster(c), id, allEq)) return c;
+    return { ...c, [id]: Math.max(0, Math.min(10, (c[id] || 0) + d)) };
+  });
   return (
     <div onClick={(e) => { if (e.target === e.currentTarget) onClose(); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 10000, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "40px 12px", overflowY: "auto" }}>
       <div role="dialog" aria-modal="true" aria-label="Add enemy roster" style={{ ...cd, width: "100%", maxWidth: 560, padding: 14 }}>
@@ -6780,6 +6791,13 @@ function AddTheirTeam({ onAdd, onClose }) {
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
               <div style={{ ...mu, fontSize: 13, flex: 1 }}>How many of each are they fielding?</div>
+              <span style={{ fontSize: 13, color: "var(--text2)" }}>Team limits</span>
+              <Switch on={limits} onChange={setLimits} label="Team limits" />
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <div style={{ fontSize: 12, color: check && check.errors.length ? DS.threat : "var(--muted)", flex: 1 }}>
+                {!ruled ? "Any number of any operative." : check.errors.length ? check.errors[0] : check.warnings.length ? check.warnings.join(" ") : total ? "A full " + fc.name + " team." : fc.composition.rules ? fc.composition.rules.join(" ") : ""}
+              </div>
               <button className="link-btn" onClick={() => setFidPick(null)} style={{ background: "none", border: "none", padding: 0, color: "var(--accent)", cursor: "pointer", fontSize: 13, textDecoration: "underline" }}>Other team</button>
             </div>
             <div style={{ maxHeight: "55vh", overflowY: "auto" }}>
@@ -6793,13 +6811,13 @@ function AddTheirTeam({ onAdd, onClose }) {
                     </div>
                     <button aria-label={"One fewer " + op.name} disabled={!n} onClick={() => bump(op.id, -1)} className="compact-btn" style={{ ...bs("var(--muted)"), width: 34, height: 34, padding: 0, fontSize: 18, opacity: n ? 1 : 0.4 }}>−</button>
                     <span style={{ minWidth: 18, textAlign: "center", fontSize: 16, fontWeight: 700, color: n ? "var(--accent)" : "var(--dim)", fontFamily: "'Rajdhani', sans-serif" }}>{n}</span>
-                    <button aria-label={"Add " + op.name} onClick={() => bump(op.id, 1)} className="compact-btn" style={{ ...bs("var(--accent)"), width: 34, height: 34, padding: 0, fontSize: 18 }}>+</button>
+                    <button aria-label={"Add " + op.name} disabled={!canAdd(op.id)} onClick={() => bump(op.id, 1)} className="compact-btn" style={{ ...bs("var(--accent)"), width: 34, height: 34, padding: 0, fontSize: 18, opacity: canAdd(op.id) ? 1 : 0.35 }}>+</button>
                   </div>
                 );
               })}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-              <button disabled={!total} onClick={() => onAdd(fc.id, fc.operatives.flatMap(op => Array(counts[op.id] || 0).fill(op.id)))} style={{ ...bs("var(--accent)"), padding: "10px 16px", fontSize: 14, opacity: total ? 1 : 0.5 }}>Add {total || ""} operative{total === 1 ? "" : "s"}</button>
+              <button disabled={!total || !!(check && check.errors.length)} onClick={() => onAdd(fc.id, fc.operatives.flatMap(op => Array(counts[op.id] || 0).fill(op.id)))} style={{ ...bs("var(--accent)"), padding: "10px 16px", fontSize: 14, opacity: total && !(check && check.errors.length) ? 1 : 0.5 }}>Add {total || ""} operative{total === 1 ? "" : "s"}</button>
               <span style={{ fontSize: 12, color: "var(--muted)" }}>Their equipment isn't added: keep track of it on the table.</span>
             </div>
           </div>
@@ -6936,7 +6954,7 @@ function FightScreen({ fight, dropped, enemies, defWeapons, sideColor, onAct, on
     const hp = Math.max(0, fightHp(f, role));
     const col = sideColor(s.side);
     return (
-      <div data-fight-card={role} style={{ ...cd, marginBottom: 0, padding: 10, borderLeft: "3px solid " + col, position: "relative", opacity: hp <= 0 ? 0.55 : 1 }}>
+      <div key={role + ":" + (s.op && s.op.id)} data-fight-card={role} style={{ ...cd, marginBottom: 0, padding: 10, borderLeft: "3px solid " + col, position: "relative", opacity: hp <= 0 ? 0.55 : 1 }}>
         <div style={{ ...h3, marginBottom: 2, color: col }}>{role === "atk" ? "Attacking" : "Fights back"}{f.online && mine(role) ? " (you)" : ""}</div>
         <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
           <span style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif", textDecoration: hp <= 0 ? "line-through" : "none" }}>{s.op.name}</span>
@@ -7219,7 +7237,7 @@ function ShootScreen({ shot, dropped, options, others, sideColor, onAct, onClose
     const owner = isAtk ? "A" : t.owner, col = sideColor(sideOf(owner));
     const hp = isAtk ? Math.max(0, op.start - (s.hot ? s.hot.dmg : 0)) : Math.max(0, op.start - shotTotal(t));
     return (
-      <div data-shot-card={isAtk ? "atk" : "t"} style={{ ...cd, marginBottom: 0, padding: 10, borderLeft: "3px solid " + col, position: "relative", opacity: hp <= 0 ? 0.55 : 1 }}>
+      <div key={isAtk ? "atk" : "t:" + s.ti + ":" + op.id} data-shot-card={isAtk ? "atk" : "t"} style={{ ...cd, marginBottom: 0, padding: 10, borderLeft: "3px solid " + col, position: "relative", opacity: hp <= 0 ? 0.55 : 1 }}>
         <div style={{ ...h3, marginBottom: 2, color: col }}>{isAtk ? "Shooting" : s.targets.length > 1 ? "Target " + (s.ti + 1) + " of " + s.targets.length : "Target"}{s.online && mine(owner) ? " (you)" : ""}</div>
         <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
           <span style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif", textDecoration: hp <= 0 ? "line-through" : "none" }}>{op.name}</span>
@@ -7858,7 +7876,7 @@ function playAttackFx(weapon, card, target, opts = {}) {
       fxMove.recoil(card, ux, uy, 8, ms(80));
       add({ type: "lob", delay: ms(80), life: flight, x0: mx, y0: my, x1: bx, y1: by, h: Math.max(70, dist * 0.5), s: 6 });
       boom(bx, by, p.krak ? 46 : 64, "#FF9A3C", hit, p.krak);
-      setTimeout(() => { fxMove.jolt(target, ux, uy, 16); mark("scorch", bx, by, 40); mark(p.krak ? "crack" : "hole", bx + rnd(-16, 16), by + rnd(-8, 8), 22); }, hit);
+      setTimeout(() => { fxMove.jolt(target, ux, uy, 16); mark("scorch", bx, by, 40); mark(p.krak ? "crack" : "scorch", bx + rnd(-16, 16), by + rnd(-8, 8), 22); }, hit);
       big(16, "#FF9A3C", hit); break;
     }
     case "blast": {
@@ -7866,7 +7884,7 @@ function playAttackFx(weapon, card, target, opts = {}) {
       muzzle(t, 26); fxMove.recoil(card, ux, uy, 14, t);
       fire(t, mx, my, bx, by, { color: "#FFB347", w: 6, tail: 30, life: travel, trail: "smoke", ease: true });
       boom(bx, by, 72, "#FF9A3C", hit);
-      setTimeout(() => { fxMove.jolt(target, ux, uy, 18); mark("scorch", bx, by, 44); mark("hole", bx + rnd(-18, 18), by + rnd(-8, 8), 22); }, hit);
+      setTimeout(() => { fxMove.jolt(target, ux, uy, 18); mark("scorch", bx, by, 44); mark("crack", bx + rnd(-18, 18), by + rnd(-8, 8), 24); }, hit);
       big(18, "#FF9A3C", hit); break;
     }
     case "psychic": {
@@ -18548,6 +18566,12 @@ async function runSelfTest(hooks) {
       if (!screen.getAnimations().length) bad.push("the screen doesn't shake or flash");
       await wait(1800);
       if (!b.querySelector("[data-decal]")) bad.push("no damage marks on the target");
+      // Grenades scorch and crack; they don't leave bullet holes.
+      const g = box(140); screen.appendChild(g);
+      playAttackFx({ name: "Frag grenade", type: "ranged", wr: 'Range 6", Blast 2", Saturate' }, a, g, { screen });
+      await wait(1800);
+      if (!g.querySelector("[data-decal]")) bad.push("the frag grenade left no marks");
+      if (g.querySelector("[data-decal='hole']")) bad.push("the frag grenade left a bullet hole");
       playHotFx(a, a);
       if (!document.querySelector("[data-fx='hot']")) bad.push("no red glow for Hot self-damage");
     } finally { screen.remove(); FX.clear(); }
@@ -18617,15 +18641,24 @@ async function runSelfTest(hooks) {
     await typeInto(dlg().querySelector("input"), "plague");
     await click([...dlg().querySelectorAll("button")].find(b => b.textContent.includes("Plague Marines")), "Plague Marines");
     const plus = (name) => dlg().querySelector("[aria-label='Add " + name + "']");
-    await click(plus("Plague Marine Fighter"), "+ Fighter"); await click(plus("Plague Marine Fighter"), "+ Fighter again");
+    // Team limits (on to start): one Champion, and the Fighter isn't one you can repeat.
+    const lim = dlg().querySelector("[role=switch][aria-label='Team limits']");
+    if (!lim || lim.getAttribute("aria-checked") !== "true") throw new Error("Team limits isn't on to start");
     await click(plus("Plague Marine Champion"), "+ Champion");
+    if (!plus("Plague Marine Champion").disabled) throw new Error("team limits let a second Champion in");
+    await click(plus("Plague Marine Fighter"), "+ Fighter");
+    if (!plus("Plague Marine Fighter").disabled) throw new Error("team limits let a second Fighter in");
+    if (!/need 4 more/.test(dlg().textContent)) throw new Error("the screen doesn't say how many more they need");
+    // Off: any number of anything.
+    await click(lim, "Team limits off");
+    await click(plus("Plague Marine Fighter"), "+ Fighter again");
     await click([...dlg().querySelectorAll("button")].find(b => b.textContent.trim() === "Add 3 operatives"), "Add 3 operatives");
     if (dlg()) throw new Error("the screen didn't close after adding");
     const opp = store("oppRoster") || {};
     const ids = (opp.operatives || []).map(o => o.id).sort().join(",");
     if (opp.factionId !== "plaguemarines" || ids !== "champion,fighter,fighter~2") throw new Error("their roster is " + opp.factionId + ": " + ids);
     if (!document.body.textContent.includes("Plague Marine Fighter 2")) throw new Error("their second Fighter's datacard isn't showing");
-    return "Plague Marines with 3 operatives, repeats numbered";
+    return "limits stop a second Champion or Fighter; with them off, Plague Marines with 3 operatives, repeats numbered";
   });
   await step("End game: discard", async () => {
     await nav("Battle");
