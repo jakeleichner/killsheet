@@ -63,7 +63,23 @@ def main():
         shutil.copytree(os.path.join(ROOT, folder), os.path.join(deploy, folder))
     shutil.copy(os.path.join(ROOT, "manifest.webmanifest"), os.path.join(deploy, "manifest.webmanifest"))
     write_service_worker(deploy, out)
+    write_zip(deploy)
     print("Built deploy/index.html (%d KB), sw.js, manifest, maps and icons in %.1fs." % (len(out.encode()) // 1024, time.time() - started))
+    print("Upload either the deploy/ folder or killsheet-upload.zip (the same files; the zip avoids browsers that drop files from a dragged folder).")
+
+
+def write_zip(deploy):
+    """killsheet-upload.zip: deploy/'s files with index.html at the top level, as Cloudflare Pages wants."""
+    import zipfile
+    path = os.path.join(ROOT, "killsheet-upload.zip")
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as z:
+        for base, dirs, files in os.walk(deploy):
+            dirs[:] = sorted(d for d in dirs if not d.startswith("."))
+            for n in sorted(files):
+                if n.startswith("."):
+                    continue
+                full = os.path.join(base, n)
+                z.write(full, os.path.relpath(full, deploy))
 
 
 def write_service_worker(deploy, html):

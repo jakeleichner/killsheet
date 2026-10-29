@@ -50,7 +50,7 @@ KillSheet is a companion for a game played on a real table, designed around begi
 ## Hosting & deployment
 
 - **Live at:** `https://killsheet.pages.dev` (Cloudflare Pages, free tier, no card).
-- **Deploy method:** Direct upload. The file must be named `index.html`, zipped or in a folder, then dragged into the Cloudflare Pages dashboard ("Create deployment").
+- **Deploy method:** Direct upload. The file must be named `index.html`, zipped or in a folder, then dragged into the Cloudflare Pages dashboard ("Create deployment"). The build writes both `deploy/` and `killsheet-upload.zip` (the same files, `index.html` at the zip's top level); the zip is the safer upload, since some browsers drop files from a dragged folder. To check an upload worked, compare `VERSION` in `deploy/sw.js` with `https://killsheet.pages.dev/sw.js`.
 - **Build:** run `python3 tools/build_deploy.py` to make `deploy/` (pre-compiled page + maps). Don't copy `killsheet.html` there by hand.
 - **Cache:** Browsers cache aggressively. After deploying, a hard refresh (Cmd/Ctrl+Shift+R) is needed to see changes.
 - **Rollback:** Every deployment is retained; you can roll back to any prior one from the dashboard.

@@ -22,7 +22,7 @@ The repo lives in iCloud Drive, which the sandboxed Python server can't read. To
 3. Re-copy after every edit, then load a new URL (e.g. `?v=2`, `?v=3`). A plain reload can show a cached old copy.
 
 ## Deploying
-Deploys are manual: the owner drags the `deploy/` folder into Cloudflare Pages (`killsheet.pages.dev`). Pushing to GitHub does not deploy.
+Deploys are manual: the owner drags the `deploy/` folder, or `killsheet-upload.zip` (same files; safer when a browser drops files from a dragged folder), into Cloudflare Pages (`killsheet.pages.dev`). Pushing to GitHub does not deploy.
 After every push, rebuild it: `python3 tools/build_deploy.py`. That pre-compiles `killsheet.html` (with macOS's built-in `jsc` and the vendored `tools/vendor/babel.min.js`) into a fast-loading `deploy/index.html` and copies `maps/`, `icons/` and the manifest beside it, and writes `deploy/sw.js` (offline mode) from `tools/sw.js`. Never copy `killsheet.html` into `deploy/` directly: it works, but loads about 13x slower. `deploy/` is git-ignored.
 
 ## Offline mode
