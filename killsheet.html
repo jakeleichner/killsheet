@@ -6858,6 +6858,72 @@ const helpButton = (open, onClick) => (
     style={{ background: "none", border: "none", padding: 4, cursor: "pointer", color: open ? "var(--accent)" : "var(--muted)", display: "inline-flex" }}><Icon name="info" size={16} /></button>
 );
 
+// ── Versus layout for the Shoot and Fight screens: each side washed in its team color from its outer edge, and a
+// marker between them (an arrow for shooting, crossed blades for a fight). ──
+const vsCard = (col, right, out) => ({ ...cd, marginBottom: 0, padding: 10, position: "relative", opacity: out ? 0.55 : 1,
+  [right ? "borderRight" : "borderLeft"]: "3px solid " + col,
+  background: "linear-gradient(" + (right ? "200deg" : "160deg") + ", " + al(col, "2E") + " 0%, transparent 62%), var(--card)" });
+const vsName = { fontSize: 18, fontWeight: 700, lineHeight: 1.1, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif", overflowWrap: "break-word", hyphens: "auto" };
+function VsPair({ kind, children }) {
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 12, position: "relative" }}>
+      {children}
+      <span aria-hidden="true" data-vs={kind} style={{ position: "absolute", left: "50%", top: 22, transform: "translate(-50%, -50%)", width: 26, height: 26, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg)", border: "1px solid var(--line)", color: kind === "fight" ? "#E0664A" : "var(--accent)", boxShadow: "0 2px 6px rgba(0,0,0,0.5)", zIndex: 2 }}>
+        <Icon name={kind === "fight" ? "swords" : "arrowRight"} size={14} />
+      </span>
+    </div>
+  );
+}
+
+// ── Dice: real-looking faces with pips, colored by result (gold crit, green success, dark failed) ──
+const DIE_PIPS = { 1: [[15, 15]], 2: [[9, 9], [21, 21]], 3: [[9, 9], [15, 15], [21, 21]], 4: [[9, 9], [21, 9], [9, 21], [21, 21]], 5: [[9, 9], [21, 9], [15, 15], [9, 21], [21, 21]], 6: [[9, 8], [9, 15], [9, 22], [21, 8], [21, 15], [21, 22]] };
+const DIE_LOOK = {
+  crit: { body: "var(--gold)", pip: "#2b1d00", glow: "0 0 8px color-mix(in srgb, var(--gold) 70%, transparent)" },
+  hit: { body: "#5A9C3A", pip: "#F4FBEF" },
+  fail: { body: "#2b2321", pip: "#D9654E", edge: "#B8341C" },
+  set: { body: "#E9E2D3", pip: "#1d1a17", edge: "var(--accent)" }, // typing in real dice
+};
+// The button style for a die. kind: crit, hit (or norm), fail, set, or null (not rolled yet: an empty dashed outline).
+function dieStyle(kind, size, opts = {}) {
+  const k = kind === "norm" ? "hit" : kind, look = DIE_LOOK[k];
+  const base = { width: size, height: size, padding: 0, borderRadius: Math.round(size / 5), display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, cursor: opts.onClick ? "pointer" : "default", opacity: opts.faded ? 0.35 : 1, fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: Math.round(size / 2) };
+  if (!look) return { ...base, border: "2px dashed var(--line)", background: "transparent", color: "var(--muted)", boxShadow: opts.pressed ? "0 0 0 2px var(--text)" : "none" };
+  const shade = "inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -2px 0 rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.5)";
+  return { ...base, color: look.pip,
+    border: (size > 34 ? 2 : 1.5) + "px " + (opts.rerolled ? "dashed " : "solid ") + (opts.rerolled ? "var(--text)" : look.edge || "color-mix(in srgb, " + look.body + " 70%, black)"),
+    background: "linear-gradient(155deg, color-mix(in srgb, " + look.body + " 78%, white) 0%, " + look.body + " 45%, color-mix(in srgb, " + look.body + " 72%, black) 100%)",
+    boxShadow: [shade, look.glow, opts.pressed ? "0 0 0 2px var(--text)" : ""].filter(Boolean).join(", ") };
+}
+// What's on the face: pips for 1 to 6, or a letter ("A" for an Accurate die, "?" for one not set yet).
+function dieFace(v, kind, size) {
+  const pips = DIE_PIPS[v];
+  if (!pips) return v == null ? "" : v;
+  const look = DIE_LOOK[kind === "norm" ? "hit" : kind] || DIE_LOOK.set, s = size - 4;
+  return <svg width={s} height={s} viewBox="0 0 30 30" aria-hidden="true" style={{ display: "block" }}>{pips.map(([x, y], i) => <circle key={i} cx={x} cy={y} r={v === 1 ? 3.6 : 2.9} fill={look.pip} />)}</svg>;
+}
+// New dice tumble in: each die's last value is kept by its data-die key, and one that changes (rolled or re-rolled)
+// spins and drops into place. Dice already showing when the screen opens stay still.
+function useDiceTumble(scope) {
+  const last = React.useRef(null);
+  React.useEffect(() => {
+    const first = last.current === null, still = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (first) last.current = {};
+    let n = 0;
+    document.querySelectorAll("[data-die^='" + scope + ":']").forEach(el => {
+      const k = el.getAttribute("data-die"), v = el.getAttribute("data-v"), was = last.current[k];
+      last.current[k] = v;
+      if (first || !v || was === v || still || !el.animate) return;
+      const spin = (Math.random() < 0.5 ? -1 : 1) * (280 + Math.random() * 260), dx = Math.round(Math.random() * 16 - 8);
+      el.animate([
+        { transform: "translate(" + dx + "px, -16px) rotate(" + spin + "deg) scale(0.55)", opacity: 0, filter: "blur(1.5px)" },
+        { offset: 0.55, transform: "translate(0, 2px) rotate(-8deg) scale(1.08)", opacity: 1, filter: "blur(0)" },
+        { offset: 0.78, transform: "translate(0, -2px) rotate(3deg) scale(0.98)" },
+        { transform: "none" },
+      ], { duration: 560, delay: n++ * 55, easing: "cubic-bezier(.2,.7,.3,1)", fill: "backwards" });
+    });
+  });
+}
+
 function FightScreen({ fight, dropped, enemies, defWeapons, sideColor, onAct, onClose, onTakeOver, importHint }) {
   const { feat } = React.useContext(FeatureCtx);
   const f = fight;
@@ -6866,6 +6932,7 @@ function FightScreen({ fight, dropped, enemies, defWeapons, sideColor, onAct, on
   const [now, setNow] = useState(Date.now());
   const [pop, setPop] = useState(null);
   const [help, setHelp] = useState(false);
+  useDiceTumble("f");
   React.useEffect(() => { const t = setInterval(() => setNow(Date.now()), 5000); return () => clearInterval(t); }, []);
   React.useEffect(() => { setSel(null); }, [f.turn, f.log.length]);
   const myTurnLeft = f.stage === "resolve" ? f.left[f.turn] : [];
@@ -6904,14 +6971,13 @@ function FightScreen({ fight, dropped, enemies, defWeapons, sideColor, onAct, on
   const slow = dropped || (f.online && now - f.changedAt > 60000);
   const dieKind = (role, v) => attackDie(v, fightRules(f[role].weapon, f[role].op.injured));
   // Plain functions, not components, so the cards keep the same elements between renders and the animations land on them.
-  const kindCol = (k) => k === "crit" ? "var(--gold)" : k === "hit" || k === "norm" ? "#5A9C3A" : k === "fail" ? "#B8341C" : "var(--line)";
   const dice = (role) => {
     const s = f[role];
     if (!s || !s.weapon) return null;
-    const box = (key, label, col, opts) => (
+    const box = (key, v, kind, opts) => (
       <div key={key} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
-        <button disabled={!opts.onClick} onClick={opts.onClick} aria-label={opts.aria} aria-pressed={opts.pressed}
-          className="compact-btn" style={{ width: 30, height: 30, padding: 0, borderRadius: 5, border: "2px " + (opts.dashed ? "dashed " : "solid ") + col, background: label === "" ? "transparent" : al(col, "18"), color: col, fontSize: 15, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", cursor: opts.onClick ? "pointer" : "default", opacity: opts.faded ? 0.35 : 1, boxShadow: opts.pressed ? "0 0 0 2px var(--text)" : "none" }}>{label}</button>
+        <button data-die={"f:" + role + ":" + key} data-v={v == null ? "" : v + (opts.dashed ? "r" : "")} disabled={!opts.onClick} onClick={opts.onClick} aria-label={opts.aria} aria-pressed={opts.pressed}
+          className="compact-btn" style={dieStyle(kind, 30, { onClick: opts.onClick, faded: opts.faded, pressed: opts.pressed, rerolled: opts.dashed })}>{dieFace(v, kind, 30)}</button>
         {opts.note && <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.04em", color: "var(--muted)", textTransform: "uppercase", fontFamily: "'Rajdhani', sans-serif" }}>{opts.note}</span>}
       </div>
     );
@@ -6923,7 +6989,7 @@ function FightScreen({ fight, dropped, enemies, defWeapons, sideColor, onAct, on
           {f.slots[role].map((x, i) => {
             const left = f.left[role].includes(i), used = f.used[role][i];
             const name = (x.auto ? "Kept die (Accurate)" : "Die " + (i + 1) + ": " + x.v) + ", " + (x.kind === "fail" ? "failed" : x.kind === "crit" ? "crit" : "normal success");
-            return box(i, x.auto ? "A" : x.v, kindCol(x.kind), {
+            return box(i, x.auto ? "A" : x.v, x.kind, {
               faded: !left, note: used || (x.rule && left ? x.rule : ""), pressed: pickable && pick === i,
               onClick: pickable && left ? () => setSel(i) : null,
               aria: name + (used ? ", " + used.toLowerCase() : left ? ", still to use" : ""),
@@ -6936,7 +7002,7 @@ function FightScreen({ fight, dropped, enemies, defWeapons, sideColor, onAct, on
     const canRe = mine(role) && s.dice && !s.ready && f.stage === "roll";
     return (
       <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 6 }}>
-        {(s.dice || Array(count).fill(null)).map((v, i) => box(i, v == null ? "" : v, v == null ? "var(--line)" : kindCol(dieKind(role, v)), {
+        {(s.dice || Array(count).fill(null)).map((v, i) => box(i, v, v == null ? null : dieKind(role, v), {
           dashed: s.rr[i], onClick: canRe && !s.rr[i] ? () => onAct({ type: "reroll", role, i, v: Math.floor(Math.random() * 6) + 1 }) : null,
           aria: v == null ? "Not rolled" : "Die " + (i + 1) + ": " + v + (canRe && !s.rr[i] ? ", tap to re-roll" : ""),
         }))}
@@ -6946,7 +7012,7 @@ function FightScreen({ fight, dropped, enemies, defWeapons, sideColor, onAct, on
   const card = (role) => {
     const s = f[role];
     if (!s) return (
-      <div style={{ ...cd, marginBottom: 0, padding: 10, borderLeft: "3px solid var(--line)" }}>
+      <div style={{ ...cd, marginBottom: 0, padding: 10, borderRight: "3px solid var(--line)" }}>
         <div style={{ ...h3, marginBottom: 2 }}>Fights back</div>
         <div style={{ ...mu, fontSize: 13 }}>Pick who they're fighting.</div>
       </div>
@@ -6954,12 +7020,12 @@ function FightScreen({ fight, dropped, enemies, defWeapons, sideColor, onAct, on
     const hp = Math.max(0, fightHp(f, role));
     const col = sideColor(s.side);
     return (
-      <div key={role + ":" + (s.op && s.op.id)} data-fight-card={role} style={{ ...cd, marginBottom: 0, padding: 10, borderLeft: "3px solid " + col, position: "relative", opacity: hp <= 0 ? 0.55 : 1 }}>
-        <div style={{ ...h3, marginBottom: 2, color: col }}>{role === "atk" ? "Attacking" : "Fights back"}{f.online && mine(role) ? " (you)" : ""}</div>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-          <span style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif", textDecoration: hp <= 0 ? "line-through" : "none" }}>{s.op.name}</span>
-          <span style={{ fontSize: 15, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", color: hp <= 0 ? "#B8341C" : hp < s.op.max / 2 ? "var(--gold)" : "var(--text)" }}>{hp}/{s.op.max}W</span>
+      <div key={role + ":" + (s.op && s.op.id)} data-fight-card={role} style={vsCard(col, role === "def", hp <= 0)}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 2 }}>
+          <div style={{ ...h3, marginBottom: 0, color: col, flex: 1, minWidth: 0 }}>{role === "atk" ? "Attacking" : "Fights back"}{f.online && mine(role) ? " (you)" : ""}</div>
+          <span style={{ fontSize: 14, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", color: hp <= 0 ? "#B8341C" : hp < s.op.max / 2 ? "var(--gold)" : "var(--text)" }}>{hp}/{s.op.max}W</span>
         </div>
+        <div style={{ ...vsName, textDecoration: hp <= 0 ? "line-through" : "none" }}>{s.op.name}</div>
         {s.weapon
           ? <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{s.weapon.name} {"·"} {s.weapon.atk} {"·"} {s.weapon.hit} {"·"} {s.weapon.dmg}{s.weapon.wr && s.weapon.wr !== "-" ? " · " + s.weapon.wr : ""}{s.op.injured ? " · injured: hits on 1 worse" : ""}</div>
           : <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>Picking a weapon</div>}
@@ -7062,9 +7128,7 @@ function FightScreen({ fight, dropped, enemies, defWeapons, sideColor, onAct, on
         <AttackHelp kind="fight" open={help} />
         {dropped && <div role="status" style={{ ...mu, fontSize: 13, color: "var(--gold)", marginBottom: 8 }}>Connection lost. Your dice and moves are saved here and go to your opponent when you're back online.</div>}
         {f.note && <div style={{ ...mu, fontSize: 13, color: "var(--gold)", marginBottom: 8 }}>{f.note}</div>}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
-          {card("atk")}{card("def")}
-        </div>
+        <VsPair kind="fight">{card("atk")}{card("def")}</VsPair>
         {body}
         {f.log.length > 0 && (
           <div style={{ marginTop: 12, padding: "8px 10px", background: "var(--bg)", borderRadius: 6, border: "1px solid var(--raised)" }}>
@@ -7170,6 +7234,7 @@ function ShootScreen({ shot, dropped, options, others, sideColor, onAct, onClose
   const [extra, setExtra] = useState({}); // Blast/Torrent: extra targets ticked, by key
   const [entry, setEntry] = useState(null); // typing in real dice: { who, vals }
   const [help, setHelp] = useState(false);
+  useDiceTumble("s");
   React.useEffect(() => { const i = setInterval(() => setNow(Date.now()), 5000); return () => clearInterval(i); }, []);
   React.useEffect(() => { setEntry(null); }, [s.stage, s.ti]);
   // When a target's result comes in: the weapon's effect from the shooter to the target, and the damage number.
@@ -7201,11 +7266,10 @@ function ShootScreen({ shot, dropped, options, others, sideColor, onAct, onClose
     </div>
   );
   const atkRules = shotRules(s);
-  const dieBtn = (v, kind, i, canRe, onRe, rr) => {
-    const col = kind === "crit" ? "var(--gold)" : kind === "hit" ? "#5A9C3A" : kind === "fail" ? "#B8341C" : "var(--line)";
-    return <button key={i} disabled={!canRe || rr} onClick={onRe} aria-label={v == null ? "Not rolled" : "Die " + (i + 1) + ": " + v + (canRe && !rr ? ", tap to re-roll" : "")}
-      className="compact-btn" style={{ width: 30, height: 30, padding: 0, borderRadius: 5, border: "2px " + (rr ? "dashed " : "solid ") + col, background: v == null ? "transparent" : al(col, "18"), color: col, fontSize: 15, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", cursor: canRe && !rr ? "pointer" : "default" }}>{v == null ? "" : v}</button>;
-  };
+  const dieBtn = (v, kind, i, canRe, onRe, rr, who2) => (
+    <button key={i} data-die={"s:" + who2 + ":" + s.ti + ":" + i} data-v={v == null ? "" : v + (rr ? "r" : "")} disabled={!canRe || rr} onClick={onRe} aria-label={v == null ? "Not rolled" : "Die " + (i + 1) + ": " + v + (canRe && !rr ? ", tap to re-roll" : "")}
+      className="compact-btn" style={dieStyle(kind, 30, { onClick: canRe && !rr ? onRe : null, rerolled: rr })}>{dieFace(v, kind, 30)}</button>
+  );
   const diceRow = (who2) => {
     if (!t) return null;
     const side = t[who2], count = who2 === "a" ? fightDiceCount(s.atk.weapon) : shotDefCount(s, t).roll;
@@ -7215,12 +7279,12 @@ function ShootScreen({ shot, dropped, options, others, sideColor, onAct, onClose
     if (entry && entry.who === who2) return (
       <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 6 }}>
         {entry.vals.map((v, i) => <button key={i} onClick={() => setEntry({ ...entry, vals: entry.vals.map((x, j) => j === i ? (x || 0) % 6 + 1 : x) })} aria-label={"Die " + (i + 1) + (v ? ": " + v : ": not set") + ", tap to change"} className="compact-btn"
-          style={{ width: 30, height: 30, padding: 0, borderRadius: 5, border: "2px solid var(--accent)", background: "transparent", color: "var(--text)", fontSize: 15, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", cursor: "pointer" }}>{v || "?"}</button>)}
+          style={{ ...dieStyle(v ? "set" : null, 30, { onClick: true }), ...(v ? {} : { border: "2px solid var(--accent)", color: "var(--text)" }) }}>{v ? dieFace(v, "set", 30) : "?"}</button>)}
       </div>
     );
     return (
       <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 6, alignItems: "center" }}>
-        {(side.dice || Array(count).fill(null)).map((v, i) => dieBtn(v, v == null ? null : kind(v), i, canRe, () => onAct({ type: "reroll", who: who2, i, v: Math.floor(Math.random() * 6) + 1 }), side.rr[i]))}
+        {(side.dice || Array(count).fill(null)).map((v, i) => dieBtn(v, v == null ? null : kind(v), i, canRe, () => onAct({ type: "reroll", who: who2, i, v: Math.floor(Math.random() * 6) + 1 }), side.rr[i], who2))}
         {who2 === "d" && (side.dice ? side.kept : shotDefCount(s, t).coverSave) > 0 && <span style={{ fontSize: 12, fontWeight: 700, padding: "4px 7px", borderRadius: 4, border: "1px solid #5A9C3A", color: "#5A9C3A" }}>+1 cover save</span>}
       </div>
     );
@@ -7229,7 +7293,7 @@ function ShootScreen({ shot, dropped, options, others, sideColor, onAct, onClose
     const isAtk = role === "atk";
     const op = isAtk ? s.atk.op : t && t.op;
     if (!op) return (
-      <div style={{ ...cd, marginBottom: 0, padding: 10, borderLeft: "3px solid var(--line)" }}>
+      <div style={{ ...cd, marginBottom: 0, padding: 10, borderRight: "3px solid var(--line)" }}>
         <div style={{ ...h3, marginBottom: 2 }}>Target</div>
         <div style={{ ...mu, fontSize: 13 }}>Pick who {s.atk.op.name} is shooting.</div>
       </div>
@@ -7237,12 +7301,12 @@ function ShootScreen({ shot, dropped, options, others, sideColor, onAct, onClose
     const owner = isAtk ? "A" : t.owner, col = sideColor(sideOf(owner));
     const hp = isAtk ? Math.max(0, op.start - (s.hot ? s.hot.dmg : 0)) : Math.max(0, op.start - shotTotal(t));
     return (
-      <div key={isAtk ? "atk" : "t:" + s.ti + ":" + op.id} data-shot-card={isAtk ? "atk" : "t"} style={{ ...cd, marginBottom: 0, padding: 10, borderLeft: "3px solid " + col, position: "relative", opacity: hp <= 0 ? 0.55 : 1 }}>
-        <div style={{ ...h3, marginBottom: 2, color: col }}>{isAtk ? "Shooting" : s.targets.length > 1 ? "Target " + (s.ti + 1) + " of " + s.targets.length : "Target"}{s.online && mine(owner) ? " (you)" : ""}</div>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-          <span style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif", textDecoration: hp <= 0 ? "line-through" : "none" }}>{op.name}</span>
-          <span style={{ fontSize: 15, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", color: hp <= 0 ? "#B8341C" : hp < op.max / 2 ? "var(--gold)" : "var(--text)" }}>{hp}/{op.max}W</span>
+      <div key={isAtk ? "atk" : "t:" + s.ti + ":" + op.id} data-shot-card={isAtk ? "atk" : "t"} style={vsCard(col, !isAtk, hp <= 0)}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 2 }}>
+          <div style={{ ...h3, marginBottom: 0, color: col, flex: 1, minWidth: 0 }}>{isAtk ? "Shooting" : s.targets.length > 1 ? "Target " + (s.ti + 1) + " of " + s.targets.length : "Target"}{s.online && mine(owner) ? " (you)" : ""}</div>
+          <span style={{ fontSize: 14, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", color: hp <= 0 ? "#B8341C" : hp < op.max / 2 ? "var(--gold)" : "var(--text)" }}>{hp}/{op.max}W</span>
         </div>
+        <div style={{ ...vsName, textDecoration: hp <= 0 ? "line-through" : "none" }}>{op.name}</div>
         <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
           {isAtk ? <>{s.atk.weapon.name} {"·"} {s.atk.weapon.atk} {"·"} {s.atk.weapon.hit} {"·"} {s.atk.weapon.dmg}{s.atk.weapon.wr && s.atk.weapon.wr !== "-" ? " · " + s.atk.weapon.wr : ""}{op.injured ? " · injured: hits on 1 worse" : ""}</>
             : <>Save {t.save}+{t.cover ? " · in cover" : ""}{t.obscured ? " · obscured" : ""}</>}
@@ -7390,9 +7454,7 @@ function ShootScreen({ shot, dropped, options, others, sideColor, onAct, onClose
         <AttackHelp kind="shoot" open={help} />
         {dropped && <div role="status" style={{ ...mu, fontSize: 13, color: "var(--gold)", marginBottom: 8 }}>Connection lost. Your dice and moves are saved here and go to your opponent when you're back online.</div>}
         {s.note && <div style={{ ...mu, fontSize: 13, color: "var(--gold)", marginBottom: 8 }}>{s.note}</div>}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
-          {card("atk")}{card("t")}
-        </div>
+        <VsPair kind="shoot">{card("atk")}{card("t")}</VsPair>
         {body}
       </div>
     </div>
@@ -7407,6 +7469,7 @@ const ICON_PATHS = {
   melee: <><path d="M14.5 3.5L20.5 3l-.5 6L9.5 19.5l-5-5z" /><path d="M6.5 13.5l4 4M4.5 19.5l2-2" /></>,
   x: <path d="M6 6l12 12M18 6L6 18" />,
   check: <path d="M5 12.5l4.5 4.5L19 7.5" />,
+  arrowRight: <path d="M4 12h15M13 6l6 6-6 6" />,
   chevronDown: <path d="M6 9l6 6 6-6" />,
   chevronUp: <path d="M6 15l6-6 6 6" />,
   chevronRight: <path d="M9 6l6 6-6 6" />,
@@ -7538,7 +7601,7 @@ function decalSvg(k, size, rot) {
   return '<svg ' + o + '><defs>' + soot + core + '</defs><circle r="10.5" fill="url(#' + u + 's)"/>' + cracks + '<path d="' + blob(3, 4.4, 12) + '" fill="url(#' + u + 'c)" stroke="#cbbba8" stroke-opacity="0.35" stroke-width="0.5"/></svg>';
 }
 // The gauze an injured operative wears, wrapped round the colored edge of its datacard (left of the text, so it covers nothing).
-const BANDAGE_SVG = '<svg width="15" height="46" viewBox="0 0 15 46"><defs><linearGradient id="gzA" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#eee6d6"/><stop offset="0.6" stop-color="#d6cab3"/><stop offset="1" stop-color="#a8987d"/></linearGradient>'
+const BANDAGE_SVG = '<svg width="12" height="37" viewBox="0 0 15 46"><defs><linearGradient id="gzA" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#eee6d6"/><stop offset="0.6" stop-color="#d6cab3"/><stop offset="1" stop-color="#a8987d"/></linearGradient>'
   + '<linearGradient id="gzE" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#000" stop-opacity="0.4"/><stop offset="0.35" stop-color="#000" stop-opacity="0"/><stop offset="0.8" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.3"/></linearGradient>'
   + '<pattern id="gzW" width="1.6" height="1.6" patternUnits="userSpaceOnUse"><path d="M0 0.4h1.6M0.4 0v1.6" stroke="#7d6d55" stroke-opacity="0.12" stroke-width="0.35"/></pattern></defs>'
   // Overlapping turns, each bowed slightly as it wraps the edge; the lowest is drawn last so each turn sits on the one above.
@@ -8077,6 +8140,22 @@ const abilityText = (a, f) => {
   const m = a.match(/^([^:.]{2,40}):\s(.*)$/s);
   return m ? <React.Fragment><strong style={{ color: "var(--text)", fontWeight: 700 }}>{m[1]}:</strong> <RefText text={m[2]} f={f} self={m[1].replace(/\s*\([^)]*\)\s*$/, "")} /></React.Fragment> : <RefText text={a} f={f} />;
 };
+// The datacard's health bar: a tick per wound, a brighter tick at the injured line, and a pale trail that shrinks a
+// moment after a hit so you can see the wounds just lost.
+function HealthBar({ cw, maxW, color }) {
+  const pct = maxW > 0 ? Math.max(0, Math.min(100, (cw / maxW) * 100)) : 0, line = maxW > 0 ? (Math.ceil(maxW / 2) / maxW) * 100 : 50;
+  return (
+    <div data-health={Math.round(pct)} role="meter" aria-label="Wounds" aria-valuemin={0} aria-valuemax={maxW} aria-valuenow={Math.max(0, cw)} style={{ height: 3, position: "relative" }}>
+      <div style={{ position: "absolute", left: 6, right: 6, top: -3, height: 6, borderRadius: 3, background: DS.bgBase, boxShadow: "inset 0 1px 2px rgba(0,0,0,0.6)", overflow: "hidden" }}>
+        <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: pct + "%", background: "#E9E2D3", opacity: 0.5, transition: "width 0.6s ease 0.45s" }} />
+        <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: pct + "%", background: "linear-gradient(180deg, color-mix(in srgb, " + color + " 70%, white), " + color + " 60%)", boxShadow: "0 0 6px " + al(color, "80"), transition: "width 0.25s ease-out, background 0.3s" }} />
+        {maxW <= 30 && <div style={{ position: "absolute", inset: 0, backgroundImage: "repeating-linear-gradient(90deg, transparent 0, transparent calc(" + (100 / maxW) + "% - 1px), rgba(0,0,0,0.45) calc(" + (100 / maxW) + "% - 1px), rgba(0,0,0,0.45) " + (100 / maxW) + "%)" }} />}
+        <div style={{ position: "absolute", left: "calc(" + line + "% - 1px)", top: 0, bottom: 0, width: 2, background: "rgba(255,255,255,0.55)" }} />
+      </div>
+    </div>
+  );
+}
+
 function Datacard({ op, f, fc, equipWeapons, equipEffects, curWounds, onWound, collapsed, onToggle, ignoreInjured, cp, setCp, isActivated, onActivate, order, onOrder, uses, setUse, carried, onCarried, narrow, requestFight, requestShoot, scars }) {
   const [pickWeapons, setPickWeapons] = useState(false);
   const { feat } = React.useContext(FeatureCtx);
@@ -8108,10 +8187,16 @@ function Datacard({ op, f, fc, equipWeapons, equipEffects, curWounds, onWound, c
   const injured = rawInjured && !ignoreInjured;
   const incapacitated = cw <= 0;
   const woundPct = maxW > 0 ? (cw / maxW) * 100 : 0;
-  const wcStrong = woundPct > 66;
-  const wcMid = woundPct > 33 && woundPct <= 66;
-  const woundColorTone = incapacitated ? DS.textTertiary : (rawInjured && !ignoreInjured) ? DS.threat : wcStrong ? DS.success : wcMid ? DS.goldSignal : DS.threat;
+  // Green while healthy, amber once injured (below half), red when nearly out (a quarter or less, or 2 wounds).
+  const nearlyOut = !incapacitated && cw <= Math.max(2, Math.floor(maxW / 4));
+  const woundColorTone = incapacitated ? DS.textTertiary : nearlyOut ? DS.threat : rawInjured ? DS.goldSignal : "#5A9C3A";
   const cardOpacity = incapacitated ? 0.45 : 1;
+  // Out of action: the card folds shut (it can still be opened) so the operatives still fighting stand out.
+  const wasOut = React.useRef(incapacitated);
+  React.useEffect(() => {
+    if (incapacitated && !wasOut.current && !collapsed && onToggle) onToggle();
+    wasOut.current = incapacitated;
+  }, [incapacitated]);
   const moveDisplay = injured ? (parseInt(op.move) - 2) + "\"" : op.move;
   // narrow: the 320px opponent column on desktop uses the phone layout (stats on a second row).
   const isMobile = useIsMobile();
@@ -8192,10 +8277,8 @@ function Datacard({ op, f, fc, equipWeapons, equipEffects, curWounds, onWound, c
           )}
         </div>
 
-        {/* Wound bar: always visible */}
-        <div style={{ height: 3, background: DS.bgBase }}>
-          <div style={{ height: "100%", width: woundPct + "%", background: woundColorTone, transition: "width 0.3s, background 0.3s" }} />
-        </div>
+        {/* Health bar: always visible, in the same 3px of height the old wound strip used (it overlaps the header's padding). */}
+        <HealthBar cw={cw} maxW={maxW} color={woundColorTone} />
 
         {/* Expanded content */}
         {!collapsed && (
@@ -16686,10 +16769,7 @@ function Tutorial({ onExit }) {
       <div style={{ fontSize: 14, color: "var(--text2)", lineHeight: 1.6 }}>{children}</div>
     </div>
   );
-  const Die = ({ v, kind }) => {
-    const col = kind === "crit" ? "var(--gold)" : kind === "hit" ? "#5A9C3A" : "#B8341C";
-    return <div style={{ width: 40, height: 40, borderRadius: 6, border: "2px solid " + col, background: al(col, "18"), color: col, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif" }}>{v}</div>;
-  };
+  const Die = ({ v, kind }) => <div role="img" aria-label={"Die: " + v} style={dieStyle(kind === "miss" ? "fail" : kind, 40)}>{dieFace(v, kind === "miss" ? "fail" : kind, 40)}</div>;
   const DiceRow = ({ dice, hit }) => (
     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
       {dice.map((v, i) => <Die key={i} v={v} kind={v === 6 ? "crit" : v >= hit ? "hit" : "miss"} />)}
@@ -18257,6 +18337,7 @@ async function runSelfTest(hooks) {
       if (!sb) throw new Error("no Shoot button on an open datacard");
       await click(sb, "Shoot");
       if (!dlg()) throw new Error("the Shoot screen didn't open");
+      if (!dlg().querySelector("[data-vs='shoot']")) throw new Error("the Shoot screen has no marker between shooter and target");
     };
     const pickEnemy = async () => {
       await click([...dlg().querySelectorAll("button")].find(b => theirOps.some(o => b.textContent.startsWith(o.name))), "an enemy");
@@ -18267,7 +18348,11 @@ async function runSelfTest(hooks) {
       for (let i = 0; i < 40 && dlg() && !/Shooting done/.test(dlg().innerText); i++) {
         if (inDlg(/^(Send to defender|Done: defense next)$/)) throw new Error("there's still a step to send the attack to the defender");
         const next = inDlg(/^Roll \d+ (attack|defense) (die|dice)$/) || inDlg(/^(No hits: done|Done: see the damage|Continue|Next target|Finish)$/);
-        if (next) await click(next, next.textContent.trim());
+        const rolling = next && /^Roll/.test(next.textContent.trim());
+        if (next) {
+          await click(next, next.textContent.trim());
+          if (rolling && dlg() && !dlg().querySelector("[data-die] svg circle")) throw new Error("rolled dice show no pips");
+        }
         else if (theirStep && /Waiting for your opponent/.test(dlg().innerText)) await theirStep();
         else throw new Error("shooting got stuck: " + dlg().innerText.slice(0, 160));
       }
@@ -18392,6 +18477,7 @@ async function runSelfTest(hooks) {
       if (!fb) { await click(all(".datacard-print [role=button]")[0], "a datacard"); fb = all("[aria-label^='Fight with ']")[0]; }
       await click(fb, "Fight");
       if (!dlg()) throw new Error("the Fight screen didn't open");
+      if (!dlg().querySelector("[data-vs='fight']")) throw new Error("the Fight screen has no crossed blades between the fighters");
     };
     const weaponBtn = () => dlg() && [...dlg().querySelectorAll("button")].find(b => /\d+ · \d\+ · \d+\/\d+/.test(b.textContent));
     const fightOut = async (theirTurn) => {
@@ -18590,6 +18676,29 @@ async function runSelfTest(hooks) {
       if (name && g.getBoundingClientRect().right > name.getBoundingClientRect().left + 1) throw new Error("the bandage covers the operative's name");
     });
     return Object.entries(byKind).map(([k, ws]) => ws.length + " " + k).join(", ");
+  });
+  await step("Dice faces and health bars", async () => {
+    const host = document.createElement("div"); document.body.appendChild(host);
+    const root = ReactDOM.createRoot(host), e = React.createElement, bad = [];
+    try {
+      // Each face has its number of pips.
+      root.render(e("div", null, [1, 2, 3, 4, 5, 6].map(v => e("span", { key: v, "data-face": v }, dieFace(v, "hit", 30)))));
+      await settle();
+      [1, 2, 3, 4, 5, 6].forEach(v => { const n = host.querySelectorAll("[data-face='" + v + "'] circle").length; if (n !== v) bad.push("a " + v + " shows " + n + " pips"); });
+      // The health bar: full, then red when nearly out, and the card folds shut when the operative goes out of action.
+      const A = FACTIONS.angels, op = A.operatives[0];
+      let folds = 0;
+      const card = (w) => e(FeatureCtx.Provider, { value: { feat: { fx: true } } }, e(Datacard, { op, f: A, fc: A.color, equipWeapons: [], equipEffects: [], curWounds: w, onWound() {}, collapsed: false, onToggle: () => folds++, cp: 3, setCp() {}, scars: [] }));
+      root.render(card(op.wounds)); await settle();
+      const meter = () => host.querySelector("[role=meter]");
+      if (!meter() || meter().getAttribute("aria-valuenow") !== String(op.wounds) || meter().getAttribute("data-health") !== "100") bad.push("the health bar isn't full at full wounds");
+      root.render(card(1)); await settle();
+      if (!/184, 52, 28|#b8341c/i.test(meter().innerHTML)) bad.push("the health bar isn't red when nearly out");
+      root.render(card(0)); await settle();
+      if (folds !== 1) bad.push("an out-of-action card didn't fold shut");
+    } finally { root.unmount(); host.remove(); }
+    if (bad.length) throw new Error(bad.join("; "));
+    return "pips 1 to 6, health bar colors, out-of-action cards fold";
   });
   await step("Dice maths", async () => {
     const R = (hit, wr) => diceRules({ hit, wr: wr || "" });
