@@ -24,7 +24,7 @@
   </script>
   <style>
     /* Theme colors (Appearance in Settings). These are the Default theme; applyTheme() swaps them. */
-    :root { --bg: #0E0F13; --card: #1A1D24; --raised: #262A33; --line: #3A4150; --text: #F1F2F5; --text2: #C8CDD3; --muted: #9AA5B1; --muted2: #8B95A1; --dim: #5A6470; --accent: #C9772E; --gold: #FFB627; --blue: #6B9BF7; color-scheme: dark; }
+    :root { --bg: #0E0F13; --card: #1A1D24; --raised: #262A33; --line: #3A4150; --text: #F1F2F5; --text2: #C8CDD3; --muted: #9AA5B1; --muted2: #8B95A1; --dim: #5A6470; --accent: #C9772E; --gold: #FFB627; --blue: #6B9BF7; --hit: #6AAE45; --miss: #D9603F; color-scheme: dark; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body, #root { min-height: 100vh; }
     body { background: var(--bg); }
@@ -5907,12 +5907,12 @@ const DS = {
 // Each theme is a set of CSS variables on :root. Dice, wound, damage and team colors stay fixed in every theme;
 // gold and blue only darken in Light so they stay readable on white.
 const THEMES = {
-  default: { name: "Default", desc: "Dark slate, orange", vars: { bg: "#0E0F13", card: "#1A1D24", raised: "#262A33", line: "#3A4150", text: "#F1F2F5", text2: "#C8CDD3", muted: "#9AA5B1", muted2: "#8B95A1", dim: "#5A6470", accent: "#C9772E", gold: "#FFB627", blue: "#6B9BF7" } },
-  midnight: { name: "Midnight", desc: "Navy, teal", vars: { bg: "#0B1018", card: "#141C28", raised: "#1E2836", line: "#2C3A4F", text: "#EEF3F8", text2: "#C3CEDB", muted: "#93A3B8", muted2: "#8494A9", dim: "#4F5F75", accent: "#4FB8C9", gold: "#FFB627", blue: "#6B9BF7" } },
-  desert: { name: "Desert", desc: "Warm brown, bone", vars: { bg: "#15110D", card: "#221C16", raised: "#2C251D", line: "#43382C", text: "#F3EBDD", text2: "#D3C7B3", muted: "#B3A48D", muted2: "#A2937D", dim: "#6A5D4C", accent: "#CDBB94", gold: "#FFB627", blue: "#6B9BF7" } },
-  violet: { name: "Violet", desc: "Deep purple, lilac", vars: { bg: "#110E17", card: "#1C1726", raised: "#262033", line: "#3B3150", text: "#F2EEF8", text2: "#D0C8DC", muted: "#A79CB8", muted2: "#988CA9", dim: "#5E5270", accent: "#A98BEA", gold: "#FFB627", blue: "#6B9BF7" } },
-  light: { name: "Light", desc: "For bright rooms", light: true, vars: { bg: "#F2F0EB", card: "#FFFFFF", raised: "#E8E5DE", line: "#D6D2C8", text: "#1C1F24", text2: "#3A3F47", muted: "#5C6370", muted2: "#6B7280", dim: "#A0A4AB", accent: "#A85A1C", gold: "#B7791F", blue: "#3F6FD1" } },
-  contrast: { name: "High contrast", desc: "Black, white, bright edges", vars: { bg: "#000000", card: "#0D0D0D", raised: "#1F1F1F", line: "#8A8A8A", text: "#FFFFFF", text2: "#F0F0F0", muted: "#D6D6D6", muted2: "#C8C8C8", dim: "#8A8A8A", accent: "#FF9A3C", gold: "#FFB627", blue: "#8FB4FF" } },
+  default: { name: "Default", desc: "Dark slate, orange", vars: { bg: "#0E0F13", card: "#1A1D24", raised: "#262A33", line: "#3A4150", text: "#F1F2F5", text2: "#C8CDD3", muted: "#9AA5B1", muted2: "#8B95A1", dim: "#5A6470", accent: "#C9772E", gold: "#FFB627", blue: "#6B9BF7", hit: "#6AAE45", miss: "#D9603F" } },
+  midnight: { name: "Midnight", desc: "Navy, teal", vars: { bg: "#0B1018", card: "#141C28", raised: "#1E2836", line: "#2C3A4F", text: "#EEF3F8", text2: "#C3CEDB", muted: "#93A3B8", muted2: "#8494A9", dim: "#4F5F75", accent: "#4FB8C9", gold: "#FFB627", blue: "#6B9BF7", hit: "#6AAE45", miss: "#D0573A" } },
+  desert: { name: "Desert", desc: "Warm brown, bone", vars: { bg: "#15110D", card: "#221C16", raised: "#2C251D", line: "#43382C", text: "#F3EBDD", text2: "#D3C7B3", muted: "#B3A48D", muted2: "#A2937D", dim: "#6A5D4C", accent: "#CDBB94", gold: "#FFB627", blue: "#6B9BF7", hit: "#7AB050", miss: "#D8603F" } },
+  violet: { name: "Violet", desc: "Deep purple, lilac", vars: { bg: "#110E17", card: "#1C1726", raised: "#262033", line: "#3B3150", text: "#F2EEF8", text2: "#D0C8DC", muted: "#A79CB8", muted2: "#988CA9", dim: "#5E5270", accent: "#A98BEA", gold: "#FFB627", blue: "#6B9BF7", hit: "#6AAE45", miss: "#D0573A" } },
+  light: { name: "Light", desc: "For bright rooms", light: true, vars: { bg: "#F2F0EB", card: "#FFFFFF", raised: "#E8E5DE", line: "#D6D2C8", text: "#1C1F24", text2: "#3A3F47", muted: "#5C6370", muted2: "#6B7280", dim: "#A0A4AB", accent: "#A85A1C", gold: "#9A6412", blue: "#3F6FD1", hit: "#3E7A25", miss: "#A8321B" } },
+  contrast: { name: "High contrast", desc: "Black, white, bright edges", vars: { bg: "#000000", card: "#0D0D0D", raised: "#1F1F1F", line: "#8A8A8A", text: "#FFFFFF", text2: "#F0F0F0", muted: "#D6D6D6", muted2: "#C8C8C8", dim: "#8A8A8A", accent: "#FF9A3C", gold: "#FFB627", blue: "#8FB4FF", hit: "#7CD64F", miss: "#FF6A4D" } },
 };
 const hexRgb = (h) => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
 const rgbHex = (c) => "#" + c.map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0")).join("").toUpperCase();
@@ -6875,31 +6875,29 @@ function VsPair({ kind, children }) {
   );
 }
 
-// ── Dice: real-looking faces with pips, colored by result (gold crit, green success, dark failed) ──
+// ── Dice: flat faces drawn like the logo's die (an outline and solid pips), colored by result: gold crit, green
+// success, red failed. The body is the theme's panel color, and success and fail use the theme's --hit and --miss. ──
 const DIE_PIPS = { 1: [[15, 15]], 2: [[9, 9], [21, 21]], 3: [[9, 9], [15, 15], [21, 21]], 4: [[9, 9], [21, 9], [9, 21], [21, 21]], 5: [[9, 9], [21, 9], [15, 15], [9, 21], [21, 21]], 6: [[9, 8], [9, 15], [9, 22], [21, 8], [21, 15], [21, 22]] };
 const DIE_LOOK = {
-  crit: { body: "var(--gold)", pip: "#2b1d00", glow: "0 0 8px color-mix(in srgb, var(--gold) 70%, transparent)" },
-  hit: { body: "#5A9C3A", pip: "#F4FBEF" },
-  fail: { body: "#2b2321", pip: "#D9654E", edge: "#B8341C" },
-  set: { body: "#E9E2D3", pip: "#1d1a17", edge: "var(--accent)" }, // typing in real dice
+  crit: { col: "var(--gold)", tint: 24 },
+  hit: { col: "var(--hit)", tint: 16 },
+  fail: { col: "var(--miss)", tint: 8, pipOpacity: 0.8 },
+  set: { col: "var(--text)", tint: 0 }, // typing in real dice
 };
 // The button style for a die. kind: crit, hit (or norm), fail, set, or null (not rolled yet: an empty dashed outline).
 function dieStyle(kind, size, opts = {}) {
-  const k = kind === "norm" ? "hit" : kind, look = DIE_LOOK[k];
-  const base = { width: size, height: size, padding: 0, borderRadius: Math.round(size / 5), display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, cursor: opts.onClick ? "pointer" : "default", opacity: opts.faded ? 0.35 : 1, fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: Math.round(size / 2) };
-  if (!look) return { ...base, border: "2px dashed var(--line)", background: "transparent", color: "var(--muted)", boxShadow: opts.pressed ? "0 0 0 2px var(--text)" : "none" };
-  const shade = "inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -2px 0 rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.5)";
-  return { ...base, color: look.pip,
-    border: (size > 34 ? 2 : 1.5) + "px " + (opts.rerolled ? "dashed " : "solid ") + (opts.rerolled ? "var(--text)" : look.edge || "color-mix(in srgb, " + look.body + " 70%, black)"),
-    background: "linear-gradient(155deg, color-mix(in srgb, " + look.body + " 78%, white) 0%, " + look.body + " 45%, color-mix(in srgb, " + look.body + " 72%, black) 100%)",
-    boxShadow: [shade, look.glow, opts.pressed ? "0 0 0 2px var(--text)" : ""].filter(Boolean).join(", ") };
+  const look = DIE_LOOK[kind === "norm" ? "hit" : kind];
+  const base = { width: size, height: size, padding: 0, borderRadius: Math.round(size / 5), display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, cursor: opts.onClick ? "pointer" : "default", opacity: opts.faded ? 0.35 : 1, fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: Math.round(size / 2), boxShadow: opts.pressed ? "0 0 0 2px var(--text)" : "none" };
+  if (!look) return { ...base, border: "2px dashed var(--line)", background: "transparent", color: "var(--muted)" };
+  return { ...base, color: look.col, border: "2px " + (opts.rerolled ? "dashed " : "solid ") + look.col,
+    background: look.tint ? "color-mix(in srgb, " + look.col + " " + look.tint + "%, var(--raised))" : "var(--raised)" };
 }
 // What's on the face: pips for 1 to 6, or a letter ("A" for an Accurate die, "?" for one not set yet).
 function dieFace(v, kind, size) {
   const pips = DIE_PIPS[v];
   if (!pips) return v == null ? "" : v;
   const look = DIE_LOOK[kind === "norm" ? "hit" : kind] || DIE_LOOK.set, s = size - 4;
-  return <svg width={s} height={s} viewBox="0 0 30 30" aria-hidden="true" style={{ display: "block" }}>{pips.map(([x, y], i) => <circle key={i} cx={x} cy={y} r={v === 1 ? 3.6 : 2.9} fill={look.pip} />)}</svg>;
+  return <svg width={s} height={s} viewBox="0 0 30 30" aria-hidden="true" style={{ display: "block" }}>{pips.map(([x, y], i) => <circle key={i} cx={x} cy={y} r={v === 1 ? 3.6 : 2.9} style={{ fill: look.col }} opacity={look.pipOpacity || 1} />)}</svg>;
 }
 // New dice tumble in: each die's last value is kept by its data-die key, and one that changes (rolled or re-rolled)
 // spins and drops into place. Dice already showing when the screen opens stay still.
@@ -6933,6 +6931,17 @@ function FightScreen({ fight, dropped, enemies, defWeapons, sideColor, onAct, on
   const [pop, setPop] = useState(null);
   const [help, setHelp] = useState(false);
   useDiceTumble("f");
+  // The versus intro when the two fighters first face off (not when a screen with dice already rolled reopens).
+  const faced = React.useRef(null);
+  React.useEffect(() => {
+    const key = f.def && f.def.op ? f.atk.op.id + ">" + f.def.op.id : null;
+    if (!key || faced.current === key) return;
+    const fresh = faced.current !== null || !f.atk.dice;
+    faced.current = key;
+    if (!fresh || !feat.fx || !document.body.animate) return;
+    const screen = document.querySelector("[role=dialog][aria-label='Fight']");
+    playVersusFx(screen, ["atk", "def"].map(r => document.querySelector("[data-fight-card] [data-vs-name='" + r + "']")), document.querySelector("[data-vs='fight']"));
+  }, [f.def && f.def.op && f.def.op.id]);
   React.useEffect(() => { const t = setInterval(() => setNow(Date.now()), 5000); return () => clearInterval(t); }, []);
   React.useEffect(() => { setSel(null); }, [f.turn, f.log.length]);
   const myTurnLeft = f.stage === "resolve" ? f.left[f.turn] : [];
@@ -7025,7 +7034,7 @@ function FightScreen({ fight, dropped, enemies, defWeapons, sideColor, onAct, on
           <div style={{ ...h3, marginBottom: 0, color: col, flex: 1, minWidth: 0 }}>{role === "atk" ? "Attacking" : "Fights back"}{f.online && mine(role) ? " (you)" : ""}</div>
           <span style={{ fontSize: 14, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", color: hp <= 0 ? "#B8341C" : hp < s.op.max / 2 ? "var(--gold)" : "var(--text)" }}>{hp}/{s.op.max}W</span>
         </div>
-        <div style={{ ...vsName, textDecoration: hp <= 0 ? "line-through" : "none" }}>{s.op.name}</div>
+        <div data-vs-name={role} style={{ ...vsName, textDecoration: hp <= 0 ? "line-through" : "none" }}>{s.op.name}</div>
         {s.weapon
           ? <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{s.weapon.name} {"·"} {s.weapon.atk} {"·"} {s.weapon.hit} {"·"} {s.weapon.dmg}{s.weapon.wr && s.weapon.wr !== "-" ? " · " + s.weapon.wr : ""}{s.op.injured ? " · injured: hits on 1 worse" : ""}</div>
           : <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>Picking a weapon</div>}
@@ -7235,6 +7244,17 @@ function ShootScreen({ shot, dropped, options, others, sideColor, onAct, onClose
   const [entry, setEntry] = useState(null); // typing in real dice: { who, vals }
   const [help, setHelp] = useState(false);
   useDiceTumble("s");
+  // The versus intro when the shooter and each target first face off (not when a screen with dice already rolled reopens).
+  const faced = React.useRef(null);
+  React.useEffect(() => {
+    const key = t && t.op ? s.atk.op.id + ">" + t.op.id + ":" + s.ti : null;
+    if (!key || faced.current === key) return;
+    const fresh = faced.current !== null || !t.a.dice;
+    faced.current = key;
+    if (!fresh || !feat.fx || !document.body.animate) return;
+    const screen = document.querySelector("[role=dialog][aria-label='Shoot']");
+    playVersusFx(screen, ["atk", "t"].map(r => document.querySelector("[data-shot-card] [data-vs-name='" + r + "']")), document.querySelector("[data-vs='shoot']"));
+  }, [t && t.op && t.op.id, s.ti]);
   React.useEffect(() => { const i = setInterval(() => setNow(Date.now()), 5000); return () => clearInterval(i); }, []);
   React.useEffect(() => { setEntry(null); }, [s.stage, s.ti]);
   // When a target's result comes in: the weapon's effect from the shooter to the target, and the damage number.
@@ -7306,7 +7326,7 @@ function ShootScreen({ shot, dropped, options, others, sideColor, onAct, onClose
           <div style={{ ...h3, marginBottom: 0, color: col, flex: 1, minWidth: 0 }}>{isAtk ? "Shooting" : s.targets.length > 1 ? "Target " + (s.ti + 1) + " of " + s.targets.length : "Target"}{s.online && mine(owner) ? " (you)" : ""}</div>
           <span style={{ fontSize: 14, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", color: hp <= 0 ? "#B8341C" : hp < op.max / 2 ? "var(--gold)" : "var(--text)" }}>{hp}/{op.max}W</span>
         </div>
-        <div style={{ ...vsName, textDecoration: hp <= 0 ? "line-through" : "none" }}>{op.name}</div>
+        <div data-vs-name={role} style={{ ...vsName, textDecoration: hp <= 0 ? "line-through" : "none" }}>{op.name}</div>
         <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
           {isAtk ? <>{s.atk.weapon.name} {"·"} {s.atk.weapon.atk} {"·"} {s.atk.weapon.hit} {"·"} {s.atk.weapon.dmg}{s.atk.weapon.wr && s.atk.weapon.wr !== "-" ? " · " + s.atk.weapon.wr : ""}{op.injured ? " · injured: hits on 1 worse" : ""}</>
             : <>Save {t.save}+{t.cover ? " · in cover" : ""}{t.obscured ? " · obscured" : ""}</>}
@@ -7601,12 +7621,9 @@ function decalSvg(k, size, rot) {
   return '<svg ' + o + '><defs>' + soot + core + '</defs><circle r="10.5" fill="url(#' + u + 's)"/>' + cracks + '<path d="' + blob(3, 4.4, 12) + '" fill="url(#' + u + 'c)" stroke="#cbbba8" stroke-opacity="0.35" stroke-width="0.5"/></svg>';
 }
 // The gauze an injured operative wears, wrapped round the colored edge of its datacard (left of the text, so it covers nothing).
-const BANDAGE_SVG = '<svg width="12" height="37" viewBox="0 0 15 46"><defs><linearGradient id="gzA" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#eee6d6"/><stop offset="0.6" stop-color="#d6cab3"/><stop offset="1" stop-color="#a8987d"/></linearGradient>'
-  + '<linearGradient id="gzE" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#000" stop-opacity="0.4"/><stop offset="0.35" stop-color="#000" stop-opacity="0"/><stop offset="0.8" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.3"/></linearGradient>'
-  + '<pattern id="gzW" width="1.6" height="1.6" patternUnits="userSpaceOnUse"><path d="M0 0.4h1.6M0.4 0v1.6" stroke="#7d6d55" stroke-opacity="0.12" stroke-width="0.35"/></pattern></defs>'
-  // Overlapping turns, each bowed slightly as it wraps the edge; the lowest is drawn last so each turn sits on the one above.
-  + [2, 11, 20, 29].map((y) => { const d = "M0 " + (y + 3.2) + "Q7.5 " + (y + 0.6) + " 15 " + y + "L15 " + (y + 10) + "Q7.5 " + (y + 10.8) + " 0 " + (y + 13) + "Z"; return '<path d="' + d + '" fill="url(#gzA)"/><path d="' + d + '" fill="url(#gzW)"/><path d="' + d + '" fill="url(#gzE)"/><path d="M0 ' + (y + 3.2) + 'Q7.5 ' + (y + 0.6) + ' 15 ' + y + '" stroke="#fff" stroke-opacity="0.35" stroke-width="0.5" fill="none"/>'; }).join("")
-  + '<path d="M0 42Q7.5 39.8 15 39" stroke="#6f6150" stroke-opacity="0.45" stroke-width="0.6" fill="none"/><path d="M12.5 39.5l1.4 3.6M10.8 40l0.5 3.8M14 39.3l1 2.4" stroke="#d6cab3" stroke-width="0.6" stroke-linecap="round"/></svg>';
+const BANDAGE_SVG = '<svg width="12" height="37" viewBox="0 0 15 46">'
+  + [2, 12, 22, 32].map((y) => '<path d="M0 ' + (y + 3) + 'L15 ' + y + 'L15 ' + (y + 9) + 'L0 ' + (y + 12) + 'Z" fill="#E6DFD0" stroke="#8F8572" stroke-width="0.8" stroke-linejoin="round"/>').join("")
+  + '</svg>';
 // A mark on a card right now (the attack screen); it stays until the screen closes.
 function fxDecal(card, k, x, y, size) {
   const r = card.getBoundingClientRect();
@@ -8043,6 +8060,41 @@ function playBlockFx(weapon, blocker, other, opts = {}) {
   return clash;
 }
 
+// The versus intro, when both sides first face off: the names slam down onto their cards one after the other, the
+// marker between them pops, the window shakes and flashes, and fire spews outward all round its border.
+// Reduce Motion: the names just fade in.
+function playVersusFx(screen, names, marker) {
+  const still = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (still) { names.forEach(el => el && el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300, easing: "ease-out" })); return; }
+  const rnd = (lo, hi) => lo + Math.random() * (hi - lo), land = 200;
+  names.forEach((el, i) => el && el.animate([
+    { transform: "translateY(-28px) scale(2.1)", opacity: 0, filter: "blur(2px)" },
+    { offset: 0.55, transform: "translateY(2px) scale(0.94)", opacity: 1, filter: "blur(0)" },
+    { offset: 0.8, transform: "translateY(-1px) scale(1.02)" },
+    { transform: "none" },
+  ], { duration: 360, delay: i * 140, easing: "cubic-bezier(.3,0,.4,1)", fill: "backwards" }));
+  if (marker) marker.animate([{ transform: "translate(-50%, -50%) scale(0)" }, { offset: 0.6, transform: "translate(-50%, -50%) scale(1.35)" }, { transform: "translate(-50%, -50%) scale(1)" }], { duration: 300, delay: land + 140, easing: "ease-out", fill: "backwards" });
+  if (!screen) return;
+  fxMove.shake(screen, 10, land, 460);
+  fxMove.border(screen, "#FF8A3D", 1.3, land);
+  // Fire along all four edges: a dense wall of flame pushed outward (and upward, as flames go), with embers flying off.
+  const r = screen.getBoundingClientRect(), per = 2 * (r.width + r.height), n = 170;
+  const edge = (d) => {
+    if (d < r.width) return [r.left + d, r.top, 0, -1];
+    if ((d -= r.width) < r.height) return [r.right, r.top + d, 1, 0];
+    if ((d -= r.height) < r.width) return [r.right - d, r.bottom, 0, 1];
+    d -= r.width; return [r.left, r.bottom - d, -1, 0];
+  };
+  for (let i = 0; i < n; i++) {
+    const [x, y, nx, ny] = edge((i + Math.random()) / n * per), sp = rnd(0.06, 0.22);
+    FX.add({ type: "fire", delay: land + rnd(0, 120), life: rnd(320, 560), x: x + rnd(-4, 4), y: y + rnd(-4, 4), vx: nx * sp + rnd(-0.03, 0.03), vy: ny * sp + rnd(-0.03, 0.03) - 0.06, drag: 0.95, r0: rnd(5, 9), r1: rnd(18, 32), a: 0.95 });
+  }
+  for (let i = 0; i < 40; i++) {
+    const [x, y, nx, ny] = edge(Math.random() * per), sp = rnd(0.25, 0.6);
+    FX.add({ type: "spark", delay: land + rnd(0, 160), life: rnd(260, 480), x, y, vx: nx * sp + rnd(-0.1, 0.1), vy: ny * sp + rnd(-0.1, 0.1) - 0.05, color: Math.random() < 0.5 ? "#FFD27A" : "#FF8A3D", w: 1.6, len: 8 });
+  }
+}
+
 // With the phone set to reduce motion: no movement, just a glow around the card that was hit and on the screen frame.
 function calmHit(card, weapon) {
   const p = weapon ? fxProfile(weapon) : null, col = p ? fxColor(p) : "#B8341C";
@@ -8240,7 +8292,7 @@ function Datacard({ op, f, fc, equipWeapons, equipEffects, curWounds, onWound, c
           {(scars || []).map((x, i) => <span key={i} data-scar={x.k} style={{ position: "absolute", left: (56 + x.x * 0.34) + "%", top: Math.round(x.y * 0.75), opacity: incapacitated ? 0.3 : 0.62 }} dangerouslySetInnerHTML={{ __html: decalSvg(x.k, x.s, x.r) }} />)}
         </div>
       )}
-      {feat.fx && rawInjured && !incapacitated && <span aria-hidden="true" data-bandage="true" style={{ position: "absolute", left: 0, top: collapsed ? 4 : 8, zIndex: 2, pointerEvents: "none", lineHeight: 0, filter: "drop-shadow(1px 1px 1px rgba(0,0,0,0.45))" }} dangerouslySetInnerHTML={{ __html: BANDAGE_SVG }} />}
+      {feat.fx && rawInjured && !incapacitated && <span aria-hidden="true" data-bandage="true" style={{ position: "absolute", left: 0, top: collapsed ? 4 : 8, zIndex: 2, pointerEvents: "none", lineHeight: 0 }} dangerouslySetInnerHTML={{ __html: BANDAGE_SVG }} />}
       {/* Faction color accent stripe */}
       <div style={{ width: 4, background: incapacitated ? DS.textTertiary : fc, flexShrink: 0 }} />
       <div style={{ flex: 1, minWidth: 0, position: "relative", zIndex: 1 }}>
@@ -18603,6 +18655,7 @@ async function runSelfTest(hooks) {
       const c = crosshair();
       if (c && getComputedStyle(c).stroke !== rgb(t.vars.accent)) throw new Error(t.name + ": the logo didn't take the accent (" + getComputedStyle(c).stroke + ")");
       if (contrast(t.vars.text, t.vars.card) < 7 || contrast(t.vars.muted, t.vars.card) < 4.5 || contrast(t.vars.accent, t.vars.card) < 4.5) throw new Error(t.name + ": text colors are too faint on its panels");
+      ["hit", "miss", "gold"].forEach(k => { if (contrast(t.vars[k], t.vars.raised) < 3.5) throw new Error(t.name + ": the " + k + " dice color is too faint on its dice"); });
     }
     if ((store("appearance") || {}).theme !== Object.keys(THEMES).slice(-1)[0]) throw new Error("the theme choice wasn't saved");
     // Match my team: every team color, in every theme, is readable and doesn't look like a dice or damage color.
@@ -18658,6 +18711,13 @@ async function runSelfTest(hooks) {
       await wait(1800);
       if (!g.querySelector("[data-decal]")) bad.push("the frag grenade left no marks");
       if (g.querySelector("[data-decal='hole']")) bad.push("the frag grenade left a bullet hole");
+      // The versus intro: both names move, and fire runs round the border.
+      FX.clear();
+      const n1 = document.createElement("div"), n2 = document.createElement("div"); a.appendChild(n1); b.appendChild(n2);
+      playVersusFx(screen, [n1, n2], null);
+      if (!n1.getAnimations().length || !n2.getAnimations().length) bad.push("the versus intro doesn't move the names");
+      if (FX.count("fire") < 100) bad.push("the versus intro has no fire round the border");
+      FX.clear();
       playHotFx(a, a);
       if (!document.querySelector("[data-fx='hot']")) bad.push("no red glow for Hot self-damage");
     } finally { screen.remove(); FX.clear(); }
