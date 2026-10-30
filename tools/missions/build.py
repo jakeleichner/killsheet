@@ -1,10 +1,9 @@
-"""Build MISSION_PACKS into killsheet.html from tools/missions/<pack>.py.
+"""Build MISSION_PACKS into src/15-missions-data.jsx from tools/missions/<pack>.py.
 
-Usage: python3 tools/missions/build.py killsheet.html
+Usage: python3 tools/missions/build.py
 
-Writes `const MISSION_PACKS = [...]` between the MISSION_PACKS:BEGIN/END markers
-(inserting them before the Rules component the first time) and checks that every
-map image the data names exists in maps/.
+Writes `const MISSION_PACKS = [...]` between the MISSION_PACKS:BEGIN/END markers, checks that every map image the
+data names exists in maps/, then rejoins killsheet.html from src/ (tools/assemble.py).
 """
 import json
 import os
@@ -57,7 +56,7 @@ def check(packs):
 
 
 def main():
-    html_path = sys.argv[1]
+    html_path = os.path.join(ROOT, "src", "15-missions-data.jsx")
     packs = load_packs()
     errors = check(packs)
     if errors:
@@ -65,15 +64,14 @@ def main():
         sys.exit(1)
     js = BEGIN + "\nconst MISSION_PACKS = " + json.dumps(packs, ensure_ascii=False, indent=1) + ";\n" + END
     s = open(html_path).read()
-    if BEGIN in s:
-        s = s[:s.index(BEGIN)] + js + s[s.index(END) + len(END):]
-    else:
-        anchor = "/* ═══ RULES ═══ */"
-        assert s.count(anchor) == 1, "Rules anchor not found"
-        s = s.replace(anchor, js + "\n\n" + anchor)
+    assert BEGIN in s and END in s, "the MISSION_PACKS markers are missing from " + html_path
+    s = s[:s.index(BEGIN)] + js + s[s.index(END) + len(END):]
     open(html_path, "w").write(s)
     n_missions = sum(len(p["missions"]) for p in packs)
     print(f"Built {len(packs)} packs, {n_missions} missions.")
+    sys.path.insert(0, os.path.join(ROOT, "tools"))
+    import assemble
+    assemble.main()
 
 
 if __name__ == "__main__":

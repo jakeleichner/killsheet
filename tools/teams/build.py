@@ -1,8 +1,8 @@
-"""Turn team data (teams/*.py, each defining TEAM) into FACTIONS entries in killsheet.html.
+"""Turn team data (teams/*.py, each defining TEAM) into the FACTIONS object in src/03-teams.jsx.
 
-Usage: python3 tools/teams/build.py killsheet.html [team1 team2 ...]  (no names = everything in ORDER.txt)
-Teams are inserted after the existing ones, in the order given, between the marker
-comment and the end of the FACTIONS object. Re-running replaces that section.
+Usage: python3 tools/teams/build.py [team1 team2 ...]  (no names = everything in ORDER.txt)
+Writes the teams, in the order given, between `const FACTIONS = {` and the end of the object (the file's last
+`};`), then rejoins killsheet.html from src/ (tools/assemble.py). Re-running replaces that section.
 """
 import importlib.util
 import json
@@ -14,7 +14,7 @@ HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE.parent))
 from us_spelling import us  # the PDFs use British spellings; the app uses US
 START = "const FACTIONS = {\n"
-END = "};\n\n/* ═══ ROSTER & COMPOSITION HELPERS"
+TEAMS_FILE = HERE.parent.parent / "src" / "03-teams.jsx"
 
 
 def js(v, ind=0):
@@ -193,8 +193,8 @@ def load(name):
 
 
 def main():
-    html = Path(sys.argv[1])
-    names = sys.argv[2:] or [l.strip() for l in (HERE / "ORDER.txt").read_text().splitlines() if l.strip() and not l.startswith("#")]
+    html = TEAMS_FILE
+    names = sys.argv[1:] or [l.strip() for l in (HERE / "ORDER.txt").read_text().splitlines() if l.strip() and not l.startswith("#")]
     teams = [load(n) for n in names]
     bad = False
     for t in teams:
@@ -210,10 +210,12 @@ def main():
         sys.exit(1)
     s = html.read_text(encoding="utf-8")
     start = s.index(START) + len(START)
-    end = s.index(END)
+    end = s.rindex("};\n")  # the end of the FACTIONS object, the last thing in the file
     s = s[:start] + "\n".join(emit(t) for t in teams) + "\n" + s[end:]
     html.write_text(s, encoding="utf-8")
-    print(f"wrote {len(teams)} teams into {html.name}")
+    print(f"wrote {len(teams)} teams into src/{html.name}")
+    import assemble
+    assemble.main()
 
 
 if __name__ == "__main__":

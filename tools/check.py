@@ -171,11 +171,23 @@ def check_us_spelling(lines):
     return out
 
 
+def check_assembled(path):
+    """killsheet.html is built from src/ (tools/assemble.py); an edit made to it directly would be lost."""
+    import assemble
+    if path.resolve() != Path(assemble.OUT).resolve():
+        return []
+    return [] if path.read_text(encoding="utf-8") == assemble.joined() else [
+        "killsheet.html doesn't match src/. Edit the files in src/, then run: python3 tools/assemble.py"]
+
+
 def main():
     path = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).resolve().parent.parent / "killsheet.html"
     text = path.read_text(encoding="utf-8")
     lines = text.split("\n")
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import assemble
     checks = [
+        ("killsheet.html matches src/", check_assembled(path)),
         ("Hooks come before early returns", check_hooks(lines)),
         ("Every tab has an icon and a panel", check_tab_icons(text)),
         ("localStorage keys are unique", check_storage_keys(text)),
@@ -187,10 +199,12 @@ def main():
         ("The script compiles", check_compiles(text)),
     ]
     failed = 0
+    # Point problems at the src file: "line 9120" becomes "src/13-builder.jsx:503".
+    at = lambda p: re.sub(r"\b[Ll]ine (\d+)", lambda m: assemble.where(int(m.group(1))), p)
     for label, problems in checks:
         print(f"{'PASS' if not problems else 'FAIL'}  {label}")
         for p in problems:
-            print(f"      - {p}")
+            print(f"      - {at(p)}")
         failed += bool(problems)
     print()
     print("All checks passed." if not failed else f"{failed} check(s) failed. Fix these before pushing.")

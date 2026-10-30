@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>KillSheet - Tactical Skirmish Companion</title>
+  <meta name="description" content="KillSheet - roster builder, rules reference, game tracker, and dice roller for tabletop skirmish gaming.">
+  <meta name="theme-color" content="#0E0F13">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23C9772E'/><rect x='4' y='4' width='24' height='24' rx='5' fill='%230E0F13'/><circle cx='10' cy='10' r='2.6' fill='%23F1F2F5'/><circle cx='22' cy='10' r='2.6' fill='%23F1F2F5'/><circle cx='10' cy='22' r='2.6' fill='%23F1F2F5'/><circle cx='22' cy='22' r='2.6' fill='%23F1F2F5'/><circle cx='16' cy='16' r='3.4' fill='none' stroke='%23C9772E' stroke-width='2.4'/></svg>">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="KillSheet">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <script>
+    // Offline mode: the service worker runs on the live site (https), or locally with ?sw=1 for testing.
+    window.__ksInstall = null; // Chrome's "install app" prompt, offered from the game menu
+    addEventListener("beforeinstallprompt", function (e) { e.preventDefault(); window.__ksInstall = e; });
+    if ("serviceWorker" in navigator && (location.protocol === "https:" || /[?&]sw=1/.test(location.search))) {
+      addEventListener("load", function () { navigator.serviceWorker.register("sw.js").catch(function () {}); });
+    }
+  </script>
+  <style>
+    /* Theme colors (Appearance in Settings). These are the Default theme; applyTheme() swaps them. */
+    :root { --bg: #0E0F13; --card: #1A1D24; --raised: #262A33; --line: #3A4150; --text: #F1F2F5; --text2: #C8CDD3; --muted: #9AA5B1; --muted2: #8B95A1; --dim: #5A6470; --accent: #C9772E; --gold: #FFB627; --blue: #6B9BF7; --hit: #6AAE45; --miss: #D9603F; color-scheme: dark; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body, #root { min-height: 100vh; }
+    body { background: var(--bg); }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
+    * { scrollbar-width: thin; scrollbar-color: var(--line) var(--bg); }
+    button:hover { opacity: 0.85; }
+    :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; border-radius: 4px; }
+    /* Short fade-and-rise when a screen appears. Restarts whenever a tab panel goes from hidden to shown. */
+    @keyframes ksAppear { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    /* "backwards", not "both": a finished animation that keeps a transform would trap position: fixed overlays inside the panel */
+    .ks-appear { animation: ksAppear 0.24s ease-out backwards; }
+    /* Fight screen: the damage number rises and fades over the struck operative. */
+    @keyframes ksPop { 0% { opacity: 0; transform: scale(2.4); } 12% { opacity: 1; transform: scale(0.9); } 22% { transform: scale(1.08); } 32% { transform: scale(1); } 75% { opacity: 1; transform: translateY(-6px); } 100% { opacity: 0; transform: translateY(-22px); } }
+    .ks-pop { animation: ksPop 1.8s cubic-bezier(.2,.8,.3,1) forwards; font-size: calc(26px * var(--ts, 1)) !important; text-shadow: 0 0 10px rgba(224,102,74,0.8), 0 2px 0 #000; z-index: 4; }
+    @keyframes ksFade { 0% { opacity: 0; } 15% { opacity: 1; } 75% { opacity: 1; } 100% { opacity: 0; } }
+    @media (prefers-reduced-motion: reduce) { .ks-appear { animation: none; } .ks-pop { animation: ksFade 1.6s ease-out forwards; } }
+    [role="button"] { cursor: pointer; }
+    /* Number boxes sit between our own - and + buttons, so hide the browser's arrows (Safari draws them over the digits). */
+    input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+    /* Mission map diagrams (maps/*.svg) are dropped in as markup; size the svg to its box. */
+    .km-tile > svg { display: block; width: 100%; height: auto; }
+    .km-fit > svg { display: block; width: 100%; height: 100%; }
+    @media (max-width: 600px) {
+      #root { font-size: calc(13px * var(--ts, 1)); }
+    }
+    /* Phones: finger-sized buttons, except compact controls that are sized on purpose and inline text links. */
+    @media (max-width: 699px) {
+      button:not(.compact-btn):not(.link-btn) { min-height: 40px; min-width: 40px; }
+    }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">

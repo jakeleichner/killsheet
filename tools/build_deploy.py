@@ -45,7 +45,11 @@ def compile_jsx(src):
 
 def main():
     started = time.time()
+    sys.path.insert(0, os.path.join(ROOT, "tools"))
+    import assemble
     html = open(os.path.join(ROOT, "killsheet.html")).read()
+    if html != assemble.joined():
+        sys.exit("killsheet.html doesn't match src/. Edit the files in src/, then run: python3 tools/assemble.py")
     assert html.count(OPEN_TAG) == 1, "expected one text/babel script"
     assert html.count(BABEL_TAG) == 1, "Babel script tag not found"
     a = html.index(OPEN_TAG) + len(OPEN_TAG)
