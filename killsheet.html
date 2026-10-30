@@ -8282,6 +8282,96 @@ function HealthBar({ cw, maxW, color }) {
   );
 }
 
+// ── End-of-game recap: VP by turning point (from the score kept at the end of each one), who took out whom, and each
+// side's best operative by damage dealt (from the battle log). Saved with the game in its history. ──
+function gameRecap(log, vpByTp) {
+  const rec = vpByTp || {}, last = Math.max(1, ...Object.keys(rec).map(Number).filter(n => n > 0));
+  const vp = []; let prev = { you: 0, them: 0 };
+  for (let t = 1; t <= last; t++) { const cur = rec[t] || prev; vp.push({ tp: t, you: cur.you - prev.you, them: cur.them - prev.them }); prev = cur; }
+  const kills = (log || []).filter(e => e.after <= 0 && e.before > 0).map(e => ({ tp: e.tp, target: e.target, by: e.how === "dice" && e.by ? e.by : "", theirs: e.side === "opp" }));
+  const dealt = {};
+  (log || []).forEach(e => { if (e.how === "dice" && e.by && e.before > e.after) { const k = (e.side === "opp" ? "you" : "them") + "|" + e.by; dealt[k] = (dealt[k] || 0) + e.before - e.after; } });
+  const best = (side) => { const top = Object.entries(dealt).filter(([k]) => k.startsWith(side + "|")).sort((a, b) => b[1] - a[1])[0]; return top ? { name: top[0].slice(side.length + 1), dmg: top[1] } : null; };
+  return { vp, kills, best: { you: best("you"), them: best("them") } };
+}
+function GameRecap({ recap }) {
+  if (!recap) return null;
+  const cell = { padding: "3px 6px", textAlign: "center", fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 14 };
+  const sign = (n) => n > 0 ? "+" + n : n < 0 ? String(n) : "0";
+  const { best } = recap;
+  return (
+    <div data-recap="true" style={{ marginTop: 10 }}>
+      <div style={{ ...h3, marginBottom: 4 }}>VP by turning point</div>
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ borderCollapse: "collapse", fontSize: 13 }}>
+          <thead><tr><th />{recap.vp.map(v => <th key={v.tp} style={{ ...cell, color: "var(--muted)", fontSize: 12 }}>TP{v.tp}</th>)}<th style={{ ...cell, color: "var(--muted)", fontSize: 12 }}>Total</th></tr></thead>
+          <tbody>
+            {[["you", "You", "#5A9C3A"], ["them", "Them", "#E0664A"]].map(([k, label, col]) => (
+              <tr key={k} style={{ borderTop: "1px solid var(--raised)" }}>
+                <td style={{ ...cell, textAlign: "left", color: col, paddingLeft: 0 }}>{label}</td>
+                {recap.vp.map(v => <td key={v.tp} style={{ ...cell, color: v[k] ? "var(--text)" : "var(--dim)" }}>{sign(v[k])}</td>)}
+                <td style={{ ...cell, color: col }}>{recap.vp.reduce((a, v) => a + v[k], 0)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div style={{ ...h3, margin: "10px 0 4px" }}>Taken out</div>
+      {recap.kills.length ? recap.kills.map((x, i) => (
+        <div key={i} style={{ fontSize: 13, color: "var(--text2)", padding: "2px 0", display: "flex", gap: 6, alignItems: "baseline" }}>
+          <span style={{ fontSize: 11, color: "var(--muted)", fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, minWidth: 28 }}>TP{x.tp}</span>
+          <span><span style={{ color: x.theirs ? "#5A9C3A" : "#E0664A", fontWeight: 600 }}>{x.theirs ? "Their " : "Your "}{x.target}</span>{x.by ? ", by " + x.by : ""}</span>
+        </div>
+      )) : <div style={{ fontSize: 13, color: "var(--muted)" }}>Nobody was taken out.</div>}
+      {(best.you || best.them) && <div style={{ ...h3, margin: "10px 0 4px" }}>Most damage dealt</div>}
+      {best.you && <div style={{ fontSize: 13, color: "var(--text2)" }}>Yours: <strong style={{ color: "var(--text)" }}>{best.you.name}</strong>, {best.you.dmg} damage</div>}
+      {best.them && <div style={{ fontSize: 13, color: "var(--text2)" }}>Theirs: <strong style={{ color: "var(--text)" }}>{best.them.name}</strong>, {best.them.dmg} damage</div>}
+    </div>
+  );
+}
+
+// Hits from the other player (online): chat-style bubbles that slide out from the Log button on the team bar and stay
+// about 8 seconds, newest on top, three at most. Tapping one opens the battle log at that hit. If the Log button has
+// scrolled off screen, or a screen (Shoot, Fight) covers it, they show at the top right, above that screen.
+function HitBubbles({ notes, onOpen, onDismiss }) {
+  const { feat } = React.useContext(FeatureCtx);
+  const [pos, setPos] = useState(null);
+  React.useLayoutEffect(() => {
+    if (!notes.length) return;
+    const b = document.querySelector("[data-logbtn]"), r = b && b.getBoundingClientRect();
+    const covered = !!document.querySelector("[role=dialog][aria-modal=true]");
+    const seen = !covered && r && r.width > 0 && r.bottom > 0 && r.bottom < window.innerHeight - 120;
+    // Kept on screen: lined up with the Log button's right edge where it fits, the pointer moved to stay under the button.
+    const w = Math.min(320, window.innerWidth - 16);
+    if (!seen) { setPos({ top: 12, right: 8, w, tail: null }); return; }
+    const right0 = window.innerWidth - r.right, right = Math.max(8, Math.min(right0, window.innerWidth - w - 8));
+    setPos({ top: r.bottom + 10, right, w, tail: Math.max(8, Math.round(right0 - right + r.width / 2 - 6)) });
+  }, [notes.length]);
+  if (!notes.length || !pos) return null;
+  return (
+    <div aria-live="polite" style={{ position: "fixed", top: pos.top, right: pos.right, zIndex: 10001, display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end", width: pos.w, pointerEvents: "none" }}>
+      {notes.map((n, i) => <HitBubble key={n.id} n={n} tail={i === 0 ? pos.tail : null} animate={feat.fx} onOpen={onOpen} onDismiss={onDismiss} />)}
+    </div>
+  );
+}
+function HitBubble({ n, tail, animate, onOpen, onDismiss }) {
+  const ref = React.useRef(null);
+  React.useEffect(() => {
+    const still = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!animate || still || !ref.current || !ref.current.animate) return;
+    ref.current.animate([{ transform: "translateY(-16px) scale(0.55)", opacity: 0 }, { offset: 0.7, transform: "translateY(2px) scale(1.03)", opacity: 1 }, { transform: "none" }], { duration: 340, easing: "cubic-bezier(.2,.8,.3,1)" });
+  }, []);
+  return (
+    <div ref={ref} data-hit-note={n.id} role="button" tabIndex={0} aria-label={n.text + ". Open the battle log"} onClick={() => onOpen(n.id)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(n.id); } }}
+      style={{ pointerEvents: "auto", position: "relative", width: "100%", transformOrigin: "top right", opacity: n.leaving ? 0 : 1, transition: "opacity 0.3s", cursor: "pointer", fontFamily: "'Inter', sans-serif", background: "var(--card)", border: "1px solid var(--line)", borderLeft: "3px solid var(--miss)", borderRadius: 8, padding: "8px 34px 8px 10px", boxShadow: "0 6px 18px rgba(0,0,0,0.45)" }}>
+      {tail != null && <span aria-hidden="true" style={{ position: "absolute", top: -6, right: tail, width: 10, height: 10, background: "var(--card)", borderTop: "1px solid var(--line)", borderLeft: "1px solid var(--line)", transform: "rotate(45deg)" }} />}
+      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", lineHeight: 1.35 }}>{n.text}</div>
+      <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{n.sub}</div>
+      <button onClick={(e) => { e.stopPropagation(); onDismiss(n.id); }} aria-label="Dismiss" className="compact-btn" style={{ position: "absolute", top: 4, right: 4, width: 28, height: 28, padding: 0, background: "none", border: "none", color: "var(--muted)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name="x" size={14} /></button>
+    </div>
+  );
+}
+
 function Datacard({ op, f, fc, equipWeapons, equipEffects, curWounds, onWound, collapsed, onToggle, ignoreInjured, cp, setCp, isActivated, onActivate, order, onOrder, uses, setUse, carried, onCarried, narrow, requestFight, requestShoot, scars }) {
   const [pickWeapons, setPickWeapons] = useState(false);
   const { feat } = React.useContext(FeatureCtx);
@@ -8744,6 +8834,15 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   const [usedPloys, setUsedPloys] = useLocalStorage("usedPloys", {});
   const [cp, setCp] = useLocalStorage("cp", 3); // 2 to start + 1 for the first Strategy phase
   const [vpYou, setVpYou] = useLocalStorage("vpYou", 0);
+  const [vpByTp, setVpByTp] = useLocalStorage("vpByTp", {}); // each side's VP total at the end of each turning point, for the recap
+  // The score as the game goes: the latest totals are kept against the current turning point. vpNow is set further
+  // down, once the score is worked out (this hook has to sit above the Builder's early returns).
+  const vpNow = React.useRef(null);
+  React.useEffect(() => {
+    const v = vpNow.current, had = (vpByTp || {})[v && v.tp];
+    if (!v || (had && had.you === v.you && had.them === v.them)) return;
+    setVpByTp(p => ({ ...(p || {}), [v.tp]: { you: v.you, them: v.them } }));
+  });
   const [vpOpp, setVpOpp] = useLocalStorage("vpOpp", 0);
   const [hasInitiative, setHasInitiative] = useLocalStorage("hasInitiative", true);
   const [lastCpTp, setLastCpTp] = useLocalStorage("lastCpTp", 1);
@@ -8808,6 +8907,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   const [gameHistory, setGameHistory] = useLocalStorage("gameHistory", []);
   const [endGame, setEndGame] = useState(null); // the End game card: { you, them, opp }
   const [showGames, setShowGames] = useState(false);
+  const [openGame, setOpenGame] = useState(null); // the game in history whose recap is showing
   const backUp = () => {
     setLastBackup(Date.now());
     const name = downloadBackup(mobile);
@@ -8883,6 +8983,9 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   });
   const clearScars = (side) => setScars(prev => side ? Object.fromEntries(Object.entries(prev || {}).filter(([k]) => !k.startsWith(side + ":"))) : {});
   const [showLog, setShowLog] = useState(false);
+  const [hitNotes, setHitNotes] = useState([]); // bubbles from the Log button: hits from the other player online
+  const [unreadHits, setUnreadHits] = useState(0); // shown on the Log button until the log is opened
+  const [logFocus, setLogFocus] = useState(null); // the hit the log opens at (a bubble's note id)
   // Bring saved datacards up to date with the current team data when the app opens or the team changes.
   // Old imported opponents kept the whole team (oppRoster.faction); they switch to factionId here.
   React.useEffect(() => {
@@ -8938,9 +9041,11 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
       const op = roster.find(o => o.id === msg.opId);
       const amount = Math.max(0, Math.floor(msg.amount));
       if (op && amount) {
-        logMine(op, msg.type === "applyRemoteDamage" ? -amount : amount, msg.by ? "dice" : "hand", msg.by ? { by: msg.by, weapon: msg.weapon } : {});
+        const note = "hit-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6);
+        const before = getWounds(op.id, op.wounds), after = clampW(before + (msg.type === "applyRemoteDamage" ? -amount : amount), op.wounds);
+        logMine(op, msg.type === "applyRemoteDamage" ? -amount : amount, msg.by ? "dice" : "hand", msg.by ? { by: msg.by, weapon: msg.weapon, note } : { note });
         setOpWounds(op.id, op.wounds, msg.type === "applyRemoteDamage" ? -amount : amount);
-        if (msg.type === "applyRemoteDamage") showToast(msg.by ? msg.by + " hit your " + op.name + (msg.weapon ? " with " + msg.weapon : "") + ": " + amount + " damage" : op.name + " took " + amount + " damage", msg.by ? 4000 : 2500);
+        if (msg.type === "applyRemoteDamage") pushHitNote({ id: note, text: msg.by ? msg.by + " hit your " + op.name + (msg.weapon ? " with " + msg.weapon : "") + ": " + amount + " damage" : "Your " + op.name + " took " + amount + " damage", sub: before + " \u2192 " + after + " wounds" + (after <= 0 ? ", incapacitated" : "") + ". Tap to see the log." });
       }
       return;
     }
@@ -9215,7 +9320,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   const tacSum = tacOps.reduce((s, t) => s + t.checks.filter(Boolean).length, 0);
   const computedVpYou = primarySumYou + tacSum;
   // Game history: one record per finished game (kept by "Clear current game data" and in backups).
-  const resetGame = () => { setBattleLog([]); clearScars(); setWounds({}); setCp(3); setVpYou(0); setVpOpp(0); setUsedPloys({}); setActivated({}); setHasInitiative(true); setLastCpTp(1); setTp(1); setPrimaryYou(Array(gc.numTPs).fill(0)); setPrimaryOpp(Array(gc.numTPs).fill(0)); setTacOps(Array.from({ length: gc.numTacOps }, () => ({ name: "", checks: [false, false] }))); setOppWounds({}); setNpoUnits([]); setOrders({}); setBattleUses({}); setCounteracted({}); setGuideChecks({}); setMissionScore({}); };
+  const resetGame = () => { setVpByTp({}); setBattleLog([]); clearScars(); setWounds({}); setCp(3); setVpYou(0); setVpOpp(0); setUsedPloys({}); setActivated({}); setHasInitiative(true); setLastCpTp(1); setTp(1); setPrimaryYou(Array(gc.numTPs).fill(0)); setPrimaryOpp(Array(gc.numTPs).fill(0)); setTacOps(Array.from({ length: gc.numTacOps }, () => ({ name: "", checks: [false, false] }))); setOppWounds({}); setNpoUnits([]); setOrders({}); setBattleUses({}); setCounteracted({}); setGuideChecks({}); setMissionScore({}); };
   const openEndGame = () => {
     setEndGame({ you: vpYou + computedVpYou, them: vpOpp + computedVpOpp, opp: oppF ? oppF.id : "" });
     window.scrollTo(0, 0);
@@ -9229,6 +9334,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
       mission: gc.mission ? gc.missionName : (gc.missionName || "Standard game"),
       you: e.you, them: e.them, result: e.you > e.them ? "win" : e.you < e.them ? "loss" : "draw",
       survivors: roster.filter(o => getWounds(o.id, o.wounds) > 0).length, size: roster.length,
+      recap: gameRecap(battleLog, vpByTp),
     };
     if (campaign && campaign.phase === "battle") { rec.campaign = true; setCampaign(cc => cteBattle(cc, rec.result, e.incap || 0)); }
     setGameHistory(h => [rec, ...h]);
@@ -9246,6 +9352,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
     window.scrollTo(0, 0);
   });
   const computedVpOpp = primarySumOpp;
+  vpNow.current = rosterLocked ? { tp, you: vpYou + computedVpYou, them: vpOpp + computedVpOpp } : null;
 
   const toggleEq = (id) => {
     if (rosterLocked) return;
@@ -9345,6 +9452,14 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
     clearTimeout(toastTimer.current); // an older message's timer mustn't cut this one short
     toastTimer.current = setTimeout(() => setToast(""), ms);
   };
+  // A hit bubble: stays 8 seconds, then fades; three at most, newest on top.
+  const pushHitNote = (note) => {
+    setHitNotes(prev => [note, ...prev.filter(x => x.id !== note.id)].slice(0, 3));
+    setUnreadHits(u => u + 1);
+    setTimeout(() => setHitNotes(prev => prev.map(x => x.id === note.id ? { ...x, leaving: true } : x)), 8000);
+    setTimeout(() => setHitNotes(prev => prev.filter(x => x.id !== note.id)), 8300);
+  };
+  const openLog = (focus) => { setLogFocus(focus || null); setShowLog(true); setUnreadHits(0); setHitNotes([]); };
 
   const exportRoster = () => {
     if (!fid || roster.length === 0) return;
@@ -10049,6 +10164,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
           onAct={(a) => dispatchFight(a, false)} onClose={() => showFight(null)} onTakeOver={takeOverFight}
           importHint={enemySide === "opp" ? "Their team isn't in KillSheet yet. Add it from the ⋯ menu on your team bar (Add enemy roster), or play online, to fight their operatives here." : "None of your operatives can fight back."} />;
       })()}
+      <HitBubbles notes={hitNotes} onOpen={openLog} onDismiss={(id) => setHitNotes(prev => prev.filter(x => x.id !== id))} />
       {/* Battle log: their operatives' changes on the right (what you did), yours on the left. */}
       {showLog && (
         <div onClick={() => setShowLog(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 10000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
@@ -10058,7 +10174,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
               <button autoFocus onClick={() => setShowLog(false)} style={{ ...bs("var(--muted)"), fontSize: 13, padding: "8px 12px" }}><Icon name="x" size={12} /> Close</button>
             </div>
             <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8 }}>Their operatives on the right, yours on the left.</div>
-            <div ref={(el) => { if (el) el.scrollTop = el.scrollHeight; }} style={{ flex: 1, minHeight: 120, overflowY: "auto", background: "var(--bg)", border: "1px solid var(--line)", borderRadius: 6, padding: 8, display: "flex", flexDirection: "column", gap: 4 }}>
+            <div ref={(el) => { if (!el) return; const at = logFocus && el.querySelector("[data-note='" + logFocus + "']"); if (at) at.scrollIntoView({ block: "center" }); else el.scrollTop = el.scrollHeight; }} style={{ flex: 1, minHeight: 120, overflowY: "auto", background: "var(--bg)", border: "1px solid var(--line)", borderRadius: 6, padding: 8, display: "flex", flexDirection: "column", gap: 4 }}>
               {battleLog.length === 0 ? (
                 <div style={{ fontSize: 13, color: "var(--muted2)", textAlign: "center", margin: "auto 0", lineHeight: 1.5 }}>Nothing yet. Damage from the dice roller and the wound buttons shows up here.</div>
               ) : battleLog.map((e, i) => {
@@ -10073,8 +10189,8 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                 return (
                   <React.Fragment key={e.t + "-" + i}>
                     {newTp && <div style={{ fontSize: 11, color: "var(--accent)", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.12em", textAlign: "center", margin: i === 0 ? "0 0 2px" : "8px 0 2px" }}>TURNING POINT {e.tp}</div>}
-                    <div style={{ display: "flex", justifyContent: theirs ? "flex-end" : "flex-start" }}>
-                      <div style={{ maxWidth: "85%", padding: "6px 9px", borderRadius: 6, background: theirs ? "#3B6FD420" : "#B8341C20", border: "1px solid " + (theirs ? "#3B6FD440" : "#B8341C40"), fontSize: 13, color: "var(--text)", lineHeight: 1.4, wordBreak: "break-word" }}>
+                    <div data-note={e.note} data-focus={e.note && e.note === logFocus ? "true" : undefined} style={{ display: "flex", justifyContent: theirs ? "flex-end" : "flex-start" }}>
+                      <div style={{ ...(e.note && e.note === logFocus ? { boxShadow: "0 0 0 2px var(--blue)" } : {}), maxWidth: "85%", padding: "6px 9px", borderRadius: 6, background: theirs ? "#3B6FD420" : "#B8341C20", border: "1px solid " + (theirs ? "#3B6FD440" : "#B8341C40"), fontSize: 13, color: "var(--text)", lineHeight: 1.4, wordBreak: "break-word" }}>
                         <div>{main}</div>
                         <div style={{ fontSize: 12, color: "var(--muted)" }}>{e.before} {"→"} {e.after} wounds{e.after <= 0 ? ", incapacitated" : ""}</div>
                       </div>
@@ -10247,6 +10363,8 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
               <Stepper label="Your VP" value={endGame.you} color="#5A9C3A" onMinus={() => setEndGame({ ...endGame, you: Math.max(0, endGame.you - 1) })} onPlus={() => setEndGame({ ...endGame, you: endGame.you + 1 })} />
               <Stepper label="Their VP" value={endGame.them} color="#E0664A" onMinus={() => setEndGame({ ...endGame, them: Math.max(0, endGame.them - 1) })} onPlus={() => setEndGame({ ...endGame, them: endGame.them + 1 })} />
             </div>
+            <GameRecap recap={gameRecap(battleLog, vpByTp)} />
+            <div style={{ height: 10 }} />
             <label style={{ display: "block", fontSize: 13, color: "var(--text2)", marginBottom: 4 }}>Opponent's team</label>
             <select value={endGame.opp} onChange={e => setEndGame({ ...endGame, opp: e.target.value })} style={{ width: "100%", maxWidth: 360, background: "var(--card)", border: "1px solid var(--line)", borderRadius: 6, color: "var(--text)", padding: "9px 10px", fontSize: 14 }}>
               <option value="">Not recorded</option>
@@ -10416,15 +10534,20 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                       {vsTeam.map(teamRow)}
                       <div style={{ ...h3, margin: "12px 0 4px" }}>Recent games</div>
                       {gameHistory.slice(0, 10).map(g => (
-                        <div key={g.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderTop: "1px solid var(--raised)" }}>
+                        <React.Fragment key={g.id}>
+                        <div onClick={g.recap ? () => setOpenGame(openGame === g.id ? null : g.id) : undefined} role={g.recap ? "button" : undefined} aria-expanded={g.recap ? openGame === g.id : undefined} aria-label={g.recap ? "Recap of " + g.team + (g.opp ? " vs " + g.opp : "") : undefined}
+                          style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderTop: "1px solid var(--raised)", cursor: g.recap ? "pointer" : "default" }}>
                           <span style={{ ...bg(resColor[g.result]), flexShrink: 0 }}>{g.result === "win" ? "W" : g.result === "loss" ? "L" : "D"}</span>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: 13, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.team}{g.opp ? " vs " + g.opp : ""}</div>
                             <div style={{ fontSize: 12, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{new Date(g.date).toLocaleDateString()} {"\u00b7"} {g.mission}</div>
                           </div>
                           <span style={{ flexShrink: 0, fontSize: 15, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif" }}>{g.you}{"\u2013"}{g.them}</span>
-                          <button className="compact-btn" onClick={() => withUndo("Game removed from history", () => setGameHistory(h => h.filter(x => x.id !== g.id)))} aria-label="Remove this game" style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer", padding: 0, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon name="x" size={16} /></button>
+                          {g.recap && <Arrow open={openGame === g.id} />}
+                          <button className="compact-btn" onClick={(e) => { e.stopPropagation(); withUndo("Game removed from history", () => setGameHistory(h => h.filter(x => x.id !== g.id))); }} aria-label="Remove this game" style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer", padding: 0, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon name="x" size={16} /></button>
                         </div>
+                        {openGame === g.id && g.recap && <div style={{ padding: "0 0 10px 4px" }}><GameRecap recap={g.recap} /></div>}
+                        </React.Fragment>
                       ))}
                     </div>
                   )}
@@ -10951,7 +11074,8 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                       <button onClick={saveRoster} title="Save to My Rosters on this device" style={{ ...bs("#5A9C3A"), fontSize: 11, padding: mobile ? "5px 8px" : "2px 7px", display: "flex", alignItems: "center", gap: 4 }}>
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }}><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" /></svg>Save
                       </button>
-                      {rosterLocked && <button onClick={() => setShowLog(true)} aria-label="Battle log" title="Every hit this game" style={{ ...bs("var(--blue)"), fontSize: 11, padding: mobile ? "5px 8px" : "2px 7px", display: "flex", alignItems: "center", gap: 4 }}><Icon name="log" size={12} />Log</button>}
+                      {rosterLocked && <button data-logbtn="true" onClick={() => openLog()} aria-label={"Battle log" + (unreadHits ? ", " + unreadHits + " new" : "")} title="Every hit this game" style={{ ...bs("var(--blue)"), fontSize: 11, padding: mobile ? "5px 8px" : "2px 7px", display: "flex", alignItems: "center", gap: 4, position: "relative" }}>
+                        {unreadHits > 0 && <span data-unread={unreadHits} aria-hidden="true" style={{ position: "absolute", top: -7, right: -7, minWidth: 17, height: 17, padding: "0 4px", borderRadius: 9, background: "var(--miss)", color: "#fff", fontSize: 11, fontWeight: 700, lineHeight: "17px", textAlign: "center", fontFamily: "'Rajdhani', sans-serif" }}>{unreadHits}</span>}<Icon name="log" size={12} />Log</button>}
                       <div style={{ position: "relative" }}>
                         <button onClick={() => setCardsMenu(!cardsMenu)} aria-label="More roster options" aria-expanded={cardsMenu} style={{ ...bs("var(--muted)"), fontSize: 16, lineHeight: 1, padding: mobile ? "6px 10px" : "2px 8px" }}>{"\u22EF"}</button>
                         {cardsMenu && (
@@ -18924,6 +19048,53 @@ async function runSelfTest(hooks) {
     if (opp.factionId !== "plaguemarines" || ids !== "champion,fighter,fighter~2") throw new Error("their roster is " + opp.factionId + ": " + ids);
     if (!document.body.textContent.includes("Plague Marine Fighter 2")) throw new Error("their second Fighter's datacard isn't showing");
     return "limits stop a second Champion or Fighter; with them off, Plague Marines with 3 operatives, repeats numbered";
+  });
+  await step("Hit notifications", async () => {
+    await nav("Battle");
+    const mineOp = (store("roster") || []).find(o => (store("wounds") || {})[o.id] !== 0);
+    if (!mineOp) throw new Error("no operative of yours to hit");
+    const bubbles = () => all("[data-hit-note]");
+    const badge = () => { const b = document.querySelector("[data-unread]"); return b ? b.getAttribute("data-unread") : "0"; };
+    hooks.mpMessage({ type: "applyRemoteDamage", opId: mineOp.id, amount: 1, by: "Boss Nob", weapon: "Big choppa" }); await settle(20);
+    if (bubbles().length !== 1 || !/Boss Nob hit your .* with Big choppa: 1 damage/.test(bubbles()[0].textContent)) throw new Error("no bubble for the hit: " + bubbles().map(b => b.textContent).join(" / "));
+    if (badge() !== "1") throw new Error("the Log button doesn't count the new hit (" + badge() + ")");
+    hooks.mpMessage({ type: "applyRemoteDamage", opId: mineOp.id, amount: 1, by: "Kommando Boy", weapon: "Slugga" }); await settle(20);
+    if (bubbles().length !== 2 || !/Kommando Boy/.test(bubbles()[0].textContent)) throw new Error("a second hit doesn't stack on top");
+    if (badge() !== "2") throw new Error("the count didn't go to 2");
+    const second = bubbles()[1].getAttribute("data-hit-note");
+    await click(bubbles()[1], "the Boss Nob bubble");
+    const log = document.querySelector("[role=dialog][aria-label='Battle log']");
+    if (!log) throw new Error("tapping a bubble didn't open the battle log");
+    const at = log.querySelector("[data-focus='true']");
+    if (!at || at.getAttribute("data-note") !== second || !/Boss Nob/.test(at.textContent)) throw new Error("the log didn't open at that hit");
+    if (document.querySelector("[data-unread]") || bubbles().length) throw new Error("opening the log didn't clear the count and bubbles");
+    await click(btn("Close", true) || [...log.querySelectorAll("button")].find(b => /Close/.test(b.textContent)), "close the log");
+    return "two hits stacked, counted, and the log opened at the one tapped";
+  });
+  await step("End-of-game recap", async () => {
+    // The sums, from a made-up game.
+    const log = [
+      { side: "opp", target: "Boss Nob", before: 14, after: 6, how: "dice", by: "Sergeant", tp: 1 },
+      { side: "opp", target: "Boss Nob", before: 6, after: 0, how: "dice", by: "Sergeant", tp: 2 },
+      { side: "mine", target: "Gunner", before: 14, after: 0, how: "dice", by: "Boss Nob", tp: 2 },
+      { side: "opp", target: "Boy", before: 10, after: 7, how: "dice", by: "Gunner", tp: 2 },
+      { side: "mine", target: "Sergeant", before: 15, after: 12, how: "hand", tp: 3 },
+    ];
+    const r = gameRecap(log, { 1: { you: 2, them: 0 }, 2: { you: 2, them: 3 }, 3: { you: 6, them: 4 } });
+    const vp = r.vp.map(v => v.you + "/" + v.them).join(" "), kills = r.kills.map(k => (k.theirs ? "their " : "your ") + k.target + (k.by ? " by " + k.by : "")).join(", ");
+    if (vp !== "2/0 0/3 4/1") throw new Error("VP by turning point: " + vp);
+    if (kills !== "their Boss Nob by Sergeant, your Gunner by Boss Nob") throw new Error("taken out: " + kills);
+    if (!r.best.you || r.best.you.name !== "Sergeant" || r.best.you.dmg !== 14 || !r.best.them || r.best.them.name !== "Boss Nob") throw new Error("best operative: " + JSON.stringify(r.best));
+    // On screen: the End game panel shows it, and games saved earlier in the self-test carry it.
+    await nav("Battle");
+    await click(document.querySelector("[aria-label='Game menu']"), "game menu");
+    await click(btn("End game"), "End game");
+    const panel = document.querySelector("[role=dialog][aria-label='End game']");
+    if (!panel || !panel.querySelector("[data-recap]") || !/VP by turning point/.test(panel.textContent)) throw new Error("the End game panel has no recap");
+    await click([...panel.querySelectorAll("button")].find(b => b.textContent.trim() === "Cancel"), "Cancel");
+    const saved = (store("gameHistory") || []).find(g => g.recap);
+    if (!saved || !Array.isArray(saved.recap.vp)) throw new Error("saved games don't carry a recap");
+    return "VP by turning point, who took out whom, most damage; shown at the end and saved with the game";
   });
   await step("End game: discard", async () => {
     await nav("Battle");
