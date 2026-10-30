@@ -6076,6 +6076,10 @@ function snapshotKillSheetStorage() {
   } catch (e) { /* storage unavailable */ }
   return snap;
 }
+// The player's data while a self-test runs, kept outside the ks_ keys the test clears. If the page is closed or left
+// before the test finishes, the app puts the data back from here the next time it opens.
+const SELFTEST_BACKUP = "killsheet-selftest-backup";
+function selfTestBackup(write) { try { if (write === undefined) return JSON.parse(window.localStorage.getItem(SELFTEST_BACKUP) || "null"); if (write === null) window.localStorage.removeItem(SELFTEST_BACKUP); else window.localStorage.setItem(SELFTEST_BACKUP, JSON.stringify(write)); } catch (e) { return null; } return null; }
 function restoreKillSheetStorage(snap) {
   try {
     const keys = [];
@@ -16319,7 +16323,7 @@ function Rules({ search, tutorialOpen, openTutorial, closeTutorial }) {
           <span style={{ color: "var(--gold)", display: "inline-flex" }}><Icon name="play" size={20} /></span>
           <span style={{ flex: 1, minWidth: 0 }}>
             <span style={{ display: "block", fontSize: 16, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif" }}>New to Kill Team? Play the tutorial</span>
-            <span style={{ display: "block", fontSize: 13, color: "var(--text2)" }}>Five minutes, one turning point against a bot, real dice.</span>
+            <span style={{ display: "block", fontSize: 13, color: "var(--text2)" }}>Two short parts: a turning point against a bot, then objectives, scoring and ploys.</span>
           </span>
           <span style={{ color: "var(--muted)", display: "inline-flex" }}><Fwd size={20} /></span>
         </button>
@@ -17084,6 +17088,7 @@ function OrderGrid() {
 
 function Tutorial({ onExit }) {
   const mobile = useIsMobile();
+  const [part, setPart] = useState(1); // 2: objectives, scoring and ploys (TutorialPart2)
   const [step, setStep] = useState(0);
   const [init, setInit] = useState(null);           // { you, opp, youHave }
   const [order, setOrder] = useState(null);
@@ -17405,12 +17410,14 @@ function Tutorial({ onExit }) {
             <div key={i} style={{ display: "flex", gap: 8, alignItems: "baseline" }}><span style={{ color: "#5A9C3A" }}><Icon name="check" size={14} /></span>{t}</div>
           ))}
         </Box>
-        <Say>Next, build a team in <B>Battle</B>, look up a rule in <B>Rules</B>, or try a co-op mission in <B>Missions</B>.</Say>
+        <Say>Next, part 2 covers objective markers, scoring and ploys. Or build a team in <B>Battle</B>, or look up a rule in <B>Rules</B>.</Say>
+        <button onClick={() => { setPart(2); window.scrollTo(0, 0); }} style={{ ...bs("var(--accent)"), background: "color-mix(in srgb, var(--accent) 9%, transparent)", padding: "12px 18px", fontSize: 14, display: "inline-flex", alignItems: "center", gap: 6, marginRight: 8, marginBottom: 8 }}>Part 2: objectives, scoring and ploys <Fwd /></button>
         <button onClick={restart} style={{ ...bs("var(--muted)"), padding: "12px 18px", fontSize: 14, display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="reset" size={14} /> Play again</button>
       </div>
     ),
   ];
 
+  if (part === 2) return <TutorialPart2 onExit={onExit} onPart1={() => { setPart(1); window.scrollTo(0, 0); }} />;
   return (
     <div style={{ maxWidth: 760, margin: "0 auto", padding: "20px 16px" }}>
       {onExit && <button onClick={onExit} style={{ ...bs("var(--muted)"), padding: "6px 12px", fontSize: 12, marginBottom: 12 }}><Back /> Rules</button>}
@@ -17418,7 +17425,7 @@ function Tutorial({ onExit }) {
         <div style={{ flex: 1, fontSize: 22, fontWeight: 700, color: "var(--accent)", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.04em" }}>Tutorial</div>
         {step > 0 && <button onClick={restart} style={{ ...bs("var(--muted)"), padding: "8px 12px", fontSize: 12, display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="reset" size={13} /> Restart</button>}
       </div>
-      <p style={{ ...mu, marginBottom: 12 }}>One turning point against a bot, with real datacards. You roll the dice.</p>
+      <p style={{ ...mu, marginBottom: 12 }}>One turning point against a bot, with real datacards. You roll the dice. <button className="link-btn" onClick={() => { setPart(2); window.scrollTo(0, 0); }} style={{ background: "none", border: "none", padding: 0, color: "var(--accent)", cursor: "pointer", textDecoration: "underline", font: "inherit" }}>Part 2: objectives, scoring and ploys</button></p>
       <div style={{ display: "flex", gap: 3, marginBottom: 14 }}>
         {TUT_STEPS.map(([ph], i) => <div key={i} style={{ flex: 1, height: 5, borderRadius: 3, background: i <= step ? TUT_PHASE_COLOR[ph] : "var(--raised)", transition: "background 0.3s" }} />)}
       </div>
@@ -17431,6 +17438,249 @@ function Tutorial({ onExit }) {
         {body[step]()}
       </div>
       {step > 0 && step < TUT_STEPS.length - 1 && <button onClick={() => go(step - 1)} className="link-btn" style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer", fontSize: 13, marginTop: 10, padding: 0 }}><Back /> Back a step</button>}
+    </div>
+  );
+}
+
+// ── Tutorial part 2: objectives, scoring and ploys, as turning point 2 with the same teams. Combat Doctrine is a real
+// Angels of Death strategy ploy (Devastator gives shots at targets more than 6" away Balanced); Command Re-roll is the
+// core firefight ploy. ──
+const TUT2_STEPS = [["Intro", "Turning point 2"], ["Strategy", "Command points"], ["Strategy", "A strategy ploy"], ["Firefight", "Objective markers"], ["Firefight", "A firefight ploy"], ["Firefight", "Scoring"], ["Intro", "Done"]];
+const TUT2_OPS = { S: { name: "Sergeant", apl: 3, col: "#5A9C3A" }, W: { name: "Warrior", apl: 3, col: "#5A9C3A" }, N: { name: "Boss Nob", apl: 3, col: "#D0573A" }, B: { name: "Kommando Boy", apl: 2, col: "#D0573A" } };
+// Who controls a marker: the side whose contesting operatives have the higher total APL; equal totals, nobody.
+const tut2Control = (ids) => {
+  const you = ids.filter(k => TUT2_OPS[k].col === "#5A9C3A").reduce((a, k) => a + TUT2_OPS[k].apl, 0), them = ids.filter(k => TUT2_OPS[k].col !== "#5A9C3A").reduce((a, k) => a + TUT2_OPS[k].apl, 0);
+  return { you, them, who: you > them ? "you" : them > you ? "them" : "nobody" };
+};
+const TUT2_QUIZ = [["W", "B"], ["W", "B", "N"], ["W", "S", "B", "N"], ["W", "N"]];
+// A marker (or two) with the operatives contesting it. The dashed ring is how close an operative has to be.
+function ObjScene({ markers }) {
+  const spots = [[-16, -9], [16, -9], [-16, 11], [16, 11]];
+  return (
+    <svg viewBox={markers.length > 1 ? "0 0 300 96" : "80 4 140 88"} role="img" aria-label={markers.map(m => "Objective " + m.label + ": " + (m.ids.map(k => TUT2_OPS[k].name).join(", ") || "nobody") + " contesting").join(". ")} style={{ display: "block", width: "100%", maxWidth: 520, background: "var(--bg)", border: "1px solid var(--raised)", borderRadius: 6, marginBottom: 10 }}>
+      {markers.map((m, mi) => {
+        const cx = markers.length > 1 ? (mi === 0 ? 80 : 220) : 150, cy = 46;
+        return (
+          <g key={mi}>
+            <circle cx={cx} cy={cy} r="26" fill="none" stroke="var(--gold)" strokeWidth="1" strokeDasharray="2 2" opacity="0.8" />
+            <circle cx={cx} cy={cy} r="5" fill={al("#FFB627", "55")} stroke="var(--gold)" strokeWidth="1.5" />
+            <text x={cx} y={cy + 40} textAnchor="middle" fontSize="8" fontWeight="700" fill="var(--gold)">{"Objective " + m.label}</text>
+            {m.ids.map((k, i) => {
+              const o = TUT2_OPS[k], [dx, dy] = spots[i];
+              return <g key={k}><circle cx={cx + dx} cy={cy + dy} r="7" fill="var(--bg)" /><circle cx={cx + dx} cy={cy + dy} r="7" fill={al(o.col, "40")} stroke={o.col} strokeWidth="2" /><text x={cx + dx} y={cy + dy + 3} textAnchor="middle" fontSize="8" fontWeight="700" fill="var(--text)">{k}</text></g>;
+            })}
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+function TutorialPart2({ onExit, onPart1 }) {
+  const mobile = useIsMobile();
+  const [step, setStep] = useState(0);
+  const [cp, setCp] = useState(3);
+  const [doctrine, setDoctrine] = useState(false);
+  const [passed, setPassed] = useState(false);
+  const [quiz, setQuiz] = useState({ i: 0, pick: null, right: 0 });
+  const [shot, setShot] = useState(null); // { dice, rr: [bool], stage: "balanced" | "cmd" | "done" }
+  const [scored, setScored] = useState(false);
+  const go = (n) => { setStep(n); window.scrollTo(0, 0); };
+  const restart = () => { setStep(0); setCp(3); setDoctrine(false); setPassed(false); setQuiz({ i: 0, pick: null, right: 0 }); setShot(null); setScored(false); window.scrollTo(0, 0); };
+  const d6 = () => 1 + Math.floor(Math.random() * 6);
+
+  const Say = ({ children }) => <p style={{ fontSize: 15, color: "var(--text)", lineHeight: 1.65, marginBottom: 12 }}>{children}</p>;
+  const B = ({ children, color }) => <strong style={{ color: color || "var(--accent)", fontWeight: 700 }}>{children}</strong>;
+  const Box = ({ title, children, color }) => (
+    <div style={{ background: "var(--bg)", border: "1px solid " + (color || "var(--line)"), borderRadius: 6, padding: "10px 12px", marginBottom: 12 }}>
+      {title && <div style={{ ...h3, color: color || "var(--muted)", marginBottom: 6 }}>{title}</div>}
+      <div style={{ fontSize: 14, color: "var(--text2)", lineHeight: 1.6 }}>{children}</div>
+    </div>
+  );
+  const Act = ({ children, onClick, color, disabled }) => (
+    <button onClick={onClick} disabled={disabled} style={{ ...bs(color || "var(--accent)"), background: al((color || "var(--accent)"), "18"), padding: "12px 16px", fontSize: 14, width: "100%", marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: disabled ? 0.5 : 1 }}>{children}</button>
+  );
+  const Next = ({ to, label }) => (
+    <button onClick={() => go(to)} style={{ ...bs("var(--accent)"), background: "color-mix(in srgb, var(--accent) 9%, transparent)", padding: "12px 18px", fontSize: 14, marginTop: 6, display: "inline-flex", alignItems: "center", gap: 6 }}>{label || "Next"} <Fwd /></button>
+  );
+  const cpChip = <span data-tut-cp={cp} style={{ ...bg("var(--gold)") }}>{cp}CP</span>;
+
+  // The shot: 4 attack dice, hits on 3+. Balanced re-rolls one free; Command Re-roll (1CP) one more; never the same die twice.
+  const kindOf = (v) => v === 6 ? "crit" : v >= 3 ? "hit" : "fail";
+  const reroll = (i) => {
+    if (!shot || shot.rr[i] || shot.stage === "done") return;
+    const dice = shot.dice.map((v, j) => j === i ? d6() : v), rr = shot.rr.map((r, j) => r || j === i);
+    if (shot.stage === "cmd") setCp(c => c - 1);
+    setShot({ dice, rr, stage: shot.stage === "balanced" ? "cmd" : "done" });
+  };
+  const hits = shot ? shot.dice.filter(v => v >= 3).length : 0, crits = shot ? shot.dice.filter(v => v === 6).length : 0;
+
+  const q = TUT2_QUIZ[Math.min(quiz.i, TUT2_QUIZ.length - 1)], qc = tut2Control(q);
+  const body = [
+    () => (
+      <div>
+        <Say>Part 1 played a turning point. Part 2 adds what wins games: <B>objective markers</B>, <B>scoring</B> and <B>ploys</B>. Same teams, all four operatives back at full strength for this lesson.</Say>
+        <Box title="You'll learn" color="var(--accent)">
+          <div>Gaining CP after the first turning point</div>
+          <div>Using a strategy ploy and a firefight ploy</div>
+          <div>Who controls an objective marker</div>
+          <div>Scoring at the end of a turning point</div>
+        </Box>
+        <Next to={1} label="Start turning point 2" />
+      </div>
+    ),
+    () => (
+      <div>
+        <Say>Initiative is rolled again at the start of every turning point. This time you win it.</Say>
+        <Say>You saved your <B>3CP</B> from turning point 1. After the first turning point, the player with initiative gains <B>1CP</B> and the other player gains <B>2CP</B>.</Say>
+        {cp === 3 ? <Act onClick={() => setCp(4)}>Gain 1CP</Act> : (
+          <div>
+            <Box color="var(--gold)">You have {cpChip}. The bot gains 2CP.</Box>
+            <Next to={2} label="Gambits" />
+          </div>
+        )}
+      </div>
+    ),
+    () => (
+      <div>
+        <Say>In the <B>Gambits</B> step, starting with the player with initiative, players take turns using a strategy ploy or passing. It ends when both pass in a row. Each ploy costs <B>1CP</B> and can be used once per turning point.</Say>
+        <Box title="Combat Doctrine (strategy ploy, 1CP)" color="var(--accent)">
+          <RefText text={(FACTIONS.angels.ploys.strategy.find(p => p.name === "Combat Doctrine") || {}).desc} self="Combat Doctrine" />
+        </Box>
+        <Say>The Kommando Boy is more than 6" from your Sergeant, so pick <B>Devastator</B>. His shots this turning point gain <B>Balanced</B>: after rolling, re-roll one attack die.</Say>
+        {!doctrine ? <Act onClick={() => { setDoctrine(true); setCp(c => c - 1); }}>Use Combat Doctrine: Devastator (1CP)</Act> : !passed ? (
+          <div>
+            <Box color="var(--gold)">Devastator is active. You have {cpChip}.</Box>
+            <Say>The bot passes. If you pass too, the step ends.</Say>
+            <Act onClick={() => setPassed(true)} color="var(--muted)">Pass</Act>
+          </div>
+        ) : (
+          <div>
+            <Say>Both of you passed in a row, so the Strategy phase is over.</Say>
+            <Next to={3} label="Begin the Firefight phase" />
+          </div>
+        )}
+      </div>
+    ),
+    () => (
+      <div>
+        <Say>An operative <B>contests</B> an objective marker that's within its control range (the dashed ring). The side whose contesting operatives have the higher <B>total APL</B> controls it.</Say>
+        {quiz.i < TUT2_QUIZ.length ? (
+          <div>
+            <ObjScene markers={[{ label: "A", ids: q }]} />
+            <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 8 }}>{q.map(k => TUT2_OPS[k].name + " (APL " + TUT2_OPS[k].apl + ")").join(", ")}</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", marginBottom: 8, fontFamily: "'Rajdhani', sans-serif" }}>Question {quiz.i + 1} of {TUT2_QUIZ.length}: who controls it?</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 10 }}>
+              {[["you", "You", "#5A9C3A"], ["them", "The bot", "#D0573A"], ["nobody", "Nobody", "var(--muted)"]].map(([k, label, col]) => (
+                <button key={k} disabled={!!quiz.pick} onClick={() => setQuiz(x => ({ ...x, pick: k, right: x.right + (k === qc.who ? 1 : 0) }))} style={{ ...bs(col), padding: "10px 8px", fontSize: 14, background: quiz.pick === k ? al(col, "20") : "transparent", opacity: quiz.pick && quiz.pick !== k ? 0.5 : 1 }}>{label}</button>
+              ))}
+            </div>
+            {quiz.pick && (
+              <div>
+                <Box color={quiz.pick === qc.who ? "#5A9C3A" : "#D0573A"}>
+                  <B color={quiz.pick === qc.who ? "#5A9C3A" : "#D0573A"}>{quiz.pick === qc.who ? "Right." : "Not quite."}</B> Your total is <B>{qc.you}</B>, the bot's is <B>{qc.them}</B>. {qc.who === "nobody" ? "Equal totals: nobody controls it." : (qc.who === "you" ? "Yours" : "The bot's") + " is higher, so " + (qc.who === "you" ? "you control" : "the bot controls") + " it."}
+                </Box>
+                <Act onClick={() => setQuiz(x => ({ i: x.i + 1, pick: null, right: x.right }))}>{quiz.i + 1 < TUT2_QUIZ.length ? "Next question" : "See how you did"}</Act>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div>
+            <Box title="Control" color="var(--gold)">You got <B>{quiz.right} of {TUT2_QUIZ.length}</B>. Higher total APL controls a marker, and equal totals mean nobody does. More operatives on a marker usually wins it, so it's worth sending a second one.</Box>
+            <Next to={4} />
+          </div>
+        )}
+      </div>
+    ),
+    () => (
+      <div>
+        <Say>Your <B color="#5A9C3A">Sergeant</B> shoots the Kommando Boy with his bolt rifle: <B>4 attack dice</B>, hitting on <B>3+</B>.</Say>
+        {!shot ? <Act onClick={() => setShot({ dice: Array.from({ length: 4 }, d6), rr: [false, false, false, false], stage: "balanced" })}><Icon name="dice" size={16} /> Roll 4 attack dice</Act> : (
+          <div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+              {shot.dice.map((v, i) => {
+                const can = shot.stage !== "done" && !shot.rr[i];
+                return <button key={i} data-tut-die={i} onClick={can ? () => reroll(i) : undefined} disabled={!can} aria-label={"Die " + (i + 1) + ": " + v + (shot.rr[i] ? ", re-rolled" : can ? ", tap to re-roll" : "")} style={dieStyle(kindOf(v), 40, { onClick: can, rerolled: shot.rr[i] })}>{dieFace(v, kindOf(v), 40)}</button>;
+              })}
+            </div>
+            {shot.stage === "balanced" && (
+              <div>
+                <Box title="Balanced (from Combat Doctrine)" color="var(--accent)">Tap one die to re-roll it for free. Usually you'd pick a miss. You keep the new result, even if it's worse.</Box>
+                <Act onClick={() => setShot(x => ({ ...x, stage: "cmd" }))} color="var(--muted)">Keep these dice</Act>
+              </div>
+            )}
+            {shot.stage === "cmd" && (
+              <div>
+                <Box title="Command Re-roll (firefight ploy, 1CP)" color="var(--gold)">After rolling your attack or defense dice, re-roll one of them. You have {cpChip}. Tap another die to spend 1CP on it. A die can only be re-rolled once, so the one with the dashed outline is locked.</Box>
+                <Act onClick={() => setShot(x => ({ ...x, stage: "done" }))} color="var(--muted)">Keep these dice and save the CP</Act>
+              </div>
+            )}
+            {shot.stage === "done" && (
+              <div>
+                <Say><B color="#5A9C3A">{hits} hit{hits === 1 ? "" : "s"}</B>{crits ? <>, {crits} of them <B color="var(--gold)">crit{crits === 1 ? "" : "s"}</B></> : null}. The Boy rolls his defense dice, as in part 1. You have {cpChip} left.</Say>
+                <Say>Command Re-roll is the one ploy you can use more than once in a turning point, but each use costs 1CP.</Say>
+                <Next to={5} label="End the turning point" />
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    ),
+    () => {
+      const a = tut2Control(["W", "B"]), b = tut2Control(["N"]);
+      return (
+        <div>
+          <Say>Every operative is expended, so the turning point ends. In this example mission, you score <B>1VP</B> for each objective marker you control at the end of each turning point. Your mission tells you what scores, and when.</Say>
+          <ObjScene markers={[{ label: "A", ids: ["W", "B"] }, { label: "B", ids: ["N"] }]} />
+          {!scored ? <Act onClick={() => setScored(true)}>Score the turning point</Act> : (
+            <div>
+              <Box title="Scoring" color="var(--gold)">
+                <div>Objective A: your Warrior (APL {a.you}) beats the Kommando Boy (APL {a.them}). <B color="#5A9C3A">You score 1VP.</B></div>
+                <div style={{ marginTop: 4 }}>Objective B: only the Boss Nob is there. <B color="#D0573A">The bot scores 1VP.</B></div>
+              </Box>
+              <Say>It's 1VP each. Next turning point, sending your Sergeant to Objective B (3 against 3) would make it nobody's, and the bot wouldn't score it.</Say>
+              <Next to={6} />
+            </div>
+          )}
+        </div>
+      );
+    },
+    () => (
+      <div>
+        <Box title="You've learned" color="#5A9C3A">
+          {["After the first turning point: initiative gains 1CP, the other player 2CP", "Gambits: take turns using a strategy ploy or passing", "A strategy ploy lasts the turning point (Combat Doctrine gave Balanced)", "Command Re-roll: 1CP to re-roll one die, and a die can only be re-rolled once", "Higher total APL controls an objective marker; equal totals, nobody", "Score VP at the end of each turning point, as your mission says"].map((t, i) => (
+            <div key={i} style={{ display: "flex", gap: 8, alignItems: "baseline" }}><span style={{ color: "#5A9C3A" }}><Icon name="check" size={14} /></span>{t}</div>
+          ))}
+        </Box>
+        <Say>You know enough to play a full game. Build your team in <B>Battle</B>; the Turn and mission tab walks you through each turning point.</Say>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button onClick={restart} style={{ ...bs("var(--muted)"), padding: "12px 18px", fontSize: 14, display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="reset" size={14} /> Play part 2 again</button>
+          <button onClick={onPart1} style={{ ...bs("var(--muted)"), padding: "12px 18px", fontSize: 14 }}>Back to part 1</button>
+        </div>
+      </div>
+    ),
+  ];
+  const phase = TUT2_STEPS[step][0], pc = TUT_PHASE_COLOR[phase];
+  return (
+    <div style={{ maxWidth: 760, margin: "0 auto", padding: "20px 16px" }}>
+      {onExit && <button onClick={onExit} style={{ ...bs("var(--muted)"), padding: "6px 12px", fontSize: 12, marginBottom: 12 }}><Back /> Rules</button>}
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ flex: 1, fontSize: 22, fontWeight: 700, color: "var(--accent)", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.04em" }}>Tutorial, part 2</div>
+        {step > 0 && <button onClick={restart} style={{ ...bs("var(--muted)"), padding: "8px 12px", fontSize: 12, display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="reset" size={13} /> Restart</button>}
+      </div>
+      <p style={{ ...mu, marginBottom: 12 }}>Objectives, scoring and ploys. <button className="link-btn" onClick={onPart1} style={{ background: "none", border: "none", padding: 0, color: "var(--accent)", cursor: "pointer", textDecoration: "underline", font: "inherit" }}>Part 1: a turning point</button></p>
+      <div style={{ display: "flex", gap: 3, marginBottom: 14 }}>
+        {TUT2_STEPS.map(([ph], i) => <div key={i} style={{ flex: 1, height: 5, borderRadius: 3, background: i <= step ? TUT_PHASE_COLOR[ph] : "var(--raised)", transition: "background 0.3s" }} />)}
+      </div>
+      <div style={{ ...cd, padding: mobile ? 16 : 22, borderTop: "3px solid " + pc }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
+          <span style={bg(pc)}>{phase === "Intro" ? "Tutorial" : phase + " phase"}</span>
+          <span style={{ fontSize: 13, color: "var(--muted)" }}>Step {step + 1} of {TUT2_STEPS.length}</span>
+        </div>
+        <div style={{ fontSize: 24, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.02em", marginBottom: 12 }}>{TUT2_STEPS[step][1]}</div>
+        {body[step]()}
+      </div>
+      {step > 0 && step < TUT2_STEPS.length - 1 && <button onClick={() => go(step - 1)} className="link-btn" style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer", fontSize: 13, marginTop: 10, padding: 0 }}>Back a step</button>}
     </div>
   );
 }
@@ -18463,10 +18713,40 @@ async function runSelfTest(hooks) {
     }
     if (!btn("Play again")) throw new Error("the tutorial didn't reach the end");
     if (seen.size < 5) throw new Error("only " + (seen.size - 1) + " map pictures showed");
+    // Part 2: CP, a strategy ploy, the objective quiz (answered right), Balanced and Command Re-roll, then scoring.
+    const text = () => document.body.innerText;
+    await click(btn("Part 2: objectives"), "Part 2");
+    await click(btn("Start turning point 2"), "Start turning point 2");
+    await click(btn("Gain 1CP"), "Gain 1CP");
+    if (!document.querySelector("[data-tut-cp='4']")) throw new Error("part 2: gaining CP didn't make 4CP");
+    await click(btn("Gambits"), "Gambits");
+    if (!/Pick one doctrine/.test(text())) throw new Error("part 2: Combat Doctrine's text is missing");
+    await click(btn("Use Combat Doctrine"), "Combat Doctrine");
+    await click(btn("Pass", true), "Pass");
+    await click(btn("Begin the Firefight phase"), "Begin the Firefight phase");
+    for (const ids of TUT2_QUIZ) {
+      const want = { you: "You", them: "The bot", nobody: "Nobody" }[tut2Control(ids).who];
+      await click(btn(want, true), want);
+      if (!/Right\./.test(text())) throw new Error("part 2: the right answer (" + want + ") was marked wrong");
+      await click(btn("Next question") || btn("See how you did"), "next question");
+    }
+    if (!/You got 4 of 4/.test(text())) throw new Error("part 2: the quiz score is wrong");
+    await click(btn("Next", true), "Next");
+    await click(btn("Roll 4 attack dice"), "Roll 4 attack dice");
+    await click(document.querySelector("[data-tut-die='0']"), "Balanced re-roll");
+    if (!document.querySelector("[data-tut-die='0']").disabled) throw new Error("part 2: a re-rolled die can be re-rolled again");
+    await click(document.querySelector("[data-tut-die='1']"), "Command Re-roll");
+    if (!document.querySelector("[data-tut-cp='2']")) throw new Error("part 2: Command Re-roll didn't cost 1CP");
+    await click(btn("End the turning point"), "End the turning point");
+    await click(btn("Score the turning point"), "Score");
+    if (!/You score 1VP/.test(text()) || !/The bot scores 1VP/.test(text())) throw new Error("part 2: scoring didn't give 1VP each");
+    await click(btn("Next", true), "Next");
+    if (!btn("Play part 2 again")) throw new Error("part 2 didn't reach the end");
+    await click(btn("Back to part 1"), "Back to part 1");
     await click(btn("Rules", true), "tutorial back button");
     await click(all("[role=button]").find(e => e.textContent.trim().startsWith("Orders")), "Orders rule");
     if (!document.querySelector("[role=img][aria-label^='An Engage operative']")) throw new Error("the Orders rule doesn't show the Engage/Conceal diagram");
-    return "played through, " + (seen.size - 1) + " map pictures";
+    return "parts 1 and 2 played through, " + (seen.size - 1) + " map pictures";
   });
   await step("Missions: every pack, mission and map", async () => {
     await nav("Missions");
@@ -19254,6 +19534,7 @@ async function runSelfTest(hooks) {
   URL.createObjectURL = orig.createObjectURL; HTMLAnchorElement.prototype.click = orig.aClick;
   delete window.__ksNoShare;
   restoreKillSheetStorage(saved);
+  selfTestBackup(null); // finished: the player's data is back, so the safety copy goes
 
   const passed = results.filter(r => r.ok).length;
   window.__ksSelfTest = { passed, failed: results.length - passed, results };
@@ -19483,7 +19764,11 @@ function MapCompare() {
 // ═══ RENDER ═══
 const root = ReactDOM.createRoot(document.getElementById('root'));
 // The self-test saves the player's data and clears it before the app starts, so the test begins from a clean slate.
-if (/[?&]selftest\b/.test(window.location.search)) { window.__ksSaved = snapshotKillSheetStorage(); restoreKillSheetStorage({}); }
+// A test that was cut short left the player's data in the backup: a new test starts from that copy, and opening the
+// app normally puts it back.
+const cutShort = selfTestBackup();
+if (/[?&]selftest\b/.test(window.location.search)) { window.__ksSaved = cutShort || snapshotKillSheetStorage(); selfTestBackup(window.__ksSaved); restoreKillSheetStorage({}); }
+else if (cutShort) { restoreKillSheetStorage(cutShort); selfTestBackup(null); }
 root.render(React.createElement(ErrorBoundary, null, React.createElement(/[?&]maps\b/.test(window.location.search) ? MapCompare : App)));
   </script>
 </body>

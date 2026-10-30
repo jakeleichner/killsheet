@@ -100,7 +100,7 @@ def check_storage_keys(text):
 
 def check_direct_storage(lines):
     """localStorage is only touched inside useLocalStorage and the clear/snapshot/restore helpers."""
-    allowed = {"useLocalStorage", "clearKillSheetStorage", "snapshotKillSheetStorage", "restoreKillSheetStorage"}
+    allowed = {"useLocalStorage", "clearKillSheetStorage", "snapshotKillSheetStorage", "restoreKillSheetStorage", "selfTestBackup"}
     problems = []
     current = None
     for i, line in enumerate(lines):
