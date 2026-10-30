@@ -95,10 +95,14 @@ def write_zip(deploy):
 
 
 def offline_files(deploy):
-    """The site's own files the service worker keeps for offline use."""
+    """The site's own files the service worker keeps for offline use, saved on the first visit. Maps: the drawn
+    diagrams, and the photographed page only for missions without a diagram. The other photos (shown only when
+    someone taps to see the original page) are saved the first time they're viewed instead, which keeps the first
+    visit's download about 3.4 MB smaller."""
     local = ["./", "manifest.webmanifest"]
-    for folder in ("icons", "maps"):
-        local += [folder + "/" + n for n in sorted(os.listdir(os.path.join(deploy, folder))) if not n.startswith(".")]
+    local += ["icons/" + n for n in sorted(os.listdir(os.path.join(deploy, "icons"))) if not n.startswith(".")]
+    maps = sorted(n for n in os.listdir(os.path.join(deploy, "maps")) if not n.startswith("."))
+    local += ["maps/" + n for n in maps if n.endswith(".svg") or (n.endswith(".jpg") and n[:-4] + ".svg" not in maps)]
     return local
 
 

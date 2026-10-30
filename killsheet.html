@@ -58,11 +58,15 @@
       button:not(.compact-btn):not(.link-btn) { min-height: 40px; min-width: 40px; }
     }
   </style>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Fonts don't hold up the first paint: the page draws in the phone's own font, then switches when they arrive. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
   <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
-  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script defer src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script><!-- only Play online needs it -->
 </head>
 <body>
   <div id="root"></div>
@@ -6204,8 +6208,19 @@ function useMultiplayer(onMessage) {
     });
   };
 
+  // PeerJS loads after the page shows (only online play needs it), so a tap in the first moments waits for it,
+  // up to 15 seconds, showing "Connecting...".
+  const withPeer = (go) => {
+    setStatus("joining");
+    let waited = 0;
+    const t = setInterval(() => {
+      if (window.Peer) { clearInterval(t); go(); }
+      else if ((waited += 250) >= 15000) { clearInterval(t); setPeerError("Couldn't load online play. Check your connection and try again."); setStatus("error"); }
+    }, 250);
+  };
+
   const host = (reuse) => {
-    if (typeof window === "undefined" || !window.Peer) { setPeerError("PeerJS not loaded"); setStatus("error"); return; }
+    if (!window.Peer) return withPeer(() => host(reuse));
     const code = typeof reuse === "string" ? reuse : genRoomCode();
     if (typeof reuse !== "string") triesRef.current = 0;
     cleanup();
@@ -6232,7 +6247,7 @@ function useMultiplayer(onMessage) {
   };
 
   const join = (raw, retrying) => {
-    if (typeof window === "undefined" || !window.Peer) { setPeerError("PeerJS not loaded"); setStatus("error"); return; }
+    if (!window.Peer) return withPeer(() => join(raw, retrying));
     if (!raw || raw.length < 4) { setPeerError("Invalid room code"); setStatus("error"); return; }
     const code = raw.toUpperCase();
     if (!retrying) triesRef.current = 0;
@@ -18618,6 +18633,7 @@ const CHANGELOG = [
     ["new", "What's new: this page, in Settings. After an update, a note links to it once."],
     ["new", "Online, you're told if your opponent's KillSheet is a different version, and which phone needs updating."],
     ["better", "Every update is tested automatically before it reaches the site."],
+    ["better", "KillSheet opens even when a slow connection holds up its fonts or online play, and the first visit saves about 3 MB less to your phone for offline use."],
   ] },
   { date: "2026-10-29", items: [
     ["new", "Tutorial part 2: command points, a strategy ploy, who controls an objective, Command Re-roll and scoring."],

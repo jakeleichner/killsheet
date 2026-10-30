@@ -97,8 +97,19 @@ function useMultiplayer(onMessage) {
     });
   };
 
+  // PeerJS loads after the page shows (only online play needs it), so a tap in the first moments waits for it,
+  // up to 15 seconds, showing "Connecting...".
+  const withPeer = (go) => {
+    setStatus("joining");
+    let waited = 0;
+    const t = setInterval(() => {
+      if (window.Peer) { clearInterval(t); go(); }
+      else if ((waited += 250) >= 15000) { clearInterval(t); setPeerError("Couldn't load online play. Check your connection and try again."); setStatus("error"); }
+    }, 250);
+  };
+
   const host = (reuse) => {
-    if (typeof window === "undefined" || !window.Peer) { setPeerError("PeerJS not loaded"); setStatus("error"); return; }
+    if (!window.Peer) return withPeer(() => host(reuse));
     const code = typeof reuse === "string" ? reuse : genRoomCode();
     if (typeof reuse !== "string") triesRef.current = 0;
     cleanup();
@@ -125,7 +136,7 @@ function useMultiplayer(onMessage) {
   };
 
   const join = (raw, retrying) => {
-    if (typeof window === "undefined" || !window.Peer) { setPeerError("PeerJS not loaded"); setStatus("error"); return; }
+    if (!window.Peer) return withPeer(() => join(raw, retrying));
     if (!raw || raw.length < 4) { setPeerError("Invalid room code"); setStatus("error"); return; }
     const code = raw.toUpperCase();
     if (!retrying) triesRef.current = 0;
