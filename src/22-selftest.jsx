@@ -278,7 +278,11 @@ async function runSelfTest(hooks) {
     await click(btn("Build my roster") || btn("Continue with this team"), "Build my roster");
     for (const r of all("[role=button]").filter(e => /W\s*•/.test(e.textContent) && e.textContent.length < 120).slice(0, 3)) { r.click(); await settle(); }
     await click(btn("Start game"), "Start game");
-    await click(all("button").find(b => /turning points/.test(b.textContent) && /Change/.test(b.textContent)), "game setup");
+    // During a game the settings line is hidden; the game menu's Game settings opens the same screen.
+    const setupLine = all("button").find(b => /turning points/.test(b.textContent) && /Change/.test(b.textContent));
+    if (setupLine && store("rosterLocked")) throw new Error("the game settings line still shows during a game");
+    if (setupLine) await click(setupLine, "game setup");
+    else { await click(document.querySelector("[aria-label='Game menu']"), "game menu"); await click(btn("Game settings"), "Game settings"); }
     const pick = async (i, v) => { const sel = all("select")[i]; Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set.call(sel, v); sel.dispatchEvent(new Event("change", { bubbles: true })); await settle(); };
     await pick(0, "hivestorm"); await pick(1, "0");
     await click(btn("Use these settings", true), "Use these settings");

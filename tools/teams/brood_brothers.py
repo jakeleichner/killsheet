@@ -112,7 +112,7 @@ TEAM = {
            "PSYCHIC FAMILIAR", wounds=3, ex=NO_KNIVES),
         bb("magus", "Magus", [("Autopistol", 4, "4+", "2/3", 'Range 8"')], [("Bio dagger", 2, "4+", "3/6", "Lethal 4+"), ("Force stave", 4, "4+", "4/6", "PSYCHIC, Shock")],
            ["Spiritual Leader: STRATEGIC GAMBIT, while it's in the killzone. Until the end of the turning point or until it dies, pick one for Brood Brothers: ignore Piercing when shot, ignore stat changes from being injured, or ignore APL changes.",
-            "Telepathic Overload (1AP): PSYCHIC. An enemy that's a valid target gets -1 APL until the end of its next activation. It can't do this within enemy control range.",
+            "Telepathic Overload (1AP): PSYCHIC. An enemy that's a valid target gets -1 APL until the end of that operative's activation. It can't do this within enemy control range.",
             "Mental Onslaught (1AP): PSYCHIC. Inflict 2 damage on an enemy that's a valid target (4 if within 6\"). Then keep rolling a D6: each roll above its APL inflicts 2 more (4 within 6\"), up to 8 in total. It can't do this within enemy control range."],
            "BROODCOVEN, PSYKER, LEADER, MAGUS", apl=3, save="4+", wounds=9, pts=32, ex=NO_KNIVES),
         bb("primus", "Primus", [("Scoped needle pistol (short range)", 4, "3+", "2/4", 'Range 8", Lethal 5+, Silent'), ("Scoped needle pistol (long range)", 4, "3+", "2/4", "Silent")],

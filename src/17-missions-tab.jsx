@@ -461,7 +461,6 @@ function Missions({ campaign, startCampaign }) {
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "12px 0" }}>
             {filters.map(f => <button key={f} onClick={() => setFilter(f)} style={{ ...bs(filter === f ? "var(--accent)" : "var(--muted)"), background: filter === f ? "color-mix(in srgb, var(--accent) 13%, transparent)" : "transparent", padding: "7px 12px", fontSize: 12 }}>{f}</button>)}
           </div>
-          {campaignCard || <FeatureHint k="campaign" text="Optional extra: the Ctesiphus Expedition campaign links your games on a hex map." style={{ margin: "0 0 12px" }} />}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 10 }}>
             {shown.map(p => (
               <div key={p.id} role="button" tabIndex={0} onClick={() => go(p.id, null)} style={{ ...cd, padding: 14, marginBottom: 0, cursor: "pointer", minWidth: 0 }}>
@@ -476,6 +475,8 @@ function Missions({ campaign, startCampaign }) {
               </div>
             ))}
           </div>
+          {/* The campaign after the packs: more players use the packs. */}
+          <div style={{ marginTop: 12 }}>{campaignCard || <FeatureHint k="campaign" text="Optional extra: the Ctesiphus Expedition campaign links your games on a hex map." />}</div>
         </div>
       )}
 

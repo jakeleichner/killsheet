@@ -10,6 +10,9 @@ const CHANGELOG = [
     ["better", "KillSheet opens even when a slow connection holds up its fonts or online play, and the first visit saves about 3 MB less to your phone for offline use."],
     ["fixed", "Match my team in Settings now shows what it does: your team's name and a sample button in the color the Battle tab will use."],
     ["fixed", "The score bar no longer runs off the edge on the smallest iPhones."],
+    ["better", "During a game, the line with your game's settings is hidden to save space. It's still in the game menu, under Game settings."],
+    ["better", "The Missions tab shows the mission packs first, with the campaign below them."],
+    ["fixed", "Brood Brothers' Telepathic Overload follows Games Workshop's August 2026 errata."],
   ] },
   { date: "2026-10-29", items: [
     ["new", "Tutorial part 2: command points, a strategy ploy, who controls an objective, Command Re-roll and scoring."],

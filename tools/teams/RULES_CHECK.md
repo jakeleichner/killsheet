@@ -62,10 +62,9 @@ distances, timing, who a rule affects, and missing conditions.
 No changes needed: Farstalker Kinband, Hand of the Archon, Hierotek Circle, Legionaries, Mandrakes,
 Murderwing, Nemesis Claw, Warpcoven and Deathwatch.
 
-## For the owner to decide
-Newest errata applied, card text not updated yet:
-- Gellerpox Rust Emanations (Nightmare Hulks only); Novitiates Whip Into Frenzy; Blooded Glory Kill.
-- Brood Brothers Telepathic Overload: August '26 errata says "until the end of that operative's activation"; the app still says "next activation".
+## Owner decisions (Oct 30, 2026)
+- Newest errata: apply them. Gellerpox Rust Emanations (Nightmare Hulks only), Novitiates Whip Into Frenzy and Blooded Glory Kill were already applied and stay; Brood Brothers Telepathic Overload now follows the August '26 errata ("until the end of that operative's activation").
+- Older errata the printed card doesn't show: keep following the card (the cards were printed after that errata). The list below stays for reference.
 
 Older errata the card text doesn't show (the app follows the card unless noted):
 - Breachers: two Gunners allowed (errata) vs up to two Gunners each different (card).
