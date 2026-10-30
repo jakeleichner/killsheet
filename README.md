@@ -340,6 +340,9 @@ Estimated 2-3 hours. Should be its own focused session with its own QA pass (mix
 - Pre-ship checker added: `python3 tools/check.py` (hooks before early returns, every tab has an icon and panel, unique localStorage keys, no direct localStorage use, print class, JSX script tag).
 
 ### Other open tasks (rough priority order)
+- **Attack sounds (owner, Oct 29: wanted).** Short sounds with the attack animations, matched to the weapon kinds `fxProfile` already sorts (bolt, auto, sniper, las, plasma, melta, flame, grenade and blast, psychic, electric, blades, chainswords, heavy blows), plus the block clash, Hot overheating and the versus intro. Plain synthesized sounds (Web Audio), no game audio. Its own Sound switch in Settings, off to start since sound at a shared table can annoy; a volume setting; silent with the phone on mute where the browser allows. For everyone (an extra to add, not an expert switch).
+- **Leaderboard (owner, Oct 29: wanted).** A board built from each player's game history (`ks_gameHistory`): wins, losses, draws and win rate, overall and per team. Needs accounts and history synced to a server (see the Community backend plan above). Decide with the owner: who can see it (everyone, or friends only) and how players appear (a chosen name).
+- **Friends (owner, Oct 29: wanted).** Add friends (by a short code or name), compare records head to head, and a friends-only leaderboard. Also needs accounts. Could make starting an online game with a friend one tap.
 - **Owner to decide the errata items in `tools/teams/RULES_CHECK.md` ("For the owner to decide").** Where the PDF's card text and its older errata disagree, the app follows the card. Change any the owner rules on, in `tools/teams/<team>.py`, then rebuild.
 - **Community Rosters: owner to decide whether it stays.** Under the beginner-first vision, sharing rosters is close to "adding your own content"; if kept, it becomes a switch like the others.
 - **Check the detailed scoring panel against Approved Ops (needs the paid pack).** The free PDFs only say Approved Ops scores a kill op, a crit op and a tac op from your archetypes, plus a chosen primary op. The panel's layout (primary 0-2VP per turning point for each side, three tac ops with two 1VP boxes each, "3 Tac Ops" and 3 equipment as the standard game) may come from an older edition. Not changed, since nothing free confirms either way.
@@ -347,8 +350,6 @@ Estimated 2-3 hours. Should be its own focused session with its own QA pass (mix
 - **Legion of the Damned**: previewed in the Big Autumn Preview; add once its rules are published.
 
 ### Lower-priority backlog
-- **Maybe: attack sounds.** Short sounds with the attack animations (slash, shot, blast, lightning, overheat), with their own switch, off by default since sound at a shared table can annoy. Plain synthesized sounds (Web Audio), no game audio.
-- **Maybe: leaderboard and friends (needs logins first).** Once the Community backend has sign-in, add a Community leaderboard built from game history (`ks_gameHistory`: wins, losses, draws, per team and overall), plus adding friends to compare records and a friends-only board. Depends on accounts and on syncing history to the server. Owner flagged this as a maybe; confirm before building.
 - More factions: see convention 11. Add `tools/teams/<team>.py`, list it in `ORDER.txt`, run the build, then `python3 tools/check.py` and build a full roster in the preview.
 - Tac op conditions in the scoring panel, if a free source ever covers them (they're on the paid Approved Ops cards).
 - Make killzone rules functional (currently cosmetic).
