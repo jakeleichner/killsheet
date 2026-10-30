@@ -5988,9 +5988,12 @@ function downloadBackup(share) {
   const d = new Date();
   const name = "killsheet-backup-" + d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0") + ".json";
   const file = new File([JSON.stringify(payload)], name, { type: "application/json" });
-  if (share && navigator.canShare && navigator.canShare({ files: [file] })) {
-    navigator.share({ files: [file], title: "KillSheet backup" }).catch(() => {});
-    return null;
+  // On a phone: the share sheet (Save to Files, AirDrop, Mail). Falls back to a download if sharing isn't there or fails
+  // straight away. window.__ksNoShare is the self-test's: Safari won't let a page replace navigator.share.
+  let canShare = false;
+  try { canShare = !!(share && !window.__ksNoShare && typeof navigator.share === "function" && navigator.canShare && navigator.canShare({ files: [file] })); } catch (e) { canShare = false; }
+  if (canShare) {
+    try { navigator.share({ files: [file], title: "KillSheet backup" }).catch(() => {}); return null; } catch (e) { /* fall back to a download */ }
   }
   const url = URL.createObjectURL(file);
   const a = document.createElement("a");
@@ -18112,7 +18115,7 @@ async function runSelfTest(hooks) {
   const results = [];
   const errors = [];
   const saved = window.__ksSaved || snapshotKillSheetStorage();
-  const orig = { prompt: window.prompt, confirm: window.confirm, alert: window.alert, error: console.error, createObjectURL: URL.createObjectURL, share: navigator.share, aClick: HTMLAnchorElement.prototype.click };
+  const orig = { prompt: window.prompt, confirm: window.confirm, alert: window.alert, error: console.error, createObjectURL: URL.createObjectURL, aClick: HTMLAnchorElement.prototype.click };
   const onError = (e) => errors.push(String(e.message || e));
   window.addEventListener("error", onError);
   console.error = (...a) => { const t = a.map(String).join(" "); if (!/BABEL|Babel|deoptimised/.test(t)) errors.push(t.slice(0, 300)); orig.error.apply(console, a); };
@@ -18122,7 +18125,7 @@ async function runSelfTest(hooks) {
   let lastBlob = null;
   URL.createObjectURL = (b) => { lastBlob = b; return orig.createObjectURL.call(URL, b); };
   HTMLAnchorElement.prototype.click = function () { if (!this.download) orig.aClick.call(this); };
-  try { navigator.share = undefined; } catch (e) { /* read-only in some browsers */ }
+  window.__ksNoShare = true; // backups download instead of opening the share sheet
 
   const tick = () => new Promise(r => { const ch = new MessageChannel(); ch.port1.onmessage = r; ch.port2.postMessage(0); });
   const settle = async (n = 12) => { for (let i = 0; i < n; i++) await tick(); };
@@ -18951,7 +18954,7 @@ async function runSelfTest(hooks) {
   window.removeEventListener("error", onError);
   console.error = orig.error; window.prompt = orig.prompt; window.confirm = orig.confirm; window.alert = orig.alert;
   URL.createObjectURL = orig.createObjectURL; HTMLAnchorElement.prototype.click = orig.aClick;
-  try { navigator.share = orig.share; } catch (e) { /* ignore */ }
+  delete window.__ksNoShare;
   restoreKillSheetStorage(saved);
 
   const passed = results.filter(r => r.ok).length;
