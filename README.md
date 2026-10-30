@@ -133,6 +133,7 @@ The gold→rust bulk swap was done globally, which flattened the "look here" sig
 ---
 
 ## Critical conventions & gotchas
+- **Text size:** inline `fontSize` numbers scale with Appearance > Text size. Write a size as a string (`"22px"`) only when it must not grow (it's already big and space is tight).
 
 These will bite you if you don't know them:
 
@@ -182,6 +183,7 @@ Planned implementation:
 Estimated 2-3 hours. Should be its own focused session with its own QA pass (mixing infra + UI changes tends to combine bugs confusingly).
 
 ### Done recently
+- Text size in Appearance (owner, Oct 29): Normal, Large (1.12x) and Larger (1.25x), saved in `ks_appearance.text`. How it works: `React.createElement` is wrapped at the top of the script so every number `fontSize` in an inline style is multiplied by `TEXT_SCALE` (set by App before it draws), which reaches every screen without a base size. SVG `text` keeps its size; a `fontSize` written as a string ("22px") is left alone on purpose (the phone score bar's big numbers and the counter value, so the bar fits at Larger); the stylesheet's sizes use `calc(... * var(--ts))`. Weapon lines on datacards now wrap the stats and Shoot/Fight button. Checked at Larger on a 375px phone: nothing runs past the screen edge on any tab. Appearance self-test checks the scale, saving and Normal again.
 - Hit notifications and the end-of-game recap (owner, Oct 29).
   - Hits from the other player online (`applyRemoteDamage`) no longer use the plain toast. `HitBubbles` shows a chat-style bubble that slides out from under the Log button with a pointer to it (kept on screen, pointer moved to stay under Log), stays 8 seconds then fades, stacks newest on top (three at most), and has an × to dismiss. If the Log button is off screen or a Shoot/Fight screen is open, bubbles show at the top right above it. The Log button shows an unread count until the log is opened. Tapping a bubble opens the log scrolled to that hit, outlined (log entries carry a `note` id). Slide only with Attack animations on and without Reduce Motion.
   - `gameRecap` / `GameRecap`: the End game panel shows VP by turning point (from `ks_vpByTp`, each side's total kept against the current turning point as it changes), who took out whom and when, and each side's operative with the most damage dealt (from the battle log). Saved as `recap` on the game in history; tapping a recent game shows it. VP added after moving to the next turning point counts in that one.
@@ -336,7 +338,6 @@ Estimated 2-3 hours. Should be its own focused session with its own QA pass (mix
 ### Other open tasks (rough priority order)
 - **Diagrams in the Rules tab.** The owner found words alone confusing in the tutorial. Add small pictures like `OrderGrid` to the hardest rules: cover vs obscured, control range, Charge (move + 2", end in control range), visibility and intervening terrain. Shown when the rule is opened. For everyone; most useful to beginners. Medium.
 - **Tutorial part 2.** Part 1 doesn't cover objectives, scoring or ploys. A second short walkthrough: contesting and controlling an objective marker (APL totals), scoring at the end of a turning point, and spending CP on a strategy and a firefight ploy. Same map style (`TutMap`). Beginner basics. Medium.
-- **Text size in Appearance.** A Normal / Large / Larger choice beside the themes, for reading at the table. Needs a base font-size variable that inline sizes can scale from (many sizes are fixed px). For everyone. Medium.
 - **Owner to decide the errata items in `tools/teams/RULES_CHECK.md` ("For the owner to decide").** Where the PDF's card text and its older errata disagree, the app follows the card. Change any the owner rules on, in `tools/teams/<team>.py`, then rebuild.
 - **Community Rosters: owner to decide whether it stays.** Under the beginner-first vision, sharing rosters is close to "adding your own content"; if kept, it becomes a switch like the others.
 - **Check the detailed scoring panel against Approved Ops (needs the paid pack).** The free PDFs only say Approved Ops scores a kill op, a crit op and a tac op from your archetypes, plus a chosen primary op. The panel's layout (primary 0-2VP per turning point for each side, three tac ops with two 1VP boxes each, "3 Tac Ops" and 3 equipment as the standard game) may come from an older edition. Not changed, since nothing free confirms either way.

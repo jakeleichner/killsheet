@@ -40,7 +40,7 @@
     .ks-appear { animation: ksAppear 0.24s ease-out backwards; }
     /* Fight screen: the damage number rises and fades over the struck operative. */
     @keyframes ksPop { 0% { opacity: 0; transform: scale(2.4); } 12% { opacity: 1; transform: scale(0.9); } 22% { transform: scale(1.08); } 32% { transform: scale(1); } 75% { opacity: 1; transform: translateY(-6px); } 100% { opacity: 0; transform: translateY(-22px); } }
-    .ks-pop { animation: ksPop 1.8s cubic-bezier(.2,.8,.3,1) forwards; font-size: 26px !important; text-shadow: 0 0 10px rgba(224,102,74,0.8), 0 2px 0 #000; z-index: 4; }
+    .ks-pop { animation: ksPop 1.8s cubic-bezier(.2,.8,.3,1) forwards; font-size: calc(26px * var(--ts, 1)) !important; text-shadow: 0 0 10px rgba(224,102,74,0.8), 0 2px 0 #000; z-index: 4; }
     @keyframes ksFade { 0% { opacity: 0; } 15% { opacity: 1; } 75% { opacity: 1; } 100% { opacity: 0; } }
     @media (prefers-reduced-motion: reduce) { .ks-appear { animation: none; } .ks-pop { animation: ksFade 1.6s ease-out forwards; } }
     [role="button"] { cursor: pointer; }
@@ -51,7 +51,7 @@
     .km-tile > svg { display: block; width: 100%; height: auto; }
     .km-fit > svg { display: block; width: 100%; height: 100%; }
     @media (max-width: 600px) {
-      #root { font-size: 13px; }
+      #root { font-size: calc(13px * var(--ts, 1)); }
     }
     /* Phones: finger-sized buttons, except compact controls that are sized on purpose and inline text links. */
     @media (max-width: 699px) {
@@ -68,6 +68,22 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useEffect } = React;
+// ── Text size (Appearance > Text size): every number font size in an inline style is scaled as React draws it, so
+// one setting reaches every screen without a base size to change. Text inside SVG drawings (maps, the campaign
+// board) keeps its size so it still fits. TEXT_SCALE is set by App before it draws; --ts scales the stylesheet's
+// few sizes. ──
+let TEXT_SCALE = 1;
+const TEXT_SIZES = { normal: 1, large: 1.12, larger: 1.25 };
+const SVG_TEXT = new Set(["text", "tspan", "textPath"]);
+(() => {
+  const make = React.createElement;
+  React.createElement = function (type, props, ...children) {
+    if (TEXT_SCALE !== 1 && props && props.style && typeof props.style.fontSize === "number" && !SVG_TEXT.has(type)) {
+      props = { ...props, style: { ...props.style, fontSize: Math.round(props.style.fontSize * TEXT_SCALE * 2) / 2 } };
+    }
+    return make.call(this, type, props, ...children);
+  };
+})();
 
 /* ═══ WEAPON RULES ═══ */
 const WR = {
@@ -8207,7 +8223,7 @@ function WeaponBox({ w, tag, wtype, local, requestAttack }) {
           <Icon name={wtype === "melee" ? "melee" : "ranged"} size={14} color={color} />
           <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.02em" }}>{w.name}</span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px 12px", flexWrap: "wrap", minWidth: 0 }}>
           {[["ATK", w.atk], ["HIT", w.hit], ["DMG", w.dmg]].map(([label, val]) => (
             <span key={label} style={{ display: "inline-flex", alignItems: "baseline", gap: 4 }}>
               <Term k={label} style={{ fontSize: 13, fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.06em", fontWeight: 600 }}>{label}</Term>
@@ -8643,7 +8659,7 @@ function Stepper({ label, value, color, onMinus, onPlus, compact, term }) {
       {label && (term ? <Term k={term} style={{ fontSize: 11, fontWeight: 700, color, fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.1em", textTransform: "uppercase" }}>{label}</Term>
         : <span style={{ fontSize: 11, fontWeight: 700, color, fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.1em", textTransform: "uppercase" }}>{label}</span>)}
       <button className="compact-btn" onClick={onMinus} aria-label={"Lower " + (label || "")} style={{ ...btn, color: "#E0664A" }}>{"−"}</button>
-      <span style={{ fontSize: 24, fontWeight: 700, color, fontFamily: "'Rajdhani', sans-serif", minWidth: 22, textAlign: "center" }}>{value}</span>
+      <span style={{ fontSize: "24px", fontWeight: 700, color, fontFamily: "'Rajdhani', sans-serif", minWidth: 22, textAlign: "center" }}>{value}</span>
       <button className="compact-btn" onClick={onPlus} aria-label={"Raise " + (label || "")} style={{ ...btn, color: "#5A9C3A" }}>+</button>
     </div>
   );
@@ -10583,15 +10599,16 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
 
       {f && !pickerOpen && (
         <div className="ks-appear">
-          {/* Score bar: slim, stays under the nav while you scroll. Only during a game. */}
+          {/* Score bar: slim, stays under the nav while you scroll. Only during a game. Its big numbers are sized as
+              "22px" strings, which Text size leaves alone, so the phone bar still fits on one line at Larger. */}
           <div style={{ position: "sticky", top: navH, zIndex: 9, background: "var(--bg)", padding: "6px 0", marginBottom: 6, display: rosterLocked ? "block" : "none", transition: "top 0.2s ease-out" }}>
-            <div style={{ ...cd, marginBottom: 0, padding: mobile ? "8px 8px" : "8px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: compactBar ? 6 : 14 }}>
+            <div style={{ ...cd, marginBottom: 0, padding: mobile ? "8px 8px" : "8px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: compactBar ? 4 : 14 }}>
               {compactBar ? (
                 <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
                   <button className="compact-btn" onClick={() => setTp(Math.max(1, tp - 1))} disabled={tp <= 1} aria-label="Previous turning point" style={{ width: 30, height: 34, border: "1px solid var(--line)", borderRadius: 6, background: "var(--card)", color: "var(--gold)", cursor: tp <= 1 ? "default" : "pointer", opacity: tp <= 1 ? 0.35 : 1, fontSize: 16, padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><Back size={20} /></button>
                   <div style={{ textAlign: "center", minWidth: 30 }}>
-                    <div style={{ fontSize: 11, color: "var(--gold)", fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, letterSpacing: "0.08em", lineHeight: 1 }}><Term k="TP" style={{ color: "inherit" }}>TP</Term></div>
-                    <div style={{ fontSize: 22, color: "var(--gold)", fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, lineHeight: 1 }}>{tp}</div>
+                    <div style={{ fontSize: "11px", color: "var(--gold)", fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, letterSpacing: "0.08em", lineHeight: 1 }}><Term k="TP" style={{ color: "inherit" }}>TP</Term></div>
+                    <div style={{ fontSize: "22px", color: "var(--gold)", fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, lineHeight: 1 }}>{tp}</div>
                   </div>
                   <button className="compact-btn" onClick={() => setTp(Math.min(gc.numTPs, tp + 1))} disabled={tp >= gc.numTPs} aria-label="Next turning point" style={{ width: 30, height: 34, border: "1px solid var(--line)", borderRadius: 6, background: "var(--card)", color: "var(--gold)", cursor: tp >= gc.numTPs ? "default" : "pointer", opacity: tp >= gc.numTPs ? 0.35 : 1, fontSize: 16, padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><Fwd size={20} /></button>
                 </div>
@@ -10610,8 +10627,8 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
               {!compactBar && <Stepper label="You" term="VP" value={vpYou + computedVpYou} color="#5A9C3A" onMinus={() => setVpYou(v => (v + computedVpYou > 0 ? v - 1 : v))} onPlus={() => setVpYou(vpYou + 1)} />}
               {!compactBar && <Stepper label="Opp" term="VP" value={vpOpp + computedVpOpp} color="#B8341C" onMinus={() => setVpOpp(v => (v + computedVpOpp > 0 ? v - 1 : v))} onPlus={() => setVpOpp(vpOpp + 1)} />}
               {(compactBar || detailScoring) && <button className="compact-btn" onClick={() => setShowScoring(!showScoring)} aria-label={showScoring ? "Hide scoring" : "Show scoring"} style={{ display: "flex", alignItems: "center", gap: 6, height: 38, padding: "0 10px", borderRadius: 6, border: "1px solid " + (showScoring ? "color-mix(in srgb, var(--accent) 38%, transparent)" : "var(--line)"), background: showScoring ? "color-mix(in srgb, var(--accent) 8%, transparent)" : "transparent", cursor: "pointer", flexShrink: 0 }}>
-                {compactBar && <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 20 }}><span style={{ color: "#5A9C3A" }}>{vpYou + computedVpYou}</span><span style={{ color: "var(--muted2)" }}>{"–"}</span><span style={{ color: "#E0664A" }}>{vpOpp + computedVpOpp}</span></span>}
-                <span style={{ fontSize: 11, color: "var(--muted)", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.08em", fontWeight: 700 }}>{compactBar ? "VP" : "SCORING"}</span>
+                {compactBar && <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: "20px" }}><span style={{ color: "#5A9C3A" }}>{vpYou + computedVpYou}</span><span style={{ color: "var(--muted2)" }}>{"–"}</span><span style={{ color: "#E0664A" }}>{vpOpp + computedVpOpp}</span></span>}
+                <span style={{ fontSize: compactBar ? "11px" : 11, color: "var(--muted)", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.08em", fontWeight: 700 }}>{compactBar ? "VP" : "SCORING"}</span>
                 <Arrow open={showScoring} />
               </button>}
             </div>
@@ -18128,7 +18145,7 @@ function Welcome() {
 }
 
 // Every switch in one place, opened from the Battle tab's ⋯ menu and from the Rules tab.
-// Appearance: theme tiles, each drawn in its own colors, plus the Match my team switch.
+// Appearance: theme tiles, each drawn in its own colors, then Text size and the Match my team switch.
 function AppearancePicker() {
   const { appearance, setAppearance, teamColor } = React.useContext(FeatureCtx);
   const pick = (k) => setAppearance(a => ({ ...a, theme: k }));
@@ -18155,6 +18172,22 @@ function AppearancePicker() {
             </button>
           );
         })}
+      </div>
+      <div style={{ padding: "12px 0 0", marginTop: 10, borderTop: "1px solid var(--raised)" }}>
+        <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif" }}>Text size</div>
+        <div style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.45, marginTop: 2 }}>Bigger text for reading across the table. Every screen follows it.</div>
+        <div role="radiogroup" aria-label="Text size" style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+          {[["normal", "Normal"], ["large", "Large"], ["larger", "Larger"]].map(([k, label]) => {
+            const on = (appearance.text || "normal") === k;
+            return (
+              <button key={k} role="radio" aria-checked={on} aria-label={label} onClick={() => setAppearance(a => ({ ...a, text: k }))}
+                style={{ flex: "1 1 90px", padding: "8px 10px", borderRadius: 8, cursor: "pointer", background: on ? "color-mix(in srgb, var(--accent) 12%, var(--card))" : "var(--card)", border: "2px solid " + (on ? "var(--accent)" : "var(--line)"), color: "var(--text)", display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+                <span aria-hidden="true" style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: Math.round(16 * TEXT_SIZES[k] / TEXT_SCALE), lineHeight: 1.1 }}>Aa</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: on ? "var(--accent)" : "var(--text2)" }}>{label}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
       <div style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "12px 0", marginTop: 10, borderTop: "1px solid var(--raised)" }}>
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -18876,9 +18909,19 @@ async function runSelfTest(hooks) {
       const c = crosshair(); if (c && getComputedStyle(c).stroke !== rgb(t.vars.accent)) throw new Error("the logo took the team color");
     }
     await click(sw, "Match my team (off)");
+    // Text size: Larger scales every screen's text by 1.25 and is saved; Normal puts it back.
+    const title = () => [...document.querySelectorAll("[role=dialog][aria-label='Settings'] div")].find(d => d.textContent.trim() === "Text size");
+    const px = () => parseFloat(getComputedStyle(title()).fontSize);
+    const normal = px();
+    await click(document.querySelector("[role=radio][aria-label='Larger']"), "Larger text");
+    if ((store("appearance") || {}).text !== "larger") throw new Error("the text size wasn't saved");
+    if (Math.abs(px() - normal * 1.25) > 0.6) throw new Error("Larger text is " + px() + "px, want " + normal * 1.25);
+    if (getComputedStyle(document.documentElement).getPropertyValue("--ts").trim() !== "1.25") throw new Error("the page's own text sizes didn't follow");
+    await click(document.querySelector("[role=radio][aria-label='Normal']"), "Normal text");
+    if (px() !== normal) throw new Error("Normal didn't put the text back");
     await click(page.querySelector("[role=radio][aria-label='Default']"), "Default theme");
     await click(page.querySelector("[aria-label='Close']"), "close Settings");
-    return Object.keys(THEMES).length + " themes, " + Object.keys(FACTIONS).length + " team colors checked in each";
+    return Object.keys(THEMES).length + " themes, " + Object.keys(FACTIONS).length + " team colors checked in each, text size scales";
   });
   await step("Attack effects", async () => {
     // Every weapon on every datacard gets an effect, and each kind of effect actually draws and marks the target.
@@ -19167,6 +19210,8 @@ function App() {
   const [appearance, setAppearance] = useLocalStorage("appearance", { theme: "default", matchTeam: false });
   const [teamColor, setTeamColor] = useState(null);
   React.useLayoutEffect(() => applyTheme(appearance.theme), [appearance.theme]);
+  TEXT_SCALE = TEXT_SIZES[appearance.text] || 1; // before anything below is drawn
+  React.useLayoutEffect(() => { document.documentElement.style.setProperty("--ts", String(TEXT_SCALE)); }, [appearance.text]);
   const battleAccent = appearance.matchTeam && teamColor ? teamAccent(teamColor, THEMES[appearance.theme] || THEMES.default) : null;
   const cogButton = <button onClick={() => setShowFeatures(true)} aria-label="Settings" title="Settings" aria-haspopup="dialog" style={{ width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", borderRadius: 6, cursor: "pointer", color: showFeatures ? "var(--accent)" : "var(--muted)" }}><Icon name="cog" size={20} /></button>;
   const feat = { ...FEATURE_PRESETS[features ? presetOf(features) : returning ? "expert" : "learning"], ...(features || {}) };
