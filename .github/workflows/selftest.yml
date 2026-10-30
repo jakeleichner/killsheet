@@ -1,0 +1,23 @@
+# On every push: the checker, the upload build, and the in-app self-test in headless Chrome
+# (phone and desktop width, and the upload build). A failure marks the push with a red X on GitHub
+# and emails the owner. macOS, because the checker and the build compile the app with macOS's jsc.
+name: Checks and self-test
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Checks (tools/check.py)
+        run: python3 tools/check.py
+      - name: Build the upload version (tools/build_deploy.py)
+        run: python3 tools/build_deploy.py
+      - name: Self-test in headless Chrome (tools/run_selftest.mjs)
+        run: node tools/run_selftest.mjs
