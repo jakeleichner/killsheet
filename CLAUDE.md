@@ -17,6 +17,7 @@ The app's source is the 25 files in `src/` (one per area: `03-teams.jsx` is the 
 0. Run `python3 tools/assemble.py` after editing `src/`.
 1. Run `python3 tools/check.py`. It must end with "All checks passed." It catches hooks after an early return (React #310 crash), tabs missing an icon or panel, duplicate/direct localStorage use, a missing print class or JSX script tag, British spellings, and JavaScript that doesn't compile (a blank page).
 2. Load the change in the preview and check the console for errors (runtime errors only show up there).
+4. After pushing, check GitHub's run: `/opt/homebrew/bin/gh run list --limit 1`, or `gh run watch <id> --exit-status` in the background. `.github/workflows/selftest.yml` runs the checker, the upload build and the self-test in headless Chrome (phone and desktop width, and the upload build) on every push. A red X means don't tell the owner to upload; read the failing steps with `gh run view <id> --log`.
 3. Run the self-test: load the preview with `?selftest` (e.g. `http://localhost:3456/?selftest`). It clicks through every tab, all mission packs and maps, all 48 teams (build, start, end game), backup and a campaign round, then shows a PASS/FAIL panel. Results are also in `window.__ksSelfTest`. It saves the browser's KillSheet data first and puts it back after (saving is frozen until reload, so the test game can't overwrite it). Extend `runSelfTest` when you add a feature.
 
 ## Previewing changes

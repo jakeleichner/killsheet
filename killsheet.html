@@ -8392,7 +8392,7 @@ function HitBubble({ n, tail, animate, onOpen, onDismiss }) {
   );
 }
 
-function Datacard({ op, f, fc, equipWeapons, equipEffects, curWounds, onWound, collapsed, onToggle, ignoreInjured, cp, setCp, isActivated, onActivate, order, onOrder, uses, setUse, carried, onCarried, narrow, requestFight, requestShoot, scars }) {
+function Datacard({ side, op, f, fc, equipWeapons, equipEffects, curWounds, onWound, collapsed, onToggle, ignoreInjured, cp, setCp, isActivated, onActivate, order, onOrder, uses, setUse, carried, onCarried, narrow, requestFight, requestShoot, scars }) {
   const [pickWeapons, setPickWeapons] = useState(false);
   const { feat } = React.useContext(FeatureCtx);
   const opRules = React.useMemo(() => opWeaponRules(op), [op]);
@@ -8467,7 +8467,7 @@ function Datacard({ op, f, fc, equipWeapons, equipEffects, curWounds, onWound, c
   );
 
   return (
-    <div className="datacard-print" style={{ background: DS.bgCard, borderRadius: 6, marginBottom: collapsed ? 8 : 12, boxShadow: "0 4px 16px rgba(0,0,0,0.35)", overflow: "hidden", opacity: cardOpacity, position: "relative", display: "flex", fontFamily: DS.fontBody }}>
+    <div className="datacard-print" data-side={side || "mine"} style={{ background: DS.bgCard, borderRadius: 6, marginBottom: collapsed ? 8 : 12, boxShadow: "0 4px 16px rgba(0,0,0,0.35)", overflow: "hidden", opacity: cardOpacity, position: "relative", display: "flex", fontFamily: DS.fontBody }}>
       {/* Battle damage (Attack animations): marks from hits until it's back to full wounds, and a bandage while injured. */}
       {/* The marks sit behind the text and buttons, faint; the full-strength ones play on the attack screen. */}
       {feat.fx && cw < maxW && (scars || []).length > 0 && (
@@ -11184,7 +11184,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                     {oppRoster.operatives.map(op => {
                       const result = oppEquip(op);
                       const oCollapsed = oppCollapsed[op.id] || false;
-                      return (<Datacard key={"opp-" + op.id} narrow op={op} f={oppF} fc={oppF ? oppF.color : "var(--muted)"} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getOppWounds(op.id, op.wounds)} onWound={(delta) => { logOpp(op, delta, "hand"); if (mp && mp.status === "connected" && delta < 0) { mp.send({ type: "applyRemoteDamage", opId: op.id, amount: -delta }); } else if (mp && mp.status === "connected" && delta > 0) { mp.send({ type: "applyRemoteHeal", opId: op.id, amount: delta }); } else { setOppWound(op.id, op.wounds, delta); if (delta) mp.sendOrQueue({ type: delta < 0 ? "applyRemoteDamage" : "applyRemoteHeal", opId: op.id, amount: Math.abs(delta) }); } }} collapsed={oCollapsed} onToggle={() => setOppCollapsed(prev => ({ ...prev, [op.id]: !oCollapsed }))} ignoreInjured={result.ignoreInjured} cp={0} setCp={() => {}} requestFight={mp && mp.status === "connected" ? undefined : (o, w) => startFight("opp", o, w)} requestShoot={mp && mp.status === "connected" ? undefined : (o, w) => startShot("opp", o, w)} scars={scars["opp:" + op.id]} />);
+                      return (<Datacard key={"opp-" + op.id} side="opp" narrow op={op} f={oppF} fc={oppF ? oppF.color : "var(--muted)"} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getOppWounds(op.id, op.wounds)} onWound={(delta) => { logOpp(op, delta, "hand"); if (mp && mp.status === "connected" && delta < 0) { mp.send({ type: "applyRemoteDamage", opId: op.id, amount: -delta }); } else if (mp && mp.status === "connected" && delta > 0) { mp.send({ type: "applyRemoteHeal", opId: op.id, amount: delta }); } else { setOppWound(op.id, op.wounds, delta); if (delta) mp.sendOrQueue({ type: delta < 0 ? "applyRemoteDamage" : "applyRemoteHeal", opId: op.id, amount: Math.abs(delta) }); } }} collapsed={oCollapsed} onToggle={() => setOppCollapsed(prev => ({ ...prev, [op.id]: !oCollapsed }))} ignoreInjured={result.ignoreInjured} cp={0} setCp={() => {}} requestFight={mp && mp.status === "connected" ? undefined : (o, w) => startFight("opp", o, w)} requestShoot={mp && mp.status === "connected" ? undefined : (o, w) => startShot("opp", o, w)} scars={scars["opp:" + op.id]} />);
                     })}
                   </div>
                 </div>
@@ -11244,7 +11244,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                       {oppRoster.operatives.map(op => {
                         const result = oppEquip(op);
                         const oCollapsed = oppCollapsed[op.id] || false;
-                        return (<Datacard key={"opp-m-" + op.id} op={op} f={oppF} fc={oppF ? oppF.color : "var(--muted)"} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getOppWounds(op.id, op.wounds)} onWound={(delta) => { logOpp(op, delta, "hand"); if (mp && mp.status === "connected" && delta < 0) { mp.send({ type: "applyRemoteDamage", opId: op.id, amount: -delta }); } else if (mp && mp.status === "connected" && delta > 0) { mp.send({ type: "applyRemoteHeal", opId: op.id, amount: delta }); } else { setOppWound(op.id, op.wounds, delta); if (delta) mp.sendOrQueue({ type: delta < 0 ? "applyRemoteDamage" : "applyRemoteHeal", opId: op.id, amount: Math.abs(delta) }); } }} collapsed={oCollapsed} onToggle={() => setOppCollapsed(prev => ({ ...prev, [op.id]: !oCollapsed }))} ignoreInjured={result.ignoreInjured} cp={0} setCp={() => {}} requestFight={mp && mp.status === "connected" ? undefined : (o, w) => startFight("opp", o, w)} requestShoot={mp && mp.status === "connected" ? undefined : (o, w) => startShot("opp", o, w)} scars={scars["opp:" + op.id]} />);
+                        return (<Datacard key={"opp-m-" + op.id} side="opp" op={op} f={oppF} fc={oppF ? oppF.color : "var(--muted)"} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getOppWounds(op.id, op.wounds)} onWound={(delta) => { logOpp(op, delta, "hand"); if (mp && mp.status === "connected" && delta < 0) { mp.send({ type: "applyRemoteDamage", opId: op.id, amount: -delta }); } else if (mp && mp.status === "connected" && delta > 0) { mp.send({ type: "applyRemoteHeal", opId: op.id, amount: delta }); } else { setOppWound(op.id, op.wounds, delta); if (delta) mp.sendOrQueue({ type: delta < 0 ? "applyRemoteDamage" : "applyRemoteHeal", opId: op.id, amount: Math.abs(delta) }); } }} collapsed={oCollapsed} onToggle={() => setOppCollapsed(prev => ({ ...prev, [op.id]: !oCollapsed }))} ignoreInjured={result.ignoreInjured} cp={0} setCp={() => {}} requestFight={mp && mp.status === "connected" ? undefined : (o, w) => startFight("opp", o, w)} requestShoot={mp && mp.status === "connected" ? undefined : (o, w) => startShot("opp", o, w)} scars={scars["opp:" + op.id]} />);
                       })}
                     </div>
                   )}
@@ -18984,8 +18984,9 @@ async function runSelfTest(hooks) {
     const dlg = () => document.querySelector("[role=dialog][aria-label='Shoot']");
     const inDlg = (re) => dlg() && [...dlg().querySelectorAll("button")].find(b => re.test(b.textContent.trim()) && !b.disabled);
     const openShot = async () => {
-      let sb = all("[aria-label^='Shoot with ']")[0];
-      if (!sb) { await click(all(".datacard-print [role=button]")[0], "a datacard"); sb = all("[aria-label^='Shoot with ']")[0]; }
+      const mineShoot = () => all(".datacard-print[data-side='mine'] [aria-label^='Shoot with ']")[0];
+      let sb = mineShoot();
+      if (!sb) { await click(all(".datacard-print[data-side='mine'] [role=button]")[0], "a datacard"); sb = mineShoot(); }
       if (!sb) throw new Error("no Shoot button on an open datacard");
       await click(sb, "Shoot");
       if (!dlg()) throw new Error("the Shoot screen didn't open");
@@ -19125,8 +19126,9 @@ async function runSelfTest(hooks) {
     const dlg = () => document.querySelector("[role=dialog][aria-label='Fight']");
     const inDlg = (re) => dlg() && [...dlg().querySelectorAll("button")].find(b => re.test(b.textContent.trim()) && !b.disabled);
     const openFight = async () => {
-      let fb = all("[aria-label^='Fight with ']")[0];
-      if (!fb) { await click(all(".datacard-print [role=button]")[0], "a datacard"); fb = all("[aria-label^='Fight with ']")[0]; }
+      const mineFight = () => all(".datacard-print[data-side='mine'] [aria-label^='Fight with ']")[0];
+      let fb = mineFight();
+      if (!fb) { await click(all(".datacard-print[data-side='mine'] [role=button]")[0], "a datacard"); fb = mineFight(); }
       await click(fb, "Fight");
       if (!dlg()) throw new Error("the Fight screen didn't open");
       if (!dlg().querySelector("[data-vs='fight']")) throw new Error("the Fight screen has no crossed blades between the fighters");
@@ -19326,7 +19328,9 @@ async function runSelfTest(hooks) {
       const n1 = document.createElement("div"), n2 = document.createElement("div"); a.appendChild(n1); b.appendChild(n2);
       playVersusFx(screen, [n1, n2], null);
       if (!n1.getAnimations().length || !n2.getAnimations().length) bad.push("the versus intro doesn't move the names");
-      if (FX.count("fire") < 100) bad.push("the versus intro has no fire round the border");
+      const calm = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (!calm && FX.count("fire") < 100) bad.push("the versus intro has no fire round the border");
+      if (calm && FX.count("fire")) bad.push("the versus intro shows fire with Reduce Motion on");
       FX.clear();
       playHotFx(a, a);
       if (!document.querySelector("[data-fx='hot']")) bad.push("no red glow for Hot self-damage");

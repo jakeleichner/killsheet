@@ -175,7 +175,7 @@ function HitBubble({ n, tail, animate, onOpen, onDismiss }) {
   );
 }
 
-function Datacard({ op, f, fc, equipWeapons, equipEffects, curWounds, onWound, collapsed, onToggle, ignoreInjured, cp, setCp, isActivated, onActivate, order, onOrder, uses, setUse, carried, onCarried, narrow, requestFight, requestShoot, scars }) {
+function Datacard({ side, op, f, fc, equipWeapons, equipEffects, curWounds, onWound, collapsed, onToggle, ignoreInjured, cp, setCp, isActivated, onActivate, order, onOrder, uses, setUse, carried, onCarried, narrow, requestFight, requestShoot, scars }) {
   const [pickWeapons, setPickWeapons] = useState(false);
   const { feat } = React.useContext(FeatureCtx);
   const opRules = React.useMemo(() => opWeaponRules(op), [op]);
@@ -250,7 +250,7 @@ function Datacard({ op, f, fc, equipWeapons, equipEffects, curWounds, onWound, c
   );
 
   return (
-    <div className="datacard-print" style={{ background: DS.bgCard, borderRadius: 6, marginBottom: collapsed ? 8 : 12, boxShadow: "0 4px 16px rgba(0,0,0,0.35)", overflow: "hidden", opacity: cardOpacity, position: "relative", display: "flex", fontFamily: DS.fontBody }}>
+    <div className="datacard-print" data-side={side || "mine"} style={{ background: DS.bgCard, borderRadius: 6, marginBottom: collapsed ? 8 : 12, boxShadow: "0 4px 16px rgba(0,0,0,0.35)", overflow: "hidden", opacity: cardOpacity, position: "relative", display: "flex", fontFamily: DS.fontBody }}>
       {/* Battle damage (Attack animations): marks from hits until it's back to full wounds, and a bandage while injured. */}
       {/* The marks sit behind the text and buttons, faint; the full-strength ones play on the attack screen. */}
       {feat.fx && cw < maxW && (scars || []).length > 0 && (

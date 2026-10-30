@@ -56,6 +56,8 @@ async function connect(wsUrl) {
 async function run(label, url, width, height, mobile, page) {
   console.log(`\n== ${label} (${width}x${height}) ==`);
   await page.send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 2, mobile });
+  // CI Macs can have Reduce Motion switched on; test with full animations, as most players see them.
+  await page.send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "no-preference" }] });
   await page.send("Page.navigate", { url: url + "?selftest&v=" + Date.now() });
   const started = Date.now();
   for (;;) {

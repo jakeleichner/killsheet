@@ -389,8 +389,9 @@ async function runSelfTest(hooks) {
     const dlg = () => document.querySelector("[role=dialog][aria-label='Shoot']");
     const inDlg = (re) => dlg() && [...dlg().querySelectorAll("button")].find(b => re.test(b.textContent.trim()) && !b.disabled);
     const openShot = async () => {
-      let sb = all("[aria-label^='Shoot with ']")[0];
-      if (!sb) { await click(all(".datacard-print [role=button]")[0], "a datacard"); sb = all("[aria-label^='Shoot with ']")[0]; }
+      const mineShoot = () => all(".datacard-print[data-side='mine'] [aria-label^='Shoot with ']")[0];
+      let sb = mineShoot();
+      if (!sb) { await click(all(".datacard-print[data-side='mine'] [role=button]")[0], "a datacard"); sb = mineShoot(); }
       if (!sb) throw new Error("no Shoot button on an open datacard");
       await click(sb, "Shoot");
       if (!dlg()) throw new Error("the Shoot screen didn't open");
@@ -530,8 +531,9 @@ async function runSelfTest(hooks) {
     const dlg = () => document.querySelector("[role=dialog][aria-label='Fight']");
     const inDlg = (re) => dlg() && [...dlg().querySelectorAll("button")].find(b => re.test(b.textContent.trim()) && !b.disabled);
     const openFight = async () => {
-      let fb = all("[aria-label^='Fight with ']")[0];
-      if (!fb) { await click(all(".datacard-print [role=button]")[0], "a datacard"); fb = all("[aria-label^='Fight with ']")[0]; }
+      const mineFight = () => all(".datacard-print[data-side='mine'] [aria-label^='Fight with ']")[0];
+      let fb = mineFight();
+      if (!fb) { await click(all(".datacard-print[data-side='mine'] [role=button]")[0], "a datacard"); fb = mineFight(); }
       await click(fb, "Fight");
       if (!dlg()) throw new Error("the Fight screen didn't open");
       if (!dlg().querySelector("[data-vs='fight']")) throw new Error("the Fight screen has no crossed blades between the fighters");
@@ -731,7 +733,9 @@ async function runSelfTest(hooks) {
       const n1 = document.createElement("div"), n2 = document.createElement("div"); a.appendChild(n1); b.appendChild(n2);
       playVersusFx(screen, [n1, n2], null);
       if (!n1.getAnimations().length || !n2.getAnimations().length) bad.push("the versus intro doesn't move the names");
-      if (FX.count("fire") < 100) bad.push("the versus intro has no fire round the border");
+      const calm = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (!calm && FX.count("fire") < 100) bad.push("the versus intro has no fire round the border");
+      if (calm && FX.count("fire")) bad.push("the versus intro shows fire with Reduce Motion on");
       FX.clear();
       playHotFx(a, a);
       if (!document.querySelector("[data-fx='hot']")) bad.push("no red glow for Hot self-damage");
