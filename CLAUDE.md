@@ -6,12 +6,13 @@ Read `README.md` first: it has the project context, design system, gotchas, and 
 - The owner is non-technical. Explain things plainly and drive the work.
 - Commit and push straight to `main`. No feature branches or PRs.
 - Keep the README's "Work queue" current: remove items as they're finished.
+- Every change a player would notice (new feature, improvement, fix) gets a line in `CHANGELOG` (`src/21a-changelog.jsx`) before pushing: newest date first, kind `new`, `better` or `fixed`, plain player-facing words (not commit-message style). It's the app's What's new page.
 - `gh` is at `/opt/homebrew/bin/gh` (Homebrew isn't on Claude's shell PATH).
 - Text shown in the app is US English (color, defense, behavior); `tools/check.py` flags British spellings, and `tools/us_spelling.py` has the list. Team names stay as Games Workshop prints them.
 - Text shown in the app must read like a person wrote it: no em dashes, no hype ("extremely powerful", "game-changer"), no filler ("This means", "Essentially"), no tacked-on slogans ("Make it count."), no ALL-CAPS emphasis. Plain, direct rules language.
 
 ## Where the code lives
-The app's source is the 25 files in `src/` (one per area: `03-teams.jsx` is the team data, `13-builder.jsx` the Battle tab, `22-selftest.jsx` the self-test, and so on). `killsheet.html` is built from them: **edit `src/`, never `killsheet.html`**, then run `python3 tools/assemble.py` to rejoin it. The checker and `tools/build_deploy.py` refuse a `killsheet.html` that doesn't match `src/`, and the checker reports problems as `src/<file>:<line>`. The files share one script scope, so code can move between them freely.
+The app's source is the files in `src/` (one per area: `03-teams.jsx` is the team data, `13-builder.jsx` the Battle tab, `22-selftest.jsx` the self-test, and so on). `killsheet.html` is built from them: **edit `src/`, never `killsheet.html`**, then run `python3 tools/assemble.py` to rejoin it. The checker and `tools/build_deploy.py` refuse a `killsheet.html` that doesn't match `src/`, and the checker reports problems as `src/<file>:<line>`. The files share one script scope, so code can move between them freely.
 
 ## Before every push
 0. Run `python3 tools/assemble.py` after editing `src/`.

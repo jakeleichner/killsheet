@@ -917,6 +917,46 @@ async function runSelfTest(hooks) {
     if (!saved || !Array.isArray(saved.recap.vp)) throw new Error("saved games don't carry a recap");
     return "VP by turning point, who took out whom, most damage; shown at the end and saved with the game";
   });
+  await step("Updates and what's new", async () => {
+    // The change log: newest first, every entry a known kind; nothing shows as new for a first-time player.
+    const dates = CHANGELOG.map(e => e.date);
+    if (dates.join() !== [...dates].sort().reverse().join()) throw new Error("the change log isn't newest first");
+    if (CHANGELOG.some(e => !e.items.length || e.items.some(([k, t]) => !NEWS_KIND[k] || !t))) throw new Error("a change log entry has an unknown kind or no text");
+    if (newsSince(null).length || newsSince(dates[0]).length || newsSince("2000-01-01").length !== CHANGELOG.length) throw new Error("newsSince picks the wrong entries");
+    if (all("[data-notice]").length) throw new Error("a notice bar shows with nothing new");
+    // The update bar: shows for a new version, Later hides it for that version only.
+    const bar = () => all("[data-notice]").find(b => /A new version of KillSheet is ready/.test(b.textContent));
+    window.__ksShowUpdate("selftest-a"); await settle();
+    if (!bar() || ![...bar().querySelectorAll("button")].some(b => b.textContent.trim() === "Update")) throw new Error("no update bar with an Update button");
+    await click(bar().querySelector("[aria-label='Later']"), "Later");
+    if (bar()) throw new Error("Later didn't hide the update bar");
+    window.__ksShowUpdate("selftest-a"); await settle();
+    if (bar()) throw new Error("the same version came back after Later");
+    window.__ksShowUpdate(null); await settle();
+    // What's new, from Settings.
+    await click(document.querySelector("[aria-label='Settings']"), "Settings");
+    await click(btn("What's new"), "What's new");
+    const page = document.querySelector("[role=dialog][aria-label=\"What's new\"]");
+    if (!page || !page.textContent.includes(CHANGELOG[0].items[0][1])) throw new Error("What's new doesn't list the latest changes");
+    await click(page.querySelector("[aria-label='Close']"), "close What's new");
+    await click(document.querySelector("[role=dialog][aria-label='Settings'] [aria-label='Close']"), "close Settings");
+    // Online: a newer opponent says so and shows the update bar; the Play online box keeps the note.
+    await nav("Battle");
+    const had = [window.KS_VERSION, window.KS_BUILT];
+    window.KS_VERSION = "selftest-mine"; window.KS_BUILT = "2026-01-01T00:00:00Z";
+    try {
+      hooks.mpMessage({ type: "snapshot", payload: { v: "selftest-theirs", built: "2027-01-01T00:00:00Z" } }); await settle(20);
+      if (!/Your opponent has a newer KillSheet/.test(document.body.innerText)) throw new Error("no message when the opponent's KillSheet is newer");
+      if (!bar()) throw new Error("a newer opponent didn't bring up the update bar");
+      hooks.mpMessage({ type: "snapshot", payload: { v: "selftest-theirs", built: "2025-01-01T00:00:00Z" } }); await settle(20);
+      if (!/Your opponent's KillSheet is older/.test(document.body.innerText)) throw new Error("no message when the opponent's KillSheet is older");
+    } finally {
+      window.KS_VERSION = had[0]; window.KS_BUILT = had[1];
+      if (had[0] === undefined) { delete window.KS_VERSION; delete window.KS_BUILT; }
+      window.__ksShowUpdate(null); await settle();
+    }
+    return CHANGELOG.length + " change log entries; update bar and Later; What's new in Settings; online version check both ways";
+  });
   await step("End game: discard", async () => {
     await nav("Battle");
     if (!store("rosterLocked")) throw new Error("no game in progress to discard");

@@ -386,6 +386,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   });
   const clearScars = (side) => setScars(prev => side ? Object.fromEntries(Object.entries(prev || {}).filter(([k]) => !k.startsWith(side + ":"))) : {});
   const [showLog, setShowLog] = useState(false);
+  const [mpVersionNote, setMpVersionNote] = useState(null); // online: the two phones run different versions
   const [hitNotes, setHitNotes] = useState([]); // bubbles from the Log button: hits from the other player online
   const [unreadHits, setUnreadHits] = useState(0); // shown on the Log button until the log is opened
   const [logFocus, setLogFocus] = useState(null); // the hit the log opens at (a bubble's note id)
@@ -473,7 +474,20 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
           if (p.shared.hasInitiative !== undefined) setHasInitiative(!p.shared.hasInitiative); // mirror: their "I have it" means we don't
           if (p.shared.gameConfig && !p.shared.gameConfig.auto && (!gameConfig || gameConfig.auto)) setGameConfig(p.shared.gameConfig);
         }
-        showToast("Opponent connected & synced");
+        // Different versions on the two phones can make online play disagree: say which one is older. This message
+        // replaces "synced", so it's the one left on screen.
+        if (p.v && window.KS_VERSION && p.v !== window.KS_VERSION) {
+          const theirsNewer = !!(p.built && window.KS_BUILT && p.built > window.KS_BUILT);
+          const note = theirsNewer
+            ? "Your opponent has a newer KillSheet than you. Tap Update at the top so online play works the same on both phones."
+            : "Your opponent's KillSheet is older than yours. Ask them to close and reopen it so online play works the same on both phones.";
+          showToast(note, 9000);
+          setMpVersionNote(note);
+          if (theirsNewer && window.__ksShowUpdate) window.__ksShowUpdate(p.v);
+        } else {
+          if (p.v) setMpVersionNote(null);
+          showToast("Opponent connected & synced");
+        }
       } else if (msg.type === "ownedDelta" && msg.payload) {
         const p = msg.payload;
         // Always propagate so live edits appear (adding operatives, swapping weapons, removing operatives, faction changes)
@@ -518,9 +532,9 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   // On host's first connect, send an initial snapshot including shared seed
   useEffect(() => {
     if (mp.status === "connected" && mp.role === "host") {
-      mp.send({ type: "snapshot", payload: { fid, roster, wounds, eq, uEq, shared: { tp, hasInitiative, gameConfig } } });
+      mp.send({ type: "snapshot", payload: { fid, roster, wounds, eq, uEq, shared: { tp, hasInitiative, gameConfig }, v: window.KS_VERSION || null, built: window.KS_BUILT || null } });
     } else if (mp.status === "connected" && mp.role === "guest") {
-      mp.send({ type: "snapshot", payload: { fid, roster, wounds, eq, uEq } });
+      mp.send({ type: "snapshot", payload: { fid, roster, wounds, eq, uEq, v: window.KS_VERSION || null, built: window.KS_BUILT || null } });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mp.status, mp.role]);
@@ -1614,6 +1628,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
               <button autoFocus onClick={() => setShowMP(false)} style={{ ...bs("var(--muted)"), fontSize: 13, padding: "8px 12px" }}><Icon name="x" size={12} /> Close</button>
             </div>
 
+            {mp.status === "connected" && mpVersionNote && <div role="status" style={{ marginBottom: 10, padding: "8px 10px", borderRadius: 6, border: "1px solid var(--gold)", background: "color-mix(in srgb, var(--gold) 10%, transparent)", fontSize: 13, color: "var(--text)", lineHeight: 1.45 }}>{mpVersionNote}</div>}
             {/* Status row */}
             <div style={{ marginBottom: 12, padding: "8px 10px", background: "var(--raised)", borderRadius: 6, border: "1px solid var(--line)", fontSize: 13, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif" }}>
               <div style={{ display: "flex", justifyContent: "space-between" }}>

@@ -13,6 +13,14 @@ function App() {
   // Play online joined the Learning preset (Oct 2026): saved Learning switches pick it up instead of turning Custom.
   React.useEffect(() => { if (features && features.online === false && featureMode({ ...features, online: true }) === "learning") setFeatures(prev => ({ ...prev, online: true })); }, []);
   const [showFeatures, setShowFeatures] = useState(false);
+  // Updates and what's new: the bar when a new version is ready ("Later" hides it for that version), and a one-time
+  // note after an update. A first-time player starts with everything seen.
+  const [update, setUpdate] = useUpdateCheck();
+  const [laterFor, setLaterFor] = useState(null);
+  const [seenNews, setSeenNews] = useLocalStorage("seenNews", null);
+  const [showNews, setShowNews] = useState(false);
+  React.useEffect(() => { if (seenNews === null) setSeenNews(CHANGELOG[0].date); }, []);
+  const openNews = () => { setSeenNews(CHANGELOG[0].date); setShowNews(true); };
   // Appearance: the theme, and whether the accent follows your team's color (Builder reports the team).
   const [appearance, setAppearance] = useLocalStorage("appearance", { theme: "default", matchTeam: false });
   const [teamColor, setTeamColor] = useState(null);
@@ -90,7 +98,8 @@ function App() {
     <FeatureCtx.Provider value={featureCtx}>
     <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)", fontFamily: "'Inter', 'Segoe UI', sans-serif", fontSize: 14 }}>
       {features === null && !returning && <Welcome />}
-      {showFeatures && <FeaturesPage focus={showFeatures} onClose={() => setShowFeatures(false)} />}
+      {showFeatures && <FeaturesPage focus={showFeatures} onClose={() => setShowFeatures(false)} onNews={openNews} />}
+      {showNews && <WhatsNew onClose={() => setShowNews(false)} />}
 
       {/* HEADER: phones show the logo above the tabs; desktop puts it inside the tab bar. The cog (Settings) sits top right on both. */}
       {mobile && (
@@ -102,6 +111,9 @@ function App() {
 
       {/* Tabs and the online banner stay pinned at the top together */}
       <div ref={pinnedRef} data-pinned={barHidden ? "hidden" : "shown"} style={{ position: "sticky", top: 0, zIndex: 10, transform: barHidden ? "translateY(-100%)" : "none", transition: window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "none" : "transform 0.2s ease-out" }}>
+      {update && update !== laterFor
+        ? <NoticeBar color="var(--accent)" text={"A new version of KillSheet is ready." + (mp.status === "connected" ? " Updating reloads the page, so you'll reconnect to your online game." : "")} action="Update" onAction={() => window.location.reload()} onDismiss={() => setLaterFor(update)} dismissLabel="Later" />
+        : newsSince(seenNews).length > 0 && <NoticeBar color="var(--blue)" text="KillSheet was updated." action="What's new" onAction={openNews} onDismiss={() => setSeenNews(CHANGELOG[0].date)} dismissLabel="Dismiss" />}
       {/* NAV */}
       <nav style={{ display: "flex", background: "var(--card)", borderBottom: "1px solid var(--line)", boxShadow: "0 2px 12px rgba(0,0,0,0.5)" }}>
         {!mobile && (

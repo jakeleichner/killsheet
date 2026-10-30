@@ -9003,6 +9003,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   });
   const clearScars = (side) => setScars(prev => side ? Object.fromEntries(Object.entries(prev || {}).filter(([k]) => !k.startsWith(side + ":"))) : {});
   const [showLog, setShowLog] = useState(false);
+  const [mpVersionNote, setMpVersionNote] = useState(null); // online: the two phones run different versions
   const [hitNotes, setHitNotes] = useState([]); // bubbles from the Log button: hits from the other player online
   const [unreadHits, setUnreadHits] = useState(0); // shown on the Log button until the log is opened
   const [logFocus, setLogFocus] = useState(null); // the hit the log opens at (a bubble's note id)
@@ -9090,7 +9091,20 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
           if (p.shared.hasInitiative !== undefined) setHasInitiative(!p.shared.hasInitiative); // mirror: their "I have it" means we don't
           if (p.shared.gameConfig && !p.shared.gameConfig.auto && (!gameConfig || gameConfig.auto)) setGameConfig(p.shared.gameConfig);
         }
-        showToast("Opponent connected & synced");
+        // Different versions on the two phones can make online play disagree: say which one is older. This message
+        // replaces "synced", so it's the one left on screen.
+        if (p.v && window.KS_VERSION && p.v !== window.KS_VERSION) {
+          const theirsNewer = !!(p.built && window.KS_BUILT && p.built > window.KS_BUILT);
+          const note = theirsNewer
+            ? "Your opponent has a newer KillSheet than you. Tap Update at the top so online play works the same on both phones."
+            : "Your opponent's KillSheet is older than yours. Ask them to close and reopen it so online play works the same on both phones.";
+          showToast(note, 9000);
+          setMpVersionNote(note);
+          if (theirsNewer && window.__ksShowUpdate) window.__ksShowUpdate(p.v);
+        } else {
+          if (p.v) setMpVersionNote(null);
+          showToast("Opponent connected & synced");
+        }
       } else if (msg.type === "ownedDelta" && msg.payload) {
         const p = msg.payload;
         // Always propagate so live edits appear (adding operatives, swapping weapons, removing operatives, faction changes)
@@ -9135,9 +9149,9 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   // On host's first connect, send an initial snapshot including shared seed
   useEffect(() => {
     if (mp.status === "connected" && mp.role === "host") {
-      mp.send({ type: "snapshot", payload: { fid, roster, wounds, eq, uEq, shared: { tp, hasInitiative, gameConfig } } });
+      mp.send({ type: "snapshot", payload: { fid, roster, wounds, eq, uEq, shared: { tp, hasInitiative, gameConfig }, v: window.KS_VERSION || null, built: window.KS_BUILT || null } });
     } else if (mp.status === "connected" && mp.role === "guest") {
-      mp.send({ type: "snapshot", payload: { fid, roster, wounds, eq, uEq } });
+      mp.send({ type: "snapshot", payload: { fid, roster, wounds, eq, uEq, v: window.KS_VERSION || null, built: window.KS_BUILT || null } });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mp.status, mp.role]);
@@ -10231,6 +10245,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
               <button autoFocus onClick={() => setShowMP(false)} style={{ ...bs("var(--muted)"), fontSize: 13, padding: "8px 12px" }}><Icon name="x" size={12} /> Close</button>
             </div>
 
+            {mp.status === "connected" && mpVersionNote && <div role="status" style={{ marginBottom: 10, padding: "8px 10px", borderRadius: 6, border: "1px solid var(--gold)", background: "color-mix(in srgb, var(--gold) 10%, transparent)", fontSize: 13, color: "var(--text)", lineHeight: 1.45 }}>{mpVersionNote}</div>}
             {/* Status row */}
             <div style={{ marginBottom: 12, padding: "8px 10px", background: "var(--raised)", borderRadius: 6, border: "1px solid var(--line)", fontSize: 13, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif" }}>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
@@ -18529,7 +18544,7 @@ function AppearancePicker() {
   );
 }
 
-function FeaturesPage({ onClose, focus }) {
+function FeaturesPage({ onClose, focus, onNews }) {
   const { feat, setFeat, setMode, validate, setValidate } = React.useContext(FeatureCtx);
   const mode = featureMode(feat);
   const [explain, setExplain] = useState(typeof focus === "string" ? { [focus]: true } : {});
@@ -18572,6 +18587,7 @@ function FeaturesPage({ onClose, focus }) {
           <div style={{ flex: 1, fontSize: 24, fontWeight: 700, color: "var(--accent)", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.04em" }}>Settings</div>
           <button onClick={onClose} aria-label="Close" style={{ ...bs("var(--muted)"), padding: "8px 10px", display: "inline-flex" }}><Icon name="x" size={18} /></button>
         </div>
+        {onNews && <button onClick={onNews} style={{ ...bs("var(--blue)"), width: "100%", marginTop: 12, padding: "10px 12px", fontSize: 14, display: "flex", alignItems: "center", gap: 8, textAlign: "left" }}><span style={{ flex: 1 }}>What's new</span><span style={{ fontSize: 12, color: "var(--muted)", textTransform: "none", letterSpacing: 0 }}>{newsDate(CHANGELOG[0].date)}</span></button>}
         <div style={{ ...h3, color: "var(--accent)", margin: "14px 0 8px" }}>APPEARANCE</div>
         <AppearancePicker />
         <div style={{ ...h3, color: "var(--accent)", margin: "14px 0 4px" }}>WHAT KILLSHEET SHOWS</div>
@@ -18590,6 +18606,112 @@ function FeaturesPage({ onClose, focus }) {
       </div>
     </div>,
     document.body
+  );
+}
+
+/* ═══ WHAT'S NEW AND UPDATES ═══ */
+// The change log players see (Settings > What's new). Newest first, one entry per day something a player would
+// notice changed, in plain words. kind: "new", "better" or "fixed". Add an entry with every such change.
+const CHANGELOG = [
+  { date: "2026-10-30", items: [
+    ["new", "A note tells you when a new version of KillSheet is ready, with an Update button."],
+    ["new", "What's new: this page, in Settings. After an update, a note links to it once."],
+    ["new", "Online, you're told if your opponent's KillSheet is a different version, and which phone needs updating."],
+    ["better", "Every update is tested automatically before it reaches the site."],
+  ] },
+  { date: "2026-10-29", items: [
+    ["new", "Tutorial part 2: command points, a strategy ploy, who controls an objective, Command Re-roll and scoring."],
+    ["new", "Diagrams in the Rules tab for Visible, Intervening, Cover, Obscured, Control range and Charge."],
+    ["new", "Text size in Settings, Appearance: Normal, Large or Larger."],
+    ["new", "End-of-game recap: VP by turning point, who took out whom, and the most damage dealt. Saved with each game."],
+    ["new", "When you're hit in an online game, a message slides out of the Log button. Tap it to see the hit in the battle log."],
+    ["better", "The tutorial's dice tumble when rolled, like the Shoot and Fight screens."],
+    ["fixed", "Closing the self-test before it finished could replace your saved data with the test game."],
+    ["fixed", "The self-test's backup step failed on iPhone."],
+  ] },
+  { date: "2026-10-28", items: [
+    ["new", "Tap a roll in any rule (D3, D6, 2D6, D3+3) to roll it. It also says whether you got what the rule needs."],
+    ["new", "The Shoot and Fight screens open with both names slamming down and fire round the border."],
+    ["new", "Dice with pips that tumble when rolled, a health bar on datacards, and a versus layout on the Shoot and Fight screens."],
+    ["better", "Dice are flat and colored to match your theme. Battle damage and bandages sit behind the buttons on datacards."],
+    ["new", "Add enemy roster follows the team's limits, with a switch to turn them off."],
+    ["fixed", "Damage marks no longer carry over when you change target. Frag grenades leave scorch marks, not bullet holes."],
+  ] },
+  { date: "2026-10-27", items: [
+    ["new", "Add enemy roster from the ⋯ menu on your team bar, without a code."],
+    ["new", "Block animation in fights."],
+    ["new", "End game, Discard: end without recording a result and go back to picking a team, with Undo."],
+    ["better", "Attack effects rebuilt: weapon-specific shots, recoil, screen shake, damage marks and bandages."],
+  ] },
+];
+const NEWS_KIND = { new: ["New", "var(--hit)"], better: ["Better", "var(--blue)"], fixed: ["Fixed", "var(--gold)"] };
+// The entries newer than the last one a player has seen (a date string, or null for someone who's never seen any).
+const newsSince = (seen) => seen ? CHANGELOG.filter(e => e.date > seen) : [];
+const newsDate = (d) => new Date(d + "T12:00:00").toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
+
+function WhatsNew({ onClose }) {
+  React.useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  return ReactDOM.createPortal(
+    <div role="dialog" aria-modal="true" aria-label="What's new" style={{ position: "fixed", inset: 0, zIndex: 9100, background: "var(--bg)", overflowY: "auto", color: "var(--text)", fontFamily: "'Inter', sans-serif" }}>
+      <div className="ks-appear" style={{ maxWidth: 560, margin: "0 auto", padding: "16px 16px 40px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+          <div style={{ flex: 1, fontSize: 24, fontWeight: 700, color: "var(--accent)", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.04em" }}>What's new</div>
+          <button autoFocus onClick={onClose} aria-label="Close" style={{ ...bs("var(--muted)"), padding: "8px 10px", display: "inline-flex" }}><Icon name="x" size={18} /></button>
+        </div>
+        <p style={{ ...mu, margin: "0 0 12px" }}>New features and fixes, newest first.</p>
+        {CHANGELOG.map(e => (
+          <div key={e.date} style={{ ...cd, padding: 12, marginBottom: 10 }}>
+            <div style={{ ...h3, color: "var(--text2)", marginBottom: 6 }}>{newsDate(e.date)}</div>
+            {e.items.map(([kind, text], i) => (
+              <div key={i} style={{ display: "flex", gap: 8, alignItems: "baseline", padding: "4px 0", borderTop: i ? "1px solid var(--raised)" : "none" }}>
+                <span style={{ flexShrink: 0, minWidth: 52, fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: NEWS_KIND[kind][1], fontFamily: "'Rajdhani', sans-serif" }}>{NEWS_KIND[kind][0]}</span>
+                <span style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.45 }}>{text}</span>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+// "A new version is ready": the page knows its own build (window.KS_VERSION, set by tools/build_deploy.py) and asks the
+// site's version.json when it opens, when it's brought back to the screen, and every 30 minutes. A copy without a build
+// version (the preview) never asks. window.__ksShowUpdate is the self-test's way to show the bar.
+function useUpdateCheck() {
+  const [ready, setReady] = useState(null);
+  React.useEffect(() => {
+    window.__ksShowUpdate = setReady;
+    if (!window.KS_VERSION) return () => { delete window.__ksShowUpdate; };
+    let alive = true;
+    const check = () => {
+      if (document.visibilityState !== "visible") return;
+      fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.json() : null)
+        .then(j => { if (alive && j && j.version && j.version !== window.KS_VERSION) setReady(j.version); }).catch(() => {});
+      // The offline copy updates itself too, so the next start has the new files.
+      if (navigator.serviceWorker && navigator.serviceWorker.getRegistration) navigator.serviceWorker.getRegistration().then(r => r && r.update()).catch(() => {});
+    };
+    check();
+    const timer = setInterval(check, 30 * 60 * 1000);
+    document.addEventListener("visibilitychange", check);
+    return () => { alive = false; clearInterval(timer); document.removeEventListener("visibilitychange", check); delete window.__ksShowUpdate; };
+  }, []);
+  return [ready, setReady];
+}
+
+// A slim bar at the top of the app: the update, or (once, after one) what's new.
+function NoticeBar({ text, action, onAction, onDismiss, dismissLabel, color }) {
+  return (
+    <div role="status" data-notice="true" style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px 6px 12px", background: "color-mix(in srgb, " + color + " 14%, var(--card))", borderBottom: "1px solid " + al(color, "60"), fontSize: 13, color: "var(--text)" }}>
+      <span style={{ flex: 1, minWidth: 0, lineHeight: 1.35 }}>{text}</span>
+      <button onClick={onAction} style={{ ...bs(color), padding: "6px 12px", fontSize: 12, flexShrink: 0, background: al(color, "1C") }}>{action}</button>
+      <button onClick={onDismiss} aria-label={dismissLabel} className="compact-btn" style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer", width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon name="x" size={14} /></button>
+    </div>
   );
 }
 
@@ -19512,6 +19634,46 @@ async function runSelfTest(hooks) {
     if (!saved || !Array.isArray(saved.recap.vp)) throw new Error("saved games don't carry a recap");
     return "VP by turning point, who took out whom, most damage; shown at the end and saved with the game";
   });
+  await step("Updates and what's new", async () => {
+    // The change log: newest first, every entry a known kind; nothing shows as new for a first-time player.
+    const dates = CHANGELOG.map(e => e.date);
+    if (dates.join() !== [...dates].sort().reverse().join()) throw new Error("the change log isn't newest first");
+    if (CHANGELOG.some(e => !e.items.length || e.items.some(([k, t]) => !NEWS_KIND[k] || !t))) throw new Error("a change log entry has an unknown kind or no text");
+    if (newsSince(null).length || newsSince(dates[0]).length || newsSince("2000-01-01").length !== CHANGELOG.length) throw new Error("newsSince picks the wrong entries");
+    if (all("[data-notice]").length) throw new Error("a notice bar shows with nothing new");
+    // The update bar: shows for a new version, Later hides it for that version only.
+    const bar = () => all("[data-notice]").find(b => /A new version of KillSheet is ready/.test(b.textContent));
+    window.__ksShowUpdate("selftest-a"); await settle();
+    if (!bar() || ![...bar().querySelectorAll("button")].some(b => b.textContent.trim() === "Update")) throw new Error("no update bar with an Update button");
+    await click(bar().querySelector("[aria-label='Later']"), "Later");
+    if (bar()) throw new Error("Later didn't hide the update bar");
+    window.__ksShowUpdate("selftest-a"); await settle();
+    if (bar()) throw new Error("the same version came back after Later");
+    window.__ksShowUpdate(null); await settle();
+    // What's new, from Settings.
+    await click(document.querySelector("[aria-label='Settings']"), "Settings");
+    await click(btn("What's new"), "What's new");
+    const page = document.querySelector("[role=dialog][aria-label=\"What's new\"]");
+    if (!page || !page.textContent.includes(CHANGELOG[0].items[0][1])) throw new Error("What's new doesn't list the latest changes");
+    await click(page.querySelector("[aria-label='Close']"), "close What's new");
+    await click(document.querySelector("[role=dialog][aria-label='Settings'] [aria-label='Close']"), "close Settings");
+    // Online: a newer opponent says so and shows the update bar; the Play online box keeps the note.
+    await nav("Battle");
+    const had = [window.KS_VERSION, window.KS_BUILT];
+    window.KS_VERSION = "selftest-mine"; window.KS_BUILT = "2026-01-01T00:00:00Z";
+    try {
+      hooks.mpMessage({ type: "snapshot", payload: { v: "selftest-theirs", built: "2027-01-01T00:00:00Z" } }); await settle(20);
+      if (!/Your opponent has a newer KillSheet/.test(document.body.innerText)) throw new Error("no message when the opponent's KillSheet is newer");
+      if (!bar()) throw new Error("a newer opponent didn't bring up the update bar");
+      hooks.mpMessage({ type: "snapshot", payload: { v: "selftest-theirs", built: "2025-01-01T00:00:00Z" } }); await settle(20);
+      if (!/Your opponent's KillSheet is older/.test(document.body.innerText)) throw new Error("no message when the opponent's KillSheet is older");
+    } finally {
+      window.KS_VERSION = had[0]; window.KS_BUILT = had[1];
+      if (had[0] === undefined) { delete window.KS_VERSION; delete window.KS_BUILT; }
+      window.__ksShowUpdate(null); await settle();
+    }
+    return CHANGELOG.length + " change log entries; update bar and Later; What's new in Settings; online version check both ways";
+  });
   await step("End game: discard", async () => {
     await nav("Battle");
     if (!store("rosterLocked")) throw new Error("no game in progress to discard");
@@ -19580,6 +19742,14 @@ function App() {
   // Play online joined the Learning preset (Oct 2026): saved Learning switches pick it up instead of turning Custom.
   React.useEffect(() => { if (features && features.online === false && featureMode({ ...features, online: true }) === "learning") setFeatures(prev => ({ ...prev, online: true })); }, []);
   const [showFeatures, setShowFeatures] = useState(false);
+  // Updates and what's new: the bar when a new version is ready ("Later" hides it for that version), and a one-time
+  // note after an update. A first-time player starts with everything seen.
+  const [update, setUpdate] = useUpdateCheck();
+  const [laterFor, setLaterFor] = useState(null);
+  const [seenNews, setSeenNews] = useLocalStorage("seenNews", null);
+  const [showNews, setShowNews] = useState(false);
+  React.useEffect(() => { if (seenNews === null) setSeenNews(CHANGELOG[0].date); }, []);
+  const openNews = () => { setSeenNews(CHANGELOG[0].date); setShowNews(true); };
   // Appearance: the theme, and whether the accent follows your team's color (Builder reports the team).
   const [appearance, setAppearance] = useLocalStorage("appearance", { theme: "default", matchTeam: false });
   const [teamColor, setTeamColor] = useState(null);
@@ -19657,7 +19827,8 @@ function App() {
     <FeatureCtx.Provider value={featureCtx}>
     <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)", fontFamily: "'Inter', 'Segoe UI', sans-serif", fontSize: 14 }}>
       {features === null && !returning && <Welcome />}
-      {showFeatures && <FeaturesPage focus={showFeatures} onClose={() => setShowFeatures(false)} />}
+      {showFeatures && <FeaturesPage focus={showFeatures} onClose={() => setShowFeatures(false)} onNews={openNews} />}
+      {showNews && <WhatsNew onClose={() => setShowNews(false)} />}
 
       {/* HEADER: phones show the logo above the tabs; desktop puts it inside the tab bar. The cog (Settings) sits top right on both. */}
       {mobile && (
@@ -19669,6 +19840,9 @@ function App() {
 
       {/* Tabs and the online banner stay pinned at the top together */}
       <div ref={pinnedRef} data-pinned={barHidden ? "hidden" : "shown"} style={{ position: "sticky", top: 0, zIndex: 10, transform: barHidden ? "translateY(-100%)" : "none", transition: window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "none" : "transform 0.2s ease-out" }}>
+      {update && update !== laterFor
+        ? <NoticeBar color="var(--accent)" text={"A new version of KillSheet is ready." + (mp.status === "connected" ? " Updating reloads the page, so you'll reconnect to your online game." : "")} action="Update" onAction={() => window.location.reload()} onDismiss={() => setLaterFor(update)} dismissLabel="Later" />
+        : newsSince(seenNews).length > 0 && <NoticeBar color="var(--blue)" text="KillSheet was updated." action="What's new" onAction={openNews} onDismiss={() => setSeenNews(CHANGELOG[0].date)} dismissLabel="Dismiss" />}
       {/* NAV */}
       <nav style={{ display: "flex", background: "var(--card)", borderBottom: "1px solid var(--line)", boxShadow: "0 2px 12px rgba(0,0,0,0.5)" }}>
         {!mobile && (

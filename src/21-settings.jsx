@@ -188,7 +188,7 @@ function AppearancePicker() {
   );
 }
 
-function FeaturesPage({ onClose, focus }) {
+function FeaturesPage({ onClose, focus, onNews }) {
   const { feat, setFeat, setMode, validate, setValidate } = React.useContext(FeatureCtx);
   const mode = featureMode(feat);
   const [explain, setExplain] = useState(typeof focus === "string" ? { [focus]: true } : {});
@@ -231,6 +231,7 @@ function FeaturesPage({ onClose, focus }) {
           <div style={{ flex: 1, fontSize: 24, fontWeight: 700, color: "var(--accent)", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.04em" }}>Settings</div>
           <button onClick={onClose} aria-label="Close" style={{ ...bs("var(--muted)"), padding: "8px 10px", display: "inline-flex" }}><Icon name="x" size={18} /></button>
         </div>
+        {onNews && <button onClick={onNews} style={{ ...bs("var(--blue)"), width: "100%", marginTop: 12, padding: "10px 12px", fontSize: 14, display: "flex", alignItems: "center", gap: 8, textAlign: "left" }}><span style={{ flex: 1 }}>What's new</span><span style={{ fontSize: 12, color: "var(--muted)", textTransform: "none", letterSpacing: 0 }}>{newsDate(CHANGELOG[0].date)}</span></button>}
         <div style={{ ...h3, color: "var(--accent)", margin: "14px 0 8px" }}>APPEARANCE</div>
         <AppearancePicker />
         <div style={{ ...h3, color: "var(--accent)", margin: "14px 0 4px" }}>WHAT KILLSHEET SHOWS</div>

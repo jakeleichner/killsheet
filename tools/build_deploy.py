@@ -61,12 +61,20 @@ def main():
     out = out.replace(BABEL_TAG + "\n", "").replace(BABEL_TAG, "")
     deploy = os.path.join(ROOT, "deploy")
     os.makedirs(deploy, exist_ok=True)
-    open(os.path.join(deploy, "index.html"), "w").write(out)
     for folder in ("maps", "icons"):
         shutil.rmtree(os.path.join(deploy, folder), ignore_errors=True)
         shutil.copytree(os.path.join(ROOT, folder), os.path.join(deploy, folder))
     shutil.copy(os.path.join(ROOT, "manifest.webmanifest"), os.path.join(deploy, "manifest.webmanifest"))
-    write_service_worker(deploy, out)
+    # The build's version (it changes whenever the page or its files change) goes in three places: sw.js (offline
+    # cache), version.json (what a running copy compares itself with, for "A new version is ready") and the page
+    # itself as window.KS_VERSION, with the build date as window.KS_BUILT (online play says which phone is older).
+    version = site_version(deploy, out)
+    built = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    stamp = '<script>window.KS_VERSION = "%s"; window.KS_BUILT = "%s";</script>' % (version, built)
+    out = out.replace("<head>", "<head>\n  " + stamp, 1)
+    open(os.path.join(deploy, "index.html"), "w").write(out)
+    open(os.path.join(deploy, "version.json"), "w").write(json.dumps({"version": version, "built": built}))
+    write_service_worker(deploy, out, version)
     write_zip(deploy)
     print("Built deploy/index.html (%d KB), sw.js, manifest, maps and icons in %.1fs." % (len(out.encode()) // 1024, time.time() - started))
     print("Upload either the deploy/ folder or killsheet-upload.zip (the same files; the zip avoids browsers that drop files from a dragged folder).")
@@ -86,14 +94,24 @@ def write_zip(deploy):
                 z.write(full, os.path.relpath(full, deploy))
 
 
-def write_service_worker(deploy, html):
-    """deploy/sw.js from tools/sw.js: the offline file list plus a version that changes with every build."""
+def offline_files(deploy):
+    """The site's own files the service worker keeps for offline use."""
     local = ["./", "manifest.webmanifest"]
     for folder in ("icons", "maps"):
         local += [folder + "/" + n for n in sorted(os.listdir(os.path.join(deploy, folder))) if not n.startswith(".")]
+    return local
+
+
+def site_version(deploy, html):
+    """Changes whenever the compiled page or the offline file list changes (taken before the page is stamped with it)."""
+    return hashlib.sha256((html + json.dumps(offline_files(deploy))).encode()).hexdigest()[:10]
+
+
+def write_service_worker(deploy, html, version):
+    """deploy/sw.js from tools/sw.js: the offline file list plus this build's version."""
+    local = offline_files(deploy)
     remote = re.findall(r'<script[^>]*src="(https://[^"]+)"', html)
     fonts = sorted(set(re.findall(r'href="(https://fonts\.googleapis\.com/[^"]+)"', html)))
-    version = hashlib.sha256((html + json.dumps(local)).encode()).hexdigest()[:10]
     sw = open(os.path.join(ROOT, "tools", "sw.js")).read()
     sw = sw.replace("__VERSION__", version).replace("__LOCAL__", json.dumps(local)).replace("__REMOTE__", json.dumps(remote)).replace("__FONTS__", json.dumps(fonts))
     open(os.path.join(deploy, "sw.js"), "w").write(sw)

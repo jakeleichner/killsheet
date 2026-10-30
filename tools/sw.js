@@ -39,6 +39,7 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(req.url);
   const local = url.origin === self.location.origin;
   if (!local && !HOSTS.includes(url.hostname)) return; // e.g. PeerJS signalling: always live
+  if (local && url.pathname.endsWith("/version.json")) return; // "A new version is ready" check: always from the site, never kept
 
   // The page itself: try the network first so updates arrive, fall back to the saved copy offline.
   if (req.mode === "navigate") {
