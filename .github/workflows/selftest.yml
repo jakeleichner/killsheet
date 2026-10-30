@@ -1,15 +1,26 @@
 # On every push: the checker, the upload build, and the in-app self-test in headless Chrome
 # (phone and desktop width, and the upload build). A failure marks the push with a red X on GitHub
 # and emails the owner. macOS, because the checker and the build compile the app with macOS's jsc.
-name: Checks and self-test
+#
+# When everything passes, the upload build (deploy/) is published to killsheet.pages.dev with Cloudflare's
+# wrangler, then the live site's version is checked against the build. Publishing needs two repository
+# secrets the owner adds in GitHub (Settings > Secrets and variables > Actions): CLOUDFLARE_API_TOKEN
+# (a Cloudflare token with Cloudflare Pages: Edit) and CLOUDFLARE_ACCOUNT_ID. Without them the publish
+# steps are skipped and everything else still runs.
+name: Checks, self-test and publish
 on:
   push:
     branches: [main]
   workflow_dispatch:
+concurrency:
+  group: publish
+  cancel-in-progress: false
 jobs:
   test:
     runs-on: macos-latest
     timeout-minutes: 30
+    env:
+      CAN_PUBLISH: ${{ secrets.CLOUDFLARE_API_TOKEN != '' && secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -21,3 +32,23 @@ jobs:
         run: python3 tools/build_deploy.py
       - name: Self-test in headless Chrome (tools/run_selftest.mjs)
         run: node tools/run_selftest.mjs
+      - name: Publish to killsheet.pages.dev
+        if: env.CAN_PUBLISH == 'true' && github.ref == 'refs/heads/main'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy deploy --project-name=killsheet --branch=main --commit-dirty=true
+      - name: Check the live site has this version
+        if: env.CAN_PUBLISH == 'true' && github.ref == 'refs/heads/main'
+        run: |
+          want=$(grep -o 'const VERSION = "[^"]*"' deploy/sw.js)
+          for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            got=$(curl -s "https://killsheet.pages.dev/sw.js?check=$(date +%s)" | grep -o 'const VERSION = "[^"]*"' || true)
+            if [ "$got" = "$want" ]; then echo "Live: $got"; exit 0; fi
+            echo "Waiting for the live site ($got, want $want)"; sleep 10
+          done
+          echo "The live site doesn't have this version after 2 minutes."; exit 1
+      - name: Publishing is off
+        if: env.CAN_PUBLISH != 'true'
+        run: echo "Not published - add CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID to the repository's Actions secrets to publish automatically."
