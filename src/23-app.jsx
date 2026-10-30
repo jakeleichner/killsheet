@@ -23,7 +23,8 @@ function App() {
   const openNews = () => { setSeenNews(CHANGELOG[0].date); setShowNews(true); };
   // Appearance: the theme, and whether the accent follows your team's color (Builder reports the team).
   const [appearance, setAppearance] = useLocalStorage("appearance", { theme: "default", matchTeam: false });
-  const [teamColor, setTeamColor] = useState(null);
+  const [teamId, setTeamId] = useState(null); // the Battle tab's team (Match my team)
+  const teamColor = teamId && FACTIONS[teamId] ? FACTIONS[teamId].color : null;
   React.useLayoutEffect(() => applyTheme(appearance.theme), [appearance.theme]);
   TEXT_SCALE = TEXT_SIZES[appearance.text] || 1; // before anything below is drawn
   React.useLayoutEffect(() => { document.documentElement.style.setProperty("--ts", String(TEXT_SCALE)); }, [appearance.text]);
@@ -32,7 +33,7 @@ function App() {
   const feat = { ...FEATURE_PRESETS[features ? presetOf(features) : returning ? "expert" : "learning"], ...(features || {}) };
   const [ruleSearch, setRuleSearch] = useState(null);
   const featureCtx = {
-    feat, validate, setValidate, appearance, setAppearance, teamColor,
+    feat, validate, setValidate, appearance, setAppearance, teamColor, teamId,
     setFeat: (k, v) => setFeatures(prev => ({ ...feat, ...(prev || {}), [k]: v })),
     setMode: (m) => setFeatures({ ...FEATURE_PRESETS[m] }),
     openFeatures: (k) => setShowFeatures(typeof k === "string" ? k : true),
@@ -173,7 +174,7 @@ function App() {
       {/* CONTENT: all tabs stay mounted, hidden with display:none to preserve state */}
       <div className="ks-appear" style={{ display: tab === "rules" ? "block" : "none" }}><ErrorBoundary where="Rules"><Rules search={ruleSearch} tutorialOpen={tutorialOpen} openTutorial={openTutorial} closeTutorial={() => { setTutorialOpen(false); window.scrollTo(0, 0); }} /></ErrorBoundary></div>
       <div className="ks-appear" style={{ display: tab === "missions" ? "block" : "none" }}><ErrorBoundary where="Missions"><Missions campaign={campaign} startCampaign={() => { if (!campaign) setCampaign(cteNew("solo", "m26", 7, "", "")); setTab("builder"); window.scrollTo(0, 0); }} /></ErrorBoundary></div>
-      <div id="panel-builder" className="ks-appear" style={{ display: tab === "builder" ? "block" : "none", ...(battleAccent ? { "--accent": battleAccent } : {}) }}><ErrorBoundary where="Battle"><Builder tp={tp} setTp={setTp} mp={mp} mpHandlerRef={mpHandlerRef} showMP={showMP} setShowMP={setShowMP} tutorialSeen={tutorialSeen} setTutorialSeen={setTutorialSeen} openTutorial={openTutorial} campaign={campaign} setCampaign={setCampaign} onTeamColor={setTeamColor} showBattle={() => setTab("builder")} /></ErrorBoundary></div>
+      <div id="panel-builder" className="ks-appear" style={{ display: tab === "builder" ? "block" : "none", ...(battleAccent ? { "--accent": battleAccent } : {}) }}><ErrorBoundary where="Battle"><Builder tp={tp} setTp={setTp} mp={mp} mpHandlerRef={mpHandlerRef} showMP={showMP} setShowMP={setShowMP} tutorialSeen={tutorialSeen} setTutorialSeen={setTutorialSeen} openTutorial={openTutorial} campaign={campaign} setCampaign={setCampaign} onTeamColor={setTeamId} showBattle={() => setTab("builder")} /></ErrorBoundary></div>
       <div className="ks-appear" style={{ display: tab === "community" ? "block" : "none" }}><ErrorBoundary where="Community"><CommunityRosters /><CrashTest /></ErrorBoundary></div>
 
       {/* FOOTER */}

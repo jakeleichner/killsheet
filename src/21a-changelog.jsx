@@ -8,6 +8,8 @@ const CHANGELOG = [
     ["new", "Online, you're told if your opponent's KillSheet is a different version, and which phone needs updating."],
     ["better", "Every update is tested automatically before it reaches the site."],
     ["better", "KillSheet opens even when a slow connection holds up its fonts or online play, and the first visit saves about 3 MB less to your phone for offline use."],
+    ["fixed", "Match my team in Settings now shows what it does: your team's name and a sample button in the color the Battle tab will use."],
+    ["fixed", "The score bar no longer runs off the edge on the smallest iPhones."],
   ] },
   { date: "2026-10-29", items: [
     ["new", "Tutorial part 2: command points, a strategy ploy, who controls an objective, Command Re-roll and scoring."],

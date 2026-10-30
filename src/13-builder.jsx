@@ -220,6 +220,7 @@ function TurnGuide({ tp, numTPs, setTp, hasInitiative, onInitiative, cp, f, rost
 function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen, setTutorialSeen, openTutorial, campaign, setCampaign, onTeamColor, showBattle }) {
   const phone = useIsMobile();
   const compactBar = useIsMobile(1000); // the full score bar needs about 1000px; below that it uses the phone layout
+  const tinyBar = useIsMobile(350); // the smallest phones (320px): the phone bar drops its "VP" label and some padding to fit
   const navH = "var(--pinned-h, 54px)"; // height of the pinned tabs and online banner, measured by App
   // Persisted game state
   const [gameConfig, setGameConfig] = useLocalStorage("gameConfig", null);
@@ -348,7 +349,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   const [importMode, setImportMode] = useState("opponent");
   const [toast, setToast] = useState("");
   const toastTimer = React.useRef(null);
-  React.useEffect(() => { if (onTeamColor) onTeamColor(fid && FACTIONS[fid] ? FACTIONS[fid].color : null); }, [fid]); // for Match my team
+  React.useEffect(() => { if (onTeamColor) onTeamColor(fid && FACTIONS[fid] ? fid : null); }, [fid]); // for Match my team: which team you're using
   useKeepAwake(rosterLocked && feat.awake !== false);
   // Keeping data safe: backup reminders, and the Home Screen note for iPhone Safari (which can clear site data after a while).
   const [lastBackup, setLastBackup] = useLocalStorage("lastBackup", null);
@@ -2004,7 +2005,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
           {/* Score bar: slim, stays under the nav while you scroll. Only during a game. Its big numbers are sized as
               "22px" strings, which Text size leaves alone, so the phone bar still fits on one line at Larger. */}
           <div style={{ position: "sticky", top: navH, zIndex: 9, background: "var(--bg)", padding: "6px 0", marginBottom: 6, display: rosterLocked ? "block" : "none", transition: "top 0.2s ease-out" }}>
-            <div style={{ ...cd, marginBottom: 0, padding: mobile ? "8px 8px" : "8px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: compactBar ? 4 : 14 }}>
+            <div style={{ ...cd, marginBottom: 0, padding: tinyBar ? "8px 4px" : mobile ? "8px 8px" : "8px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: compactBar ? 4 : 14 }}>
               {compactBar ? (
                 <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
                   <button className="compact-btn" onClick={() => setTp(Math.max(1, tp - 1))} disabled={tp <= 1} aria-label="Previous turning point" style={{ width: 30, height: 34, border: "1px solid var(--line)", borderRadius: 6, background: "var(--card)", color: "var(--gold)", cursor: tp <= 1 ? "default" : "pointer", opacity: tp <= 1 ? 0.35 : 1, fontSize: 16, padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><Back size={20} /></button>
@@ -2030,7 +2031,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
               {!compactBar && <Stepper label="Opp" term="VP" value={vpOpp + computedVpOpp} color="#B8341C" onMinus={() => setVpOpp(v => (v + computedVpOpp > 0 ? v - 1 : v))} onPlus={() => setVpOpp(vpOpp + 1)} />}
               {(compactBar || detailScoring) && <button className="compact-btn" onClick={() => setShowScoring(!showScoring)} aria-label={showScoring ? "Hide scoring" : "Show scoring"} style={{ display: "flex", alignItems: "center", gap: 6, height: 38, padding: "0 10px", borderRadius: 6, border: "1px solid " + (showScoring ? "color-mix(in srgb, var(--accent) 38%, transparent)" : "var(--line)"), background: showScoring ? "color-mix(in srgb, var(--accent) 8%, transparent)" : "transparent", cursor: "pointer", flexShrink: 0 }}>
                 {compactBar && <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: "20px" }}><span style={{ color: "#5A9C3A" }}>{vpYou + computedVpYou}</span><span style={{ color: "var(--muted2)" }}>{"–"}</span><span style={{ color: "#E0664A" }}>{vpOpp + computedVpOpp}</span></span>}
-                <span style={{ fontSize: compactBar ? "11px" : 11, color: "var(--muted)", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.08em", fontWeight: 700 }}>{compactBar ? "VP" : "SCORING"}</span>
+                {!tinyBar && <span style={{ fontSize: compactBar ? "11px" : 11, color: "var(--muted)", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.08em", fontWeight: 700 }}>{compactBar ? "VP" : "SCORING"}</span>}
                 <Arrow open={showScoring} />
               </button>}
             </div>

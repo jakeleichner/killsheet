@@ -3,7 +3,7 @@
 //
 //   node tools/run_selftest.mjs
 //
-// Three runs: the page as written (killsheet.html) at phone and desktop width, then the upload build
+// Four runs: the page as written (killsheet.html) at phone, desktop and smallest-phone (320px) width, then the upload build
 // (deploy/, made by tools/build_deploy.py) at phone width. Each serves its files on a local port, opens the page
 // in Chrome through the DevTools protocol, waits for window.__ksSelfTest and prints every step.
 // No npm packages: Node's own http server and WebSocket, and the Chrome already installed.
@@ -95,6 +95,7 @@ async function main() {
     const devUrl = `http://127.0.0.1:${dev.address().port}/`;
     ok = await run("killsheet.html, phone", devUrl, 375, 812, true, page) && ok;
     ok = await run("killsheet.html, desktop", devUrl, 1280, 900, false, page) && ok;
+    ok = await run("killsheet.html, smallest phone", devUrl, 320, 640, true, page) && ok;
 
     const deployDir = path.join(ROOT, "deploy");
     if (fs.existsSync(path.join(deployDir, "index.html"))) {

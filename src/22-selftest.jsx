@@ -674,7 +674,17 @@ async function runSelfTest(hooks) {
     }));
     if (bad.length) throw new Error(bad.slice(0, 4).join("; "));
     const sw = page.querySelector("[role=switch][aria-label='Match my team']");
+    // The setting says what it does with your team, and its sample button changes color with the switch.
+    const preview = () => page.querySelector("[data-match-preview]");
+    const sampleCol = () => getComputedStyle(preview().querySelector("span")).color;
+    const teamName = store("fid") && FACTIONS[store("fid")] ? FACTIONS[store("fid")].name : null;
+    const offCol = sampleCol();
+    if (teamName && !preview().textContent.includes("Off: the Battle tab uses your theme's color")) throw new Error("Match my team (off) doesn't say what it does: " + preview().textContent);
     await click(sw, "Match my team");
+    if (teamName) {
+      if (!preview().textContent.includes("On: the Battle tab uses the " + teamName + " color")) throw new Error("Match my team (on) doesn't name the team: " + preview().textContent);
+      if (sampleCol() === offCol) throw new Error("the sample button didn't change color with Match my team");
+    } else if (!/Pick a team in Battle/.test(preview().textContent)) throw new Error("Match my team doesn't say to pick a team first");
     if (!(store("appearance") || {}).matchTeam) throw new Error("Match my team didn't save");
     // It colors the Battle tab only: the logo and the root keep the theme's accent.
     const fid = store("fid"), t = Object.values(THEMES).slice(-1)[0];

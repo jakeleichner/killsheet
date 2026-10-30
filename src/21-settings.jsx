@@ -134,9 +134,11 @@ function Welcome() {
 // Every switch in one place, opened from the Battle tab's ⋯ menu and from the Rules tab.
 // Appearance: theme tiles, each drawn in its own colors, then Text size and the Match my team switch.
 function AppearancePicker() {
-  const { appearance, setAppearance, teamColor } = React.useContext(FeatureCtx);
+  const { appearance, setAppearance, teamColor, teamId } = React.useContext(FeatureCtx);
   const pick = (k) => setAppearance(a => ({ ...a, theme: k }));
-  const team = appearance.matchTeam && teamColor ? teamAccent(teamColor, THEMES[appearance.theme] || THEMES.default) : null;
+  const theme = THEMES[appearance.theme] || THEMES.default;
+  const teamCol = teamColor ? teamAccent(teamColor, theme) : null; // the team's color as the Battle tab would show it
+  const battleCol = appearance.matchTeam && teamCol ? teamCol : theme.vars.accent;
   return (
     <div>
       <div role="radiogroup" aria-label="Theme" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 8 }}>
@@ -180,7 +182,15 @@ function AppearancePicker() {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif" }}>Match my team</div>
           <div style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.45, marginTop: 2 }}>On the Battle tab, buttons and highlights take your team's color, on top of your theme. A few team colors are adjusted so they stay readable and don't look like dice or damage colors.</div>
-          {team && <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, fontSize: 12, color: "var(--muted)" }}><span style={{ width: 14, height: 14, borderRadius: 3, background: team, display: "inline-block" }} />Your team's color now</div>}
+          {/* What the switch does right now, with a sample Battle-tab button in the color it gives. */}
+          <div data-match-preview="true" style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+            <span aria-hidden="true" style={{ ...bs(battleCol), padding: "5px 10px", fontSize: 12, background: al(battleCol, "18"), pointerEvents: "none" }}>Shoot</span>
+            <span style={{ fontSize: 12, color: "var(--muted)", flex: "1 1 160px", lineHeight: 1.4 }}>
+              {!teamCol ? "Pick a team in Battle to see its color here."
+                : appearance.matchTeam ? "On: the Battle tab uses the " + FACTIONS[teamId].name + " color."
+                : "Off: the Battle tab uses your theme's color. Turn it on to use the " + FACTIONS[teamId].name + " color."}
+            </span>
+          </div>
         </div>
         <Switch on={!!appearance.matchTeam} onChange={(v) => setAppearance(a => ({ ...a, matchTeam: v }))} label="Match my team" />
       </div>

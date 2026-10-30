@@ -8852,6 +8852,7 @@ function TurnGuide({ tp, numTPs, setTp, hasInitiative, onInitiative, cp, f, rost
 function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen, setTutorialSeen, openTutorial, campaign, setCampaign, onTeamColor, showBattle }) {
   const phone = useIsMobile();
   const compactBar = useIsMobile(1000); // the full score bar needs about 1000px; below that it uses the phone layout
+  const tinyBar = useIsMobile(350); // the smallest phones (320px): the phone bar drops its "VP" label and some padding to fit
   const navH = "var(--pinned-h, 54px)"; // height of the pinned tabs and online banner, measured by App
   // Persisted game state
   const [gameConfig, setGameConfig] = useLocalStorage("gameConfig", null);
@@ -8980,7 +8981,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   const [importMode, setImportMode] = useState("opponent");
   const [toast, setToast] = useState("");
   const toastTimer = React.useRef(null);
-  React.useEffect(() => { if (onTeamColor) onTeamColor(fid && FACTIONS[fid] ? FACTIONS[fid].color : null); }, [fid]); // for Match my team
+  React.useEffect(() => { if (onTeamColor) onTeamColor(fid && FACTIONS[fid] ? fid : null); }, [fid]); // for Match my team: which team you're using
   useKeepAwake(rosterLocked && feat.awake !== false);
   // Keeping data safe: backup reminders, and the Home Screen note for iPhone Safari (which can clear site data after a while).
   const [lastBackup, setLastBackup] = useLocalStorage("lastBackup", null);
@@ -10636,7 +10637,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
           {/* Score bar: slim, stays under the nav while you scroll. Only during a game. Its big numbers are sized as
               "22px" strings, which Text size leaves alone, so the phone bar still fits on one line at Larger. */}
           <div style={{ position: "sticky", top: navH, zIndex: 9, background: "var(--bg)", padding: "6px 0", marginBottom: 6, display: rosterLocked ? "block" : "none", transition: "top 0.2s ease-out" }}>
-            <div style={{ ...cd, marginBottom: 0, padding: mobile ? "8px 8px" : "8px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: compactBar ? 4 : 14 }}>
+            <div style={{ ...cd, marginBottom: 0, padding: tinyBar ? "8px 4px" : mobile ? "8px 8px" : "8px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: compactBar ? 4 : 14 }}>
               {compactBar ? (
                 <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
                   <button className="compact-btn" onClick={() => setTp(Math.max(1, tp - 1))} disabled={tp <= 1} aria-label="Previous turning point" style={{ width: 30, height: 34, border: "1px solid var(--line)", borderRadius: 6, background: "var(--card)", color: "var(--gold)", cursor: tp <= 1 ? "default" : "pointer", opacity: tp <= 1 ? 0.35 : 1, fontSize: 16, padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><Back size={20} /></button>
@@ -10662,7 +10663,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
               {!compactBar && <Stepper label="Opp" term="VP" value={vpOpp + computedVpOpp} color="#B8341C" onMinus={() => setVpOpp(v => (v + computedVpOpp > 0 ? v - 1 : v))} onPlus={() => setVpOpp(vpOpp + 1)} />}
               {(compactBar || detailScoring) && <button className="compact-btn" onClick={() => setShowScoring(!showScoring)} aria-label={showScoring ? "Hide scoring" : "Show scoring"} style={{ display: "flex", alignItems: "center", gap: 6, height: 38, padding: "0 10px", borderRadius: 6, border: "1px solid " + (showScoring ? "color-mix(in srgb, var(--accent) 38%, transparent)" : "var(--line)"), background: showScoring ? "color-mix(in srgb, var(--accent) 8%, transparent)" : "transparent", cursor: "pointer", flexShrink: 0 }}>
                 {compactBar && <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: "20px" }}><span style={{ color: "#5A9C3A" }}>{vpYou + computedVpYou}</span><span style={{ color: "var(--muted2)" }}>{"–"}</span><span style={{ color: "#E0664A" }}>{vpOpp + computedVpOpp}</span></span>}
-                <span style={{ fontSize: compactBar ? "11px" : 11, color: "var(--muted)", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.08em", fontWeight: 700 }}>{compactBar ? "VP" : "SCORING"}</span>
+                {!tinyBar && <span style={{ fontSize: compactBar ? "11px" : 11, color: "var(--muted)", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.08em", fontWeight: 700 }}>{compactBar ? "VP" : "SCORING"}</span>}
                 <Arrow open={showScoring} />
               </button>}
             </div>
@@ -18505,9 +18506,11 @@ function Welcome() {
 // Every switch in one place, opened from the Battle tab's ⋯ menu and from the Rules tab.
 // Appearance: theme tiles, each drawn in its own colors, then Text size and the Match my team switch.
 function AppearancePicker() {
-  const { appearance, setAppearance, teamColor } = React.useContext(FeatureCtx);
+  const { appearance, setAppearance, teamColor, teamId } = React.useContext(FeatureCtx);
   const pick = (k) => setAppearance(a => ({ ...a, theme: k }));
-  const team = appearance.matchTeam && teamColor ? teamAccent(teamColor, THEMES[appearance.theme] || THEMES.default) : null;
+  const theme = THEMES[appearance.theme] || THEMES.default;
+  const teamCol = teamColor ? teamAccent(teamColor, theme) : null; // the team's color as the Battle tab would show it
+  const battleCol = appearance.matchTeam && teamCol ? teamCol : theme.vars.accent;
   return (
     <div>
       <div role="radiogroup" aria-label="Theme" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 8 }}>
@@ -18551,7 +18554,15 @@ function AppearancePicker() {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif" }}>Match my team</div>
           <div style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.45, marginTop: 2 }}>On the Battle tab, buttons and highlights take your team's color, on top of your theme. A few team colors are adjusted so they stay readable and don't look like dice or damage colors.</div>
-          {team && <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, fontSize: 12, color: "var(--muted)" }}><span style={{ width: 14, height: 14, borderRadius: 3, background: team, display: "inline-block" }} />Your team's color now</div>}
+          {/* What the switch does right now, with a sample Battle-tab button in the color it gives. */}
+          <div data-match-preview="true" style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+            <span aria-hidden="true" style={{ ...bs(battleCol), padding: "5px 10px", fontSize: 12, background: al(battleCol, "18"), pointerEvents: "none" }}>Shoot</span>
+            <span style={{ fontSize: 12, color: "var(--muted)", flex: "1 1 160px", lineHeight: 1.4 }}>
+              {!teamCol ? "Pick a team in Battle to see its color here."
+                : appearance.matchTeam ? "On: the Battle tab uses the " + FACTIONS[teamId].name + " color."
+                : "Off: the Battle tab uses your theme's color. Turn it on to use the " + FACTIONS[teamId].name + " color."}
+            </span>
+          </div>
         </div>
         <Switch on={!!appearance.matchTeam} onChange={(v) => setAppearance(a => ({ ...a, matchTeam: v }))} label="Match my team" />
       </div>
@@ -18634,6 +18645,8 @@ const CHANGELOG = [
     ["new", "Online, you're told if your opponent's KillSheet is a different version, and which phone needs updating."],
     ["better", "Every update is tested automatically before it reaches the site."],
     ["better", "KillSheet opens even when a slow connection holds up its fonts or online play, and the first visit saves about 3 MB less to your phone for offline use."],
+    ["fixed", "Match my team in Settings now shows what it does: your team's name and a sample button in the color the Battle tab will use."],
+    ["fixed", "The score bar no longer runs off the edge on the smallest iPhones."],
   ] },
   { date: "2026-10-29", items: [
     ["new", "Tutorial part 2: command points, a strategy ploy, who controls an objective, Command Re-roll and scoring."],
@@ -19407,7 +19420,17 @@ async function runSelfTest(hooks) {
     }));
     if (bad.length) throw new Error(bad.slice(0, 4).join("; "));
     const sw = page.querySelector("[role=switch][aria-label='Match my team']");
+    // The setting says what it does with your team, and its sample button changes color with the switch.
+    const preview = () => page.querySelector("[data-match-preview]");
+    const sampleCol = () => getComputedStyle(preview().querySelector("span")).color;
+    const teamName = store("fid") && FACTIONS[store("fid")] ? FACTIONS[store("fid")].name : null;
+    const offCol = sampleCol();
+    if (teamName && !preview().textContent.includes("Off: the Battle tab uses your theme's color")) throw new Error("Match my team (off) doesn't say what it does: " + preview().textContent);
     await click(sw, "Match my team");
+    if (teamName) {
+      if (!preview().textContent.includes("On: the Battle tab uses the " + teamName + " color")) throw new Error("Match my team (on) doesn't name the team: " + preview().textContent);
+      if (sampleCol() === offCol) throw new Error("the sample button didn't change color with Match my team");
+    } else if (!/Pick a team in Battle/.test(preview().textContent)) throw new Error("Match my team doesn't say to pick a team first");
     if (!(store("appearance") || {}).matchTeam) throw new Error("Match my team didn't save");
     // It colors the Battle tab only: the logo and the root keep the theme's accent.
     const fid = store("fid"), t = Object.values(THEMES).slice(-1)[0];
@@ -19768,7 +19791,8 @@ function App() {
   const openNews = () => { setSeenNews(CHANGELOG[0].date); setShowNews(true); };
   // Appearance: the theme, and whether the accent follows your team's color (Builder reports the team).
   const [appearance, setAppearance] = useLocalStorage("appearance", { theme: "default", matchTeam: false });
-  const [teamColor, setTeamColor] = useState(null);
+  const [teamId, setTeamId] = useState(null); // the Battle tab's team (Match my team)
+  const teamColor = teamId && FACTIONS[teamId] ? FACTIONS[teamId].color : null;
   React.useLayoutEffect(() => applyTheme(appearance.theme), [appearance.theme]);
   TEXT_SCALE = TEXT_SIZES[appearance.text] || 1; // before anything below is drawn
   React.useLayoutEffect(() => { document.documentElement.style.setProperty("--ts", String(TEXT_SCALE)); }, [appearance.text]);
@@ -19777,7 +19801,7 @@ function App() {
   const feat = { ...FEATURE_PRESETS[features ? presetOf(features) : returning ? "expert" : "learning"], ...(features || {}) };
   const [ruleSearch, setRuleSearch] = useState(null);
   const featureCtx = {
-    feat, validate, setValidate, appearance, setAppearance, teamColor,
+    feat, validate, setValidate, appearance, setAppearance, teamColor, teamId,
     setFeat: (k, v) => setFeatures(prev => ({ ...feat, ...(prev || {}), [k]: v })),
     setMode: (m) => setFeatures({ ...FEATURE_PRESETS[m] }),
     openFeatures: (k) => setShowFeatures(typeof k === "string" ? k : true),
@@ -19918,7 +19942,7 @@ function App() {
       {/* CONTENT: all tabs stay mounted, hidden with display:none to preserve state */}
       <div className="ks-appear" style={{ display: tab === "rules" ? "block" : "none" }}><ErrorBoundary where="Rules"><Rules search={ruleSearch} tutorialOpen={tutorialOpen} openTutorial={openTutorial} closeTutorial={() => { setTutorialOpen(false); window.scrollTo(0, 0); }} /></ErrorBoundary></div>
       <div className="ks-appear" style={{ display: tab === "missions" ? "block" : "none" }}><ErrorBoundary where="Missions"><Missions campaign={campaign} startCampaign={() => { if (!campaign) setCampaign(cteNew("solo", "m26", 7, "", "")); setTab("builder"); window.scrollTo(0, 0); }} /></ErrorBoundary></div>
-      <div id="panel-builder" className="ks-appear" style={{ display: tab === "builder" ? "block" : "none", ...(battleAccent ? { "--accent": battleAccent } : {}) }}><ErrorBoundary where="Battle"><Builder tp={tp} setTp={setTp} mp={mp} mpHandlerRef={mpHandlerRef} showMP={showMP} setShowMP={setShowMP} tutorialSeen={tutorialSeen} setTutorialSeen={setTutorialSeen} openTutorial={openTutorial} campaign={campaign} setCampaign={setCampaign} onTeamColor={setTeamColor} showBattle={() => setTab("builder")} /></ErrorBoundary></div>
+      <div id="panel-builder" className="ks-appear" style={{ display: tab === "builder" ? "block" : "none", ...(battleAccent ? { "--accent": battleAccent } : {}) }}><ErrorBoundary where="Battle"><Builder tp={tp} setTp={setTp} mp={mp} mpHandlerRef={mpHandlerRef} showMP={showMP} setShowMP={setShowMP} tutorialSeen={tutorialSeen} setTutorialSeen={setTutorialSeen} openTutorial={openTutorial} campaign={campaign} setCampaign={setCampaign} onTeamColor={setTeamId} showBattle={() => setTab("builder")} /></ErrorBoundary></div>
       <div className="ks-appear" style={{ display: tab === "community" ? "block" : "none" }}><ErrorBoundary where="Community"><CommunityRosters /><CrashTest /></ErrorBoundary></div>
 
       {/* FOOTER */}
