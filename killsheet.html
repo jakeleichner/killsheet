@@ -191,7 +191,7 @@ const CORE_CONCEPTS = [
     "Each ploy can be used once per turning point, except Command Re-roll.",
   ] },
   { name: "Command Re-roll", tag: "1CP", summary: "Firefight ploy. After rolling your attack or defense dice, re-roll one of them." },
-  { name: "Control range", summary: "Something within 1\" of an operative and visible to it is within its control range.", detail: "Control range is mutual. If it's true for either operative, they're both within each other's control range." },
+  { name: "Control range", visual: "control", summary: "Something within 1\" of an operative and visible to it is within its control range.", detail: "Control range is mutual. If it's true for either operative, they're both within each other's control range." },
   { name: "Valid target", summary: "An Engage operative is a valid target if it's visible. A Conceal operative is a valid target only if it's visible and not in cover." },
   { name: "Markers and objectives", summary: "Operatives contest markers within their control range. You control a marker if the total APL of your operatives contesting it is higher than your opponent's.", detail: [
     "On a tie, nobody controls it. Control can't change in the middle of an action.",
@@ -210,7 +210,7 @@ const CORE_ACTIONS = [
   { name: "Reposition", tag: "1AP", summary: "Move up to the operative's Move stat. It can't move within control range of an enemy.", detail: "Not allowed while within an enemy's control range, or in the same activation as Charge or Fall Back." },
   { name: "Dash", tag: "1AP", summary: "Move up to 3\". No climbing.", detail: "Not allowed while within an enemy's control range, or in the same activation as Charge." },
   { name: "Fall Back", tag: "2AP", summary: "Move away from an enemy. You can pass through enemy control range but can't finish there.", detail: "Only allowed while an enemy is within control range. Not in the same activation as Reposition or Charge." },
-  { name: "Charge", tag: "1AP", summary: "Move up to your Move stat plus 2\" and finish within an enemy's control range.", detail: [
+  { name: "Charge", visual: "charge", tag: "1AP", summary: "Move up to your Move stat plus 2\" and finish within an enemy's control range.", detail: [
     "Once you reach an enemy that no other friendly operative is within control range of, you can't leave its control range during the move.",
     "Not allowed with a Conceal order, while already within an enemy's control range, or in the same activation as Reposition, Dash or Fall Back.",
   ] },
@@ -11289,21 +11289,21 @@ const MOVEMENT_RULES = [
 
 /* ═══ VISIBILITY & OBSCURED ═══ */
 const VISIBILITY_RULES = [
-  { name: "Visible", summary: "Look from behind the operative. If you can draw a clear straight line from its head to any part of the target (not the base), the target is visible.", detail: [
+  { name: "Visible", visual: "visible", summary: "Look from behind the operative. If you can draw a clear straight line from its head to any part of the target (not the base), the target is visible.", detail: [
     "The line is 1mm wide.",
     "An operative is always visible to itself.",
   ] },
-  { name: "Intervening", summary: "Terrain between two operatives is intervening.", detail: "When it's unclear, use targeting lines: imaginary 1mm lines from any point of the operative's base to every facing part of the target's base. Terrain that any line crosses is intervening. Terrain that every line crosses is wholly intervening." },
-  { name: "Cover", visual: "orders", summary: "An operative is in cover if there's intervening terrain within its control range. It can't be in cover while within 2\" of the other operative.", detail: [
+  { name: "Intervening", visual: "intervening", summary: "Terrain between two operatives is intervening.", detail: "When it's unclear, use targeting lines: imaginary 1mm lines from any point of the operative's base to every facing part of the target's base. Terrain that any line crosses is intervening. Terrain that every line crosses is wholly intervening." },
+  { name: "Cover", visual: "cover", summary: "An operative is in cover if there's intervening terrain within its control range. It can't be in cover while within 2\" of the other operative.", detail: [
     "Conceal order: an operative in cover isn't a valid target.",
     "Cover save: when shot while in cover, the defender keeps one defense die as a normal success without rolling it.",
     "An operative can't be in cover from and obscured by the same terrain feature. The defender picks one.",
   ] },
-  { name: "Obscured", summary: "An operative is obscured if there's intervening Heavy terrain more than 1\" from both operatives.", detail: [
+  { name: "Obscured", visual: "obscured", summary: "An operative is obscured if there's intervening Heavy terrain more than 1\" from both operatives.", detail: [
     "Shooting an obscured target: discard one of your successes, and all your critical successes become normal successes.",
     "This takes precedence over all other rules.",
   ] },
-  { name: "Cover vs obscured", summary: "Cover comes from terrain near the target. Obscured comes from Heavy terrain in between.", detail: "Cover keeps Concealed operatives from being targeted and gives a free defense die. Obscured weakens the attack by removing a success and turning crits into normal successes." },
+  { name: "Cover vs obscured", visual: "covervsobscured", summary: "Cover comes from terrain near the target. Obscured comes from Heavy terrain in between.", detail: "Cover keeps Concealed operatives from being targeted and gives a free defense die. Obscured weakens the attack by removing a success and turning crits into normal successes." },
 ];
 
 /* ═══ SHOOTING & FIGHTING ═══ */
@@ -16248,7 +16248,7 @@ function RuleItem({ item, open, onToggle }) {
       {item.steps && <StepList items={item.steps} />}
       {more && open && (
         <div style={{ marginTop: 8, paddingLeft: 10, borderLeft: "2px solid color-mix(in srgb, var(--accent) 25%, transparent)" }}>
-          {item.visual === "orders" && <OrderGrid />}
+          {item.visual && RULE_DIAGRAMS[item.visual] && React.createElement(RULE_DIAGRAMS[item.visual])}
           {lines.map((l, i) => <div key={i} style={{ ...mu, color: "var(--text2)", marginBottom: 4 }}>{lines.length > 1 ? "• " : ""}<RefText text={l} self={item.name} /></div>)}
           {item.stats && (
             <div onClick={e => e.stopPropagation()} style={{ background: "var(--bg)", borderRadius: 5, padding: "8px 10px", marginTop: 6, border: "1px solid var(--raised)", cursor: "default" }}>
@@ -16976,6 +16976,82 @@ function TutMap({ scene, hp }) {
 }
 
 // Engage vs Conceal, in the open vs in cover. Used by the tutorial and by Rules (Orders, Cover).
+// ── Rule diagrams (Rules tab, shown when a rule is opened): two small panels each, one where the rule applies and one
+// where it doesn't. Top-down unless noted. Red: an enemy. Blue: your operative. 1" is 16 units. ──
+const DG = { enemy: "#D0573A", mine: "#6B9BF7", inch: 16 };
+const dgBase = (x, y, col) => <circle cx={x} cy={y} r="6" fill={al(col, "40")} stroke={col} strokeWidth="1.5" />;
+const dgRing = (x, y) => <circle cx={x} cy={y} r={6 + DG.inch} fill="none" stroke="var(--muted2)" strokeWidth="1" strokeDasharray="2 2" />;
+const dgLine = (x1, y1, x2, y2, col) => <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={col || "var(--gold)"} strokeWidth="1.5" strokeDasharray="4 3" />;
+const dgCross = (x, y) => <path d={"M" + (x - 4) + " " + (y - 5) + "l8 10M" + (x + 4) + " " + (y - 5) + "l-8 10"} stroke="#B8341C" strokeWidth="2" />;
+const dgTerrain = (x, y, w, h, heavy) => <g><rect x={x} y={y} width={w} height={h} rx="1" fill={heavy ? "var(--raised)" : "var(--line)"} stroke={heavy ? "var(--muted)" : "#5A6170"} strokeWidth={heavy ? 1.5 : 1} />{heavy && <text x={x + w / 2} y={y + h / 2 + 2} textAnchor="middle" fontSize="5" fontWeight="700" fill="var(--muted)" transform={"rotate(-90 " + (x + w / 2) + " " + (y + h / 2) + ")"}>HEAVY</text>}</g>;
+const dgMeasure = (x1, x2, y, label) => <g stroke="var(--muted)" strokeWidth="0.8"><line x1={x1} y1={y} x2={x2} y2={y} /><line x1={x1} y1={y - 2} x2={x1} y2={y + 2} /><line x1={x2} y1={y - 2} x2={x2} y2={y + 2} /><text x={(x1 + x2) / 2} y={y - 2} textAnchor="middle" fontSize="6" fontWeight="700" fill="var(--muted)" stroke="none">{label}</text></g>;
+// Side view figure (Visible): a head and a body standing on the ground line.
+const dgFigure = (x, col) => <g><rect x={x - 4} y="30" width="8" height="18" rx="2" fill={al(col, "40")} stroke={col} strokeWidth="1.5" /><circle cx={x} cy="25" r="4" fill={al(col, "40")} stroke={col} strokeWidth="1.5" /></g>;
+function DiagramPanel({ ok, caption, children }) {
+  return (
+    <div style={{ background: "var(--bg)", border: "1px solid " + (ok ? "color-mix(in srgb, var(--hit) 55%, transparent)" : "var(--raised)"), borderRadius: 6, padding: "6px 6px 8px" }}>
+      <svg viewBox="0 0 120 56" aria-hidden="true" style={{ display: "block", width: "100%" }}>{children}</svg>
+      <div style={{ fontSize: 12, fontWeight: 700, color: ok ? "var(--hit)" : "var(--text2)", textAlign: "center", marginTop: 4, lineHeight: 1.3 }}>{caption}</div>
+    </div>
+  );
+}
+function RuleDiagram({ label, children, key2 }) {
+  return (
+    <div role="img" aria-label={label} data-diagram={key2} style={{ marginBottom: 8 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>{children}</div>
+      <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>Red: an enemy. Blue: your operative.</div>
+    </div>
+  );
+}
+const coverPanels = {
+  cover: <DiagramPanel ok caption={'In cover: terrain within 1" of it, in between'}>{dgBase(14, 28, DG.enemy)}{dgLine(20, 28, 88, 28)}{dgRing(96, 28)}{dgTerrain(79, 16, 5, 24)}{dgBase(96, 28, DG.mine)}</DiagramPanel>,
+  obscured: <DiagramPanel ok caption={'Obscured: Heavy terrain in between, more than 1" from both'}>{dgBase(12, 28, DG.enemy)}{dgLine(18, 28, 102, 28)}{dgTerrain(56, 8, 8, 40, true)}{dgBase(108, 28, DG.mine)}</DiagramPanel>,
+};
+const RULE_DIAGRAMS = {
+  orders: () => <OrderGrid />,
+  visible: () => (
+    <RuleDiagram key2="visible" label="Side view. A low wall: the shooter can see the target's head over it, so the target is visible. A tall wall blocks every line, so it isn't.">
+      <DiagramPanel ok caption="Visible: a clear line from its head to part of the target"><line x1="2" y1="48" x2="118" y2="48" stroke="var(--line)" />{dgFigure(14, DG.enemy)}{dgTerrain(56, 38, 8, 10)}{dgLine(14, 25, 104, 25)}{dgFigure(104, DG.mine)}</DiagramPanel>
+      <DiagramPanel caption="Not visible: the wall blocks every line"><line x1="2" y1="48" x2="118" y2="48" stroke="var(--line)" />{dgFigure(14, DG.enemy)}{dgTerrain(56, 10, 8, 38)}{dgLine(14, 25, 54, 25, "var(--muted2)")}{dgCross(52, 25)}{dgFigure(104, DG.mine)}</DiagramPanel>
+    </RuleDiagram>
+  ),
+  intervening: () => (
+    <RuleDiagram key2="intervening" label="Targeting lines run from the shooter's base to the target's base. Terrain one line crosses is intervening. Terrain every line crosses is wholly intervening.">
+      <DiagramPanel ok caption="Intervening: a line crosses it">{dgBase(14, 28, DG.enemy)}{dgLine(14, 22, 104, 22)}{dgLine(20, 28, 98, 28)}{dgLine(14, 34, 104, 34)}{dgTerrain(56, 14, 8, 11)}{dgBase(104, 28, DG.mine)}</DiagramPanel>
+      <DiagramPanel ok caption="Wholly intervening: every line crosses it">{dgBase(14, 28, DG.enemy)}{dgLine(14, 22, 104, 22)}{dgLine(20, 28, 98, 28)}{dgLine(14, 34, 104, 34)}{dgTerrain(56, 12, 8, 32)}{dgBase(104, 28, DG.mine)}</DiagramPanel>
+    </RuleDiagram>
+  ),
+  cover: () => (
+    <RuleDiagram key2="cover" label={'Terrain within 1" of your operative, between it and the shooter, puts it in cover. If the shooter is within 2", there is no cover.'}>
+      {coverPanels.cover}
+      <DiagramPanel caption={'No cover: the shooter is within 2"'}>{dgBase(52, 28, DG.enemy)}{dgLine(58, 28, 88, 28)}{dgRing(96, 28)}{dgTerrain(79, 16, 5, 24)}{dgBase(96, 28, DG.mine)}{dgMeasure(58, 90, 53, '2"')}</DiagramPanel>
+    </RuleDiagram>
+  ),
+  obscured: () => (
+    <RuleDiagram key2="obscured" label={'Heavy terrain between the two, more than 1" from both, obscures the target. Heavy terrain within 1" of the target gives cover instead.'}>
+      {coverPanels.obscured}
+      <DiagramPanel caption={'Not obscured: it\'s within 1" of the target (that\'s cover)'}>{dgBase(12, 28, DG.enemy)}{dgLine(18, 28, 88, 28)}{dgRing(96, 28)}{dgTerrain(80, 10, 7, 36, true)}{dgBase(96, 28, DG.mine)}</DiagramPanel>
+    </RuleDiagram>
+  ),
+  covervsobscured: () => (
+    <RuleDiagram key2="covervsobscured" label={'Cover: terrain within 1" of the target. Obscured: Heavy terrain in between, more than 1" from both operatives.'}>
+      {coverPanels.cover}{coverPanels.obscured}
+    </RuleDiagram>
+  ),
+  control: () => (
+    <RuleDiagram key2="control" label={'The dashed ring is 1" around your operative. An enemy inside it, and visible, is within control range. One outside it is not.'}>
+      <DiagramPanel ok caption={'Within control range: within 1" and visible'}>{dgRing(46, 28)}{dgBase(46, 28, DG.mine)}{dgBase(64, 28, DG.enemy)}{dgMeasure(52, 68, 54, '1"')}</DiagramPanel>
+      <DiagramPanel caption={'Not in control range: more than 1" away'}>{dgRing(40, 28)}{dgBase(40, 28, DG.mine)}{dgBase(92, 28, DG.enemy)}{dgMeasure(46, 62, 54, '1"')}</DiagramPanel>
+    </RuleDiagram>
+  ),
+  charge: () => (
+    <RuleDiagram key2="charge" label={'Charge: move up to your Move plus 2" and finish within 1" of an enemy. If you can\'t get that close, you can\'t Charge it.'}>
+      <DiagramPanel ok caption={'Charge: finish within 1" of the enemy'}>{dgBase(12, 36, DG.mine)}<path d="M18 36 Q48 10 80 26" fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeDasharray="4 3" /><path d="M80 26l-6-1 3 5z" fill="var(--accent)" />{dgRing(94, 30)}{dgBase(94, 30, DG.enemy)}<text x="50" y="12" textAnchor="middle" fontSize="6" fontWeight="700" fill="var(--accent)">{'Move + 2"'}</text></DiagramPanel>
+      <DiagramPanel caption="Too far: no Charge">{dgBase(12, 36, DG.mine)}<path d="M18 36 Q44 14 70 24" fill="none" stroke="var(--muted2)" strokeWidth="1.5" strokeDasharray="4 3" />{dgCross(70, 24)}{dgRing(96, 30)}{dgBase(96, 30, DG.enemy)}<text x="44" y="12" textAnchor="middle" fontSize="6" fontWeight="700" fill="var(--muted)">{'Move + 2"'}</text></DiagramPanel>
+    </RuleDiagram>
+  ),
+};
+
 function OrderGrid() {
   const cell = (order, cover) => {
     const col = order === "engage" ? "#C9772E" : "#6B9BF7";
@@ -18361,6 +18437,14 @@ async function runSelfTest(hooks) {
     const search = all("input").find(i => /Search all rules/.test(i.placeholder));
     await typeInto(search, "cover");
     if (!/cover/i.test(document.body.innerText)) throw new Error("search found nothing for 'cover'");
+    // Opening a rule with a diagram shows it.
+    for (const [rule, key] of [["Obscured", "obscured"], ["Charge", "charge"], ["Control range", "control"]]) {
+      await typeInto(search, rule.toLowerCase());
+      const item = all("[role=button][aria-expanded]").find(el => el.querySelector("span") && el.querySelector("span").textContent.trim() === rule);
+      if (!item) throw new Error("couldn't find the " + rule + " rule");
+      if (item.getAttribute("aria-expanded") !== "true") await click(item, rule);
+      if (!document.querySelector("[data-diagram='" + key + "']")) throw new Error("the " + rule + " rule has no diagram when opened");
+    }
     await typeInto(search, "");
     await click(btn("How to Play", true), "How to Play");
     await click(btn("New to Kill Team"), "tutorial card");
