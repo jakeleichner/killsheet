@@ -4,6 +4,8 @@
 const CHANGELOG = [
   { date: "2026-10-31", items: [
     ["new", "KillSheet's new address is killsheet.app. On the old address, a note and Move to killsheet.app in the game menu bring your rosters, games and settings across."],
+    ["better", "A KillSheet link shared in Discord, Reddit or a message now shows a picture and what KillSheet is."],
+    ["new", "About KillSheet at the very bottom of the page: what it does, the teams it covers, and a note that it's unofficial and fan-made."],
   ] },
   { date: "2026-10-30", items: [
     ["new", "A note tells you when a new version of KillSheet is ready, with an Update button."],

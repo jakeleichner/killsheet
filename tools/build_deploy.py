@@ -75,6 +75,11 @@ def main():
     open(os.path.join(deploy, "index.html"), "w").write(out)
     open(os.path.join(deploy, "version.json"), "w").write(json.dumps({"version": version, "built": built}))
     write_service_worker(deploy, out, version)
+    # For search engines: crawl everything, and here's the one page. killsheet.pages.dev serves the same files; the page's
+    # canonical link tells search engines killsheet.app is the address to show.
+    open(os.path.join(deploy, "robots.txt"), "w").write("User-agent: *\nAllow: /\n\nSitemap: https://killsheet.app/sitemap.xml\n")
+    open(os.path.join(deploy, "sitemap.xml"), "w").write('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        '  <url><loc>https://killsheet.app/</loc><lastmod>%s</lastmod></url>\n</urlset>\n' % built[:10])
     write_zip(deploy)
     print("Built deploy/index.html (%d KB), sw.js, manifest, maps and icons in %.1fs." % (len(out.encode()) // 1024, time.time() - started))
     print("Upload either the deploy/ folder or killsheet-upload.zip (the same files; the zip avoids browsers that drop files from a dragged folder).")
@@ -100,7 +105,8 @@ def offline_files(deploy):
     someone taps to see the original page) are saved the first time they're viewed instead, which keeps the first
     visit's download about 3.4 MB smaller."""
     local = ["./", "manifest.webmanifest"]
-    local += ["icons/" + n for n in sorted(os.listdir(os.path.join(deploy, "icons"))) if not n.startswith(".")]
+    # share.png is only for link previews, so the offline copy skips it.
+    local += ["icons/" + n for n in sorted(os.listdir(os.path.join(deploy, "icons"))) if not n.startswith(".") and n != "share.png"]
     maps = sorted(n for n in os.listdir(os.path.join(deploy, "maps")) if not n.startswith("."))
     local += ["maps/" + n for n in maps if n.endswith(".svg") or (n.endswith(".jpg") and n[:-4] + ".svg" not in maps)]
     return local

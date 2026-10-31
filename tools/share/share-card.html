@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<!-- The link preview picture (icons/share.png, 1200x630). Remake it with: python3 tools/share/make_share_image.py -->
+<html><head><meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600&family=Rajdhani:wght@600;700&display=block" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 1200px; height: 630px; background: #0E0F13; color: #F1F2F5; font-family: Inter, sans-serif; position: relative; overflow: hidden; }
+  .glow { position: absolute; inset: 0; background: radial-gradient(ellipse 70% 80% at 85% 110%, rgba(201,119,46,0.28), transparent 60%); }
+  .frame { position: absolute; inset: 28px; border: 2px solid #3A4150; border-radius: 14px; }
+  .wrap { position: absolute; left: 96px; top: 120px; right: 96px; }
+  .logo { display: flex; align-items: center; gap: 38px; }
+  .word { font-family: Rajdhani, sans-serif; font-weight: 700; font-size: 124px; letter-spacing: 0.06em; line-height: 1; }
+  .tag { margin-top: 44px; font-size: 44px; font-weight: 600; color: #C8CDD3; line-height: 1.3; }
+  .list { margin-top: 22px; font-size: 28px; font-weight: 500; color: #9AA5B1; }
+  .url { position: absolute; left: 96px; bottom: 70px; font-family: Rajdhani, sans-serif; font-weight: 700; font-size: 40px; letter-spacing: 0.06em; color: #C9772E; }
+  .note { position: absolute; right: 96px; bottom: 76px; font-size: 22px; color: #5A6470; }
+</style></head>
+<body>
+  <div class="glow"></div><div class="frame"></div>
+  <div class="wrap">
+    <div class="logo">
+      <svg width="124" height="124" viewBox="0 0 32 32"><rect x="2" y="2" width="28" height="28" rx="6" fill="none" stroke="#F1F2F5" stroke-width="2"/><circle cx="9" cy="9" r="2.2" fill="#F1F2F5"/><circle cx="23" cy="9" r="2.2" fill="#F1F2F5"/><circle cx="9" cy="23" r="2.2" fill="#F1F2F5"/><circle cx="23" cy="23" r="2.2" fill="#F1F2F5"/><g fill="none" stroke="#C9772E" stroke-width="2" stroke-linecap="round"><circle cx="16" cy="16" r="3.6"/><path d="M16 9.5v1.9M16 20.6v1.9M9.5 16h1.9M20.6 16h1.9"/></g></svg>
+      <div class="word"><span>KILL</span><span style="color:#C9772E">SHEET</span></div>
+    </div>
+    <div class="tag">Kill Team roster builder, rules and game tracker</div>
+    <div class="list">All 48 teams · Ploys and datacards · Dice · Missions · Play online</div>
+  </div>
+  <div class="url">KILLSHEET.APP</div>
+  <div class="note">Free · Unofficial fan-made app</div>
+</body></html>

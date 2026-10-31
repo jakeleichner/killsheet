@@ -13,6 +13,7 @@ components declared as `function Name(` at column 0). They do not parse
 JavaScript, so a clean run does not prove the file has no syntax errors:
 still load it in the preview and check the console.
 """
+import html
 import re
 import sys
 from pathlib import Path
@@ -171,6 +172,22 @@ def check_us_spelling(lines):
     return out
 
 
+def check_about_teams(text):
+    """The About KillSheet footer (src/99-tail.html) names every team, for search engines."""
+    names = re.findall(r'^    id: "[a-z_0-9]+", name: "([^"]+)"', text, re.M)
+    m = re.search(r'<footer id="ks-about">(.*?)</footer>', text, re.S)
+    if not m:
+        return ["the About KillSheet footer is missing"]
+    about = html.unescape(m.group(1))
+    problems = ["About KillSheet doesn't list " + n + " (src/99-tail.html)" for n in names if n not in about]
+    if not re.search(r"\b%d teams\b" % len(names), about):
+        problems.append("About KillSheet doesn't say %d teams (src/99-tail.html)" % len(names))
+    head = text[:text.find("</head>")]
+    if not re.search(r"all %d teams" % len(names), head, re.I):
+        problems.append("the page description doesn't say all %d teams (src/00-head.html; remake icons/share.png too: tools/share/)" % len(names))
+    return problems
+
+
 def check_assembled(path):
     """killsheet.html is built from src/ (tools/assemble.py); an edit made to it directly would be lost."""
     import assemble
@@ -196,6 +213,7 @@ def main():
         ("JSX script tag intact", check_babel_script(text)),
         ("Every setX() call is defined", check_setters(text)),
         ("US spelling in app text", check_us_spelling(lines)),
+        ("About KillSheet lists every team", check_about_teams(text)),
         ("The script compiles", check_compiles(text)),
     ]
     failed = 0
