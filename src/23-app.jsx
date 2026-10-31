@@ -8,7 +8,8 @@ function App() {
   // What the app shows (Your KillSheet). null until a new player answers the first-time question.
   const [features, setFeatures] = useLocalStorage("features", null);
   const [validate, setValidate] = useLocalStorage("validate", true);
-  const [returning, setReturning] = useState(isReturningPlayer);
+  // Someone arriving with their data from the old address isn't asked the first-time question.
+  const [returning, setReturning] = useState(() => isReturningPlayer() || /^#move=/.test(window.location.hash));
   React.useEffect(() => { if (!features && returning) setFeatures({ ...FEATURE_PRESETS.expert }); }, []);
   // Play online joined the Learning preset (Oct 2026): saved Learning switches pick it up instead of turning Custom.
   React.useEffect(() => { if (features && features.online === false && featureMode({ ...features, online: true }) === "learning") setFeatures(prev => ({ ...prev, online: true })); }, []);
@@ -21,6 +22,9 @@ function App() {
   const [showNews, setShowNews] = useState(false);
   React.useEffect(() => { if (seenNews === null) setSeenNews(CHANGELOG[0].date); }, []);
   const openNews = () => { setSeenNews(CHANGELOG[0].date); setShowNews(true); };
+  // The old address (killsheet.pages.dev): a note pointing to killsheet.app, and the Move panel.
+  const [showMove, setShowMove] = useState(false);
+  const [moveNoteHidden, setMoveNoteHidden] = useLocalStorage("moveNoteHidden", false);
   // Appearance: the theme, and whether the accent follows your team's color (Builder reports the team).
   const [appearance, setAppearance] = useLocalStorage("appearance", { theme: "default", matchTeam: false });
   const [teamId, setTeamId] = useState(null); // the Battle tab's team (Match my team)
@@ -101,6 +105,7 @@ function App() {
       {features === null && !returning && <Welcome />}
       {showFeatures && <FeaturesPage focus={showFeatures} onClose={() => setShowFeatures(false)} onNews={openNews} />}
       {showNews && <WhatsNew onClose={() => setShowNews(false)} />}
+      {showMove && <MovePanel onClose={() => setShowMove(false)} />}
 
       {/* HEADER: phones show the logo above the tabs; desktop puts it inside the tab bar. The cog (Settings) sits top right on both. */}
       {mobile && (
@@ -114,6 +119,7 @@ function App() {
       <div ref={pinnedRef} data-pinned={barHidden ? "hidden" : "shown"} style={{ position: "sticky", top: 0, zIndex: 10, transform: barHidden ? "translateY(-100%)" : "none", transition: window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "none" : "transform 0.2s ease-out" }}>
       {update && update !== laterFor
         ? <NoticeBar color="var(--accent)" text={"A new version of KillSheet is ready." + (mp.status === "connected" ? " Updating reloads the page, so you'll reconnect to your online game." : "")} action="Update" onAction={() => window.location.reload()} onDismiss={() => setLaterFor(update)} dismissLabel="Later" />
+        : onOldAddress() && !moveNoteHidden ? <NoticeBar color="var(--accent)" text="KillSheet has a new address: killsheet.app. Your data can come with you." action="Move" onAction={() => setShowMove(true)} onDismiss={() => setMoveNoteHidden(true)} dismissLabel="Dismiss" />
         : newsSince(seenNews).length > 0 && <NoticeBar color="var(--blue)" text="KillSheet was updated." action="What's new" onAction={openNews} onDismiss={() => setSeenNews(CHANGELOG[0].date)} dismissLabel="Dismiss" />}
       {/* NAV */}
       <nav style={{ display: "flex", background: "var(--card)", borderBottom: "1px solid var(--line)", boxShadow: "0 2px 12px rgba(0,0,0,0.5)" }}>
@@ -174,7 +180,7 @@ function App() {
       {/* CONTENT: all tabs stay mounted, hidden with display:none to preserve state */}
       <div className="ks-appear" style={{ display: tab === "rules" ? "block" : "none" }}><ErrorBoundary where="Rules"><Rules search={ruleSearch} tutorialOpen={tutorialOpen} openTutorial={openTutorial} closeTutorial={() => { setTutorialOpen(false); window.scrollTo(0, 0); }} /></ErrorBoundary></div>
       <div className="ks-appear" style={{ display: tab === "missions" ? "block" : "none" }}><ErrorBoundary where="Missions"><Missions campaign={campaign} startCampaign={() => { if (!campaign) setCampaign(cteNew("solo", "m26", 7, "", "")); setTab("builder"); window.scrollTo(0, 0); }} /></ErrorBoundary></div>
-      <div id="panel-builder" className="ks-appear" style={{ display: tab === "builder" ? "block" : "none", ...(battleAccent ? { "--accent": battleAccent } : {}) }}><ErrorBoundary where="Battle"><Builder tp={tp} setTp={setTp} mp={mp} mpHandlerRef={mpHandlerRef} showMP={showMP} setShowMP={setShowMP} tutorialSeen={tutorialSeen} setTutorialSeen={setTutorialSeen} openTutorial={openTutorial} campaign={campaign} setCampaign={setCampaign} onTeamColor={setTeamId} showBattle={() => setTab("builder")} /></ErrorBoundary></div>
+      <div id="panel-builder" className="ks-appear" style={{ display: tab === "builder" ? "block" : "none", ...(battleAccent ? { "--accent": battleAccent } : {}) }}><ErrorBoundary where="Battle"><Builder tp={tp} setTp={setTp} mp={mp} mpHandlerRef={mpHandlerRef} showMP={showMP} setShowMP={setShowMP} tutorialSeen={tutorialSeen} setTutorialSeen={setTutorialSeen} openTutorial={openTutorial} campaign={campaign} setCampaign={setCampaign} onTeamColor={setTeamId} openMove={() => setShowMove(true)} showBattle={() => setTab("builder")} /></ErrorBoundary></div>
       <div className="ks-appear" style={{ display: tab === "community" ? "block" : "none" }}><ErrorBoundary where="Community"><CommunityRosters /><CrashTest /></ErrorBoundary></div>
 
       {/* FOOTER */}

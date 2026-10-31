@@ -1,6 +1,6 @@
 """How fast KillSheet opens on a mid-range phone: headless Chrome with a 4x slower processor and mobile data.
 
-Usage: python3 tools/measure_speed.py [url]     (default https://killsheet.pages.dev/)
+Usage: python3 tools/measure_speed.py [url]     (default https://killsheet.app/)
 
 Starts Google Chrome headless, then opens the page twice: a first visit (empty cache) and a return visit, each
 on a phone-sized screen with Chrome's CPU throttling (4x) and network throttling (1.6 Mbps down, 150 ms latency).
@@ -21,7 +21,7 @@ import urllib.request
 
 CHROME = os.environ.get("CHROME", "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome")
 PORT = 9335
-URL = sys.argv[1] if len(sys.argv) > 1 else "https://killsheet.pages.dev/"
+URL = sys.argv[1] if len(sys.argv) > 1 else "https://killsheet.app/"
 # SLOW=fonts.googleapis.com,unpkg.com holds requests to those hosts for 8 seconds (a stalling server on venue Wi-Fi).
 SLOW = [h for h in os.environ.get("SLOW", "").split(",") if h]
 

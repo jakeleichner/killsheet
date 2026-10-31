@@ -8849,7 +8849,7 @@ function TurnGuide({ tp, numTPs, setTp, hasInitiative, onInitiative, cp, f, rost
   );
 }
 
-function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen, setTutorialSeen, openTutorial, campaign, setCampaign, onTeamColor, showBattle }) {
+function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen, setTutorialSeen, openTutorial, campaign, setCampaign, onTeamColor, openMove, showBattle }) {
   const phone = useIsMobile();
   const compactBar = useIsMobile(1000); // the full score bar needs about 1000px; below that it uses the phone layout
   const tinyBar = useIsMobile(350); // the smallest phones (320px): the phone bar drops its "VP" label and some padding to fit
@@ -8949,24 +8949,37 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
     const name = downloadBackup(mobile);
     if (name) showToast("Backup saved as " + name, 4000);
   };
+  // A backup from a file or a move link: checked, then the Restore card asks before anything is replaced.
+  const offerBackup = (b, moved) => {
+    const keys = b && b.data ? Object.keys(b.data) : [];
+    if (b.app !== "KillSheet" || keys.length === 0 || !keys.every(k => k.indexOf(LS_PREFIX) === 0)) throw new Error("not a backup");
+    let rosters = 0;
+    try { rosters = JSON.parse(b.data[LS_PREFIX + "savedRosters"] || "[]").length; } catch (e) { /* older backup */ }
+    setPendingRestore({ data: b.data, savedAt: b.savedAt, rosters, moved });
+    window.scrollTo(0, 0);
+  };
   const readBackup = (file) => {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      try {
-        const b = JSON.parse(reader.result);
-        const keys = b && b.data ? Object.keys(b.data) : [];
-        if (b.app !== "KillSheet" || keys.length === 0 || !keys.every(k => k.indexOf(LS_PREFIX) === 0)) throw new Error("not a backup");
-        let rosters = 0;
-        try { rosters = JSON.parse(b.data[LS_PREFIX + "savedRosters"] || "[]").length; } catch (e) { /* older backup */ }
-        setPendingRestore({ data: b.data, savedAt: b.savedAt, rosters });
-        window.scrollTo(0, 0);
-      } catch (e) {
-        showToast("That file isn't a KillSheet backup.", 4000);
-      }
+      try { offerBackup(JSON.parse(reader.result), false); }
+      catch (e) { showToast("That file isn't a KillSheet backup.", 4000); }
     };
     reader.readAsText(file);
   };
+  // Opened from "Move my data" on the old address: the link's # part holds the data. It's taken off the address
+  // straight away, so a reload or a shared link doesn't carry it. window.__ksTakeMove is the self-test's way in.
+  React.useEffect(() => {
+    const take = (hash) => {
+      if (!/^#move=/.test(hash || "")) return Promise.resolve();
+      if (window.location.hash === hash && window.history.replaceState) window.history.replaceState(null, "", window.location.pathname + window.location.search);
+      return readMoveLink(hash).then(b => { showBattle(); offerBackup(b, true); })
+        .catch(() => showToast("Couldn't read the data from the old address. Use Back up there and Restore from backup here.", 6000));
+    };
+    window.__ksTakeMove = take;
+    take(window.location.hash);
+    return () => { delete window.__ksTakeMove; };
+  }, []);
   // First visit: start a standard game straight away; settings live in the game menu.
   React.useEffect(() => {
     if (gameConfig) return;
@@ -10371,6 +10384,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                   window.__ksInstall ? ["Install app", "Add KillSheet to this device. Works offline.", () => { const p = window.__ksInstall; window.__ksInstall = null; p.prompt(); }, "var(--text)"]
                     : /iPhone|iPad|iPod/.test(navigator.userAgent) && !navigator.standalone ? ["Add to Home Screen", "Works offline once added", () => showToast("In Safari, tap Share, then Add to Home Screen", 6000), "var(--text)"] : null,
                   ["Game settings", feat.missions ? "Mission, equipment, turning points" : "Equipment and turning points", () => setShowSetup(true), "var(--text)"],
+                  onOldAddress() ? ["Move to killsheet.app", "Take your rosters, games and settings to the new address", openMove, "var(--accent)"] : null,
                   ["Back up", "Save your rosters, game and settings to a file", backUp, "var(--text)"],
                   ["Restore from backup", "Load a backup file onto this device", () => restoreInput.current && restoreInput.current.click(), "var(--text)"],
                   f && rosterLocked ? ["End game", "Record the result in your game history", openEndGame, "#5A9C3A"] : null,
@@ -10391,9 +10405,9 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
       <input ref={restoreInput} type="file" accept=".json,application/json" style={{ display: "none" }} onChange={e => { readBackup(e.target.files[0]); e.target.value = ""; }} />
       {pendingRestore && (
         <div role="alertdialog" aria-label="Restore backup" className="ks-appear" style={{ ...cd, padding: 14, borderLeft: "3px solid var(--gold)" }}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif" }}>Restore this backup?</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif" }}>{pendingRestore.moved ? "Bring over your data from the old address?" : "Restore this backup?"}</div>
           <div style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.5, marginTop: 4 }}>
-            Saved {pendingRestore.savedAt ? new Date(pendingRestore.savedAt).toLocaleString() : "at an unknown time"}, with {pendingRestore.rosters} saved roster{pendingRestore.rosters === 1 ? "" : "s"}. It replaces the rosters, game and settings on this device. To keep what's here, back it up first.
+            {pendingRestore.moved ? "Sent from killsheet.pages.dev" : "Saved"} {pendingRestore.savedAt ? new Date(pendingRestore.savedAt).toLocaleString() : "at an unknown time"}, with {pendingRestore.rosters} saved roster{pendingRestore.rosters === 1 ? "" : "s"}. It replaces the rosters, game and settings on this device. To keep what's here, back it up first.
           </div>
           <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
             <button onClick={() => { restoreKillSheetStorage(pendingRestore.data); window.location.reload(); }} style={{ ...bs("var(--gold)"), padding: "8px 16px", fontSize: 13 }}>Restore</button>
@@ -18641,6 +18655,9 @@ function FeaturesPage({ onClose, focus, onNews }) {
 // The change log players see (Settings > What's new). Newest first, one entry per day something a player would
 // notice changed, in plain words. kind: "new", "better" or "fixed". Add an entry with every such change.
 const CHANGELOG = [
+  { date: "2026-10-31", items: [
+    ["new", "KillSheet's new address is killsheet.app. On the old address, a note and Move to killsheet.app in the game menu bring your rosters, games and settings across."],
+  ] },
   { date: "2026-10-30", items: [
     ["new", "A note tells you when a new version of KillSheet is ready, with an Update button."],
     ["new", "What's new: this page, in Settings. After an update, a note links to it once."],
@@ -18749,6 +18766,81 @@ function NoticeBar({ text, action, onAction, onDismiss, dismissLabel, color }) {
   );
 }
 
+// Moving to killsheet.app (Oct 2026). Browsers keep saved data per address, so the new address starts empty. On the old
+// one, "Move my data" opens killsheet.app with everything in the link's # part (which never leaves the phone), and the
+// Battle tab there offers to restore it. A Home Screen app keeps its own data apart from Safari, so it moves by backup file.
+// window.__ksOldAddress lets the self-test and the preview act as the old address.
+const NEW_HOME = "https://killsheet.app/";
+const onOldAddress = () => window.location.hostname === "killsheet.pages.dev" || !!window.__ksOldAddress;
+const isHomeScreenApp = () => !!(navigator.standalone || (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches));
+async function moveLink() {
+  const json = JSON.stringify({ app: "KillSheet", kind: "backup", version: 1, savedAt: new Date().toISOString(), data: snapshotKillSheetStorage() });
+  let bytes = new TextEncoder().encode(json), tag = "j";
+  if (window.CompressionStream) { bytes = new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new CompressionStream("deflate-raw"))).arrayBuffer()); tag = "z"; }
+  let bin = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return NEW_HOME + "#move=" + tag + btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+// The backup inside a move link, or null when the # part isn't one. Throws when it is one but can't be read.
+async function readMoveLink(hash) {
+  const m = /^#move=([jz])([A-Za-z0-9_-]+)$/.exec(hash || "");
+  if (!m) return null;
+  const bin = atob(m[2].replace(/-/g, "+").replace(/_/g, "/"));
+  let bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
+  if (m[1] === "z") bytes = new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).arrayBuffer());
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+
+function MovePanel({ onClose }) {
+  const [busy, setBusy] = useState(false);
+  const homeApp = isHomeScreenApp();
+  React.useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  const move = () => {
+    setBusy(true);
+    moveLink().then(url => { if (window.__ksMoveTo) window.__ksMoveTo(url); else window.location.href = url; })
+      .catch(() => { setBusy(false); alert("Couldn't move your data from this browser. Use the backup file steps below."); });
+  };
+  const stepRow = (n, body) => (
+    <div style={{ display: "flex", gap: 10, padding: "6px 0" }}>
+      <span style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 11, background: "var(--raised)", color: "var(--accent)", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{n}</span>
+      <div style={{ fontSize: 14, lineHeight: 1.45, color: "var(--text)" }}>{body}</div>
+    </div>
+  );
+  const fileSteps = (
+    <div style={{ ...cd, padding: 12, marginBottom: 10 }}>
+      <div style={{ ...h3, color: "var(--text2)", marginBottom: 4 }}>{homeApp ? "From this Home Screen app" : "From a Home Screen app"}</div>
+      <p style={{ ...mu, margin: "0 0 6px" }}>A Home Screen app keeps its data apart from Safari, so it moves with a backup file.</p>
+      {stepRow(1, <><button onClick={() => downloadBackup(true)} style={{ ...bs("var(--accent)"), padding: "6px 12px", fontSize: 13 }}>Back up</button> <span style={{ color: "var(--text2)" }}>and tap Save to Files.</span></>)}
+      {stepRow(2, <>In Safari, open <a href={NEW_HOME} target="_blank" rel="noopener" style={{ color: "var(--accent)" }}>killsheet.app</a>, tap Share, then Add to Home Screen.</>)}
+      {stepRow(3, <>Open the new KillSheet from your Home Screen. On the Battle tab, open the {"⋯"} menu, tap Restore from backup and pick the file.</>)}
+      {stepRow(4, <>Once your data is there, delete the old KillSheet from your Home Screen.</>)}
+    </div>
+  );
+  return ReactDOM.createPortal(
+    <div role="dialog" aria-modal="true" aria-label="Move to killsheet.app" style={{ position: "fixed", inset: 0, zIndex: 9100, background: "var(--bg)", overflowY: "auto", color: "var(--text)", fontFamily: "'Inter', sans-serif" }}>
+      <div className="ks-appear" style={{ maxWidth: 560, margin: "0 auto", padding: "16px 16px 40px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+          <div style={{ flex: 1, fontSize: 24, fontWeight: 700, color: "var(--accent)", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.04em" }}>Move to killsheet.app</div>
+          <button autoFocus onClick={onClose} aria-label="Close" style={{ ...bs("var(--muted)"), padding: "8px 10px", display: "inline-flex" }}><Icon name="x" size={18} /></button>
+        </div>
+        <p style={{ ...mu, margin: "0 0 12px", lineHeight: 1.5 }}>KillSheet's new address is killsheet.app. Your rosters, games and settings are saved under this address, so the new one starts empty until you bring them across. This address keeps working for now, and your data stays here too.</p>
+        {!homeApp && (
+          <div style={{ ...cd, padding: 12, marginBottom: 10 }}>
+            <div style={{ ...h3, color: "var(--text2)", marginBottom: 4 }}>In this browser</div>
+            <p style={{ ...mu, margin: "0 0 10px" }}>Opens killsheet.app with your data. Tap Restore there.</p>
+            <button onClick={move} disabled={busy} style={{ ...bs("var(--accent)"), padding: "10px 16px", fontSize: 14, opacity: busy ? 0.6 : 1 }}>{busy ? "Opening..." : "Move my data"}</button>
+          </div>
+        )}
+        {fileSteps}
+      </div>
+    </div>,
+    document.body
+  );
+}
 /* ═══ SELF-TEST (open the app with ?selftest) ═══ */
 // Clicks through the whole app and reports anything that breaks. It saves your data first,
 // runs on a clean slate, then puts your data back. Results appear in a panel over the app.
@@ -19722,6 +19814,45 @@ async function runSelfTest(hooks) {
     }
     return CHANGELOG.length + " change log entries; update bar and Later; What's new in Settings; online version check both ways";
   });
+  await step("Move to killsheet.app", async () => {
+    await nav("Battle");
+    const note = () => all("[data-notice]").find(b => /new address/.test(b.textContent));
+    const menuItem = async () => { await click(document.querySelector("[aria-label='Game menu']"), "game menu"); const b = btn("Move to killsheet.app"); if (!b) await click(document.querySelector("[aria-label='Game menu']"), "game menu (close)"); return b; };
+    if (note() || await menuItem()) throw new Error("the move note or menu item shows on the new address");
+    window.__ksOldAddress = true;
+    let sentTo = null;
+    window.__ksMoveTo = (u) => { sentTo = u; };
+    try {
+      hooks.setFeatures(prev => ({ ...prev })); await settle(20); // draw again as the old address
+      if (!note()) throw new Error("no note pointing to killsheet.app on the old address");
+      const item = await menuItem();
+      if (!item) throw new Error("no Move to killsheet.app in the game menu");
+      await click(item, "Move to killsheet.app");
+      const panel = document.querySelector("[role=dialog][aria-label='Move to killsheet.app']");
+      if (!panel || !/Restore from backup/.test(panel.textContent)) throw new Error("the Move panel didn't open with the backup file steps");
+      const before = snapshotKillSheetStorage();
+      await click([...panel.querySelectorAll("button")].find(b => b.textContent.trim() === "Move my data"), "Move my data");
+      for (let i = 0; i < 50 && !sentTo; i++) await wait(50);
+      if (!sentTo || sentTo.indexOf(NEW_HOME + "#move=") !== 0) throw new Error("Move my data didn't make a killsheet.app link: " + String(sentTo).slice(0, 60));
+      const back = await readMoveLink(sentTo.slice(NEW_HOME.length));
+      if (!back || JSON.stringify(back.data) !== JSON.stringify(before)) throw new Error("the move link doesn't hold the same data");
+      if (await readMoveLink("#tab=rules") !== null) throw new Error("an ordinary # part was read as a move link");
+      await click(document.querySelector("[role=dialog][aria-label='Move to killsheet.app'] [aria-label='Close']"), "close the Move panel");
+      await click(note().querySelector("[aria-label='Dismiss']"), "dismiss the note");
+      if (note() || !store("moveNoteHidden")) throw new Error("Dismiss didn't hide the move note for good");
+      // Arriving at the new address: the Restore card asks first, Cancel leaves everything as it was.
+      await window.__ksTakeMove(sentTo.slice(NEW_HOME.length)); await settle(20);
+      const card = document.querySelector("[role=alertdialog][aria-label='Restore backup']");
+      if (!card || !/Bring over your data from the old address/.test(card.textContent)) throw new Error("the new address didn't offer to bring the data over");
+      await click([...card.querySelectorAll("button")].find(b => b.textContent.trim() === "Cancel"), "Cancel");
+      await window.__ksTakeMove("#move=zNotData"); await settle(20);
+      if (document.querySelector("[role=alertdialog][aria-label='Restore backup']")) throw new Error("a broken move link offered a restore");
+      return "note and menu only on the old address; link round trip " + Math.round(sentTo.length / 1024) + " KB; restore asks first";
+    } finally {
+      delete window.__ksOldAddress; delete window.__ksMoveTo;
+      hooks.setFeatures(prev => ({ ...prev })); await settle();
+    }
+  });
   await step("End game: discard", async () => {
     await nav("Battle");
     if (!store("rosterLocked")) throw new Error("no game in progress to discard");
@@ -19785,7 +19916,8 @@ function App() {
   // What the app shows (Your KillSheet). null until a new player answers the first-time question.
   const [features, setFeatures] = useLocalStorage("features", null);
   const [validate, setValidate] = useLocalStorage("validate", true);
-  const [returning, setReturning] = useState(isReturningPlayer);
+  // Someone arriving with their data from the old address isn't asked the first-time question.
+  const [returning, setReturning] = useState(() => isReturningPlayer() || /^#move=/.test(window.location.hash));
   React.useEffect(() => { if (!features && returning) setFeatures({ ...FEATURE_PRESETS.expert }); }, []);
   // Play online joined the Learning preset (Oct 2026): saved Learning switches pick it up instead of turning Custom.
   React.useEffect(() => { if (features && features.online === false && featureMode({ ...features, online: true }) === "learning") setFeatures(prev => ({ ...prev, online: true })); }, []);
@@ -19798,6 +19930,9 @@ function App() {
   const [showNews, setShowNews] = useState(false);
   React.useEffect(() => { if (seenNews === null) setSeenNews(CHANGELOG[0].date); }, []);
   const openNews = () => { setSeenNews(CHANGELOG[0].date); setShowNews(true); };
+  // The old address (killsheet.pages.dev): a note pointing to killsheet.app, and the Move panel.
+  const [showMove, setShowMove] = useState(false);
+  const [moveNoteHidden, setMoveNoteHidden] = useLocalStorage("moveNoteHidden", false);
   // Appearance: the theme, and whether the accent follows your team's color (Builder reports the team).
   const [appearance, setAppearance] = useLocalStorage("appearance", { theme: "default", matchTeam: false });
   const [teamId, setTeamId] = useState(null); // the Battle tab's team (Match my team)
@@ -19878,6 +20013,7 @@ function App() {
       {features === null && !returning && <Welcome />}
       {showFeatures && <FeaturesPage focus={showFeatures} onClose={() => setShowFeatures(false)} onNews={openNews} />}
       {showNews && <WhatsNew onClose={() => setShowNews(false)} />}
+      {showMove && <MovePanel onClose={() => setShowMove(false)} />}
 
       {/* HEADER: phones show the logo above the tabs; desktop puts it inside the tab bar. The cog (Settings) sits top right on both. */}
       {mobile && (
@@ -19891,6 +20027,7 @@ function App() {
       <div ref={pinnedRef} data-pinned={barHidden ? "hidden" : "shown"} style={{ position: "sticky", top: 0, zIndex: 10, transform: barHidden ? "translateY(-100%)" : "none", transition: window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "none" : "transform 0.2s ease-out" }}>
       {update && update !== laterFor
         ? <NoticeBar color="var(--accent)" text={"A new version of KillSheet is ready." + (mp.status === "connected" ? " Updating reloads the page, so you'll reconnect to your online game." : "")} action="Update" onAction={() => window.location.reload()} onDismiss={() => setLaterFor(update)} dismissLabel="Later" />
+        : onOldAddress() && !moveNoteHidden ? <NoticeBar color="var(--accent)" text="KillSheet has a new address: killsheet.app. Your data can come with you." action="Move" onAction={() => setShowMove(true)} onDismiss={() => setMoveNoteHidden(true)} dismissLabel="Dismiss" />
         : newsSince(seenNews).length > 0 && <NoticeBar color="var(--blue)" text="KillSheet was updated." action="What's new" onAction={openNews} onDismiss={() => setSeenNews(CHANGELOG[0].date)} dismissLabel="Dismiss" />}
       {/* NAV */}
       <nav style={{ display: "flex", background: "var(--card)", borderBottom: "1px solid var(--line)", boxShadow: "0 2px 12px rgba(0,0,0,0.5)" }}>
@@ -19951,7 +20088,7 @@ function App() {
       {/* CONTENT: all tabs stay mounted, hidden with display:none to preserve state */}
       <div className="ks-appear" style={{ display: tab === "rules" ? "block" : "none" }}><ErrorBoundary where="Rules"><Rules search={ruleSearch} tutorialOpen={tutorialOpen} openTutorial={openTutorial} closeTutorial={() => { setTutorialOpen(false); window.scrollTo(0, 0); }} /></ErrorBoundary></div>
       <div className="ks-appear" style={{ display: tab === "missions" ? "block" : "none" }}><ErrorBoundary where="Missions"><Missions campaign={campaign} startCampaign={() => { if (!campaign) setCampaign(cteNew("solo", "m26", 7, "", "")); setTab("builder"); window.scrollTo(0, 0); }} /></ErrorBoundary></div>
-      <div id="panel-builder" className="ks-appear" style={{ display: tab === "builder" ? "block" : "none", ...(battleAccent ? { "--accent": battleAccent } : {}) }}><ErrorBoundary where="Battle"><Builder tp={tp} setTp={setTp} mp={mp} mpHandlerRef={mpHandlerRef} showMP={showMP} setShowMP={setShowMP} tutorialSeen={tutorialSeen} setTutorialSeen={setTutorialSeen} openTutorial={openTutorial} campaign={campaign} setCampaign={setCampaign} onTeamColor={setTeamId} showBattle={() => setTab("builder")} /></ErrorBoundary></div>
+      <div id="panel-builder" className="ks-appear" style={{ display: tab === "builder" ? "block" : "none", ...(battleAccent ? { "--accent": battleAccent } : {}) }}><ErrorBoundary where="Battle"><Builder tp={tp} setTp={setTp} mp={mp} mpHandlerRef={mpHandlerRef} showMP={showMP} setShowMP={setShowMP} tutorialSeen={tutorialSeen} setTutorialSeen={setTutorialSeen} openTutorial={openTutorial} campaign={campaign} setCampaign={setCampaign} onTeamColor={setTeamId} openMove={() => setShowMove(true)} showBattle={() => setTab("builder")} /></ErrorBoundary></div>
       <div className="ks-appear" style={{ display: tab === "community" ? "block" : "none" }}><ErrorBoundary where="Community"><CommunityRosters /><CrashTest /></ErrorBoundary></div>
 
       {/* FOOTER */}

@@ -971,6 +971,45 @@ async function runSelfTest(hooks) {
     }
     return CHANGELOG.length + " change log entries; update bar and Later; What's new in Settings; online version check both ways";
   });
+  await step("Move to killsheet.app", async () => {
+    await nav("Battle");
+    const note = () => all("[data-notice]").find(b => /new address/.test(b.textContent));
+    const menuItem = async () => { await click(document.querySelector("[aria-label='Game menu']"), "game menu"); const b = btn("Move to killsheet.app"); if (!b) await click(document.querySelector("[aria-label='Game menu']"), "game menu (close)"); return b; };
+    if (note() || await menuItem()) throw new Error("the move note or menu item shows on the new address");
+    window.__ksOldAddress = true;
+    let sentTo = null;
+    window.__ksMoveTo = (u) => { sentTo = u; };
+    try {
+      hooks.setFeatures(prev => ({ ...prev })); await settle(20); // draw again as the old address
+      if (!note()) throw new Error("no note pointing to killsheet.app on the old address");
+      const item = await menuItem();
+      if (!item) throw new Error("no Move to killsheet.app in the game menu");
+      await click(item, "Move to killsheet.app");
+      const panel = document.querySelector("[role=dialog][aria-label='Move to killsheet.app']");
+      if (!panel || !/Restore from backup/.test(panel.textContent)) throw new Error("the Move panel didn't open with the backup file steps");
+      const before = snapshotKillSheetStorage();
+      await click([...panel.querySelectorAll("button")].find(b => b.textContent.trim() === "Move my data"), "Move my data");
+      for (let i = 0; i < 50 && !sentTo; i++) await wait(50);
+      if (!sentTo || sentTo.indexOf(NEW_HOME + "#move=") !== 0) throw new Error("Move my data didn't make a killsheet.app link: " + String(sentTo).slice(0, 60));
+      const back = await readMoveLink(sentTo.slice(NEW_HOME.length));
+      if (!back || JSON.stringify(back.data) !== JSON.stringify(before)) throw new Error("the move link doesn't hold the same data");
+      if (await readMoveLink("#tab=rules") !== null) throw new Error("an ordinary # part was read as a move link");
+      await click(document.querySelector("[role=dialog][aria-label='Move to killsheet.app'] [aria-label='Close']"), "close the Move panel");
+      await click(note().querySelector("[aria-label='Dismiss']"), "dismiss the note");
+      if (note() || !store("moveNoteHidden")) throw new Error("Dismiss didn't hide the move note for good");
+      // Arriving at the new address: the Restore card asks first, Cancel leaves everything as it was.
+      await window.__ksTakeMove(sentTo.slice(NEW_HOME.length)); await settle(20);
+      const card = document.querySelector("[role=alertdialog][aria-label='Restore backup']");
+      if (!card || !/Bring over your data from the old address/.test(card.textContent)) throw new Error("the new address didn't offer to bring the data over");
+      await click([...card.querySelectorAll("button")].find(b => b.textContent.trim() === "Cancel"), "Cancel");
+      await window.__ksTakeMove("#move=zNotData"); await settle(20);
+      if (document.querySelector("[role=alertdialog][aria-label='Restore backup']")) throw new Error("a broken move link offered a restore");
+      return "note and menu only on the old address; link round trip " + Math.round(sentTo.length / 1024) + " KB; restore asks first";
+    } finally {
+      delete window.__ksOldAddress; delete window.__ksMoveTo;
+      hooks.setFeatures(prev => ({ ...prev })); await settle();
+    }
+  });
   await step("End game: discard", async () => {
     await nav("Battle");
     if (!store("rosterLocked")) throw new Error("no game in progress to discard");

@@ -2,6 +2,9 @@
 // The change log players see (Settings > What's new). Newest first, one entry per day something a player would
 // notice changed, in plain words. kind: "new", "better" or "fixed". Add an entry with every such change.
 const CHANGELOG = [
+  { date: "2026-10-31", items: [
+    ["new", "KillSheet's new address is killsheet.app. On the old address, a note and Move to killsheet.app in the game menu bring your rosters, games and settings across."],
+  ] },
   { date: "2026-10-30", items: [
     ["new", "A note tells you when a new version of KillSheet is ready, with an Update button."],
     ["new", "What's new: this page, in Settings. After an update, a note links to it once."],
@@ -110,3 +113,78 @@ function NoticeBar({ text, action, onAction, onDismiss, dismissLabel, color }) {
   );
 }
 
+// Moving to killsheet.app (Oct 2026). Browsers keep saved data per address, so the new address starts empty. On the old
+// one, "Move my data" opens killsheet.app with everything in the link's # part (which never leaves the phone), and the
+// Battle tab there offers to restore it. A Home Screen app keeps its own data apart from Safari, so it moves by backup file.
+// window.__ksOldAddress lets the self-test and the preview act as the old address.
+const NEW_HOME = "https://killsheet.app/";
+const onOldAddress = () => window.location.hostname === "killsheet.pages.dev" || !!window.__ksOldAddress;
+const isHomeScreenApp = () => !!(navigator.standalone || (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches));
+async function moveLink() {
+  const json = JSON.stringify({ app: "KillSheet", kind: "backup", version: 1, savedAt: new Date().toISOString(), data: snapshotKillSheetStorage() });
+  let bytes = new TextEncoder().encode(json), tag = "j";
+  if (window.CompressionStream) { bytes = new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new CompressionStream("deflate-raw"))).arrayBuffer()); tag = "z"; }
+  let bin = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return NEW_HOME + "#move=" + tag + btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+// The backup inside a move link, or null when the # part isn't one. Throws when it is one but can't be read.
+async function readMoveLink(hash) {
+  const m = /^#move=([jz])([A-Za-z0-9_-]+)$/.exec(hash || "");
+  if (!m) return null;
+  const bin = atob(m[2].replace(/-/g, "+").replace(/_/g, "/"));
+  let bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
+  if (m[1] === "z") bytes = new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).arrayBuffer());
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+
+function MovePanel({ onClose }) {
+  const [busy, setBusy] = useState(false);
+  const homeApp = isHomeScreenApp();
+  React.useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  const move = () => {
+    setBusy(true);
+    moveLink().then(url => { if (window.__ksMoveTo) window.__ksMoveTo(url); else window.location.href = url; })
+      .catch(() => { setBusy(false); alert("Couldn't move your data from this browser. Use the backup file steps below."); });
+  };
+  const stepRow = (n, body) => (
+    <div style={{ display: "flex", gap: 10, padding: "6px 0" }}>
+      <span style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 11, background: "var(--raised)", color: "var(--accent)", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{n}</span>
+      <div style={{ fontSize: 14, lineHeight: 1.45, color: "var(--text)" }}>{body}</div>
+    </div>
+  );
+  const fileSteps = (
+    <div style={{ ...cd, padding: 12, marginBottom: 10 }}>
+      <div style={{ ...h3, color: "var(--text2)", marginBottom: 4 }}>{homeApp ? "From this Home Screen app" : "From a Home Screen app"}</div>
+      <p style={{ ...mu, margin: "0 0 6px" }}>A Home Screen app keeps its data apart from Safari, so it moves with a backup file.</p>
+      {stepRow(1, <><button onClick={() => downloadBackup(true)} style={{ ...bs("var(--accent)"), padding: "6px 12px", fontSize: 13 }}>Back up</button> <span style={{ color: "var(--text2)" }}>and tap Save to Files.</span></>)}
+      {stepRow(2, <>In Safari, open <a href={NEW_HOME} target="_blank" rel="noopener" style={{ color: "var(--accent)" }}>killsheet.app</a>, tap Share, then Add to Home Screen.</>)}
+      {stepRow(3, <>Open the new KillSheet from your Home Screen. On the Battle tab, open the {"⋯"} menu, tap Restore from backup and pick the file.</>)}
+      {stepRow(4, <>Once your data is there, delete the old KillSheet from your Home Screen.</>)}
+    </div>
+  );
+  return ReactDOM.createPortal(
+    <div role="dialog" aria-modal="true" aria-label="Move to killsheet.app" style={{ position: "fixed", inset: 0, zIndex: 9100, background: "var(--bg)", overflowY: "auto", color: "var(--text)", fontFamily: "'Inter', sans-serif" }}>
+      <div className="ks-appear" style={{ maxWidth: 560, margin: "0 auto", padding: "16px 16px 40px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+          <div style={{ flex: 1, fontSize: 24, fontWeight: 700, color: "var(--accent)", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.04em" }}>Move to killsheet.app</div>
+          <button autoFocus onClick={onClose} aria-label="Close" style={{ ...bs("var(--muted)"), padding: "8px 10px", display: "inline-flex" }}><Icon name="x" size={18} /></button>
+        </div>
+        <p style={{ ...mu, margin: "0 0 12px", lineHeight: 1.5 }}>KillSheet's new address is killsheet.app. Your rosters, games and settings are saved under this address, so the new one starts empty until you bring them across. This address keeps working for now, and your data stays here too.</p>
+        {!homeApp && (
+          <div style={{ ...cd, padding: 12, marginBottom: 10 }}>
+            <div style={{ ...h3, color: "var(--text2)", marginBottom: 4 }}>In this browser</div>
+            <p style={{ ...mu, margin: "0 0 10px" }}>Opens killsheet.app with your data. Tap Restore there.</p>
+            <button onClick={move} disabled={busy} style={{ ...bs("var(--accent)"), padding: "10px 16px", fontSize: 14, opacity: busy ? 0.6 : 1 }}>{busy ? "Opening..." : "Move my data"}</button>
+          </div>
+        )}
+        {fileSteps}
+      </div>
+    </div>,
+    document.body
+  );
+}

@@ -217,7 +217,7 @@ function TurnGuide({ tp, numTPs, setTp, hasInitiative, onInitiative, cp, f, rost
   );
 }
 
-function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen, setTutorialSeen, openTutorial, campaign, setCampaign, onTeamColor, showBattle }) {
+function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen, setTutorialSeen, openTutorial, campaign, setCampaign, onTeamColor, openMove, showBattle }) {
   const phone = useIsMobile();
   const compactBar = useIsMobile(1000); // the full score bar needs about 1000px; below that it uses the phone layout
   const tinyBar = useIsMobile(350); // the smallest phones (320px): the phone bar drops its "VP" label and some padding to fit
@@ -317,24 +317,37 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
     const name = downloadBackup(mobile);
     if (name) showToast("Backup saved as " + name, 4000);
   };
+  // A backup from a file or a move link: checked, then the Restore card asks before anything is replaced.
+  const offerBackup = (b, moved) => {
+    const keys = b && b.data ? Object.keys(b.data) : [];
+    if (b.app !== "KillSheet" || keys.length === 0 || !keys.every(k => k.indexOf(LS_PREFIX) === 0)) throw new Error("not a backup");
+    let rosters = 0;
+    try { rosters = JSON.parse(b.data[LS_PREFIX + "savedRosters"] || "[]").length; } catch (e) { /* older backup */ }
+    setPendingRestore({ data: b.data, savedAt: b.savedAt, rosters, moved });
+    window.scrollTo(0, 0);
+  };
   const readBackup = (file) => {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      try {
-        const b = JSON.parse(reader.result);
-        const keys = b && b.data ? Object.keys(b.data) : [];
-        if (b.app !== "KillSheet" || keys.length === 0 || !keys.every(k => k.indexOf(LS_PREFIX) === 0)) throw new Error("not a backup");
-        let rosters = 0;
-        try { rosters = JSON.parse(b.data[LS_PREFIX + "savedRosters"] || "[]").length; } catch (e) { /* older backup */ }
-        setPendingRestore({ data: b.data, savedAt: b.savedAt, rosters });
-        window.scrollTo(0, 0);
-      } catch (e) {
-        showToast("That file isn't a KillSheet backup.", 4000);
-      }
+      try { offerBackup(JSON.parse(reader.result), false); }
+      catch (e) { showToast("That file isn't a KillSheet backup.", 4000); }
     };
     reader.readAsText(file);
   };
+  // Opened from "Move my data" on the old address: the link's # part holds the data. It's taken off the address
+  // straight away, so a reload or a shared link doesn't carry it. window.__ksTakeMove is the self-test's way in.
+  React.useEffect(() => {
+    const take = (hash) => {
+      if (!/^#move=/.test(hash || "")) return Promise.resolve();
+      if (window.location.hash === hash && window.history.replaceState) window.history.replaceState(null, "", window.location.pathname + window.location.search);
+      return readMoveLink(hash).then(b => { showBattle(); offerBackup(b, true); })
+        .catch(() => showToast("Couldn't read the data from the old address. Use Back up there and Restore from backup here.", 6000));
+    };
+    window.__ksTakeMove = take;
+    take(window.location.hash);
+    return () => { delete window.__ksTakeMove; };
+  }, []);
   // First visit: start a standard game straight away; settings live in the game menu.
   React.useEffect(() => {
     if (gameConfig) return;
@@ -1739,6 +1752,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                   window.__ksInstall ? ["Install app", "Add KillSheet to this device. Works offline.", () => { const p = window.__ksInstall; window.__ksInstall = null; p.prompt(); }, "var(--text)"]
                     : /iPhone|iPad|iPod/.test(navigator.userAgent) && !navigator.standalone ? ["Add to Home Screen", "Works offline once added", () => showToast("In Safari, tap Share, then Add to Home Screen", 6000), "var(--text)"] : null,
                   ["Game settings", feat.missions ? "Mission, equipment, turning points" : "Equipment and turning points", () => setShowSetup(true), "var(--text)"],
+                  onOldAddress() ? ["Move to killsheet.app", "Take your rosters, games and settings to the new address", openMove, "var(--accent)"] : null,
                   ["Back up", "Save your rosters, game and settings to a file", backUp, "var(--text)"],
                   ["Restore from backup", "Load a backup file onto this device", () => restoreInput.current && restoreInput.current.click(), "var(--text)"],
                   f && rosterLocked ? ["End game", "Record the result in your game history", openEndGame, "#5A9C3A"] : null,
@@ -1759,9 +1773,9 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
       <input ref={restoreInput} type="file" accept=".json,application/json" style={{ display: "none" }} onChange={e => { readBackup(e.target.files[0]); e.target.value = ""; }} />
       {pendingRestore && (
         <div role="alertdialog" aria-label="Restore backup" className="ks-appear" style={{ ...cd, padding: 14, borderLeft: "3px solid var(--gold)" }}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif" }}>Restore this backup?</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif" }}>{pendingRestore.moved ? "Bring over your data from the old address?" : "Restore this backup?"}</div>
           <div style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.5, marginTop: 4 }}>
-            Saved {pendingRestore.savedAt ? new Date(pendingRestore.savedAt).toLocaleString() : "at an unknown time"}, with {pendingRestore.rosters} saved roster{pendingRestore.rosters === 1 ? "" : "s"}. It replaces the rosters, game and settings on this device. To keep what's here, back it up first.
+            {pendingRestore.moved ? "Sent from killsheet.pages.dev" : "Saved"} {pendingRestore.savedAt ? new Date(pendingRestore.savedAt).toLocaleString() : "at an unknown time"}, with {pendingRestore.rosters} saved roster{pendingRestore.rosters === 1 ? "" : "s"}. It replaces the rosters, game and settings on this device. To keep what's here, back it up first.
           </div>
           <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
             <button onClick={() => { restoreKillSheetStorage(pendingRestore.data); window.location.reload(); }} style={{ ...bs("var(--gold)"), padding: "8px 16px", fontSize: 13 }}>Restore</button>

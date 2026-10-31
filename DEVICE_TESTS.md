@@ -1,12 +1,12 @@
 # Device tests (for the owner)
 
 Claude tests KillSheet in a Chrome-based browser on one computer. These checks need your own phone, or
-two devices, so they can't be automated. Do them after you've dragged `deploy/` into Cloudflare Pages.
+two devices, so they can't be automated. Do them once a push has gone live (GitHub shows a green tick).
 Each part takes a few minutes. Tell Claude what happened at any step that doesn't match.
 
 ## 1. The self-test on your iPhone (Safari)
 
-1. On your iPhone, open `https://killsheet.pages.dev/?selftest`.
+1. On your iPhone, open `https://killsheet.app/?selftest`.
 2. Wait about a minute. Don't tap anything. It clicks through the whole app by itself.
 3. A panel shows PASS or FAIL for each step. Take a screenshot of it.
 
