@@ -43,11 +43,18 @@ jobs:
         if: env.CAN_PUBLISH == 'true' && github.ref == 'refs/heads/main'
         run: |
           want=$(grep -o 'const VERSION = "[^"]*"' deploy/sw.js)
+          # killsheet.pages.dev proves the publish worked. killsheet.app is the same files, but Cloudflare's bot protection on
+          # the domain can turn GitHub's machines away, so a miss there is reported, not a failure.
           for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
-            got=$(curl -s "https://killsheet.app/sw.js?check=$(date +%s)" | grep -o 'const VERSION = "[^"]*"' || true)
             old=$(curl -s "https://killsheet.pages.dev/sw.js?check=$(date +%s)" | grep -o 'const VERSION = "[^"]*"' || true)
-            if [ "$got" = "$want" ] && [ "$old" = "$want" ]; then echo "Live on killsheet.app and killsheet.pages.dev: $got"; exit 0; fi
-            echo "Waiting for the live site (killsheet.app $got, killsheet.pages.dev $old, want $want)"; sleep 10
+            if [ "$old" = "$want" ]; then
+              echo "Live on killsheet.pages.dev: $old"
+              got=$(curl -s -A "Mozilla/5.0 KillSheet-live-check" "https://killsheet.app/sw.js?check=$(date +%s)" | grep -o 'const VERSION = "[^"]*"' || true)
+              if [ "$got" = "$want" ]; then echo "Live on killsheet.app: $got"
+              else echo "::warning::killsheet.app didn't answer GitHub with this version ($(curl -s -o /dev/null -w '%{http_code}' https://killsheet.app/sw.js)): check it by hand"; fi
+              exit 0
+            fi
+            echo "Waiting for the live site (killsheet.pages.dev $old, want $want)"; sleep 10
           done
           echo "The live site doesn't have this version after 2 minutes."; exit 1
       - name: Publishing is off
