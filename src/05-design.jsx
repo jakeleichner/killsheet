@@ -172,7 +172,9 @@ class ErrorBoundary extends React.Component {
             <button onClick={() => window.location.reload()} style={{ ...bs("var(--accent)"), padding: "10px 16px", fontSize: 14 }}>Reload</button>
             <button onClick={() => downloadBackup(window.innerWidth < 700)} style={{ ...bs("var(--muted)"), padding: "10px 16px", fontSize: 14 }}>Back up my data</button>
             <button onClick={() => this.setState({ error: null })} style={{ ...bs("var(--muted)"), padding: "10px 16px", fontSize: 14 }}>Try again</button>
+            <button onClick={() => this.setState({ reporting: true })} style={{ ...bs("var(--muted)"), padding: "10px 16px", fontSize: 14 }}>Report this problem</button>
           </div>
+          {this.state.reporting && <FeedbackForm tab={where || "app"} error={(where ? where + ": " : "") + String((error && error.message) || error)} onClose={() => this.setState({ reporting: false })} />}
           <details style={{ marginTop: 12 }}><summary style={{ ...mu, fontSize: 12, cursor: "pointer" }}>Error details</summary><code style={{ display: "block", fontSize: 12, color: "var(--muted)", marginTop: 6, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{String((error && error.message) || error)}</code></details>
         </div>
       </div>

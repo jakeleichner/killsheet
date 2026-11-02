@@ -632,7 +632,7 @@ async function runSelfTest(hooks) {
     const alert = all("[role=alert]").find(a => /Something went wrong/.test(a.textContent));
     errors.splice(before); // React reports the test crash as an error; that one is expected
     if (!alert) throw new Error("a crash didn't show the safety screen");
-    for (const t of ["Reload", "Back up my data", "Try again"]) if (![...alert.querySelectorAll("button")].some(b => b.textContent.trim() === t)) throw new Error("the safety screen has no " + t + " button");
+    for (const t of ["Reload", "Back up my data", "Try again", "Report this problem"]) if (![...alert.querySelectorAll("button")].some(b => b.textContent.trim() === t)) throw new Error("the safety screen has no " + t + " button");
     await nav("Rules");
     if (!btn("New to Kill Team")) throw new Error("the other tabs stopped working after a crash");
     await nav("Missions");
@@ -1053,6 +1053,63 @@ async function runSelfTest(hooks) {
     await click(btn("My rosters", true), "My rosters");
     if (!card()) throw new Error("My rosters didn't show the saved rosters");
     return "Play starts a game, Edit loads it, saving again replaces it";
+  });
+  await step("Send feedback and the admin page", async () => {
+    // A pretend server: records what the app sends and answers as the real one would (server/feedback.js).
+    const realFetch = window.fetch, sent = [];
+    let answer = 200, stored = [{ id: 7, created_at: "2026-11-02T10:00:00Z", kind: "problem", message: "Dice froze", contact: "me@example.com", version: "abc", device: "iPhone \u00b7 Safari", screen: "390x844", tab: "builder", error: "" }];
+    window.fetch = async (url, opts = {}) => {
+      if (!String(url).startsWith("/api/")) return realFetch(url, opts);
+      sent.push({ url: String(url), method: opts.method || "GET", headers: opts.headers || {}, body: opts.body ? JSON.parse(opts.body) : null });
+      if (String(url).startsWith("/api/admin/") && (opts.headers || {}).Authorization !== "Bearer test-key") return new Response("{}", { status: 401 });
+      if ((opts.method || "GET") === "GET") return new Response(JSON.stringify({ items: stored }), { status: 200 });
+      return new Response("{}", { status: answer });
+    };
+    const typeText = async (el, text) => { Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value").set.call(el, text); el.dispatchEvent(new Event("input", { bubbles: true })); await settle(); };
+    try {
+      await click(all("button[aria-label='Settings']")[0], "Settings cog");
+      await click(btn("Send feedback"), "Send feedback");
+      const form = () => document.querySelector("[role=dialog][aria-label='Send feedback']");
+      if (!form()) throw new Error("the feedback form didn't open");
+      const sendBtn = () => [...form().querySelectorAll("button")].find(b => b.textContent.trim() === "Send");
+      if (!sendBtn().disabled) throw new Error("Send works with an empty message");
+      await click([...form().querySelectorAll("[role=radio]")].find(b => b.textContent === "Something's wrong"), "Something's wrong");
+      await typeText(form().querySelector("textarea"), "Self-test message");
+      // The server is down: the message stays so it can be sent again.
+      answer = 500;
+      await click(sendBtn(), "Send"); for (let i = 0; i < 20 && !form().querySelector("[role=alert]"); i++) await wait(25);
+      if (!/Couldn't send/.test(form().textContent) || form().querySelector("textarea").value !== "Self-test message") throw new Error("a failed send didn't say so or lost the message");
+      answer = 200;
+      await click(sendBtn(), "Send again"); for (let i = 0; i < 20 && !/Thanks/.test(form().textContent); i++) await wait(25);
+      if (!/Thanks, it's sent/.test(form().textContent)) throw new Error("no thank-you after sending");
+      const b = sent[sent.length - 1].body;
+      if (b.kind !== "problem" || b.message !== "Self-test message" || !b.device || !b.screen || !b.version || b.website !== "") throw new Error("the message went without its details: " + JSON.stringify(b));
+      await click([...form().querySelectorAll("button")].find(x => x.textContent.trim() === "Done"), "Done");
+      await click(document.querySelector("[role=dialog][aria-label='Settings'] [aria-label='Close']"), "close Settings");
+      // The admin page: a wrong password is refused; the right one lists messages; Delete removes one.
+      hooks.setShowAdmin(true); await settle(20);
+      const page = () => document.querySelector("[role=dialog][aria-label='Admin']");
+      if (!page()) throw new Error("the admin page didn't open");
+      const pw = page().querySelector("input[type=password]");
+      await typeInto(pw, "wrong");
+      await click([...page().querySelectorAll("button")].find(x => x.textContent.trim() === "Show messages"), "Show messages");
+      for (let i = 0; i < 20 && !/Wrong admin password/.test(page().textContent); i++) await wait(25);
+      if (!/Wrong admin password/.test(page().textContent)) throw new Error("a wrong password didn't say so");
+      await typeInto(pw, "test-key");
+      await click([...page().querySelectorAll("button")].find(x => x.textContent.trim() === "Show messages"), "Show messages");
+      for (let i = 0; i < 20 && !page().querySelector("[data-feedback='7']"); i++) await wait(25);
+      const item = page().querySelector("[data-feedback='7']");
+      if (!item || !/Dice froze/.test(item.textContent) || !/me@example.com/.test(item.textContent)) throw new Error("the admin page didn't list the message");
+      await click([...item.querySelectorAll("button")].find(x => x.textContent.trim() === "Delete"), "Delete");
+      for (let i = 0; i < 20 && page().querySelector("[data-feedback='7']"); i++) await wait(25);
+      if (page().querySelector("[data-feedback='7']")) throw new Error("Delete didn't remove the message");
+      if (!sent.some(x => x.method === "DELETE" && /id=7/.test(x.url))) throw new Error("Delete didn't ask the server");
+      await click(page().querySelector("[aria-label='Close']"), "close the admin page");
+      return "send fails then works, details attached; admin password checked, list and delete";
+    } finally {
+      window.fetch = realFetch;
+      hooks.setShowAdmin(false); await settle();
+    }
   });
   await step("Old saves get current datacards", async () => {
     const pm = FACTIONS.plaguemarines;

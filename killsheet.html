@@ -6081,7 +6081,9 @@ class ErrorBoundary extends React.Component {
             <button onClick={() => window.location.reload()} style={{ ...bs("var(--accent)"), padding: "10px 16px", fontSize: 14 }}>Reload</button>
             <button onClick={() => downloadBackup(window.innerWidth < 700)} style={{ ...bs("var(--muted)"), padding: "10px 16px", fontSize: 14 }}>Back up my data</button>
             <button onClick={() => this.setState({ error: null })} style={{ ...bs("var(--muted)"), padding: "10px 16px", fontSize: 14 }}>Try again</button>
+            <button onClick={() => this.setState({ reporting: true })} style={{ ...bs("var(--muted)"), padding: "10px 16px", fontSize: 14 }}>Report this problem</button>
           </div>
+          {this.state.reporting && <FeedbackForm tab={where || "app"} error={(where ? where + ": " : "") + String((error && error.message) || error)} onClose={() => this.setState({ reporting: false })} />}
           <details style={{ marginTop: 12 }}><summary style={{ ...mu, fontSize: 12, cursor: "pointer" }}>Error details</summary><code style={{ display: "block", fontSize: 12, color: "var(--muted)", marginTop: 6, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{String((error && error.message) || error)}</code></details>
         </div>
       </div>
@@ -18621,7 +18623,7 @@ function AppearancePicker() {
   );
 }
 
-function FeaturesPage({ onClose, focus, onNews }) {
+function FeaturesPage({ onClose, focus, onNews, onFeedback }) {
   const { feat, setFeat, setMode, validate, setValidate } = React.useContext(FeatureCtx);
   const mode = featureMode(feat);
   const [explain, setExplain] = useState(typeof focus === "string" ? { [focus]: true } : {});
@@ -18665,6 +18667,7 @@ function FeaturesPage({ onClose, focus, onNews }) {
           <button onClick={onClose} aria-label="Close" style={{ ...bs("var(--muted)"), padding: "8px 10px", display: "inline-flex" }}><Icon name="x" size={18} /></button>
         </div>
         {onNews && <button onClick={onNews} style={{ ...bs("var(--blue)"), width: "100%", marginTop: 12, padding: "10px 12px", fontSize: 14, display: "flex", alignItems: "center", gap: 8, textAlign: "left" }}><span style={{ flex: 1 }}>What's new</span><span style={{ fontSize: 12, color: "var(--muted)", textTransform: "none", letterSpacing: 0 }}>{newsDate(CHANGELOG[0].date)}</span></button>}
+        {onFeedback && <button onClick={onFeedback} style={{ ...bs("var(--muted)"), width: "100%", marginTop: 8, padding: "10px 12px", fontSize: 14, display: "flex", alignItems: "center", gap: 8, textAlign: "left" }}><span style={{ flex: 1 }}>Send feedback</span><span style={{ fontSize: 12, color: "var(--muted)", textTransform: "none", letterSpacing: 0 }}>Bugs, rule mistakes, ideas</span></button>}
         <div style={{ ...h3, color: "var(--accent)", margin: "14px 0 8px" }}>APPEARANCE</div>
         <AppearancePicker />
         <div style={{ ...h3, color: "var(--accent)", margin: "14px 0 4px" }}>WHAT KILLSHEET SHOWS</div>
@@ -18690,6 +18693,9 @@ function FeaturesPage({ onClose, focus, onNews }) {
 // The change log players see (Settings > What's new). Newest first, one entry per day something a player would
 // notice changed, in plain words. kind: "new", "better" or "fixed". Add an entry with every such change.
 const CHANGELOG = [
+  { date: "2026-11-02", items: [
+    ["new", "Send feedback, in Settings: report a bug or a rules mistake, or suggest an idea. If something crashes, Report this problem sends the details for you."],
+  ] },
   { date: "2026-11-01", items: [
     ["new", "Start a game from a saved roster in one tap with Play. Edit opens it to make changes first."],
     ["better", "Save roster now sits next to Start game, and My rosters next to Change team. Saving a roster you've edited updates it instead of making a copy."],
@@ -18872,6 +18878,130 @@ function MovePanel({ onClose }) {
           </div>
         )}
         {fileSteps}
+      </div>
+    </div>,
+    document.body
+  );
+}
+/* ═══ FEEDBACK AND THE ADMIN PAGE ═══ */
+// Send feedback (Settings, and Report this problem on the crash screen) posts to /api/feedback, which keeps it in
+// the site's database (server/feedback.js). The owner reads it on the admin page: killsheet.app/?admin, unlocked
+// with the ADMIN_KEY password. The password is only held while the page is open, never saved.
+const FEEDBACK_KINDS = [["problem", "Something's wrong"], ["idea", "An idea"], ["other", "Something else"]];
+
+// The phone and browser in a few words, e.g. "iPhone · Safari · Home Screen app". Nothing that identifies a person.
+function deviceSummary() {
+  const ua = navigator.userAgent || "";
+  const device = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1) ? "iPad" : /Android/.test(ua) ? "Android" : /Mac/.test(ua) ? "Mac" : /Windows/.test(ua) ? "Windows" : /Linux/.test(ua) ? "Linux" : "Other";
+  const browser = /Edg\//.test(ua) ? "Edge" : /Firefox|FxiOS/.test(ua) ? "Firefox" : /Chrome|CriOS/.test(ua) ? "Chrome" : /Safari/.test(ua) ? "Safari" : "Other";
+  return device + " · " + browser + (isHomeScreenApp() ? " · Home Screen app" : "");
+}
+
+function FeedbackForm({ onClose, tab, error }) {
+  const [kind, setKind] = useState(error ? "problem" : "idea");
+  const [message, setMessage] = useState("");
+  const [contact, setContact] = useState("");
+  const [trap, setTrap] = useState(""); // hidden from people; spam robots fill it in
+  const [state, setState] = useState("ready"); // ready, sending, sent, failed, busy
+  React.useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  const send = () => {
+    if (!message.trim() || state === "sending") return;
+    setState("sending");
+    const body = { kind, message: message.trim(), contact: contact.trim(), version: window.KS_VERSION || "preview", device: deviceSummary(), screen: window.innerWidth + "x" + window.innerHeight, tab: tab || "", error: error || "", website: trap };
+    fetch("/api/feedback", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+      .then(r => setState(r.ok ? "sent" : r.status === 429 ? "busy" : "failed"))
+      .catch(() => setState("failed"));
+  };
+  const field = { width: "100%", background: "var(--card)", border: "1px solid var(--line)", borderRadius: 6, color: "var(--text)", padding: "10px 12px", fontSize: 16, fontFamily: "'Inter', sans-serif" };
+  return ReactDOM.createPortal(
+    <div role="dialog" aria-modal="true" aria-label="Send feedback" style={{ position: "fixed", inset: 0, zIndex: 9200, background: "var(--bg)", overflowY: "auto", color: "var(--text)", fontFamily: "'Inter', sans-serif" }}>
+      <div className="ks-appear" style={{ maxWidth: 560, margin: "0 auto", padding: "16px 16px 40px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+          <div style={{ flex: 1, fontSize: 24, fontWeight: 700, color: "var(--accent)", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.04em" }}>{error ? "Report this problem" : "Send feedback"}</div>
+          <button autoFocus onClick={onClose} aria-label="Close" style={{ ...bs("var(--muted)"), padding: "8px 10px", display: "inline-flex" }}><Icon name="x" size={18} /></button>
+        </div>
+        {state === "sent" ? (
+          <div style={{ ...cd, padding: 16, marginTop: 8 }}>
+            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", color: "var(--text)" }}>Thanks, it's sent.</div>
+            <p style={{ ...mu, fontSize: 14, margin: "6px 0 12px" }}>{contact.trim() ? "If it needs a reply, you'll hear back at the address you gave." : "Every message gets read."}</p>
+            <button onClick={onClose} style={{ ...bs("var(--accent)"), padding: "10px 16px", fontSize: 14 }}>Done</button>
+          </div>
+        ) : (
+          <>
+            <p style={{ ...mu, fontSize: 14, margin: "0 0 12px" }}>Found a mistake in a rule, hit a bug, or have an idea? Tell me here.</p>
+            <div role="radiogroup" aria-label="What it's about" style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+              {FEEDBACK_KINDS.map(([id, label]) => (
+                <button key={id} role="radio" aria-checked={kind === id} onClick={() => setKind(id)} style={{ ...bs(kind === id ? "var(--accent)" : "var(--muted)"), padding: "8px 12px", fontSize: 13, background: kind === id ? "color-mix(in srgb, var(--accent) 13%, transparent)" : "transparent" }}>{label}</button>
+              ))}
+            </div>
+            <label style={{ display: "block", fontSize: 13, color: "var(--text2)", marginBottom: 4 }} htmlFor="ks-fb-message">Your message</label>
+            <textarea id="ks-fb-message" value={message} maxLength={2000} rows={6} onChange={e => setMessage(e.target.value)}
+              placeholder={kind === "problem" ? "What happened, and what were you doing just before?" : kind === "idea" ? "What would make KillSheet better for you?" : "What's on your mind?"}
+              style={{ ...field, resize: "vertical", lineHeight: 1.45 }} />
+            <label style={{ display: "block", fontSize: 13, color: "var(--text2)", margin: "10px 0 4px" }} htmlFor="ks-fb-contact">How can I reply? (optional)</label>
+            <input id="ks-fb-contact" value={contact} maxLength={200} onChange={e => setContact(e.target.value)} placeholder="Email or Reddit name" autoComplete="email" style={field} />
+            <input aria-hidden="true" tabIndex={-1} autoComplete="off" value={trap} onChange={e => setTrap(e.target.value)} name="website" style={{ position: "absolute", left: -9999, width: 1, height: 1, opacity: 0 }} />
+            <p style={{ ...mu, fontSize: 12, margin: "8px 0 12px" }}>Sent with it: the KillSheet version, your device type and screen size{error ? ", and the error" : ""}. Nothing else.</p>
+            {state === "failed" && <p role="alert" style={{ fontSize: 13, color: "#E0664A", margin: "0 0 10px" }}>Couldn't send it. Check your connection and try again.</p>}
+            {state === "busy" && <p role="alert" style={{ fontSize: 13, color: "#E0664A", margin: "0 0 10px" }}>That's a lot of messages in a short time. Try again in an hour.</p>}
+            <button onClick={send} disabled={!message.trim() || state === "sending"} style={{ ...bs("var(--accent)"), padding: "10px 18px", fontSize: 14, opacity: !message.trim() || state === "sending" ? 0.5 : 1 }}>{state === "sending" ? "Sending..." : "Send"}</button>
+          </>
+        )}
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+// killsheet.app/?admin: the owner's page for reading feedback.
+function AdminPage({ onClose }) {
+  const [key, setKey] = useState("");
+  const [items, setItems] = useState(null);
+  const [note, setNote] = useState("");
+  const call = (method, query) => fetch("/api/admin/feedback" + (query || ""), { method, headers: { Authorization: "Bearer " + key }, cache: "no-store" });
+  const load = () => {
+    setNote("Loading...");
+    call("GET").then(r => r.ok ? r.json().then(j => { setItems(j.items || []); setNote(""); })
+      : setNote(r.status === 401 ? "Wrong admin password." : r.status === 503 ? "The database or admin password isn't set up on Cloudflare yet." : "Couldn't load (error " + r.status + ")."))
+      .catch(() => setNote("Couldn't reach the site. Check your connection."));
+  };
+  const remove = (m) => {
+    if (!confirm("Delete this message?")) return;
+    call("DELETE", "?id=" + m.id).then(r => { if (r.ok) setItems(list => list.filter(x => x.id !== m.id)); else setNote("Couldn't delete (error " + r.status + ")."); })
+      .catch(() => setNote("Couldn't reach the site. Check your connection."));
+  };
+  const kindLabel = Object.fromEntries(FEEDBACK_KINDS);
+  return ReactDOM.createPortal(
+    <div role="dialog" aria-modal="true" aria-label="Admin" style={{ position: "fixed", inset: 0, zIndex: 9300, background: "var(--bg)", overflowY: "auto", color: "var(--text)", fontFamily: "'Inter', sans-serif" }}>
+      <div style={{ maxWidth: 720, margin: "0 auto", padding: "16px 16px 40px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+          <div style={{ flex: 1, fontSize: 24, fontWeight: 700, color: "var(--accent)", fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.04em" }}>Admin: feedback</div>
+          <button onClick={onClose} aria-label="Close" style={{ ...bs("var(--muted)"), padding: "8px 10px", display: "inline-flex" }}><Icon name="x" size={18} /></button>
+        </div>
+        <form onSubmit={e => { e.preventDefault(); load(); }} style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+          <input type="text" name="username" value="admin" autoComplete="username" readOnly hidden />
+          <input type="password" aria-label="Admin password" value={key} onChange={e => setKey(e.target.value)} autoComplete="current-password" placeholder="Admin password" style={{ flex: 1, minWidth: 0, background: "var(--card)", border: "1px solid var(--line)", borderRadius: 6, color: "var(--text)", padding: "10px 12px", fontSize: 16 }} />
+          <button type="submit" disabled={!key} style={{ ...bs("var(--accent)"), padding: "10px 14px", fontSize: 13, opacity: key ? 1 : 0.5 }}>{items ? "Refresh" : "Show messages"}</button>
+        </form>
+        {note && <p role="status" style={{ ...mu, fontSize: 14, margin: "0 0 10px" }}>{note}</p>}
+        {items && items.length === 0 && <p style={{ ...mu, fontSize: 14 }}>No messages.</p>}
+        {items && items.map(m => (
+          <div key={m.id} data-feedback={m.id} style={{ ...cd, padding: 12, marginBottom: 8, borderLeft: "3px solid " + (m.kind === "problem" ? "#E0664A" : m.kind === "idea" ? "var(--blue)" : "var(--line)") }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text2)", textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "'Rajdhani', sans-serif" }}>{kindLabel[m.kind] || m.kind}</span>
+              <span style={{ fontSize: 12, color: "var(--muted)", flex: 1 }}>{new Date(m.created_at).toLocaleString()}</span>
+              <button onClick={() => remove(m)} style={{ ...bs("#E0664A"), padding: "4px 10px", fontSize: 12 }}>Delete</button>
+            </div>
+            <div style={{ fontSize: 15, lineHeight: 1.5, margin: "6px 0", whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{m.message}</div>
+            {m.contact && <div style={{ fontSize: 13, color: "var(--text2)", overflowWrap: "anywhere" }}>Reply to: {m.contact}</div>}
+            {m.error && <div style={{ fontSize: 12, color: "#E0664A", marginTop: 4, overflowWrap: "anywhere" }}>Error: {m.error}</div>}
+            <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>{[m.device, m.screen, m.tab && "tab: " + m.tab, m.version && "version " + m.version].filter(Boolean).join(" · ")}</div>
+          </div>
+        ))}
       </div>
     </div>,
     document.body
@@ -19511,7 +19641,7 @@ async function runSelfTest(hooks) {
     const alert = all("[role=alert]").find(a => /Something went wrong/.test(a.textContent));
     errors.splice(before); // React reports the test crash as an error; that one is expected
     if (!alert) throw new Error("a crash didn't show the safety screen");
-    for (const t of ["Reload", "Back up my data", "Try again"]) if (![...alert.querySelectorAll("button")].some(b => b.textContent.trim() === t)) throw new Error("the safety screen has no " + t + " button");
+    for (const t of ["Reload", "Back up my data", "Try again", "Report this problem"]) if (![...alert.querySelectorAll("button")].some(b => b.textContent.trim() === t)) throw new Error("the safety screen has no " + t + " button");
     await nav("Rules");
     if (!btn("New to Kill Team")) throw new Error("the other tabs stopped working after a crash");
     await nav("Missions");
@@ -19933,6 +20063,63 @@ async function runSelfTest(hooks) {
     if (!card()) throw new Error("My rosters didn't show the saved rosters");
     return "Play starts a game, Edit loads it, saving again replaces it";
   });
+  await step("Send feedback and the admin page", async () => {
+    // A pretend server: records what the app sends and answers as the real one would (server/feedback.js).
+    const realFetch = window.fetch, sent = [];
+    let answer = 200, stored = [{ id: 7, created_at: "2026-11-02T10:00:00Z", kind: "problem", message: "Dice froze", contact: "me@example.com", version: "abc", device: "iPhone \u00b7 Safari", screen: "390x844", tab: "builder", error: "" }];
+    window.fetch = async (url, opts = {}) => {
+      if (!String(url).startsWith("/api/")) return realFetch(url, opts);
+      sent.push({ url: String(url), method: opts.method || "GET", headers: opts.headers || {}, body: opts.body ? JSON.parse(opts.body) : null });
+      if (String(url).startsWith("/api/admin/") && (opts.headers || {}).Authorization !== "Bearer test-key") return new Response("{}", { status: 401 });
+      if ((opts.method || "GET") === "GET") return new Response(JSON.stringify({ items: stored }), { status: 200 });
+      return new Response("{}", { status: answer });
+    };
+    const typeText = async (el, text) => { Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value").set.call(el, text); el.dispatchEvent(new Event("input", { bubbles: true })); await settle(); };
+    try {
+      await click(all("button[aria-label='Settings']")[0], "Settings cog");
+      await click(btn("Send feedback"), "Send feedback");
+      const form = () => document.querySelector("[role=dialog][aria-label='Send feedback']");
+      if (!form()) throw new Error("the feedback form didn't open");
+      const sendBtn = () => [...form().querySelectorAll("button")].find(b => b.textContent.trim() === "Send");
+      if (!sendBtn().disabled) throw new Error("Send works with an empty message");
+      await click([...form().querySelectorAll("[role=radio]")].find(b => b.textContent === "Something's wrong"), "Something's wrong");
+      await typeText(form().querySelector("textarea"), "Self-test message");
+      // The server is down: the message stays so it can be sent again.
+      answer = 500;
+      await click(sendBtn(), "Send"); for (let i = 0; i < 20 && !form().querySelector("[role=alert]"); i++) await wait(25);
+      if (!/Couldn't send/.test(form().textContent) || form().querySelector("textarea").value !== "Self-test message") throw new Error("a failed send didn't say so or lost the message");
+      answer = 200;
+      await click(sendBtn(), "Send again"); for (let i = 0; i < 20 && !/Thanks/.test(form().textContent); i++) await wait(25);
+      if (!/Thanks, it's sent/.test(form().textContent)) throw new Error("no thank-you after sending");
+      const b = sent[sent.length - 1].body;
+      if (b.kind !== "problem" || b.message !== "Self-test message" || !b.device || !b.screen || !b.version || b.website !== "") throw new Error("the message went without its details: " + JSON.stringify(b));
+      await click([...form().querySelectorAll("button")].find(x => x.textContent.trim() === "Done"), "Done");
+      await click(document.querySelector("[role=dialog][aria-label='Settings'] [aria-label='Close']"), "close Settings");
+      // The admin page: a wrong password is refused; the right one lists messages; Delete removes one.
+      hooks.setShowAdmin(true); await settle(20);
+      const page = () => document.querySelector("[role=dialog][aria-label='Admin']");
+      if (!page()) throw new Error("the admin page didn't open");
+      const pw = page().querySelector("input[type=password]");
+      await typeInto(pw, "wrong");
+      await click([...page().querySelectorAll("button")].find(x => x.textContent.trim() === "Show messages"), "Show messages");
+      for (let i = 0; i < 20 && !/Wrong admin password/.test(page().textContent); i++) await wait(25);
+      if (!/Wrong admin password/.test(page().textContent)) throw new Error("a wrong password didn't say so");
+      await typeInto(pw, "test-key");
+      await click([...page().querySelectorAll("button")].find(x => x.textContent.trim() === "Show messages"), "Show messages");
+      for (let i = 0; i < 20 && !page().querySelector("[data-feedback='7']"); i++) await wait(25);
+      const item = page().querySelector("[data-feedback='7']");
+      if (!item || !/Dice froze/.test(item.textContent) || !/me@example.com/.test(item.textContent)) throw new Error("the admin page didn't list the message");
+      await click([...item.querySelectorAll("button")].find(x => x.textContent.trim() === "Delete"), "Delete");
+      for (let i = 0; i < 20 && page().querySelector("[data-feedback='7']"); i++) await wait(25);
+      if (page().querySelector("[data-feedback='7']")) throw new Error("Delete didn't remove the message");
+      if (!sent.some(x => x.method === "DELETE" && /id=7/.test(x.url))) throw new Error("Delete didn't ask the server");
+      await click(page().querySelector("[aria-label='Close']"), "close the admin page");
+      return "send fails then works, details attached; admin password checked, list and delete";
+    } finally {
+      window.fetch = realFetch;
+      hooks.setShowAdmin(false); await settle();
+    }
+  });
   await step("Old saves get current datacards", async () => {
     const pm = FACTIONS.plaguemarines;
     const old = [{ id: "champion", name: "Plague Champion", wounds: 1 }, { id: "fighter", name: "PM Fighter" }, { id: "fighter", name: "PM Fighter" }, { id: "gone_op", name: "Removed" }];
@@ -19999,6 +20186,9 @@ function App() {
   const openNews = () => { setSeenNews(CHANGELOG[0].date); setShowNews(true); };
   // The old address (killsheet.pages.dev): a note pointing to killsheet.app, and the Move panel.
   const [showMove, setShowMove] = useState(false);
+  // Send feedback (from Settings) and the owner's admin page (killsheet.app/?admin).
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(() => /[?&]admin\b/.test(window.location.search));
   const [moveNoteHidden, setMoveNoteHidden] = useLocalStorage("moveNoteHidden", false);
   // Appearance: the theme, and whether the accent follows your team's color (Builder reports the team).
   const [appearance, setAppearance] = useLocalStorage("appearance", { theme: "default", matchTeam: false });
@@ -20018,7 +20208,7 @@ function App() {
     openFeatures: (k) => setShowFeatures(typeof k === "string" ? k : true),
     openRule: (q) => { setTutorialOpen(false); setTab("rules"); setRuleSearch({ q, n: Date.now() }); window.scrollTo(0, 0); },
   };
-  React.useEffect(() => { if (/[?&]selftest\b/.test(window.location.search)) setTimeout(() => runSelfTest({ setFeatures, setReturning, mpMessage: (m) => mpHandlerRef.current && mpHandlerRef.current(m) }), 1000); }, []);
+  React.useEffect(() => { if (/[?&]selftest\b/.test(window.location.search)) setTimeout(() => runSelfTest({ setFeatures, setReturning, setShowAdmin, mpMessage: (m) => mpHandlerRef.current && mpHandlerRef.current(m) }), 1000); }, []);
   const openTutorial = () => { setTab("rules"); setTutorialOpen(true); setTutorialSeen(true); window.scrollTo(0, 0); };
   // Migration: old persisted tabs ("sequence" was deleted, "tutorial" moved into Rules)
   React.useEffect(() => {
@@ -20080,7 +20270,9 @@ function App() {
     <FeatureCtx.Provider value={featureCtx}>
     <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)", fontFamily: "'Inter', 'Segoe UI', sans-serif", fontSize: 14 }}>
       {features === null && !returning && <Welcome />}
-      {showFeatures && <FeaturesPage focus={showFeatures} onClose={() => setShowFeatures(false)} onNews={openNews} />}
+      {showFeatures && <FeaturesPage focus={showFeatures} onClose={() => setShowFeatures(false)} onNews={openNews} onFeedback={() => setShowFeedback(true)} />}
+      {showFeedback && <FeedbackForm tab={tab} onClose={() => setShowFeedback(false)} />}
+      {showAdmin && <AdminPage onClose={() => setShowAdmin(false)} />}
       {showNews && <WhatsNew onClose={() => setShowNews(false)} />}
       {showMove && <MovePanel onClose={() => setShowMove(false)} />}
 

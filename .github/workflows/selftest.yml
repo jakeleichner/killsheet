@@ -28,6 +28,8 @@ jobs:
           node-version: 22
       - name: Checks (tools/check.py)
         run: python3 tools/check.py
+      - name: Server tests (tools/test_api.mjs)
+        run: node --experimental-sqlite tools/test_api.mjs
       - name: Build the upload version (tools/build_deploy.py)
         run: python3 tools/build_deploy.py
       - name: Self-test in headless Chrome (tools/run_selftest.mjs)

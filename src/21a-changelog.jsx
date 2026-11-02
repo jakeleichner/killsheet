@@ -2,6 +2,9 @@
 // The change log players see (Settings > What's new). Newest first, one entry per day something a player would
 // notice changed, in plain words. kind: "new", "better" or "fixed". Add an entry with every such change.
 const CHANGELOG = [
+  { date: "2026-11-02", items: [
+    ["new", "Send feedback, in Settings: report a bug or a rules mistake, or suggest an idea. If something crashes, Report this problem sends the details for you."],
+  ] },
   { date: "2026-11-01", items: [
     ["new", "Start a game from a saved roster in one tap with Play. Edit opens it to make changes first."],
     ["better", "Save roster now sits next to Start game, and My rosters next to Change team. Saving a roster you've edited updates it instead of making a copy."],

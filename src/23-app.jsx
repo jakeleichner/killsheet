@@ -24,6 +24,9 @@ function App() {
   const openNews = () => { setSeenNews(CHANGELOG[0].date); setShowNews(true); };
   // The old address (killsheet.pages.dev): a note pointing to killsheet.app, and the Move panel.
   const [showMove, setShowMove] = useState(false);
+  // Send feedback (from Settings) and the owner's admin page (killsheet.app/?admin).
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(() => /[?&]admin\b/.test(window.location.search));
   const [moveNoteHidden, setMoveNoteHidden] = useLocalStorage("moveNoteHidden", false);
   // Appearance: the theme, and whether the accent follows your team's color (Builder reports the team).
   const [appearance, setAppearance] = useLocalStorage("appearance", { theme: "default", matchTeam: false });
@@ -43,7 +46,7 @@ function App() {
     openFeatures: (k) => setShowFeatures(typeof k === "string" ? k : true),
     openRule: (q) => { setTutorialOpen(false); setTab("rules"); setRuleSearch({ q, n: Date.now() }); window.scrollTo(0, 0); },
   };
-  React.useEffect(() => { if (/[?&]selftest\b/.test(window.location.search)) setTimeout(() => runSelfTest({ setFeatures, setReturning, mpMessage: (m) => mpHandlerRef.current && mpHandlerRef.current(m) }), 1000); }, []);
+  React.useEffect(() => { if (/[?&]selftest\b/.test(window.location.search)) setTimeout(() => runSelfTest({ setFeatures, setReturning, setShowAdmin, mpMessage: (m) => mpHandlerRef.current && mpHandlerRef.current(m) }), 1000); }, []);
   const openTutorial = () => { setTab("rules"); setTutorialOpen(true); setTutorialSeen(true); window.scrollTo(0, 0); };
   // Migration: old persisted tabs ("sequence" was deleted, "tutorial" moved into Rules)
   React.useEffect(() => {
@@ -105,7 +108,9 @@ function App() {
     <FeatureCtx.Provider value={featureCtx}>
     <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)", fontFamily: "'Inter', 'Segoe UI', sans-serif", fontSize: 14 }}>
       {features === null && !returning && <Welcome />}
-      {showFeatures && <FeaturesPage focus={showFeatures} onClose={() => setShowFeatures(false)} onNews={openNews} />}
+      {showFeatures && <FeaturesPage focus={showFeatures} onClose={() => setShowFeatures(false)} onNews={openNews} onFeedback={() => setShowFeedback(true)} />}
+      {showFeedback && <FeedbackForm tab={tab} onClose={() => setShowFeedback(false)} />}
+      {showAdmin && <AdminPage onClose={() => setShowAdmin(false)} />}
       {showNews && <WhatsNew onClose={() => setShowNews(false)} />}
       {showMove && <MovePanel onClose={() => setShowMove(false)} />}
 
