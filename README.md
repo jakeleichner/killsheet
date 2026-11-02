@@ -127,7 +127,6 @@ The gold→rust bulk swap was done globally, which flattened the "look here" sig
 - CP/VP and tac-op picks not synced in multiplayer (private per player).
 - WebRTC may fail on ~15% of restrictive networks.
 - Closing a tab drops an online game; the room is remembered for 12 hours and either player can rejoin it with one tap (see the Rejoin entry in Done recently). Two tabs on one computer were tested, real phones on different networks were not.
-- Killzone selector is cosmetic (doesn't apply terrain rules).
 - Mission scoring is manual (no enforced primary/tac-op effects).
 
 ---
@@ -364,13 +363,12 @@ Estimated 2-3 hours. Should be its own focused session with its own QA pass (mix
 - **Friends (owner, Oct 29: wanted).** Add friends (by a short code or name), compare records head to head, and a friends-only leaderboard. Also needs accounts. Could make starting an online game with a friend one tap.
 - **Community board v1 (owner, Nov 1: decided; next up).** Decisions: no accounts yet (each device gets a hidden ID; posts show a player name typed in), features are post a roster (name, short note, player name), browse by team, sort Top/New, upvote only (no downvotes), one-tap Use this roster / Add as opponent, delete your own posts, a Report button and a hidden admin page for the owner to remove posts. Also: word filter, a per-device daily post limit, the tab says "Can't reach the board" when the server is down or offline (the rest of the app unaffected), self-test against a fake server. Backend: Cloudflare D1 + Pages Functions under killsheet.app/api, published by the same workflow; owner creates the D1 database and binds it to the Pages project (Claude walks them through it). Owner and friend seed a few real rosters before launch. Until it's live, `COMMUNITY_LIVE = false` (src/19-community.jsx) keeps the tab out of the nav (hidden Nov 1 so strangers from Reddit don't see the example posts); the crash-screen self-test moved to the Missions tab.
 - **Check the detailed scoring panel against Approved Ops (needs the paid pack).** The free PDFs only say Approved Ops scores a kill op, a crit op and a tac op from your archetypes, plus a chosen primary op. The panel's layout (primary 0-2VP per turning point for each side, three tac ops with two 1VP boxes each, "3 Tac Ops" and 3 equipment as the standard game) may come from an older edition. Not changed, since nothing free confirms either way.
-- **Killzone setting (owner, Oct 30: explained, decision pending).** The game settings' Killzone choice does nothing yet; free killzone rules exist only for Tomb World (which also covers Gallowdark). Options: remove the setting, or show Tomb World's terrain rules when it's picked.
 - **Legion of the Damned**: previewed in the Big Autumn Preview; add once its rules are published.
 
 ### Lower-priority backlog
 - More factions: see convention 11. Add `tools/teams/<team>.py`, list it in `ORDER.txt`, run the build, then `python3 tools/check.py` and build a full roster in the preview.
 - Tac op conditions in the scoring panel, if a free source ever covers them (they're on the paid Approved Ops cards).
-- Make killzone rules functional (currently cosmetic).
+- Killzone terrain rules: the Game settings Killzone choice was removed (owner, Nov 2) because it did nothing; the setting's value (`setupKZ`, `gameConfig.killzone`) is still filled in from missions. Bring a choice back only with something it does, e.g. Tomb World's free terrain rules (walls, doors), which also cover Gallowdark; the others are in paid books.
 - Verify mp.send() under heavy load (race conditions / double-fires).
 - **Quarterly rules check (owner: last in line).** Every three months a scheduled task on the owner's Mac checks Games Workshop's team rules downloads for update logs newer than a recorded last-checked date per team, downloads changed PDFs, and writes a report for the owner to approve; nothing in the app changes without that. Needs the per-team record first (start from the October 2026 rules check), then a trial run. If GW's site blocks downloads, the owner drops the PDFs in Downloads instead.
 

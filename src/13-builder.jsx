@@ -656,15 +656,6 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
             <NumPicker value={setupTPs} onChange={setSetupTPs} min={1} max={6} />
           </InputRow>
 
-          <InputRow label="Killzone">
-            <select value={setupKZ} onChange={(e) => setSetupKZ(e.target.value)} style={{ background: "var(--raised)", border: "1px solid var(--line)", borderRadius: 2, color: "var(--text)", fontSize: 11, padding: "4px 8px", fontFamily: "'Segoe UI', sans-serif", outline: "none" }}>
-              <option value="open">Open Play</option>
-              <option value="volkus">Volkus</option>
-              <option value="gallowdark">Gallowdark</option>
-              <option value="tomb_world">Tomb World</option>
-              <option value="bheta_decima">Bheta-Decima</option>
-            </select>
-          </InputRow>
         </div>
 
         <div style={{ ...cd, padding: 12, background: "var(--raised)", marginTop: 4 }}>
@@ -674,7 +665,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
         </div>
 
         <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
-          {(() => { const changed = setupRef.pack !== "" || setupMission !== "" || setupEquip !== 3 || setupTacOps !== 3 || setupTPs !== 4 || setupKZ !== "open"; return (
+          {(() => { const changed = setupRef.pack !== "" || setupMission !== "" || setupEquip !== 3 || setupTacOps !== 3 || setupTPs !== 4; return (
           <button onClick={() => { setSetupRef({ pack: "", idx: "" }); setSetupMission(""); setSetupEquip(3); setSetupTacOps(3); setSetupTPs(4); setSetupKZ("open"); }} style={{ ...bs(changed ? "var(--accent)" : "var(--muted)"), flex: 1, padding: "10px 0", fontSize: 11, background: changed ? "color-mix(in srgb, var(--accent) 7%, transparent)" : "transparent" }}>Reset to Defaults</button>
           ); })()}
           <button onClick={confirmSetup} style={{ ...bs("var(--accent)"), flex: 2, padding: "10px 0", fontSize: 12, fontWeight: 700, background: "color-mix(in srgb, var(--accent) 7%, transparent)", letterSpacing: "0.08em" }}>

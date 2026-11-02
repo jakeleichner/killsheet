@@ -347,6 +347,7 @@ async function runSelfTest(hooks) {
     if (!ploy) { const g = all("button").find(b => /Turning point guide/.test(b.textContent)); if (g) await click(g, "turning point guide"); ploy = all("[aria-label$='ploy, 1CP)?']")[0]; }
     if (!ploy) throw new Error("no ploy tips in the turning point guide");
     await click(ploy, "ploy chip");
+    for (let i = 0; i < 20 && !(tip() && tip().textContent.length >= 20); i++) await wait(25); // give the tip a moment to open
     if (!tip() || tip().textContent.length < 20) throw new Error("the ploy tip didn't open");
     document.body.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true })); await settle();
     // Rule names inside rule text are tips too (a ploy that says "Fall Back" or names another ploy).
