@@ -6,7 +6,7 @@ Read `README.md` first: it has the project context, design system, gotchas, and 
 - The owner is non-technical. Explain things plainly and drive the work.
 - Commit and push straight to `main`. No feature branches or PRs.
 - Keep the README's "Work queue" current: remove items as they're finished.
-- Every change a player would notice (new feature, improvement, fix) gets a line in `CHANGELOG` (`src/21a-changelog.jsx`) before pushing: newest date first, kind `new`, `better` or `fixed`, plain player-facing words (not commit-message style). It's the app's What's new page.
+- Every change a player would notice (new feature, improvement, fix) gets a line in `CHANGELOG` (`src/21a-changelog.jsx`) before pushing: newest date first, kind `new`, `better` or `fixed`, plain player-facing words (not commit-message style). It's the app's What's new page. Write it for players: what they can now do or what works better, in a short line. Leave out behind-the-scenes work (tests, hosting, search engines, link previews, the self-test) and hidden or unfinished features (owner, Nov 1).
 - `gh` is at `/opt/homebrew/bin/gh` (Homebrew isn't on Claude's shell PATH).
 - Text shown in the app is US English (color, defense, behavior); `tools/check.py` flags British spellings, and `tools/us_spelling.py` has the list. Team names stay as Games Workshop prints them.
 - Text shown in the app must read like a person wrote it: no em dashes, no hype ("extremely powerful", "game-changer"), no filler ("This means", "Essentially"), no tacked-on slogans ("Make it count."), no ALL-CAPS emphasis. Plain, direct rules language.
