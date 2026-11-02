@@ -242,7 +242,10 @@ async function runSelfTest(hooks) {
   await step("Save a roster and back up", async () => {
     await nav("Battle");
     const dc = btn("Datacards", true); if (dc) await click(dc, "Datacards");
-    const save = btn("Save", true) || all("button").find(b => b.textContent.trim() === "Save"); if (save) await click(save, "Save");
+    const back = all("button").find(b => /Continue with/.test(b.textContent)); if (back) await click(back, "Continue with the team"); // the earlier steps can leave the team list open
+    const dc2 = btn("Datacards", true); if (dc2) await click(dc2, "Datacards");
+    const save = btn("Save", true) || btn("Save roster", true); if (save) await click(save, "Save");
+    if (!(store("savedRosters") || []).length) throw new Error("Save didn't save a roster (" + (save ? "tapped Save" : "no Save button") + ", team " + store("fid") + ", " + (store("roster") || []).length + " operatives)");
     await click(document.querySelector("[aria-label='Game menu']"), "game menu");
     await click(btn("Back up"), "Back up");
     if (!lastBlob) throw new Error("no backup file was made");
@@ -1023,6 +1026,33 @@ async function runSelfTest(hooks) {
     if (!all("input").some(i => i.placeholder === "Search teams or factions")) throw new Error("Discard didn't go back to the team picker");
     if (!btn("Undo")) throw new Error("no Undo after discarding a game");
     return "not recorded, back at the team picker, with Undo";
+  });
+  await step("Saved rosters: play and edit", async () => {
+    await nav("Battle");
+    const saved = store("savedRosters") || [];
+    if (!saved.length) throw new Error("no saved roster from the earlier step");
+    const r = saved[0];
+    const card = () => all("[data-saved-roster]").find(c => c.getAttribute("data-saved-roster") === r.id);
+    const cardBtn = (t) => card() && [...card().querySelectorAll("button")].find(b => b.textContent.trim() === t);
+    if (!card()) throw new Error("the saved roster isn't listed on the team picker");
+    // Play: loaded and started in one tap.
+    await click(cardBtn("Play"), "Play");
+    if (!store("rosterLocked")) throw new Error("Play didn't start a game");
+    if (store("fid") !== r.f || (store("roster") || []).length !== r.o.length) throw new Error("Play loaded the wrong roster");
+    if (!document.querySelector("[data-logbtn]")) throw new Error("no game screen after Play");
+    // Edit: loaded, not started, with Save roster beside Start game and My rosters beside Change team.
+    await click(document.querySelector("[aria-label='Game menu']"), "game menu");
+    await click(btn("End game"), "End game");
+    await click(btn("Discard game", true), "Discard game");
+    await click(cardBtn("Edit"), "Edit");
+    if (store("rosterLocked")) throw new Error("Edit started a game");
+    if (store("fid") !== r.f || (store("roster") || []).length !== r.o.length) throw new Error("Edit loaded the wrong roster");
+    if (!btn("Start game")) throw new Error("no Start game after Edit");
+    await click(btn("Save roster", true), "Save roster");
+    if ((store("savedRosters") || []).length !== saved.length) throw new Error("saving the loaded roster again made a copy instead of replacing it");
+    await click(btn("My rosters", true), "My rosters");
+    if (!card()) throw new Error("My rosters didn't show the saved rosters");
+    return "Play starts a game, Edit loads it, saving again replaces it";
   });
   await step("Old saves get current datacards", async () => {
     const pm = FACTIONS.plaguemarines;

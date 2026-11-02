@@ -263,6 +263,8 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   const [activated, setActivated] = useLocalStorage("activated", {});
   const [npoUnits, setNpoUnits] = useLocalStorage("npoUnits", []);
   const [savedRosters, setSavedRosters] = useLocalStorage("savedRosters", []);
+  // The saved roster last loaded or saved, so saving again offers its name (and replaces it) instead of making a copy.
+  const [lastSaved, setLastSaved] = useState(null);
   const [orders, setOrders] = useLocalStorage("orders", {});
   const [battleUses, setBattleUses] = useLocalStorage("battleUses", {});
   const [counteracted, setCounteracted] = useLocalStorage("counteracted", {});
@@ -931,7 +933,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   const rosterData = () => ({ f: fid, o: roster.map(r => baseOf(r)), fe: Object.keys(eq).filter(k => eq[k]), ue: Object.keys(uEq).filter(k => uEq[k]), cp: chapterPrimary, cs: chapterSecondary, cv: chapterVeteran, cw: carried });
   const saveRoster = () => {
     if (!fid || roster.length === 0) return;
-    const fallback = f.name + " (" + roster.length + ")";
+    const fallback = lastSaved && lastSaved.f === fid ? lastSaved.name : f.name + " (" + roster.length + ")";
     const typed = prompt("Name this roster:", fallback);
     if (typed == null) return;
     const name = typed.trim() || fallback;
@@ -943,19 +945,25 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
     } else {
       setSavedRosters([entry, ...savedRosters]);
     }
+    setLastSaved({ f: fid, name });
     showToast("Saved: " + name);
   };
-  const loadSaved = (entry) => {
+  // Edit loads a saved roster to change it; Play loads it and starts the game, the same as tapping Start game.
+  const loadSaved = (entry, play) => {
     const faction = FACTIONS[entry.f];
     if (!faction) { showToast("That team is no longer in the app."); return; }
-    withUndo("Loaded " + entry.name, () => {
+    withUndo((play ? "Started a game with " : "Loaded ") + entry.name, () => {
     selectFaction(entry.f);
-    setRoster(makeInstances(faction, entry.o));
+    const ops = makeInstances(faction, entry.o);
+    setRoster(ops);
     const e = {}; (entry.fe || []).forEach(id => { e[id] = true; }); setEq(e);
     const u = {}; (entry.ue || []).forEach(id => { u[id] = true; }); setUEq(u);
     setChapterPrimary(entry.cp || ""); setChapterSecondary(entry.cs || ""); setChapterVeteran(entry.cv || {}); setCarried(entry.cw || {});
+    if (play) { const c = {}; ops.forEach(op => { c[op.id] = true; }); setCardCollapsed(c); setRosterLocked(true); setMobilePanel("cards"); }
     });
+    setLastSaved({ f: entry.f, name: entry.name });
     setPickerOpen(false); setPickerSearch(""); setSavedMenu(null); setPeek(null);
+    window.scrollTo(0, 0);
   };
   const renameSaved = (entry) => {
     const typed = prompt("Rename roster:", entry.name);
@@ -1823,10 +1831,11 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
 
       {/* Faction select: collapses to one bar once a team is picked */}
       {f && !pickerOpen ? (rosterLocked ? null :
-        <div style={{ ...cd, display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", marginBottom: 14, borderTop: "2px solid " + f.color }}>
-          <div style={bg(f.color)}>{f.badge}</div>
+        <div style={{ ...cd, display: "flex", alignItems: "center", gap: mobile ? 6 : 10, padding: "10px 12px", marginBottom: 14, borderTop: "2px solid " + f.color }}>
+          {!mobile && <div style={bg(f.color)}>{f.badge}</div>}
           <div style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", color: f.color, letterSpacing: "0.04em" }}>{f.name}</div>
-          <button onClick={() => { setPickerGroup(factionGroup(f)); setPickerSearch(""); setPickerOpen(true); }} style={{ ...bs("var(--muted)"), fontSize: 11, padding: "6px 12px" }}>Change team</button>
+          {savedRosters.length > 0 && <button onClick={() => { setPickerGroup(factionGroup(f)); setPickerSearch(""); setPickerOpen(true); setTimeout(() => { const el = document.getElementById("ks-saved-rosters"); if (el) el.scrollIntoView({ block: "start" }); }, 50); }} style={{ ...bs("var(--accent)"), fontSize: 11, padding: mobile ? "6px 8px" : "6px 12px", whiteSpace: "nowrap", flexShrink: 0 }}>My rosters</button>}
+          <button onClick={() => { setPickerGroup(factionGroup(f)); setPickerSearch(""); setPickerOpen(true); }} style={{ ...bs("var(--muted)"), fontSize: 11, padding: mobile ? "6px 8px" : "6px 12px", whiteSpace: "nowrap", flexShrink: 0 }}>Change team</button>
         </div>
       ) : (() => {
         const group = pickerGroup || (f ? factionGroup(f) : "Imperium");
@@ -1898,20 +1907,21 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
               </button>
             )}
             {savedRosters.length > 0 && (
-              <div style={{ marginBottom: 12 }}>
+              <div id="ks-saved-rosters" style={{ marginBottom: 12 }}>
                 <div style={{ ...h3, marginBottom: 6 }}>My saved rosters</div>
                 {savedRosters.map(r => {
                   const fc = FACTIONS[r.f];
                   const menu = savedMenu === r.id;
                   const small = { ...bs("var(--muted)"), padding: "5px 10px", fontSize: 11 };
                   return (
-                    <div key={r.id} style={{ ...cd, padding: "8px 10px", marginBottom: 6, borderLeft: "3px solid " + (fc ? fc.color : "var(--line)") }}>
+                    <div key={r.id} data-saved-roster={r.id} style={{ ...cd, padding: "8px 10px", marginBottom: 6, borderLeft: "3px solid " + (fc ? fc.color : "var(--line)") }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</div>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif", overflowWrap: "anywhere" }}>{r.name}</div>
                           <div style={{ fontSize: 12, color: "var(--muted)" }}>{fc ? fc.name : "Unknown team"} {"\u00b7"} {r.o.length} operative{r.o.length === 1 ? "" : "s"} {"\u00b7"} {new Date(r.savedAt).toLocaleDateString()}</div>
                         </div>
-                        <button onClick={() => loadSaved(r)} style={{ ...bs("var(--accent)"), padding: "6px 12px", fontSize: 12 }}>Load</button>
+                        <button onClick={() => loadSaved(r, true)} title="Start a game with this roster" style={{ ...bs("#5A9C3A"), padding: "6px 12px", fontSize: 12 }}>Play</button>
+                        <button onClick={() => loadSaved(r)} title="Load it to change operatives or equipment" style={{ ...bs("var(--muted)"), padding: "6px 10px", fontSize: 12 }}>Edit</button>
                         <button onClick={() => setSavedMenu(menu ? null : r.id)} aria-label="More options" style={{ ...bs("var(--muted)"), padding: "6px 10px", fontSize: 12 }}>{"\u22EF"}</button>
                       </div>
                       {menu && (
@@ -2274,12 +2284,15 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
 
               {/* Roster summary */}
               <div style={{ marginTop: 8, padding: "6px 0", borderTop: "1px solid color-mix(in srgb, var(--line) 19%, transparent)" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
                   <div style={{ fontSize: 11, color: isComplete ? "#3D6B3F" : f.color, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.04em" }}>
                     {v.selections}{f.composition ? "/" + f.composition.total : ""} selected {"\u2022"} {roster.reduce((s, o) => s + o.wounds, 0)}W
                   </div>
                   {roster.length > 0 && (
-                    <button onClick={() => { setRosterLocked(true); setMobilePanel("cards"); collapseAll(); window.scrollTo(0, 0); }} style={{ ...bs("#5A9C3A"), fontSize: 13, padding: "8px 14px" }}>Start game <Fwd /></button>
+                    <div style={{ display: "flex", gap: 6, flexShrink: 0, marginLeft: "auto" }}>
+                      <button onClick={saveRoster} title="Save to My rosters on this device" style={{ ...bs("var(--muted)"), fontSize: 13, padding: "8px 12px" }}>Save roster</button>
+                      <button onClick={() => { setRosterLocked(true); setMobilePanel("cards"); collapseAll(); window.scrollTo(0, 0); }} style={{ ...bs("#5A9C3A"), fontSize: 13, padding: "8px 14px" }}>Start game <Fwd /></button>
+                    </div>
                   )}
                 </div>
                 {isComplete && !validate && (

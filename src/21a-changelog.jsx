@@ -3,6 +3,8 @@
 // notice changed, in plain words. kind: "new", "better" or "fixed". Add an entry with every such change.
 const CHANGELOG = [
   { date: "2026-11-01", items: [
+    ["new", "Play on a saved roster starts a game with it in one tap. Edit loads it to change it first."],
+    ["better", "Save roster sits beside Start game, and My rosters beside Change team on the Battle tab. Saving a roster you loaded offers its name and updates it instead of making a copy."],
     ["better", "The Community tab is hidden until the shared roster board is ready. Sharing a roster code still works from the Battle tab."],
   ] },
   { date: "2026-10-31", items: [
