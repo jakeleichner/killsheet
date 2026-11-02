@@ -1,4 +1,6 @@
 /* ═══ COMMUNITY ROSTERS (preview until the backend is built) ═══ */
+// The tab stays out of the nav until the board is live (owner, Nov 1 2026: strangers shouldn't see example posts).
+const COMMUNITY_LIVE = false;
 const COMMUNITY_EXAMPLES = [
   { name: "Stalker Overwatch", faction: "angels", votes: 24, ops: 6, note: "Two stalker bolt rifles on Vantage, the rest hold the middle." },
   { name: "Choppa Rush", faction: "kommandos", votes: 17, ops: 10, note: "Smoke, then charge everything. Bomb Squig opens the door." },

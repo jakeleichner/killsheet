@@ -2,6 +2,9 @@
 // The change log players see (Settings > What's new). Newest first, one entry per day something a player would
 // notice changed, in plain words. kind: "new", "better" or "fixed". Add an entry with every such change.
 const CHANGELOG = [
+  { date: "2026-11-01", items: [
+    ["better", "The Community tab is hidden until the shared roster board is ready. Sharing a roster code still works from the Battle tab."],
+  ] },
   { date: "2026-10-31", items: [
     ["new", "KillSheet's new address is killsheet.app. On the old address, a note and Move to killsheet.app in the game menu bring your rosters, games and settings across."],
     ["better", "A KillSheet link shared in Discord, Reddit or a message now shows a picture and what KillSheet is."],

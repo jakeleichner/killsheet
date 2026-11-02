@@ -17755,6 +17755,8 @@ function TutorialPart2({ onExit, onPart1 }) {
 }
 
 /* ═══ COMMUNITY ROSTERS (preview until the backend is built) ═══ */
+// The tab stays out of the nav until the board is live (owner, Nov 1 2026: strangers shouldn't see example posts).
+const COMMUNITY_LIVE = false;
 const COMMUNITY_EXAMPLES = [
   { name: "Stalker Overwatch", faction: "angels", votes: 24, ops: 6, note: "Two stalker bolt rifles on Vantage, the rest hold the middle." },
   { name: "Choppa Rush", faction: "kommandos", votes: 17, ops: 10, note: "Smoke, then charge everything. Bomb Squig opens the door." },
@@ -18675,6 +18677,9 @@ function FeaturesPage({ onClose, focus, onNews }) {
 // The change log players see (Settings > What's new). Newest first, one entry per day something a player would
 // notice changed, in plain words. kind: "new", "better" or "fixed". Add an entry with every such change.
 const CHANGELOG = [
+  { date: "2026-11-01", items: [
+    ["better", "The Community tab is hidden until the shared roster board is ready. Sharing a roster code still works from the Battle tab."],
+  ] },
   { date: "2026-10-31", items: [
     ["new", "KillSheet's new address is killsheet.app. On the old address, a note and Move to killsheet.app in the game menu bring your rosters, games and settings across."],
     ["better", "A KillSheet link shared in Discord, Reddit or a message now shows a picture and what KillSheet is."],
@@ -18929,7 +18934,7 @@ async function runSelfTest(hooks) {
     if (!btn("Play online")) throw new Error("Play online doesn't show for a learning player");
     await click(document.querySelector("[aria-label='Game menu']"), "game menu (close)");
     const cog = () => all("button[aria-label='Settings']")[0];
-    for (const t of ["Rules", "Missions", "Community", "Battle"]) { await nav(t); if (!cog()) throw new Error("the Settings cog doesn't show on " + t); }
+    for (const t of ["Rules", "Missions", ...(COMMUNITY_LIVE ? ["Community"] : []), "Battle"]) { await nav(t); if (!cog()) throw new Error("the Settings cog doesn't show on " + t); }
     await click(cog(), "Settings cog");
     const page = document.querySelector("[role=dialog][aria-label='Settings']");
     if (!page) throw new Error("the Settings page didn't open");
@@ -18947,7 +18952,8 @@ async function runSelfTest(hooks) {
   });
 
   await step("Every tab opens", async () => {
-    for (const t of ["Rules", "Missions", "Battle", "Community"]) { await nav(t); if (!all("h1,h2,div").length) throw new Error(t + " is empty"); }
+    for (const t of ["Rules", "Missions", "Battle", ...(COMMUNITY_LIVE ? ["Community"] : [])]) { await nav(t); if (!all("h1,h2,div").length) throw new Error(t + " is empty"); }
+    if (!COMMUNITY_LIVE && [...document.querySelectorAll("nav button")].some(b => b.textContent.trim() === "Community")) throw new Error("the Community tab shows before the board is live");
     if (document.documentElement.scrollWidth > window.innerWidth + 1) throw new Error("the page scrolls sideways (" + document.documentElement.scrollWidth + "px wide in a " + window.innerWidth + "px window)");
     // The tabs and the online banner are pinned together, so the banner can't slide over the tabs.
     const bar = document.querySelector("nav");
@@ -19488,7 +19494,7 @@ async function runSelfTest(hooks) {
     // A crash in one tab shows the safety screen there, with Reload, Back up and Try again; the rest of the app keeps working.
     const before = errors.length;
     window.__ksCrashTest = true;
-    await nav("Community"); await settle(20);
+    await nav("Missions"); await settle(20);
     window.__ksCrashTest = false;
     const alert = all("[role=alert]").find(a => /Something went wrong/.test(a.textContent));
     errors.splice(before); // React reports the test crash as an error; that one is expected
@@ -19496,7 +19502,7 @@ async function runSelfTest(hooks) {
     for (const t of ["Reload", "Back up my data", "Try again"]) if (![...alert.querySelectorAll("button")].some(b => b.textContent.trim() === t)) throw new Error("the safety screen has no " + t + " button");
     await nav("Rules");
     if (!btn("New to Kill Team")) throw new Error("the other tabs stopped working after a crash");
-    await nav("Community");
+    await nav("Missions");
     await click([...alert.querySelectorAll("button")].find(b => b.textContent.trim() === "Try again"), "Try again");
     if (all("[role=alert]").some(a => /Something went wrong/.test(a.textContent))) throw new Error("Try again didn't bring the tab back");
     return "screen lock " + window.__ksAwake + "; crash screen shows and recovers";
@@ -19979,6 +19985,7 @@ function App() {
   React.useEffect(() => {
     if (tab === "sequence") setTab("builder");
     if (tab === "tutorial") { setTab("rules"); setTutorialOpen(true); }
+    if (tab === "community" && !COMMUNITY_LIVE) setTab("builder");
   }, [tab]);
   const [tp, setTp] = useLocalStorage("tp", 1);
   const mobile = useIsMobile();
@@ -20022,6 +20029,7 @@ function App() {
     return () => document.removeEventListener("keydown", onKey);
   }, []);
   const tabs = [["rules", "Rules"], ["missions", "Missions"], ["builder", "Battle"], ["community", "Community"]];
+  const navTabs = tabs.filter(([id]) => id !== "community" || COMMUNITY_LIVE);
   // Multiplayer hosted at App level so banner is visible across tabs
   const mpHandlerRef = React.useRef(null);
   const mp = useMultiplayer((msg) => { if (mpHandlerRef.current) mpHandlerRef.current(msg); });
@@ -20058,7 +20066,7 @@ function App() {
             <Logo size={24} />
           </div>
         )}
-        {tabs.map(([id, label]) => (
+        {navTabs.map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)} style={{
             flex: 1, padding: mobile ? "10px 2px" : "16px 8px", border: "none", cursor: "pointer",
             display: "flex", flexDirection: mobile ? "column" : "row", alignItems: "center", justifyContent: "center", gap: mobile ? 3 : 6, minWidth: 0,
@@ -20109,9 +20117,9 @@ function App() {
 
       {/* CONTENT: all tabs stay mounted, hidden with display:none to preserve state */}
       <div className="ks-appear" style={{ display: tab === "rules" ? "block" : "none" }}><ErrorBoundary where="Rules"><Rules search={ruleSearch} tutorialOpen={tutorialOpen} openTutorial={openTutorial} closeTutorial={() => { setTutorialOpen(false); window.scrollTo(0, 0); }} /></ErrorBoundary></div>
-      <div className="ks-appear" style={{ display: tab === "missions" ? "block" : "none" }}><ErrorBoundary where="Missions"><Missions campaign={campaign} startCampaign={() => { if (!campaign) setCampaign(cteNew("solo", "m26", 7, "", "")); setTab("builder"); window.scrollTo(0, 0); }} /></ErrorBoundary></div>
+      <div className="ks-appear" style={{ display: tab === "missions" ? "block" : "none" }}><ErrorBoundary where="Missions"><Missions campaign={campaign} startCampaign={() => { if (!campaign) setCampaign(cteNew("solo", "m26", 7, "", "")); setTab("builder"); window.scrollTo(0, 0); }} /><CrashTest /></ErrorBoundary></div>
       <div id="panel-builder" className="ks-appear" style={{ display: tab === "builder" ? "block" : "none", ...(battleAccent ? { "--accent": battleAccent } : {}) }}><ErrorBoundary where="Battle"><Builder tp={tp} setTp={setTp} mp={mp} mpHandlerRef={mpHandlerRef} showMP={showMP} setShowMP={setShowMP} tutorialSeen={tutorialSeen} setTutorialSeen={setTutorialSeen} openTutorial={openTutorial} campaign={campaign} setCampaign={setCampaign} onTeamColor={setTeamId} openMove={() => setShowMove(true)} showBattle={() => setTab("builder")} /></ErrorBoundary></div>
-      <div className="ks-appear" style={{ display: tab === "community" ? "block" : "none" }}><ErrorBoundary where="Community"><CommunityRosters /><CrashTest /></ErrorBoundary></div>
+      <div className="ks-appear" style={{ display: tab === "community" ? "block" : "none" }}><ErrorBoundary where="Community"><CommunityRosters /></ErrorBoundary></div>
 
       {/* FOOTER */}
       <div style={{ textAlign: "center", padding: "20px 16px", borderTop: "1px solid var(--line)", background: "linear-gradient(180deg, var(--bg), #08070600)" }}>

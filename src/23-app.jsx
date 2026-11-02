@@ -49,6 +49,7 @@ function App() {
   React.useEffect(() => {
     if (tab === "sequence") setTab("builder");
     if (tab === "tutorial") { setTab("rules"); setTutorialOpen(true); }
+    if (tab === "community" && !COMMUNITY_LIVE) setTab("builder");
   }, [tab]);
   const [tp, setTp] = useLocalStorage("tp", 1);
   const mobile = useIsMobile();
@@ -92,6 +93,7 @@ function App() {
     return () => document.removeEventListener("keydown", onKey);
   }, []);
   const tabs = [["rules", "Rules"], ["missions", "Missions"], ["builder", "Battle"], ["community", "Community"]];
+  const navTabs = tabs.filter(([id]) => id !== "community" || COMMUNITY_LIVE);
   // Multiplayer hosted at App level so banner is visible across tabs
   const mpHandlerRef = React.useRef(null);
   const mp = useMultiplayer((msg) => { if (mpHandlerRef.current) mpHandlerRef.current(msg); });
@@ -128,7 +130,7 @@ function App() {
             <Logo size={24} />
           </div>
         )}
-        {tabs.map(([id, label]) => (
+        {navTabs.map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)} style={{
             flex: 1, padding: mobile ? "10px 2px" : "16px 8px", border: "none", cursor: "pointer",
             display: "flex", flexDirection: mobile ? "column" : "row", alignItems: "center", justifyContent: "center", gap: mobile ? 3 : 6, minWidth: 0,
@@ -179,9 +181,9 @@ function App() {
 
       {/* CONTENT: all tabs stay mounted, hidden with display:none to preserve state */}
       <div className="ks-appear" style={{ display: tab === "rules" ? "block" : "none" }}><ErrorBoundary where="Rules"><Rules search={ruleSearch} tutorialOpen={tutorialOpen} openTutorial={openTutorial} closeTutorial={() => { setTutorialOpen(false); window.scrollTo(0, 0); }} /></ErrorBoundary></div>
-      <div className="ks-appear" style={{ display: tab === "missions" ? "block" : "none" }}><ErrorBoundary where="Missions"><Missions campaign={campaign} startCampaign={() => { if (!campaign) setCampaign(cteNew("solo", "m26", 7, "", "")); setTab("builder"); window.scrollTo(0, 0); }} /></ErrorBoundary></div>
+      <div className="ks-appear" style={{ display: tab === "missions" ? "block" : "none" }}><ErrorBoundary where="Missions"><Missions campaign={campaign} startCampaign={() => { if (!campaign) setCampaign(cteNew("solo", "m26", 7, "", "")); setTab("builder"); window.scrollTo(0, 0); }} /><CrashTest /></ErrorBoundary></div>
       <div id="panel-builder" className="ks-appear" style={{ display: tab === "builder" ? "block" : "none", ...(battleAccent ? { "--accent": battleAccent } : {}) }}><ErrorBoundary where="Battle"><Builder tp={tp} setTp={setTp} mp={mp} mpHandlerRef={mpHandlerRef} showMP={showMP} setShowMP={setShowMP} tutorialSeen={tutorialSeen} setTutorialSeen={setTutorialSeen} openTutorial={openTutorial} campaign={campaign} setCampaign={setCampaign} onTeamColor={setTeamId} openMove={() => setShowMove(true)} showBattle={() => setTab("builder")} /></ErrorBoundary></div>
-      <div className="ks-appear" style={{ display: tab === "community" ? "block" : "none" }}><ErrorBoundary where="Community"><CommunityRosters /><CrashTest /></ErrorBoundary></div>
+      <div className="ks-appear" style={{ display: tab === "community" ? "block" : "none" }}><ErrorBoundary where="Community"><CommunityRosters /></ErrorBoundary></div>
 
       {/* FOOTER */}
       <div style={{ textAlign: "center", padding: "20px 16px", borderTop: "1px solid var(--line)", background: "linear-gradient(180deg, var(--bg), #08070600)" }}>

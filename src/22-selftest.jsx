@@ -64,7 +64,7 @@ async function runSelfTest(hooks) {
     if (!btn("Play online")) throw new Error("Play online doesn't show for a learning player");
     await click(document.querySelector("[aria-label='Game menu']"), "game menu (close)");
     const cog = () => all("button[aria-label='Settings']")[0];
-    for (const t of ["Rules", "Missions", "Community", "Battle"]) { await nav(t); if (!cog()) throw new Error("the Settings cog doesn't show on " + t); }
+    for (const t of ["Rules", "Missions", ...(COMMUNITY_LIVE ? ["Community"] : []), "Battle"]) { await nav(t); if (!cog()) throw new Error("the Settings cog doesn't show on " + t); }
     await click(cog(), "Settings cog");
     const page = document.querySelector("[role=dialog][aria-label='Settings']");
     if (!page) throw new Error("the Settings page didn't open");
@@ -82,7 +82,8 @@ async function runSelfTest(hooks) {
   });
 
   await step("Every tab opens", async () => {
-    for (const t of ["Rules", "Missions", "Battle", "Community"]) { await nav(t); if (!all("h1,h2,div").length) throw new Error(t + " is empty"); }
+    for (const t of ["Rules", "Missions", "Battle", ...(COMMUNITY_LIVE ? ["Community"] : [])]) { await nav(t); if (!all("h1,h2,div").length) throw new Error(t + " is empty"); }
+    if (!COMMUNITY_LIVE && [...document.querySelectorAll("nav button")].some(b => b.textContent.trim() === "Community")) throw new Error("the Community tab shows before the board is live");
     if (document.documentElement.scrollWidth > window.innerWidth + 1) throw new Error("the page scrolls sideways (" + document.documentElement.scrollWidth + "px wide in a " + window.innerWidth + "px window)");
     // The tabs and the online banner are pinned together, so the banner can't slide over the tabs.
     const bar = document.querySelector("nav");
@@ -623,7 +624,7 @@ async function runSelfTest(hooks) {
     // A crash in one tab shows the safety screen there, with Reload, Back up and Try again; the rest of the app keeps working.
     const before = errors.length;
     window.__ksCrashTest = true;
-    await nav("Community"); await settle(20);
+    await nav("Missions"); await settle(20);
     window.__ksCrashTest = false;
     const alert = all("[role=alert]").find(a => /Something went wrong/.test(a.textContent));
     errors.splice(before); // React reports the test crash as an error; that one is expected
@@ -631,7 +632,7 @@ async function runSelfTest(hooks) {
     for (const t of ["Reload", "Back up my data", "Try again"]) if (![...alert.querySelectorAll("button")].some(b => b.textContent.trim() === t)) throw new Error("the safety screen has no " + t + " button");
     await nav("Rules");
     if (!btn("New to Kill Team")) throw new Error("the other tabs stopped working after a crash");
-    await nav("Community");
+    await nav("Missions");
     await click([...alert.querySelectorAll("button")].find(b => b.textContent.trim() === "Try again"), "Try again");
     if (all("[role=alert]").some(a => /Something went wrong/.test(a.textContent))) throw new Error("Try again didn't bring the tab back");
     return "screen lock " + window.__ksAwake + "; crash screen shows and recovers";
