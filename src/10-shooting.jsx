@@ -160,7 +160,7 @@ function ShootScreen({ shot, dropped, options, others, sideColor, onAct, onClose
     if (!op) return (
       <div style={{ ...cd, marginBottom: 0, padding: 10, borderRight: "3px solid var(--line)" }}>
         <div style={{ ...h3, marginBottom: 2 }}>Target</div>
-        <div style={{ ...mu, fontSize: 13 }}>Pick who {s.atk.op.name} is shooting.</div>
+        <div style={{ ...mu, fontSize: 13 }}>Pick who {opLabel(s.atk.op)} is shooting.</div>
       </div>
     );
     const owner = isAtk ? "A" : t.owner, col = sideColor(sideOf(owner));
@@ -171,7 +171,7 @@ function ShootScreen({ shot, dropped, options, others, sideColor, onAct, onClose
           <div style={{ ...h3, marginBottom: 0, color: col, flex: 1, minWidth: 0 }}>{isAtk ? "Shooting" : s.targets.length > 1 ? "Target " + (s.ti + 1) + " of " + s.targets.length : "Target"}{s.online && mine(owner) ? " (you)" : ""}</div>
           <span style={{ fontSize: 14, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", color: hp <= 0 ? "#B8341C" : hp < op.max / 2 ? "var(--gold)" : "var(--text)" }}>{hp}/{op.max}W</span>
         </div>
-        <div data-vs-name={role} style={{ ...vsName, textDecoration: hp <= 0 ? "line-through" : "none" }}>{op.name}</div>
+        <div data-vs-name={role} style={{ ...vsName, textDecoration: hp <= 0 ? "line-through" : "none" }}>{opLabel(op)}</div>
         <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
           {isAtk ? <>{s.atk.weapon.name} {"·"} {s.atk.weapon.atk} {"·"} {s.atk.weapon.hit} {"·"} {s.atk.weapon.dmg}{s.atk.weapon.wr && s.atk.weapon.wr !== "-" ? " · " + s.atk.weapon.wr : ""}{op.injured ? " · injured: hits on 1 worse" : ""}</>
             : <>Save {t.save}+{t.cover ? " · in cover" : ""}{t.obscured ? " · obscured" : ""}</>}
@@ -202,7 +202,7 @@ function ShootScreen({ shot, dropped, options, others, sideColor, onAct, onClose
   if (s.stage === "target") {
     body = options.length ? (
       <div>
-        <div style={{ ...mu, fontSize: 14, marginBottom: 8 }}>Who is {s.atk.op.name} shooting? Pick a valid target: visible, and not on Conceal in cover.</div>
+        <div style={{ ...mu, fontSize: 14, marginBottom: 8 }}>Who is {opLabel(s.atk.op)} shooting? Pick a valid target: visible, and not on Conceal in cover.</div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 6 }}>
           {options.map(o => (
             <button key={o.key} onClick={() => onAct({ type: "target", target: newShotTarget(o.owner, o.info) })} style={{ ...cd, marginBottom: 0, padding: "8px 10px", textAlign: "left", cursor: "pointer", borderLeft: "3px solid " + sideColor(sideOf(o.owner)), display: "flex", alignItems: "baseline", gap: 6 }}>
@@ -220,8 +220,8 @@ function ShootScreen({ shot, dropped, options, others, sideColor, onAct, onClose
     body = (
       <div>
         <div style={{ ...mu, fontSize: 14, marginBottom: 8 }}>{blast
-          ? <>Blast: every other operative within {dist} of {t.op.name} is hit too, friend or foe. Tick each one.</>
-          : <>Torrent: you can also shoot any other enemies within {dist} of {t.op.name}. Tick the ones you shoot.</>} Each gets its own attack and defense roll.</div>
+          ? <>Blast: every other operative within {dist} of {opLabel(t.op)} is hit too, friend or foe. Tick each one.</>
+          : <>Torrent: you can also shoot any other enemies within {dist} of {opLabel(t.op)}. Tick the ones you shoot.</>} Each gets its own attack and defense roll.</div>
         {list.map(o => (
           <label key={o.key} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderTop: "1px solid var(--raised)", cursor: "pointer" }}>
             <input type="checkbox" checked={!!extra[o.key]} onChange={() => setExtra(x => ({ ...x, [o.key]: !x[o.key] }))} style={{ width: 18, height: 18 }} />
@@ -237,7 +237,7 @@ function ShootScreen({ shot, dropped, options, others, sideColor, onAct, onClose
     const count = fightDiceCount(s.atk.weapon), r = shotAttack(s, t), n = shotDefCount(s, t), saturate = diceRules(s.atk.weapon).saturate;
     const summary = <><b style={{ color: "var(--gold)" }}>{r.crits} crit{r.crits === 1 ? "" : "s"}</b>, <b style={{ color: "#5A9C3A" }}>{r.hits} hit{r.hits === 1 ? "" : "s"}</b>{r.obscuredLost ? " (obscured: crits count as hits, one lost)" : ""}</>;
     // The shooter: roll, then re-roll or switch Obscured until the defender rolls.
-    const shooter = !mine("A") ? (s.stage === "attack" ? wait("Waiting for your opponent to roll attack dice for " + s.atk.op.name + ".") : null) : (
+    const shooter = !mine("A") ? (s.stage === "attack" ? wait("Waiting for your opponent to roll attack dice for " + opLabel(s.atk.op) + ".") : null) : (
       <div style={{ marginBottom: s.stage === "defense" ? 12 : 0 }}>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
           {toggle(t.obscured, "Obscured", () => onAct({ type: "obscured", v: !t.obscured }), !!t.d.dice)}
@@ -256,8 +256,8 @@ function ShootScreen({ shot, dropped, options, others, sideColor, onAct, onClose
       const handOver = local && t.owner !== "A"; // one device: the other player rolls their own saves
       defender = mine(t.owner) ? (
         <div style={{ borderTop: mine("A") ? "1px solid var(--raised)" : "none", paddingTop: mine("A") ? 10 : 0 }}>
-          <div style={{ fontSize: 14, color: "var(--text)", marginBottom: 6 }}>{s.online ? s.atk.op.name + " is shooting your " + t.op.name + " with " + s.atk.weapon.name + ": " : ""}{s.online ? <>{summary}. </> : ""}{n.roll ? "Roll " + n.roll + " defense " + (n.roll === 1 ? "die" : "dice") + ", " + t.save + "+ to save." : "No defense dice to roll."}</div>
-          {handOver && !t.d.dice && <div style={{ ...mu, fontSize: 13, color: "var(--gold)", marginBottom: 6 }}>Hand the phone to {t.op.name}'s player, or roll your own dice and enter them.</div>}
+          <div style={{ fontSize: 14, color: "var(--text)", marginBottom: 6 }}>{s.online ? opLabel(s.atk.op) + " is shooting your " + opLabel(t.op) + " with " + s.atk.weapon.name + ": " : ""}{s.online ? <>{summary}. </> : ""}{n.roll ? "Roll " + n.roll + " defense " + (n.roll === 1 ? "die" : "dice") + ", " + t.save + "+ to save." : "No defense dice to roll."}</div>
+          {handOver && !t.d.dice && <div style={{ ...mu, fontSize: 13, color: "var(--gold)", marginBottom: 6 }}>Hand the phone to {opLabel(t.op)}'s player, or roll your own dice and enter them.</div>}
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8, alignItems: "center" }}>
             {toggle(t.cover, "Cover", () => onAct({ type: "cover", v: !t.cover }), !!t.d.dice || saturate)}
             <label style={{ fontSize: 12, color: "var(--muted)", display: "inline-flex", alignItems: "center", gap: 4 }}>Save
@@ -273,14 +273,14 @@ function ShootScreen({ shot, dropped, options, others, sideColor, onAct, onClose
             </div>
           )}
         </div>
-      ) : wait((s.online ? "Waiting for your opponent to roll defense for " : "Defense for ") + t.op.name + ".");
+      ) : wait((s.online ? "Waiting for your opponent to roll defense for " : "Defense for ") + opLabel(t.op) + ".");
     }
     body = <div>{shooter}{defender}</div>;
   } else if (s.stage === "result") {
     const total = shotTotal(t), dead = t.op.start - total <= 0, more = s.ti + 1 < s.targets.length;
     body = (
       <div>
-        <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif" }}>{total ? total + " damage to " + t.op.name : t.op.name + " takes no damage"}{dead ? ": incapacitated" : ""}</div>
+        <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif" }}>{total ? total + " damage to " + opLabel(t.op) : opLabel(t.op) + " takes no damage"}{dead ? ": incapacitated" : ""}</div>
         {mine(t.owner) && t.dmg != null && <div style={{ display: "flex", alignItems: "center", gap: 6, margin: "6px 0", fontSize: 12, color: "var(--muted)" }}>Another rule changes it?
           <button aria-label="One less damage" disabled={total <= 0} onClick={() => onAct({ type: "adjust", delta: -1 })} className="compact-btn" style={{ ...bs("var(--muted)"), padding: "2px 10px" }}>−</button>
           <button aria-label="One more damage" onClick={() => onAct({ type: "adjust", delta: 1 })} className="compact-btn" style={{ ...bs("var(--muted)"), padding: "2px 10px" }}>+</button></div>}
@@ -292,11 +292,11 @@ function ShootScreen({ shot, dropped, options, others, sideColor, onAct, onClose
     body = (
       <div>
         <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif" }}>Shooting done</div>
-        <div style={{ ...mu, fontSize: 14, margin: "4px 0 10px" }}>{s.targets.map(x => x.op.name + ": " + shotTotal(x) + " damage").join(" · ")}</div>
+        <div style={{ ...mu, fontSize: 14, margin: "4px 0 10px" }}>{s.targets.map(x => opLabel(x.op) + ": " + shotTotal(x) + " damage").join(" · ")}</div>
         {hot && !s.hot && (mine("A")
           ? <button onClick={() => onAct({ type: "hot", v: Math.floor(Math.random() * 6) + 1 })} style={{ ...bs("#E0664A"), ...big, marginBottom: 8 }}>Roll for Hot</button>
           : wait("Waiting for your opponent's Hot roll."))}
-        {s.hot && <div style={{ fontSize: 14, color: s.hot.dmg ? "#E0664A" : "#5A9C3A", marginBottom: 8 }}>Hot: rolled {s.hot.v}. {s.hot.dmg ? s.atk.op.name + " takes " + s.hot.dmg + " damage." : "No damage."}</div>}
+        {s.hot && <div style={{ fontSize: 14, color: s.hot.dmg ? "#E0664A" : "#5A9C3A", marginBottom: 8 }}>Hot: rolled {s.hot.v}. {s.hot.dmg ? opLabel(s.atk.op) + " takes " + s.hot.dmg + " damage." : "No damage."}</div>}
         {(!hot || s.hot || !mine("A")) && <button onClick={onClose} style={{ ...bs("var(--accent)"), ...big }}>Close</button>}
       </div>
     );

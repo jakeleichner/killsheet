@@ -5719,6 +5719,11 @@ function freshOps(faction, ops) {
     return { ...fresh, baseId: bid, name: base.name + " " + n };
   });
 }
+// An operative's own name, if the player gave it one ("Scuba Steve"), else its type ("Grot"). op.nick is kept apart
+// from op.name so refreshing datacards (freshOps) keeps it and online play carries it.
+const NICK_MAX = 30;
+const opLabel = (op) => (op && (op.nick || op.name)) || "";
+const escHtml = (t) => String(t).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 function makeInstances(faction, baseIds) {
   const seen = {};
   return baseIds.map(bid => {
@@ -7105,7 +7110,7 @@ function FightScreen({ fight, dropped, enemies, defWeapons, sideColor, onAct, on
     setTimeout(pop, hit);
   }, [f.log.length]);
 
-  const name = (role) => f[role] && f[role].op ? f[role].op.name : "";
+  const name = (role) => f[role] && f[role].op ? opLabel(f[role].op) : "";
   const who = (role) => mine(role) && f.online ? "You" : name(role);
   const waitingOn = (role) => f.online && !mine(role);
   const slow = dropped || (f.online && now - f.changedAt > 60000);
@@ -7165,7 +7170,7 @@ function FightScreen({ fight, dropped, enemies, defWeapons, sideColor, onAct, on
           <div style={{ ...h3, marginBottom: 0, color: col, flex: 1, minWidth: 0 }}>{role === "atk" ? "Attacking" : "Fights back"}{f.online && mine(role) ? " (you)" : ""}</div>
           <span style={{ fontSize: 14, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", color: hp <= 0 ? "#B8341C" : hp < s.op.max / 2 ? "var(--gold)" : "var(--text)" }}>{hp}/{s.op.max}W</span>
         </div>
-        <div data-vs-name={role} style={{ ...vsName, textDecoration: hp <= 0 ? "line-through" : "none" }}>{s.op.name}</div>
+        <div data-vs-name={role} style={{ ...vsName, textDecoration: hp <= 0 ? "line-through" : "none" }}>{opLabel(s.op)}</div>
         {s.weapon
           ? <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{s.weapon.name} {"·"} {s.weapon.atk} {"·"} {s.weapon.hit} {"·"} {s.weapon.dmg}{s.weapon.wr && s.weapon.wr !== "-" ? " · " + s.weapon.wr : ""}{s.op.injured ? " · injured: hits on 1 worse" : ""}</div>
           : <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>Picking a weapon</div>}
@@ -7189,7 +7194,7 @@ function FightScreen({ fight, dropped, enemies, defWeapons, sideColor, onAct, on
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 6 }}>
           {enemies.map(e => (
             <button key={e.op.id} onClick={() => onAct({ type: "target", def: newFightSide(e.side, e.info) })} style={{ ...cd, marginBottom: 0, padding: "8px 10px", textAlign: "left", cursor: "pointer", borderLeft: "3px solid " + sideColor(e.side), display: "flex", alignItems: "baseline", gap: 6 }}>
-              <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif" }}>{e.op.name}</span>
+              <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif" }}>{opLabel(e.op)}</span>
               <span style={{ fontSize: 13, color: "var(--muted)" }}>{e.info.start}/{e.info.max}</span>
             </button>
           ))}
@@ -7446,7 +7451,7 @@ function ShootScreen({ shot, dropped, options, others, sideColor, onAct, onClose
     if (!op) return (
       <div style={{ ...cd, marginBottom: 0, padding: 10, borderRight: "3px solid var(--line)" }}>
         <div style={{ ...h3, marginBottom: 2 }}>Target</div>
-        <div style={{ ...mu, fontSize: 13 }}>Pick who {s.atk.op.name} is shooting.</div>
+        <div style={{ ...mu, fontSize: 13 }}>Pick who {opLabel(s.atk.op)} is shooting.</div>
       </div>
     );
     const owner = isAtk ? "A" : t.owner, col = sideColor(sideOf(owner));
@@ -7457,7 +7462,7 @@ function ShootScreen({ shot, dropped, options, others, sideColor, onAct, onClose
           <div style={{ ...h3, marginBottom: 0, color: col, flex: 1, minWidth: 0 }}>{isAtk ? "Shooting" : s.targets.length > 1 ? "Target " + (s.ti + 1) + " of " + s.targets.length : "Target"}{s.online && mine(owner) ? " (you)" : ""}</div>
           <span style={{ fontSize: 14, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", color: hp <= 0 ? "#B8341C" : hp < op.max / 2 ? "var(--gold)" : "var(--text)" }}>{hp}/{op.max}W</span>
         </div>
-        <div data-vs-name={role} style={{ ...vsName, textDecoration: hp <= 0 ? "line-through" : "none" }}>{op.name}</div>
+        <div data-vs-name={role} style={{ ...vsName, textDecoration: hp <= 0 ? "line-through" : "none" }}>{opLabel(op)}</div>
         <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
           {isAtk ? <>{s.atk.weapon.name} {"·"} {s.atk.weapon.atk} {"·"} {s.atk.weapon.hit} {"·"} {s.atk.weapon.dmg}{s.atk.weapon.wr && s.atk.weapon.wr !== "-" ? " · " + s.atk.weapon.wr : ""}{op.injured ? " · injured: hits on 1 worse" : ""}</>
             : <>Save {t.save}+{t.cover ? " · in cover" : ""}{t.obscured ? " · obscured" : ""}</>}
@@ -7488,7 +7493,7 @@ function ShootScreen({ shot, dropped, options, others, sideColor, onAct, onClose
   if (s.stage === "target") {
     body = options.length ? (
       <div>
-        <div style={{ ...mu, fontSize: 14, marginBottom: 8 }}>Who is {s.atk.op.name} shooting? Pick a valid target: visible, and not on Conceal in cover.</div>
+        <div style={{ ...mu, fontSize: 14, marginBottom: 8 }}>Who is {opLabel(s.atk.op)} shooting? Pick a valid target: visible, and not on Conceal in cover.</div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 6 }}>
           {options.map(o => (
             <button key={o.key} onClick={() => onAct({ type: "target", target: newShotTarget(o.owner, o.info) })} style={{ ...cd, marginBottom: 0, padding: "8px 10px", textAlign: "left", cursor: "pointer", borderLeft: "3px solid " + sideColor(sideOf(o.owner)), display: "flex", alignItems: "baseline", gap: 6 }}>
@@ -7506,8 +7511,8 @@ function ShootScreen({ shot, dropped, options, others, sideColor, onAct, onClose
     body = (
       <div>
         <div style={{ ...mu, fontSize: 14, marginBottom: 8 }}>{blast
-          ? <>Blast: every other operative within {dist} of {t.op.name} is hit too, friend or foe. Tick each one.</>
-          : <>Torrent: you can also shoot any other enemies within {dist} of {t.op.name}. Tick the ones you shoot.</>} Each gets its own attack and defense roll.</div>
+          ? <>Blast: every other operative within {dist} of {opLabel(t.op)} is hit too, friend or foe. Tick each one.</>
+          : <>Torrent: you can also shoot any other enemies within {dist} of {opLabel(t.op)}. Tick the ones you shoot.</>} Each gets its own attack and defense roll.</div>
         {list.map(o => (
           <label key={o.key} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderTop: "1px solid var(--raised)", cursor: "pointer" }}>
             <input type="checkbox" checked={!!extra[o.key]} onChange={() => setExtra(x => ({ ...x, [o.key]: !x[o.key] }))} style={{ width: 18, height: 18 }} />
@@ -7523,7 +7528,7 @@ function ShootScreen({ shot, dropped, options, others, sideColor, onAct, onClose
     const count = fightDiceCount(s.atk.weapon), r = shotAttack(s, t), n = shotDefCount(s, t), saturate = diceRules(s.atk.weapon).saturate;
     const summary = <><b style={{ color: "var(--gold)" }}>{r.crits} crit{r.crits === 1 ? "" : "s"}</b>, <b style={{ color: "#5A9C3A" }}>{r.hits} hit{r.hits === 1 ? "" : "s"}</b>{r.obscuredLost ? " (obscured: crits count as hits, one lost)" : ""}</>;
     // The shooter: roll, then re-roll or switch Obscured until the defender rolls.
-    const shooter = !mine("A") ? (s.stage === "attack" ? wait("Waiting for your opponent to roll attack dice for " + s.atk.op.name + ".") : null) : (
+    const shooter = !mine("A") ? (s.stage === "attack" ? wait("Waiting for your opponent to roll attack dice for " + opLabel(s.atk.op) + ".") : null) : (
       <div style={{ marginBottom: s.stage === "defense" ? 12 : 0 }}>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
           {toggle(t.obscured, "Obscured", () => onAct({ type: "obscured", v: !t.obscured }), !!t.d.dice)}
@@ -7542,8 +7547,8 @@ function ShootScreen({ shot, dropped, options, others, sideColor, onAct, onClose
       const handOver = local && t.owner !== "A"; // one device: the other player rolls their own saves
       defender = mine(t.owner) ? (
         <div style={{ borderTop: mine("A") ? "1px solid var(--raised)" : "none", paddingTop: mine("A") ? 10 : 0 }}>
-          <div style={{ fontSize: 14, color: "var(--text)", marginBottom: 6 }}>{s.online ? s.atk.op.name + " is shooting your " + t.op.name + " with " + s.atk.weapon.name + ": " : ""}{s.online ? <>{summary}. </> : ""}{n.roll ? "Roll " + n.roll + " defense " + (n.roll === 1 ? "die" : "dice") + ", " + t.save + "+ to save." : "No defense dice to roll."}</div>
-          {handOver && !t.d.dice && <div style={{ ...mu, fontSize: 13, color: "var(--gold)", marginBottom: 6 }}>Hand the phone to {t.op.name}'s player, or roll your own dice and enter them.</div>}
+          <div style={{ fontSize: 14, color: "var(--text)", marginBottom: 6 }}>{s.online ? opLabel(s.atk.op) + " is shooting your " + opLabel(t.op) + " with " + s.atk.weapon.name + ": " : ""}{s.online ? <>{summary}. </> : ""}{n.roll ? "Roll " + n.roll + " defense " + (n.roll === 1 ? "die" : "dice") + ", " + t.save + "+ to save." : "No defense dice to roll."}</div>
+          {handOver && !t.d.dice && <div style={{ ...mu, fontSize: 13, color: "var(--gold)", marginBottom: 6 }}>Hand the phone to {opLabel(t.op)}'s player, or roll your own dice and enter them.</div>}
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8, alignItems: "center" }}>
             {toggle(t.cover, "Cover", () => onAct({ type: "cover", v: !t.cover }), !!t.d.dice || saturate)}
             <label style={{ fontSize: 12, color: "var(--muted)", display: "inline-flex", alignItems: "center", gap: 4 }}>Save
@@ -7559,14 +7564,14 @@ function ShootScreen({ shot, dropped, options, others, sideColor, onAct, onClose
             </div>
           )}
         </div>
-      ) : wait((s.online ? "Waiting for your opponent to roll defense for " : "Defense for ") + t.op.name + ".");
+      ) : wait((s.online ? "Waiting for your opponent to roll defense for " : "Defense for ") + opLabel(t.op) + ".");
     }
     body = <div>{shooter}{defender}</div>;
   } else if (s.stage === "result") {
     const total = shotTotal(t), dead = t.op.start - total <= 0, more = s.ti + 1 < s.targets.length;
     body = (
       <div>
-        <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif" }}>{total ? total + " damage to " + t.op.name : t.op.name + " takes no damage"}{dead ? ": incapacitated" : ""}</div>
+        <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif" }}>{total ? total + " damage to " + opLabel(t.op) : opLabel(t.op) + " takes no damage"}{dead ? ": incapacitated" : ""}</div>
         {mine(t.owner) && t.dmg != null && <div style={{ display: "flex", alignItems: "center", gap: 6, margin: "6px 0", fontSize: 12, color: "var(--muted)" }}>Another rule changes it?
           <button aria-label="One less damage" disabled={total <= 0} onClick={() => onAct({ type: "adjust", delta: -1 })} className="compact-btn" style={{ ...bs("var(--muted)"), padding: "2px 10px" }}>−</button>
           <button aria-label="One more damage" onClick={() => onAct({ type: "adjust", delta: 1 })} className="compact-btn" style={{ ...bs("var(--muted)"), padding: "2px 10px" }}>+</button></div>}
@@ -7578,11 +7583,11 @@ function ShootScreen({ shot, dropped, options, others, sideColor, onAct, onClose
     body = (
       <div>
         <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif" }}>Shooting done</div>
-        <div style={{ ...mu, fontSize: 14, margin: "4px 0 10px" }}>{s.targets.map(x => x.op.name + ": " + shotTotal(x) + " damage").join(" · ")}</div>
+        <div style={{ ...mu, fontSize: 14, margin: "4px 0 10px" }}>{s.targets.map(x => opLabel(x.op) + ": " + shotTotal(x) + " damage").join(" · ")}</div>
         {hot && !s.hot && (mine("A")
           ? <button onClick={() => onAct({ type: "hot", v: Math.floor(Math.random() * 6) + 1 })} style={{ ...bs("#E0664A"), ...big, marginBottom: 8 }}>Roll for Hot</button>
           : wait("Waiting for your opponent's Hot roll."))}
-        {s.hot && <div style={{ fontSize: 14, color: s.hot.dmg ? "#E0664A" : "#5A9C3A", marginBottom: 8 }}>Hot: rolled {s.hot.v}. {s.hot.dmg ? s.atk.op.name + " takes " + s.hot.dmg + " damage." : "No damage."}</div>}
+        {s.hot && <div style={{ fontSize: 14, color: s.hot.dmg ? "#E0664A" : "#5A9C3A", marginBottom: 8 }}>Hot: rolled {s.hot.v}. {s.hot.dmg ? opLabel(s.atk.op) + " takes " + s.hot.dmg + " damage." : "No damage."}</div>}
         {(!hot || s.hot || !mine("A")) && <button onClick={onClose} style={{ ...bs("var(--accent)"), ...big }}>Close</button>}
       </div>
     );
@@ -8429,7 +8434,7 @@ function HitBubble({ n, tail, animate, onOpen, onDismiss }) {
   );
 }
 
-function Datacard({ side, op, f, fc, equipWeapons, equipEffects, curWounds, onWound, collapsed, onToggle, ignoreInjured, cp, setCp, isActivated, onActivate, order, onOrder, uses, setUse, carried, onCarried, narrow, requestFight, requestShoot, scars }) {
+function Datacard({ side, op, onRename, f, fc, equipWeapons, equipEffects, curWounds, onWound, collapsed, onToggle, ignoreInjured, cp, setCp, isActivated, onActivate, order, onOrder, uses, setUse, carried, onCarried, narrow, requestFight, requestShoot, scars }) {
   const [pickWeapons, setPickWeapons] = useState(false);
   const { feat } = React.useContext(FeatureCtx);
   const opRules = React.useMemo(() => opWeaponRules(op), [op]);
@@ -8491,7 +8496,7 @@ function Datacard({ side, op, f, fc, equipWeapons, equipEffects, curWounds, onWo
                 </div>
   );
   const woundBtn = (delta) => (
-    <button className="compact-btn" onClick={(e) => { e.stopPropagation(); onWound(delta); }} aria-label={(delta < 0 ? "Remove a wound from " : "Add a wound to ") + op.name}
+    <button className="compact-btn" onClick={(e) => { e.stopPropagation(); onWound(delta); }} aria-label={(delta < 0 ? "Remove a wound from " : "Add a wound to ") + opLabel(op)}
       style={{ width: 32, height: 32, border: "1px solid " + DS.divider, borderRadius: 4, background: DS.bgElevated, color: delta < 0 ? DS.threat : DS.success, cursor: "pointer", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, lineHeight: 1 }}>{delta < 0 ? "\u2212" : "+"}</button>
   );
   const woundsInline = (
@@ -8528,8 +8533,11 @@ function Datacard({ side, op, f, fc, equipWeapons, equipEffects, curWounds, onWo
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: collapsed ? "center" : "flex-start", gap: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
               <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{ fontFamily: DS.fontDisplay, fontSize: 18, fontWeight: 600, color: DS.textPrimary, lineHeight: 1.15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: isActivated ? "line-through" : "none" }}>{op.name}</div>
-                {!collapsed && <div style={{ fontFamily: DS.fontDisplay, fontSize: 11, fontWeight: 500, color: fc, marginTop: 3, letterSpacing: "0.14em", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{op.kw || "OPERATIVE"}</div>}
+                <div style={{ fontFamily: DS.fontDisplay, fontSize: 18, fontWeight: 600, color: DS.textPrimary, lineHeight: 1.15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: isActivated ? "line-through" : "none" }}>{opLabel(op)}{op.nick && <span style={{ fontSize: 13, fontWeight: 500, color: "var(--muted)", marginLeft: 6 }}>{op.name}</span>}</div>
+                {!collapsed && <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 3, minWidth: 0 }}>
+                  <div style={{ fontFamily: DS.fontDisplay, fontSize: 11, fontWeight: 500, color: fc, letterSpacing: "0.14em", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{op.kw || "OPERATIVE"}</div>
+                  {onRename && <button className="compact-btn link-btn" onClick={(e) => { e.stopPropagation(); onRename(); }} aria-label={(op.nick ? "Rename " : "Name ") + opLabel(op)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--accent)", fontSize: 12, fontFamily: "'Inter', sans-serif", textDecoration: "underline", flexShrink: 0 }}>{op.nick ? "Rename" : "Name it"}</button>}
+                </div>}
               </div>
               {collapsed && !mobile && statsInline}
               {collapsed && !mobile && woundsInline}
@@ -8848,7 +8856,7 @@ function TurnGuide({ tp, numTPs, setTp, hasInitiative, onInitiative, cp, f, rost
               {canCounter.length === 0
                 ? <div style={{ marginTop: 4 }}>Nobody can counteract yet: it needs an expended operative with an Engage order.</div>
                 : canCounter.map(op => (
-                  <button key={op.id} onClick={() => setCounteracted({ ...counteracted, [op.id]: !counteracted[op.id] })} style={{ ...bs(counteracted[op.id] ? "var(--muted)" : "var(--accent)"), padding: "3px 10px", fontSize: 11, margin: "4px 4px 0 0", textDecoration: counteracted[op.id] ? "line-through" : "none", textTransform: "none", letterSpacing: "0.02em" }}>{op.name}</button>
+                  <button key={op.id} onClick={() => setCounteracted({ ...counteracted, [op.id]: !counteracted[op.id] })} style={{ ...bs(counteracted[op.id] ? "var(--muted)" : "var(--accent)"), padding: "3px 10px", fontSize: 11, margin: "4px 4px 0 0", textDecoration: counteracted[op.id] ? "line-through" : "none", textTransform: "none", letterSpacing: "0.02em" }}>{opLabel(op)}</button>
                 ))}
               {canCounter.length > 0 && <div style={{ fontSize: 12, marginTop: 4 }}>Tap an operative once it has counteracted.</div>}
             </div>
@@ -9119,7 +9127,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
         const before = getWounds(op.id, op.wounds), after = clampW(before + (msg.type === "applyRemoteDamage" ? -amount : amount), op.wounds);
         logMine(op, msg.type === "applyRemoteDamage" ? -amount : amount, msg.by ? "dice" : "hand", msg.by ? { by: msg.by, weapon: msg.weapon, note } : { note });
         setOpWounds(op.id, op.wounds, msg.type === "applyRemoteDamage" ? -amount : amount);
-        if (msg.type === "applyRemoteDamage") pushHitNote({ id: note, text: msg.by ? msg.by + " hit your " + op.name + (msg.weapon ? " with " + msg.weapon : "") + ": " + amount + " damage" : "Your " + op.name + " took " + amount + " damage", sub: before + " \u2192 " + after + " wounds" + (after <= 0 ? ", incapacitated" : "") + ". Tap to see the log." });
+        if (msg.type === "applyRemoteDamage") pushHitNote({ id: note, text: msg.by ? msg.by + " hit your " + opLabel(op) + (msg.weapon ? " with " + msg.weapon : "") + ": " + amount + " damage" : "Your " + opLabel(op) + " took " + amount + " damage", sub: before + " \u2192 " + after + " wounds" + (after <= 0 ? ", incapacitated" : "") + ". Tap to see the log." });
       }
       return;
     }
@@ -9509,7 +9517,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
     });
   };
   const clampW = (v, max) => Math.max(0, Math.min(max, v));
-  const logMine = (op, delta, how, extra) => { const cw = getWounds(op.id, op.wounds); logWounds({ side: "mine", target: op.name, max: op.wounds, before: cw, after: clampW(cw + delta, op.wounds), how, ...extra }); };
+  const logMine = (op, delta, how, extra) => { const cw = getWounds(op.id, op.wounds); logWounds({ side: "mine", target: opLabel(op), max: op.wounds, before: cw, after: clampW(cw + delta, op.wounds), how, ...extra }); };
   const setOpWounds = (opId, maxW, delta) => {
     setWounds(prev => ({ ...prev, [opId]: Math.max(0, Math.min(maxW, (prev[opId] !== undefined ? prev[opId] : maxW) + delta)) }));
   };
@@ -9566,7 +9574,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
           {roster.map(op => {
             const k = base + "|" + op.id;
             const on = !!battleUses[k];
-            return <button key={op.id} onClick={() => setBattleUses(prev => ({ ...prev, [k]: on ? 0 : 1 }))} style={{ fontSize: 11, padding: "2px 6px", borderRadius: 3, border: "1px solid " + (on ? "#B8341C" : "var(--line)"), background: on ? "#B8341C25" : "transparent", color: on ? "#B8341C" : "var(--muted)", textDecoration: on ? "line-through" : "none", cursor: "pointer" }}>{op.name}</button>;
+            return <button key={op.id} onClick={() => setBattleUses(prev => ({ ...prev, [k]: on ? 0 : 1 }))} style={{ fontSize: 11, padding: "2px 6px", borderRadius: 3, border: "1px solid " + (on ? "#B8341C" : "var(--line)"), background: on ? "#B8341C25" : "transparent", color: on ? "#B8341C" : "var(--muted)", textDecoration: on ? "line-through" : "none", cursor: "pointer" }}>{opLabel(op)}</button>;
           })}
         </div>
       );
@@ -9575,7 +9583,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   };
 
   // ── Saved rosters (this device only) ──
-  const rosterData = () => ({ f: fid, o: roster.map(r => baseOf(r)), fe: Object.keys(eq).filter(k => eq[k]), ue: Object.keys(uEq).filter(k => uEq[k]), cp: chapterPrimary, cs: chapterSecondary, cv: chapterVeteran, cw: carried });
+  const rosterData = () => ({ f: fid, o: roster.map(r => baseOf(r)), ...(roster.some(r => r.nick) ? { nk: roster.map(r => r.nick || "") } : {}), fe: Object.keys(eq).filter(k => eq[k]), ue: Object.keys(uEq).filter(k => uEq[k]), cp: chapterPrimary, cs: chapterSecondary, cv: chapterVeteran, cw: carried });
   const saveRoster = () => {
     if (!fid || roster.length === 0) return;
     const fallback = lastSaved && lastSaved.f === fid ? lastSaved.name : f.name + " (" + roster.length + ")";
@@ -9599,7 +9607,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
     if (!faction) { showToast("That team is no longer in the app."); return; }
     withUndo((play ? "Started a game with " : "Loaded ") + entry.name, () => {
     selectFaction(entry.f);
-    const ops = makeInstances(faction, entry.o);
+    const ops = makeInstances(faction, entry.o).map((o, i) => entry.nk && entry.nk[i] ? { ...o, nick: entry.nk[i] } : o);
     setRoster(ops);
     const e = {}; (entry.fe || []).forEach(id => { e[id] = true; }); setEq(e);
     const u = {}; (entry.ue || []).forEach(id => { u[id] = true; }); setUEq(u);
@@ -9618,6 +9626,13 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   const deleteSaved = (entry) => {
     withUndo("Deleted " + entry.name, () => setSavedRosters(savedRosters.filter(r => r.id !== entry.id)));
     setSavedMenu(null);
+  };
+  // Name one of your operatives (empty clears it). Before the game starts, from its datacard.
+  const renameOp = (op) => {
+    const typed = prompt("Name this operative (leave empty to use \"" + op.name + "\"):", op.nick || "");
+    if (typed == null) return;
+    const nick = typed.trim().slice(0, NICK_MAX);
+    setRoster(prev => prev.map(o => { if (o.id !== op.id) return o; const n = { ...o }; if (nick) n.nick = nick; else delete n.nick; return n; }));
   };
   const copySavedCode = (entry) => {
     const code = btoa(JSON.stringify({ f: entry.f, o: entry.o, fe: entry.fe, ue: entry.ue }));
@@ -9677,7 +9692,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   };
 
   const getOppWounds = (opId, maxW) => oppWounds[opId] !== undefined ? oppWounds[opId] : maxW;
-  const logOpp = (op, delta, how, extra) => { const cw = getOppWounds(op.id, op.wounds); logWounds({ side: "opp", target: op.name, max: op.wounds, before: cw, after: clampW(cw + delta, op.wounds), how, ...extra }); };
+  const logOpp = (op, delta, how, extra) => { const cw = getOppWounds(op.id, op.wounds); logWounds({ side: "opp", target: opLabel(op), max: op.wounds, before: cw, after: clampW(cw + delta, op.wounds), how, ...extra }); };
   // Imported rosters used to keep the whole faction (oppRoster.faction); online ones only send its id.
   const oppF = oppRoster ? (oppRoster.faction || FACTIONS[oppRoster.factionId]) : null;
   const oppEquip = (op) => oppF ? oppEquipFor(oppF, oppRoster.eq || {}, oppRoster.uEq || {}, op) : { weapons: [], effects: [], ignoreInjured: false };
@@ -9709,7 +9724,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   const fightOpInfo = (side, op) => {
     const start = side === "mine" ? getWounds(op.id, op.wounds) : getOppWounds(op.id, op.wounds);
     const eq = side === "mine" ? getEquipForOp(op) : oppEquip(op);
-    return { id: op.id, name: op.name, max: op.wounds, start, injured: start > 0 && start < Math.ceil(op.wounds / 2) && !(eq && eq.ignoreInjured) };
+    return { id: op.id, name: opLabel(op), max: op.wounds, start, injured: start > 0 && start < Math.ceil(op.wounds / 2) && !(eq && eq.ignoreInjured) };
   };
   const meleeFor = (side, op) => {
     const eq = side === "mine" ? getEquipForOp(op) : oppEquip(op);
@@ -9728,7 +9743,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
     ["atk", "def"].forEach(role => {
       const d = next.dmg[role] - prev.dmg[role];
       if (d <= 0) return;
-      const s = next[role], by = next[otherRole(role)], extra = { by: by.op.name, weapon: by.weapon.name };
+      const s = next[role], by = next[otherRole(role)], extra = { by: opLabel(by.op), weapon: by.weapon.name };
       addScars(s.side, s.op.id, scarKindOf(fxProfile({ ...by.weapon, type: "melee" })), 1);
       if (s.side === "mine") {
         const op = roster.find(o => o.id === s.op.id);
@@ -9812,14 +9827,14 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
     else if (!x.online && mp) mp.sendOrQueue(d > 0 ? { type: "applyRemoteDamage", opId: op.id, amount: d, ...extra } : { type: "applyRemoteHeal", opId: op.id, amount: -d });
   };
   const shotDamageApply = (prev, next) => {
-    const sideOf = (owner) => owner === next.mine ? "mine" : "opp", extra = { by: next.atk.op.name, weapon: next.atk.weapon.name };
+    const sideOf = (owner) => owner === next.mine ? "mine" : "opp", extra = { by: opLabel(next.atk.op), weapon: next.atk.weapon.name };
     next.targets.forEach((t, i) => {
       const p = prev.targets[i] || { dmg: null, adjust: 0 };
       hitOperative(sideOf(t.owner), t.op.id, (t.dmg || 0) - (p.dmg || 0), extra, next, "dice", scarKindOf(fxProfile(next.atk.weapon))); // the hit
       hitOperative(sideOf(t.owner), t.op.id, (t.adjust || 0) - (p.adjust || 0), {}, next, "hand");  // a correction after it
     });
     const hot = (next.hot ? next.hot.dmg : 0) - (prev.hot ? prev.hot.dmg : 0);
-    if (hot) { hitOperative(sideOf("A"), next.atk.op.id, hot, {}, next, "self", "melt"); showToast(next.atk.op.name + " took " + hot + " damage from Hot", 3000); }
+    if (hot) { hitOperative(sideOf("A"), next.atk.op.id, hot, {}, next, "self", "melt"); showToast(opLabel(next.atk.op) + " took " + hot + " damage from Hot", 3000); }
   };
   const dispatchShot = (action, remote, n) => {
     const cur = shotRef.current;
@@ -9914,7 +9929,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
       html += '<div style="border:1.5px solid ' + fc + ';border-radius:4px;break-inside:avoid;page-break-inside:avoid;overflow:hidden;">';
       // Header
       html += '<div style="background:' + fc + ';color:white;padding:3px 8px;display:flex;justify-content:space-between;align-items:center;">';
-      html += '<div><div style="font-size:11px;font-weight:700;">' + op.name + '</div>';
+      html += '<div><div style="font-size:11px;font-weight:700;">' + escHtml(opLabel(op)) + (op.nick ? ' <span style="font-weight:400;">(' + escHtml(op.name) + ')</span>' : '') + '</div>';
       html += '<div style="font-size:6px;opacity:0.7;letter-spacing:0.06em;">' + op.kw + '</div></div>';
       html += '<div style="font-size:8px;">' + op.pts + 'mm base</div></div>';
       // Stats
@@ -11121,7 +11136,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                         <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 4 }}>These operatives gain one additional Chapter Tactic:</div>
                         {veteranOps.map(op => (
                           <div key={op.id} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
-                            <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text)", minWidth: 80 }}>{op.name}</span>
+                            <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text)", minWidth: 80 }}>{opLabel(op)}</span>
                             <select value={chapterVeteran[op.id] || ""} onChange={(e) => setChapterVeteran(prev => ({ ...prev, [op.id]: e.target.value }))} style={{ flex: 1, background: "var(--raised)", border: "1px solid var(--line)", borderRadius: 2, color: "var(--text)", fontSize: 11, padding: "3px 4px", outline: "none" }}>
                               <option value="">Select +1 tactic...</option>
                               {tactics.filter(t => t.id !== chapterPrimary && t.id !== chapterSecondary).map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
@@ -11228,7 +11243,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                   return aAlive - bAlive;
                 }).map(op => {
                   const result = getEquipForOp(op);
-                  return (<Datacard key={op.id} op={op} f={f} fc={f.color} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getWounds(op.id, op.wounds)} onWound={(delta) => { logMine(op, delta, "hand"); setOpWounds(op.id, op.wounds, delta); }} collapsed={cardCollapsed[op.id] || false} onToggle={() => toggleCardCollapse(op.id)} ignoreInjured={result.ignoreInjured} cp={cp} setCp={setCp} isActivated={activated[op.id] || false} onActivate={() => setActivated(prev => ({ ...prev, [op.id]: !prev[op.id] }))} requestFight={(o, w) => startFight("mine", o, w)} requestShoot={(o, w) => startShot("mine", o, w)} scars={scars["mine:" + op.id]} order={orders[op.id] || "conceal"} onOrder={() => setOrders(prev => ({ ...prev, [op.id]: prev[op.id] === "engage" ? "conceal" : "engage" }))} uses={feat.uses ? battleUses : null} setUse={(k, n) => setBattleUses(prev => ({ ...prev, [k]: n }))} carried={carried[op.id]} onCarried={(list) => setCarried(prev => ({ ...prev, [op.id]: list }))} />);
+                  return (<Datacard key={op.id} op={op} onRename={rosterLocked ? null : () => renameOp(op)} f={f} fc={f.color} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getWounds(op.id, op.wounds)} onWound={(delta) => { logMine(op, delta, "hand"); setOpWounds(op.id, op.wounds, delta); }} collapsed={cardCollapsed[op.id] || false} onToggle={() => toggleCardCollapse(op.id)} ignoreInjured={result.ignoreInjured} cp={cp} setCp={setCp} isActivated={activated[op.id] || false} onActivate={() => setActivated(prev => ({ ...prev, [op.id]: !prev[op.id] }))} requestFight={(o, w) => startFight("mine", o, w)} requestShoot={(o, w) => startShot("mine", o, w)} scars={scars["mine:" + op.id]} order={orders[op.id] || "conceal"} onOrder={() => setOrders(prev => ({ ...prev, [op.id]: prev[op.id] === "engage" ? "conceal" : "engage" }))} uses={feat.uses ? battleUses : null} setUse={(k, n) => setBattleUses(prev => ({ ...prev, [k]: n }))} carried={carried[op.id]} onCarried={(list) => setCarried(prev => ({ ...prev, [op.id]: list }))} />);
                 })}
 
               </div>
@@ -18685,6 +18700,7 @@ function FeaturesPage({ onClose, focus, onNews, onFeedback }) {
 // notice changed, in plain words. kind: "new", "better" or "fixed". Add an entry with every such change.
 const CHANGELOG = [
   { date: "2026-11-02", items: [
+    ["new", "Name your operatives. Tap Name it on a datacard before the game. The name shows on the card, when shooting and fighting, in the battle log and the recap, and it's saved with the roster. Online, your opponent sees it too."],
     ["new", "Send feedback, in Settings: report a bug or a rules mistake, or suggest an idea. If something crashes, Report this problem sends the details for you."],
   ] },
   { date: "2026-11-01", items: [
@@ -20054,6 +20070,42 @@ async function runSelfTest(hooks) {
     await click(btn("My rosters", true), "My rosters");
     if (!card()) throw new Error("My rosters didn't show the saved rosters");
     return "Play starts a game, Edit loads it, saving again replaces it";
+  });
+  await step("Name your operatives", async () => {
+    await nav("Battle");
+    const r = (store("savedRosters") || [])[0];
+    if (!r) throw new Error("no saved roster from the earlier steps");
+    const card = () => all("[data-saved-roster]").find(c => c.getAttribute("data-saved-roster") === r.id);
+    const cardBtn = (t) => card() && [...card().querySelectorAll("button")].find(b => b.textContent.trim() === t);
+    const named = (n) => (store("roster") || []).some(o => o.nick === n);
+    const answer = async (text, el, what) => { const p0 = window.prompt; window.prompt = () => text; try { await click(el, what); } finally { window.prompt = p0; } };
+    if (!card()) { const my = btn("My rosters", true); if (my) await click(my, "My rosters"); }
+    await click(cardBtn("Edit"), "Edit");
+    const dc = btn("Datacards", true); if (dc) await click(dc, "Datacards");
+    const link = (t) => all("button").find(b => b.textContent.trim() === t);
+    if (!link("Name it")) throw new Error("no Name it on the datacards before the game");
+    await answer("  Scuba Steve  ", link("Name it"), "Name it");
+    if (!named("Scuba Steve")) throw new Error("the name wasn't saved on the operative");
+    if (!document.body.innerText.includes("Scuba Steve") || !link("Rename")) throw new Error("the datacard doesn't show the name and Rename");
+    if (opLabel({ name: "Grot", nick: "Scuba Steve" }) !== "Scuba Steve" || opLabel({ name: "Grot" }) !== "Grot") throw new Error("opLabel picks the wrong name");
+    if (!freshOps(FACTIONS[store("fid")], store("roster")).some(o => o.nick === "Scuba Steve")) throw new Error("refreshing the datacards loses the name");
+    // Saved with the roster, kept by Play, and not editable during the game.
+    await click(btn("Save roster", true), "Save roster");
+    const again = (store("savedRosters") || []).find(x => x.id === r.id);
+    if (!again || !(again.nk || []).includes("Scuba Steve")) throw new Error("saving the roster didn't keep the name");
+    await click(btn("My rosters", true), "My rosters");
+    await click(cardBtn("Play"), "Play");
+    if (!named("Scuba Steve")) throw new Error("Play lost the name");
+    if (link("Name it") || link("Rename")) throw new Error("Name it shows during a game");
+    // Clearing a name: an empty answer goes back to the operative type.
+    await click(document.querySelector("[aria-label='Game menu']"), "game menu");
+    await click(btn("End game"), "End game");
+    await click(btn("Discard game", true), "Discard game");
+    await click(cardBtn("Edit"), "Edit");
+    const dc2 = btn("Datacards", true); if (dc2) await click(dc2, "Datacards");
+    await answer("", link("Rename"), "Rename");
+    if ((store("roster") || []).some(o => o.nick)) throw new Error("an empty name didn't clear it");
+    return "named, shown, saved, kept by Play, locked during the game, cleared";
   });
   await step("Send feedback and the admin page", async () => {
     // A pretend server: records what the app sends and answers as the real one would (server/feedback.js).

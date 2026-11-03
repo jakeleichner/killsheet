@@ -3,6 +3,7 @@
 // notice changed, in plain words. kind: "new", "better" or "fixed". Add an entry with every such change.
 const CHANGELOG = [
   { date: "2026-11-02", items: [
+    ["new", "Name your operatives. Tap Name it on a datacard before the game. The name shows on the card, when shooting and fighting, in the battle log and the recap, and it's saved with the roster. Online, your opponent sees it too."],
     ["new", "Send feedback, in Settings: report a bug or a rules mistake, or suggest an idea. If something crashes, Report this problem sends the details for you."],
   ] },
   { date: "2026-11-01", items: [

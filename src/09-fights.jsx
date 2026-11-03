@@ -317,7 +317,7 @@ function FightScreen({ fight, dropped, enemies, defWeapons, sideColor, onAct, on
     setTimeout(pop, hit);
   }, [f.log.length]);
 
-  const name = (role) => f[role] && f[role].op ? f[role].op.name : "";
+  const name = (role) => f[role] && f[role].op ? opLabel(f[role].op) : "";
   const who = (role) => mine(role) && f.online ? "You" : name(role);
   const waitingOn = (role) => f.online && !mine(role);
   const slow = dropped || (f.online && now - f.changedAt > 60000);
@@ -377,7 +377,7 @@ function FightScreen({ fight, dropped, enemies, defWeapons, sideColor, onAct, on
           <div style={{ ...h3, marginBottom: 0, color: col, flex: 1, minWidth: 0 }}>{role === "atk" ? "Attacking" : "Fights back"}{f.online && mine(role) ? " (you)" : ""}</div>
           <span style={{ fontSize: 14, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", color: hp <= 0 ? "#B8341C" : hp < s.op.max / 2 ? "var(--gold)" : "var(--text)" }}>{hp}/{s.op.max}W</span>
         </div>
-        <div data-vs-name={role} style={{ ...vsName, textDecoration: hp <= 0 ? "line-through" : "none" }}>{s.op.name}</div>
+        <div data-vs-name={role} style={{ ...vsName, textDecoration: hp <= 0 ? "line-through" : "none" }}>{opLabel(s.op)}</div>
         {s.weapon
           ? <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{s.weapon.name} {"·"} {s.weapon.atk} {"·"} {s.weapon.hit} {"·"} {s.weapon.dmg}{s.weapon.wr && s.weapon.wr !== "-" ? " · " + s.weapon.wr : ""}{s.op.injured ? " · injured: hits on 1 worse" : ""}</div>
           : <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>Picking a weapon</div>}
@@ -401,7 +401,7 @@ function FightScreen({ fight, dropped, enemies, defWeapons, sideColor, onAct, on
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 6 }}>
           {enemies.map(e => (
             <button key={e.op.id} onClick={() => onAct({ type: "target", def: newFightSide(e.side, e.info) })} style={{ ...cd, marginBottom: 0, padding: "8px 10px", textAlign: "left", cursor: "pointer", borderLeft: "3px solid " + sideColor(e.side), display: "flex", alignItems: "baseline", gap: 6 }}>
-              <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif" }}>{e.op.name}</span>
+              <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif" }}>{opLabel(e.op)}</span>
               <span style={{ fontSize: 13, color: "var(--muted)" }}>{e.info.start}/{e.info.max}</span>
             </button>
           ))}

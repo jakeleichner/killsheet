@@ -175,7 +175,7 @@ function HitBubble({ n, tail, animate, onOpen, onDismiss }) {
   );
 }
 
-function Datacard({ side, op, f, fc, equipWeapons, equipEffects, curWounds, onWound, collapsed, onToggle, ignoreInjured, cp, setCp, isActivated, onActivate, order, onOrder, uses, setUse, carried, onCarried, narrow, requestFight, requestShoot, scars }) {
+function Datacard({ side, op, onRename, f, fc, equipWeapons, equipEffects, curWounds, onWound, collapsed, onToggle, ignoreInjured, cp, setCp, isActivated, onActivate, order, onOrder, uses, setUse, carried, onCarried, narrow, requestFight, requestShoot, scars }) {
   const [pickWeapons, setPickWeapons] = useState(false);
   const { feat } = React.useContext(FeatureCtx);
   const opRules = React.useMemo(() => opWeaponRules(op), [op]);
@@ -237,7 +237,7 @@ function Datacard({ side, op, f, fc, equipWeapons, equipEffects, curWounds, onWo
                 </div>
   );
   const woundBtn = (delta) => (
-    <button className="compact-btn" onClick={(e) => { e.stopPropagation(); onWound(delta); }} aria-label={(delta < 0 ? "Remove a wound from " : "Add a wound to ") + op.name}
+    <button className="compact-btn" onClick={(e) => { e.stopPropagation(); onWound(delta); }} aria-label={(delta < 0 ? "Remove a wound from " : "Add a wound to ") + opLabel(op)}
       style={{ width: 32, height: 32, border: "1px solid " + DS.divider, borderRadius: 4, background: DS.bgElevated, color: delta < 0 ? DS.threat : DS.success, cursor: "pointer", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, lineHeight: 1 }}>{delta < 0 ? "\u2212" : "+"}</button>
   );
   const woundsInline = (
@@ -274,8 +274,11 @@ function Datacard({ side, op, f, fc, equipWeapons, equipEffects, curWounds, onWo
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: collapsed ? "center" : "flex-start", gap: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
               <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{ fontFamily: DS.fontDisplay, fontSize: 18, fontWeight: 600, color: DS.textPrimary, lineHeight: 1.15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: isActivated ? "line-through" : "none" }}>{op.name}</div>
-                {!collapsed && <div style={{ fontFamily: DS.fontDisplay, fontSize: 11, fontWeight: 500, color: fc, marginTop: 3, letterSpacing: "0.14em", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{op.kw || "OPERATIVE"}</div>}
+                <div style={{ fontFamily: DS.fontDisplay, fontSize: 18, fontWeight: 600, color: DS.textPrimary, lineHeight: 1.15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: isActivated ? "line-through" : "none" }}>{opLabel(op)}{op.nick && <span style={{ fontSize: 13, fontWeight: 500, color: "var(--muted)", marginLeft: 6 }}>{op.name}</span>}</div>
+                {!collapsed && <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 3, minWidth: 0 }}>
+                  <div style={{ fontFamily: DS.fontDisplay, fontSize: 11, fontWeight: 500, color: fc, letterSpacing: "0.14em", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{op.kw || "OPERATIVE"}</div>
+                  {onRename && <button className="compact-btn link-btn" onClick={(e) => { e.stopPropagation(); onRename(); }} aria-label={(op.nick ? "Rename " : "Name ") + opLabel(op)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--accent)", fontSize: 12, fontFamily: "'Inter', sans-serif", textDecoration: "underline", flexShrink: 0 }}>{op.nick ? "Rename" : "Name it"}</button>}
+                </div>}
               </div>
               {collapsed && !mobile && statsInline}
               {collapsed && !mobile && woundsInline}

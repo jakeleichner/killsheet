@@ -68,6 +68,11 @@ function freshOps(faction, ops) {
     return { ...fresh, baseId: bid, name: base.name + " " + n };
   });
 }
+// An operative's own name, if the player gave it one ("Scuba Steve"), else its type ("Grot"). op.nick is kept apart
+// from op.name so refreshing datacards (freshOps) keeps it and online play carries it.
+const NICK_MAX = 30;
+const opLabel = (op) => (op && (op.nick || op.name)) || "";
+const escHtml = (t) => String(t).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 function makeInstances(faction, baseIds) {
   const seen = {};
   return baseIds.map(bid => {

@@ -1055,6 +1055,42 @@ async function runSelfTest(hooks) {
     if (!card()) throw new Error("My rosters didn't show the saved rosters");
     return "Play starts a game, Edit loads it, saving again replaces it";
   });
+  await step("Name your operatives", async () => {
+    await nav("Battle");
+    const r = (store("savedRosters") || [])[0];
+    if (!r) throw new Error("no saved roster from the earlier steps");
+    const card = () => all("[data-saved-roster]").find(c => c.getAttribute("data-saved-roster") === r.id);
+    const cardBtn = (t) => card() && [...card().querySelectorAll("button")].find(b => b.textContent.trim() === t);
+    const named = (n) => (store("roster") || []).some(o => o.nick === n);
+    const answer = async (text, el, what) => { const p0 = window.prompt; window.prompt = () => text; try { await click(el, what); } finally { window.prompt = p0; } };
+    if (!card()) { const my = btn("My rosters", true); if (my) await click(my, "My rosters"); }
+    await click(cardBtn("Edit"), "Edit");
+    const dc = btn("Datacards", true); if (dc) await click(dc, "Datacards");
+    const link = (t) => all("button").find(b => b.textContent.trim() === t);
+    if (!link("Name it")) throw new Error("no Name it on the datacards before the game");
+    await answer("  Scuba Steve  ", link("Name it"), "Name it");
+    if (!named("Scuba Steve")) throw new Error("the name wasn't saved on the operative");
+    if (!document.body.innerText.includes("Scuba Steve") || !link("Rename")) throw new Error("the datacard doesn't show the name and Rename");
+    if (opLabel({ name: "Grot", nick: "Scuba Steve" }) !== "Scuba Steve" || opLabel({ name: "Grot" }) !== "Grot") throw new Error("opLabel picks the wrong name");
+    if (!freshOps(FACTIONS[store("fid")], store("roster")).some(o => o.nick === "Scuba Steve")) throw new Error("refreshing the datacards loses the name");
+    // Saved with the roster, kept by Play, and not editable during the game.
+    await click(btn("Save roster", true), "Save roster");
+    const again = (store("savedRosters") || []).find(x => x.id === r.id);
+    if (!again || !(again.nk || []).includes("Scuba Steve")) throw new Error("saving the roster didn't keep the name");
+    await click(btn("My rosters", true), "My rosters");
+    await click(cardBtn("Play"), "Play");
+    if (!named("Scuba Steve")) throw new Error("Play lost the name");
+    if (link("Name it") || link("Rename")) throw new Error("Name it shows during a game");
+    // Clearing a name: an empty answer goes back to the operative type.
+    await click(document.querySelector("[aria-label='Game menu']"), "game menu");
+    await click(btn("End game"), "End game");
+    await click(btn("Discard game", true), "Discard game");
+    await click(cardBtn("Edit"), "Edit");
+    const dc2 = btn("Datacards", true); if (dc2) await click(dc2, "Datacards");
+    await answer("", link("Rename"), "Rename");
+    if ((store("roster") || []).some(o => o.nick)) throw new Error("an empty name didn't clear it");
+    return "named, shown, saved, kept by Play, locked during the game, cleared";
+  });
   await step("Send feedback and the admin page", async () => {
     // A pretend server: records what the app sends and answers as the real one would (server/feedback.js).
     const realFetch = window.fetch, sent = [];
