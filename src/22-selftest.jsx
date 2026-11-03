@@ -1073,7 +1073,8 @@ async function runSelfTest(hooks) {
     if (!document.body.innerText.includes("Scuba Steve") || !link("Rename")) throw new Error("the datacard doesn't show the name and Rename");
     if (opLabel({ name: "Grot", nick: "Scuba Steve" }) !== "Scuba Steve" || opLabel({ name: "Grot" }) !== "Grot") throw new Error("opLabel picks the wrong name");
     if (!freshOps(FACTIONS[store("fid")], store("roster")).some(o => o.nick === "Scuba Steve")) throw new Error("refreshing the datacards loses the name");
-    // Saved with the roster, kept by Play, and not editable during the game.
+    // Saved with the roster, kept by Play, and not editable during the game. (Phones show one panel at a time.)
+    const build = btn("Build roster", true); if (build) await click(build, "Build roster");
     await click(btn("Save roster", true), "Save roster");
     const again = (store("savedRosters") || []).find(x => x.id === r.id);
     if (!again || !(again.nk || []).includes("Scuba Steve")) throw new Error("saving the roster didn't keep the name");
