@@ -45,3 +45,18 @@ mobile data instead of Wi-Fi, so the two are on different networks.
 3. Open KillSheet again from the home screen or Safari.
 
 It should open normally, including a mission map on the Missions tab.
+
+## 5. Accounts and cloud backup (before going live)
+
+These need your real email and Google account, so Claude can't do them. While accounts are hidden, opening `killsheet.app/?accounts` turns on the Account button in that browser. The Home Screen app has no address bar, so check it right after going live.
+
+| Step | What to do | What should happen |
+|---|---|---|
+| 1 | On your computer, open `killsheet.app/?accounts`. Cog, Account, Continue with Google. Pick the Google account listed as a test user. | You land back on KillSheet with "You're signed in." |
+| 2 | On your phone, in Safari, open `killsheet.app/?accounts`. Cog, Account, type the same email, Email me a code. | A code arrives within a minute (check spam). |
+| 3 | Type the code and tap Sign in. | You're on the same account. Rosters saved on the computer appear on the phone. |
+| 4 | Save a roster on one device. Account, Back up now on that device, then again on the other. | The roster shows up on both. |
+| 5 | Delete that roster on one device. Back up now on both, as in step 4. | It's gone from both. |
+| 6 | Read `killsheet.app/privacy` and `killsheet.app/terms`. | Tell Claude anything to change. Check the line saying feedback is deleted once it's been dealt with: you'd delete messages on the admin page after handling them. |
+| 7 | After going live: open the Home Screen app. Cog, Account, email code. | Signs in with the code. Continue with Google isn't offered there. |
+
