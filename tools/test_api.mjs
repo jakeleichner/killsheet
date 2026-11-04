@@ -146,8 +146,8 @@ check((await gCall(gState, gState)).headers.get("location") === "/?signin=failed
 // Cloud backup: conflicts, other accounts, size.
 check((await getSync(req("/x", "GET"), acct)).status === 401, "backup needs a session");
 check((await putSync(req("/x", "PUT", { rev: 0, data: {} }), acct)).status === 401, "saving a backup needs a session");
-const first = await (await getSync(req("/x", "GET", undefined, session), acct)).json();
-check(first.rev === 0 && first.data === null, "a new account has no backup");
+const firstSync = await (await getSync(req("/x", "GET", undefined, session), acct)).json();
+check(firstSync.rev === 0 && firstSync.data === null, "a new account has no backup");
 const v1 = await putSync(req("/x", "PUT", { rev: 0, data: { savedRosters: [{ id: "a" }] } }, session), acct);
 check(v1.status === 200 && (await v1.json()).rev === 1, "the first backup saves as revision 1");
 check((await putSync(req("/x", "PUT", { rev: 0, data: { savedRosters: [] } }, session), acct)).status === 409, "a second first backup conflicts instead of overwriting");
