@@ -107,10 +107,23 @@ function useLocalStorage(key, initialValue) {
     try {
       if (typeof window === "undefined" || window.__ksFrozen) return; // frozen: the self-test has put your data back
       window.localStorage.setItem(fullKey, JSON.stringify(value));
+      if (SYNC_WATCHED.includes(key)) scheduleSync();
     } catch (e) { /* quota or serialization errors ignored */ }
   }, [fullKey, value]);
+  // Cloud backup brought in a newer value for this key: pick it up without a reload.
+  useEffect(() => {
+    const onApplied = (e) => {
+      if (!e.detail || !e.detail.includes(key)) return;
+      try { const stored = window.localStorage.getItem(fullKey); setValue(stored !== null ? JSON.parse(stored) : initialValue); } catch (err) { /* keep what's showing */ }
+    };
+    window.addEventListener("ks-sync-applied", onApplied);
+    return () => window.removeEventListener("ks-sync-applied", onApplied);
+  }, [fullKey]);
   return [value, setValue];
 }
+// For the cloud backup, which reads and writes outside React (useLocalStorage above picks changes up from "ks-sync-applied").
+function readStored(key, fallback) { try { const v = window.localStorage.getItem(LS_PREFIX + key); return v !== null ? JSON.parse(v) : fallback; } catch (e) { return fallback; } }
+function writeStored(key, value) { try { if (!window.__ksFrozen) window.localStorage.setItem(LS_PREFIX + key, JSON.stringify(value)); } catch (e) { /* storage full or blocked */ } }
 // Undo support: copy all KillSheet keys, and put a copy back.
 // Back up: every KillSheet key as a JSON file. Phones get the share sheet (Save to Files, AirDrop, Drive); elsewhere it downloads.
 // Returns the file name when it downloaded. Plain function, so the crash screen can use it without the app running.
@@ -209,7 +222,7 @@ function restoreKillSheetStorage(snap) {
   } catch (e) { /* storage unavailable */ }
 }
 // "Clear current game data" keeps saved rosters, game history and the Your KillSheet switches.
-const KEEP_ON_CLEAR = ["savedRosters", "gameHistory", "features", "validate", "appearance", "lastBackup", "backupNudgeAt", "homeTipSeen"]; // battle damage marks ("scars") are game state and clear
+const KEEP_ON_CLEAR = ["savedRosters", "gameHistory", "features", "validate", "appearance", "lastBackup", "backupNudgeAt", "homeTipSeen", "account", "accountsBeta", "syncDeleted", "syncSettingsAt", "syncSettingsLast", "syncLastAt"]; // battle damage marks ("scars") are game state and clear
 function clearKillSheetStorage() {
   try {
     if (typeof window === "undefined") return;

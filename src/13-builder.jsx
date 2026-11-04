@@ -959,10 +959,10 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   const renameSaved = (entry) => {
     const typed = prompt("Rename roster:", entry.name);
     if (typed == null || !typed.trim()) return;
-    setSavedRosters(savedRosters.map(r => r.id === entry.id ? { ...r, name: typed.trim() } : r));
+    setSavedRosters(savedRosters.map(r => r.id === entry.id ? { ...r, name: typed.trim(), savedAt: Date.now() } : r));
   };
   const deleteSaved = (entry) => {
-    withUndo("Deleted " + entry.name, () => setSavedRosters(savedRosters.filter(r => r.id !== entry.id)));
+    withUndo("Deleted " + entry.name, () => { noteSyncDeleted(entry.id); setSavedRosters(savedRosters.filter(r => r.id !== entry.id)); });
     setSavedMenu(null);
   };
   // Name one of your operatives (empty clears it). Before the game starts, from its datacard.
@@ -1986,7 +1986,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                           </div>
                           <span style={{ flexShrink: 0, fontSize: 15, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif" }}>{g.you}{"\u2013"}{g.them}</span>
                           {g.recap && <Arrow open={openGame === g.id} />}
-                          <button className="compact-btn" onClick={(e) => { e.stopPropagation(); withUndo("Game removed from history", () => setGameHistory(h => h.filter(x => x.id !== g.id))); }} aria-label="Remove this game" style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer", padding: 0, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon name="x" size={16} /></button>
+                          <button className="compact-btn" onClick={(e) => { e.stopPropagation(); withUndo("Game removed from history", () => { noteSyncDeleted(g.id); setGameHistory(h => h.filter(x => x.id !== g.id)); }); }} aria-label="Remove this game" style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer", padding: 0, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon name="x" size={16} /></button>
                         </div>
                         {openGame === g.id && g.recap && <div style={{ padding: "0 0 10px 4px" }}><GameRecap recap={g.recap} /></div>}
                         </React.Fragment>

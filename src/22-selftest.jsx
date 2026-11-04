@@ -1092,6 +1092,133 @@ async function runSelfTest(hooks) {
     if ((store("roster") || []).some(o => o.nick)) throw new Error("an empty name didn't clear it");
     return "named, shown, saved, kept by Play, locked during the game, cleared";
   });
+  await step("Account: sign in, cloud backup, sign out", async () => {
+    // Putting two copies together.
+    const ids = (l) => l.map(x => x.id).join();
+    const A = { id: "a", savedAt: 100, name: "old" }, A2 = { id: "a", savedAt: 200, name: "new" }, B = { id: "b", savedAt: 150 };
+    let m = mergeSyncData({ savedRosters: [A, B], gameHistory: [], settings: { validate: true }, settingsAt: 50 }, { savedRosters: [A2], gameHistory: [{ id: 7 }], settings: { validate: false }, settingsAt: 40 });
+    if (ids(m.savedRosters) !== "a,b" || m.savedRosters[0].name !== "new" || ids(m.gameHistory) !== "7") throw new Error("the merge lost an item or kept an old version: " + JSON.stringify(m.savedRosters));
+    if (m.settings.validate !== true || m.settingsAt !== 50) throw new Error("the merge didn't keep the newer settings on this device");
+    if (mergeSyncData({ settings: { validate: true }, settingsAt: 0 }, { settings: { validate: false }, settingsAt: 40 }).settings.validate !== false) throw new Error("a new device didn't take the account's settings");
+    if (mergeSyncData({ savedRosters: [A], deleted: {} }, { savedRosters: [], deleted: { a: 150 } }).savedRosters.length) throw new Error("a roster deleted on another device came back");
+    if (mergeSyncData({ savedRosters: [A2], deleted: {} }, { savedRosters: [], deleted: { a: 150 } }).savedRosters.length !== 1) throw new Error("a roster saved after it was deleted elsewhere was lost");
+    if (mergeSyncData({ gameHistory: [{ id: 9 }], deleted: { other: 10 } }, null).gameHistory.length !== 1 || mergeSyncData({ savedRosters: [A] }, null).savedRosters.length !== 1) throw new Error("the first backup dropped something");
+    // Hidden until it's switched on.
+    await click(all("button[aria-label='Settings']")[0], "Settings cog");
+    const settings = () => document.querySelector("[role=dialog][aria-label='Settings']");
+    const accountBtn = () => [...settings().querySelectorAll("button")].find(b => b.textContent.startsWith("Account"));
+    if (!ACCOUNTS_LIVE && accountBtn()) throw new Error("Account shows before it's switched on");
+    await click(settings().querySelector("[aria-label='Close']"), "close Settings");
+    // A pretend server (the real one is tested by tools/test_api.mjs).
+    const realFetch = window.fetch, server = { data: null, rev: 0, down: false, conflict: false, signedOut: false, signouts: 0, deletes: 0 };
+    window.fetch = async (url, opts = {}) => {
+      const u = String(url), method = opts.method || "GET", body = opts.body ? JSON.parse(opts.body) : null;
+      if (!u.startsWith("/api/")) return realFetch(url, opts);
+      const reply = (status, j) => new Response(JSON.stringify(j || {}), { status });
+      if (u === "/api/auth/email/start") return reply(200, { ok: true });
+      if (u === "/api/auth/email/verify") return body.code === "123456" ? reply(200, { user: { email: body.email.trim().toLowerCase() } }) : reply(400, { error: "wrong code" });
+      if (u === "/api/auth/signout") { server.signouts++; return reply(200); }
+      if (u === "/api/account" && method === "DELETE") { server.deletes++; return reply(body && body.confirm === "DELETE" ? 200 : 400); }
+      if (u === "/api/sync") {
+        if (server.down) return reply(500);
+        if (server.signedOut) return reply(401);
+        if (method === "GET") return reply(200, { data: server.data, rev: server.rev });
+        if (server.conflict) { server.conflict = false; server.data = { ...server.data, savedRosters: [{ id: "other-device", name: "Other device", f: "kasrkin", o: [], savedAt: Date.now() - 500 }, ...(server.data.savedRosters || [])] }; server.rev++; return reply(409); }
+        if (body.rev !== server.rev) return reply(409);
+        server.data = JSON.parse(JSON.stringify(body.data)); server.rev++; return reply(200, { rev: server.rev });
+      }
+      return reply(404);
+    };
+    const until = async (fn, what) => { for (let i = 0; i < 80; i++) { if (fn()) return; await wait(25); } throw new Error("timed out waiting for " + what); };
+    const dialog = () => document.querySelector("[role=dialog][aria-label='Account']");
+    const inDialog = (t) => [...dialog().querySelectorAll("button")].find(b => b.textContent.trim() === t);
+    const rosters = () => store("savedRosters") || [];
+    const signInWith = async () => {
+      await typeInto(dialog().querySelector("input[type=email]"), " Player@Example.com ");
+      await click(inDialog("Email me a code"), "Email me a code");
+      await until(() => dialog().querySelector("#ks-account-code"), "the code box");
+      await typeInto(dialog().querySelector("#ks-account-code"), "123456");
+      await click(inDialog("Sign in"), "Sign in");
+      await until(() => dialog().querySelector("[data-account-email]"), "signing in");
+    };
+    window.__ksAccountsOn = true; window.__ksShowGoogle = true;
+    try {
+      await click(all("button[aria-label='Settings']")[0], "Settings cog");
+      await click(accountBtn(), "Account");
+      if (!dialog()) throw new Error("the Account page didn't open");
+      const notice = dialog().querySelector("[data-age-notice]");
+      if (!notice || notice.textContent !== "You need to be 13 or older to make an account. By signing up, you agree to the Terms and Privacy Policy.") throw new Error("the age notice is wrong: " + (notice && notice.textContent));
+      if (!notice.querySelector("a[href='/terms']") || !notice.querySelector("a[href='/privacy']")) throw new Error("the age notice doesn't link to Terms and Privacy Policy");
+      if (!inDialog("Continue with Google")) throw new Error("no Continue with Google");
+      // A wrong code says so; the right one signs in.
+      await typeInto(dialog().querySelector("input[type=email]"), "player@example.com");
+      await click(inDialog("Email me a code"), "Email me a code");
+      await until(() => dialog().querySelector("#ks-account-code"), "the code box");
+      await typeInto(dialog().querySelector("#ks-account-code"), "000000");
+      await click(inDialog("Sign in"), "Sign in");
+      await until(() => /isn't right/.test(dialog().textContent), "the wrong-code message");
+      await typeInto(dialog().querySelector("#ks-account-code"), "123456");
+      await click(inDialog("Sign in"), "Sign in");
+      await until(() => dialog().querySelector("[data-account-email]"), "signing in");
+      if (dialog().querySelector("[data-account-email]").textContent !== "player@example.com" || (store("account") || {}).email !== "player@example.com") throw new Error("the account isn't shown or kept");
+      // Signing in uploads what's on this device.
+      const here = rosters().length;
+      if (!here) throw new Error("no saved rosters from the earlier steps");
+      await until(() => server.rev > 0 && (store("syncLastAt") || 0) > 0, "the first backup");
+      if (server.data.savedRosters.length !== here || !Array.isArray(server.data.gameHistory) || !("features" in server.data.settings)) throw new Error("the first backup didn't hold everything");
+      if ("roster" in server.data || "wounds" in server.data) throw new Error("the game in progress was uploaded");
+      // A roster saved on another device comes here, and the app picks it up without a reload.
+      server.data = { ...server.data, savedRosters: [{ id: "cloud-1", name: "From the cloud", f: store("fid"), o: [], savedAt: Date.now() - 1000 }, ...server.data.savedRosters] }; server.rev++;
+      await syncNow(); await settle(20);
+      if (!rosters().some(r => r.id === "cloud-1")) throw new Error("a roster from another device didn't arrive");
+      // Deleting it here deletes it everywhere.
+      noteSyncDeleted("cloud-1");
+      await syncNow(); await settle(20);
+      if (rosters().some(r => r.id === "cloud-1") || server.data.savedRosters.some(r => r.id === "cloud-1")) throw new Error("a deleted roster stayed");
+      // Two devices at once: the other device's save and this one's are both kept.
+      writeStored("savedRosters", [{ id: "local-2", name: "This device", f: store("fid"), o: [], savedAt: Date.now() }, ...rosters()]);
+      server.conflict = true;
+      await syncNow(); await settle(20);
+      if (!server.data.savedRosters.some(r => r.id === "local-2") || !server.data.savedRosters.some(r => r.id === "other-device") || !rosters().some(r => r.id === "other-device")) throw new Error("two devices saving at once lost one: " + ids(server.data.savedRosters));
+      // The server being down changes nothing here, and says so.
+      const before = JSON.stringify(rosters());
+      server.down = true;
+      await syncNow(); await settle();
+      if (JSON.stringify(rosters()) !== before || !/Couldn't back up just now/.test(dialog().textContent)) throw new Error("a failed backup changed something or didn't say so");
+      server.down = false;
+      // Signing out keeps what's on the device.
+      await click(inDialog("Sign out"), "Sign out");
+      await until(() => !dialog().querySelector("[data-account-email]"), "signing out");
+      if (server.signouts !== 1 || store("account") || JSON.stringify(rosters()) !== before) throw new Error("signing out lost something");
+      const rev = server.rev;
+      await syncNow();
+      if (server.rev !== rev) throw new Error("a backup ran while signed out");
+      // A session that's ended elsewhere signs this device out too.
+      await signInWith();
+      await until(() => !/Backing up/.test(dialog().textContent), "the backup after signing in");
+      server.signedOut = true;
+      await syncNow();
+      await until(() => !dialog().querySelector("[data-account-email]"), "being signed out");
+      server.signedOut = false;
+      // Deleting asks first, and keeps what's on the device.
+      await signInWith();
+      await until(() => !/Backing up/.test(dialog().textContent), "the backup after signing in");
+      await click(inDialog("Delete my account"), "Delete my account");
+      if (!/for good/.test(dialog().textContent) || server.deletes !== 0) throw new Error("Delete didn't ask first");
+      await click(inDialog("Delete my account"), "confirm Delete my account");
+      await until(() => !dialog().querySelector("[data-account-email]"), "deleting");
+      if (server.deletes !== 1 || store("account") || !rosters().length) throw new Error("deleting went wrong");
+      await click(dialog().querySelector("[aria-label='Close']"), "close Account");
+      await click(settings().querySelector("[aria-label='Close']"), "close Settings");
+      return "signed in, uploaded, merged two devices, deletes spread, server down, signed out, account deleted";
+    } finally {
+      window.fetch = realFetch;
+      delete window.__ksAccountsOn; delete window.__ksShowGoogle;
+      const open = dialog(); if (open) open.querySelector("[aria-label='Close']").click();
+      const s2 = settings(); if (s2) s2.querySelector("[aria-label='Close']").click();
+      await settle();
+    }
+  });
   await step("Send feedback and the admin page", async () => {
     // A pretend server: records what the app sends and answers as the real one would (server/feedback.js).
     const realFetch = window.fetch, sent = [];

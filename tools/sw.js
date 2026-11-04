@@ -44,6 +44,7 @@ self.addEventListener("fetch", (event) => {
 
   // The page itself: try the network first so updates arrive, fall back to the saved copy offline.
   if (req.mode === "navigate") {
+    if (local && !/^\/(index\.html)?$/.test(url.pathname)) return; // /privacy and /terms are their own pages, not the app
     event.respondWith((async () => {
       const cache = await caches.open(CACHE);
       try {

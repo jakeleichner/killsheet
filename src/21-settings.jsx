@@ -198,7 +198,7 @@ function AppearancePicker() {
   );
 }
 
-function FeaturesPage({ onClose, focus, onNews, onFeedback }) {
+function FeaturesPage({ onClose, focus, onNews, onFeedback, account, onAccount }) {
   const { feat, setFeat, setMode, validate, setValidate } = React.useContext(FeatureCtx);
   const mode = featureMode(feat);
   const [explain, setExplain] = useState(typeof focus === "string" ? { [focus]: true } : {});
@@ -242,6 +242,7 @@ function FeaturesPage({ onClose, focus, onNews, onFeedback }) {
           <button onClick={onClose} aria-label="Close" style={{ ...bs("var(--muted)"), padding: "8px 10px", display: "inline-flex" }}><Icon name="x" size={18} /></button>
         </div>
         {onNews && <button onClick={onNews} style={{ ...bs("var(--blue)"), width: "100%", marginTop: 12, padding: "10px 12px", fontSize: 14, display: "flex", alignItems: "center", gap: 8, textAlign: "left" }}><span style={{ flex: 1 }}>What's new</span><span style={{ fontSize: 12, color: "var(--muted)", textTransform: "none", letterSpacing: 0 }}>{newsDate(CHANGELOG[0].date)}</span></button>}
+        {onAccount && <button onClick={onAccount} style={{ ...bs("var(--accent)"), width: "100%", marginTop: 8, padding: "10px 12px", fontSize: 14, display: "flex", alignItems: "center", gap: 8, textAlign: "left" }}><span style={{ flex: 1 }}>Account</span><span style={{ fontSize: 12, color: "var(--muted)", textTransform: "none", letterSpacing: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{account ? account.email : "Back up your rosters"}</span></button>}
         {onFeedback && <button onClick={onFeedback} style={{ ...bs("var(--muted)"), width: "100%", marginTop: 8, padding: "10px 12px", fontSize: 14, display: "flex", alignItems: "center", gap: 8, textAlign: "left" }}><span style={{ flex: 1 }}>Send feedback</span><span style={{ fontSize: 12, color: "var(--muted)", textTransform: "none", letterSpacing: 0 }}>Bugs, rule mistakes, ideas</span></button>}
         <div style={{ ...h3, color: "var(--accent)", margin: "14px 0 8px" }}>APPEARANCE</div>
         <AppearancePicker />

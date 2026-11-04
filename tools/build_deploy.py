@@ -65,6 +65,8 @@ def main():
         shutil.rmtree(os.path.join(deploy, folder), ignore_errors=True)
         shutil.copytree(os.path.join(ROOT, folder), os.path.join(deploy, folder))
     shutil.copy(os.path.join(ROOT, "manifest.webmanifest"), os.path.join(deploy, "manifest.webmanifest"))
+    for page in ("privacy.html", "terms.html"):  # served at /privacy and /terms
+        shutil.copy(os.path.join(ROOT, "site", page), os.path.join(deploy, page))
     # The build's version (it changes whenever the page or its files change) goes in three places: sw.js (offline
     # cache), version.json (what a running copy compares itself with, for "A new version is ready") and the page
     # itself as window.KS_VERSION, with the build date as window.KS_BUILT (online play says which phone is older).
