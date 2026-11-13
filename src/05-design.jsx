@@ -263,7 +263,7 @@ function restoreKillSheetStorage(snap) {
   } catch (e) { /* storage unavailable */ }
 }
 // "Clear current game data" keeps saved rosters, game history and the Your KillSheet switches.
-const KEEP_ON_CLEAR = ["savedRosters", "gameHistory", "features", "validate", "appearance", "lastBackup", "backupNudgeAt", "homeTipSeen", "account", "accountsBeta", "syncDeleted", "syncSettingsAt", "syncSettingsLast", "syncLastAt"]; // battle damage marks ("scars") are game state and clear
+const KEEP_ON_CLEAR = ["savedRosters", "gameHistory", "features", "validate", "appearance", "lastBackup", "backupNudgeAt", "homeTipSeen", "account", "accountsBeta", "syncDeleted", "syncSettingsAt", "syncSettingsLast", "syncLastAt", "photoDeleted", "sharePhotos", "crashReports"]; // battle damage marks ("scars") are game state and clear
 function clearKillSheetStorage() {
   try {
     if (typeof window === "undefined") return;

@@ -6190,7 +6190,7 @@ function restoreKillSheetStorage(snap) {
   } catch (e) { /* storage unavailable */ }
 }
 // "Clear current game data" keeps saved rosters, game history and the Your KillSheet switches.
-const KEEP_ON_CLEAR = ["savedRosters", "gameHistory", "features", "validate", "appearance", "lastBackup", "backupNudgeAt", "homeTipSeen", "account", "accountsBeta", "syncDeleted", "syncSettingsAt", "syncSettingsLast", "syncLastAt"]; // battle damage marks ("scars") are game state and clear
+const KEEP_ON_CLEAR = ["savedRosters", "gameHistory", "features", "validate", "appearance", "lastBackup", "backupNudgeAt", "homeTipSeen", "account", "accountsBeta", "syncDeleted", "syncSettingsAt", "syncSettingsLast", "syncLastAt", "photoDeleted", "sharePhotos", "crashReports"]; // battle damage marks ("scars") are game state and clear
 function clearKillSheetStorage() {
   try {
     if (typeof window === "undefined") return;
@@ -8819,6 +8819,7 @@ function Datacard({ side, op, preview, onRename, photo, onPhoto, onRemovePhoto, 
 const PHOTO_DB = "killsheet-photos";
 const PHOTO_SIZE = 320; // pixels square; about 20-40 KB each
 const photoCache = {}; // "team|operative type" -> data URL
+const photoTimes = {}; // "team|operative type" -> when it last changed (for syncing with an account; 1 for photos from before)
 let photosLoaded = null;
 const photoKey = (teamId, opId) => teamId + "|" + String(opId).replace(/~\d+$/, "");
 const photoFor = (teamId, opId) => (teamId && opId && photoCache[photoKey(teamId, opId)]) || null;
@@ -8835,22 +8836,57 @@ function photoDb() {
 function loadPhotos() {
   if (!photosLoaded) photosLoaded = photoDb().then(db => new Promise(ok => {
     const req = db.transaction("photos", "readonly").objectStore("photos").openCursor();
-    req.onsuccess = () => { const c = req.result; if (c) { photoCache[c.key] = c.value; c.continue(); } else ok(); };
+    req.onsuccess = () => {
+      const c = req.result;
+      if (!c) { ok(); return; }
+      const v = c.value; // { url, t }, or a bare data URL from before photos synced
+      photoCache[c.key] = typeof v === "string" ? v : v.url;
+      photoTimes[c.key] = typeof v === "string" ? 1 : v.t || 1;
+      c.continue();
+    };
     req.onerror = () => ok();
   })).catch(() => {}).then(() => window.dispatchEvent(new Event("ks-photos")));
   return photosLoaded;
 }
-// Save (or, with no data URL, remove) one photo.
-async function setPhoto(key, dataUrl) {
+// Save (or, with no data URL, remove) one photo. t: when it changed; fromSync: it came from the account, so don't
+// send it back. A removal is remembered (ks_photoDeleted), so a signed-in account removes it on other devices too.
+async function setPhoto(key, dataUrl, t, fromSync) {
+  const when = t || Date.now();
   const db = await photoDb();
   await new Promise((ok, fail) => {
     const tx = db.transaction("photos", "readwrite");
-    if (dataUrl) tx.objectStore("photos").put(dataUrl, key); else tx.objectStore("photos").delete(key);
+    if (dataUrl) tx.objectStore("photos").put({ url: dataUrl, t: when }, key); else tx.objectStore("photos").delete(key);
     tx.oncomplete = ok;
     tx.onerror = () => fail(tx.error);
   });
-  if (dataUrl) photoCache[key] = dataUrl; else delete photoCache[key];
+  if (dataUrl) { photoCache[key] = dataUrl; photoTimes[key] = when; }
+  else { delete photoCache[key]; delete photoTimes[key]; writeStored("photoDeleted", { ...readStored("photoDeleted", {}), [key]: when }); }
   window.dispatchEvent(new Event("ks-photos"));
+  if (!fromSync && typeof scheduleSync === "function") scheduleSync();
+}
+// Stage 3: photos back up with the account (/api/photos, server/account.js). For each photo, the newest change wins,
+// here or there; a removal counts as a change. Runs after each cloud backup (syncNow).
+async function syncPhotos() {
+  await loadPhotos();
+  const got = await fetchWithin("/api/photos", { cache: "no-store" });
+  if (!got.ok) return;
+  const remote = (await got.json()).items || {};
+  const deleted = readStored("photoDeleted", {});
+  const keys = new Set([...Object.keys(photoCache), ...Object.keys(deleted), ...Object.keys(remote)]);
+  for (const key of keys) {
+    const lt = photoCache[key] ? photoTimes[key] || 1 : -1, ld = deleted[key] || -1, r = remote[key], rt = r ? r.t : -1;
+    const here = Math.max(lt, ld);
+    if (rt > here) {
+      if (r.gone) { if (photoCache[key]) await setPhoto(key, null, rt, true); else writeStored("photoDeleted", { ...readStored("photoDeleted", {}), [key]: rt }); }
+      else {
+        const one = await fetchWithin("/api/photos?key=" + encodeURIComponent(key), { cache: "no-store" });
+        if (one.ok) { const j = await one.json(); if (j && j.data) await setPhoto(key, j.data, j.t, true); }
+      }
+    } else if (here > rt) {
+      const body = ld > lt ? { key, data: null, t: ld } : { key, data: photoCache[key], t: lt };
+      await fetchWithin("/api/photos", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    }
+  }
 }
 // A picked photo, cropped to its middle square and shrunk to PHOTO_SIZE, as a JPEG data URL.
 function shrinkPhoto(file) {
@@ -8869,16 +8905,34 @@ function shrinkPhoto(file) {
     img.src = url;
   });
 }
-// Redraws when photos load or change.
+// Online play (stage 2): the photos of the operatives in your roster, for your opponent's screen during that game.
+// Off with Settings, Privacy, "Show my photos to my opponent" (ks_sharePhotos).
+function photosToShare(teamId, roster) {
+  if (readStored("sharePhotos", true) === false || !teamId) return null;
+  const items = {};
+  (roster || []).forEach(o => { const k = photoKey(teamId, o.id); if (photoCache[k]) items[k.slice(teamId.length + 1)] = photoCache[k]; });
+  return Object.keys(items).length ? { team: teamId, items } : null;
+}
+// What arrives from the other phone: kept (in memory, for that game) only if each is a small JPEG photo.
+const OPP_PHOTO_MAX = 200000; // characters, about 150 KB
+function acceptOppPhotos(p) {
+  if (!p || typeof p.team !== "string" || !p.items || typeof p.items !== "object") return null;
+  const items = {};
+  Object.entries(p.items).slice(0, 40).forEach(([k, v]) => {
+    if (k.length < 80 && typeof v === "string" && v.length <= OPP_PHOTO_MAX && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(v)) items[k] = v;
+  });
+  return Object.keys(items).length ? { team: p.team, items } : null;
+}
+// Redraws when photos load or change; returns a number that changes with them.
 function usePhotos() {
-  const [, redraw] = useState(0);
+  const [version, redraw] = useState(0);
   useEffect(() => {
     const on = () => redraw(n => n + 1);
     window.addEventListener("ks-photos", on);
     loadPhotos();
     return () => window.removeEventListener("ks-photos", on);
   }, []);
-  return photoCache;
+  return version;
 }
 /* ═══ BUILDER ═══ */
 // Line icons for multiplayer, drawn in the same style as the share/print icons.
@@ -9145,7 +9199,8 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   const [activated, setActivated] = useLocalStorage("activated", {});
   const [npoUnits, setNpoUnits] = useLocalStorage("npoUnits", []);
   const [savedRosters, setSavedRosters] = useLocalStorage("savedRosters", []);
-  usePhotos(); // operative photos (12a-photos): this redraws when they load or change
+  const photoVersion = usePhotos(); // operative photos (12a-photos): this redraws when they load or change
+  const [oppPhotos, setOppPhotos] = useState(null); // the opponent's photos, sent in an online game; never saved
   const photoInput = React.useRef(null);
   const [photoTarget, setPhotoTarget] = useState(null); // the operative an Add photo is for
   // The saved roster last loaded or saved, so saving again offers its name (and replaces it) instead of making a copy.
@@ -9413,6 +9468,8 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
         const p = msg.payload;
         if (p.tp !== undefined) setTp(p.tp);
         if (p.hasInitiative !== undefined) setHasInitiative(!p.hasInitiative);
+      } else if (msg.type === "photos") {
+        setOppPhotos(msg.payload ? acceptOppPhotos(msg.payload) : null);
       } else if (msg.type === "chat" && msg.text) {
         showToast("Opponent: " + msg.text);
         setChatHistory(prev => [...prev, { from: "them", text: String(msg.text).slice(0, 500), ts: Date.now() }].slice(-50));
@@ -9438,6 +9495,16 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
     if (mp.status !== "connected" || mpSuppressRef.current) return;
     mp.send({ type: "shared", payload: { tp, hasInitiative } });
   }, [tp, hasInitiative, mp.status]);
+  // Online: send the photos of the operatives in your roster (or none, if sharing is off), again only when they change.
+  const sentPhotos = React.useRef("");
+  useEffect(() => {
+    if (mp.status !== "connected") { sentPhotos.current = ""; if (mp.status === "idle") setOppPhotos(null); return; }
+    const share = photosToShare(fid, roster);
+    const sig = share ? share.team + "|" + Object.keys(share.items).sort().map(k => k + ":" + share.items[k].length).join(",") : "none";
+    if (sig === sentPhotos.current) return;
+    sentPhotos.current = sig;
+    mp.send({ type: "photos", payload: share });
+  }, [mp.status, fid, roster.map(o => o.id).join(), photoVersion]);
   // On host's first connect, send an initial snapshot including shared seed
   useEffect(() => {
     if (mp.status === "connected" && mp.role === "host") {
@@ -9871,6 +9938,8 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   const editingSaved = !savedMatch && lastSaved && lastSaved.f === fid && savedRosters.some(r => r.name.toLowerCase() === lastSaved.name.toLowerCase());
   const saveLabel = savedMatch ? "Saved \u2713" : editingSaved ? "Save changes" : "Save roster";
   const saveTitle = savedMatch ? "Saved as " + savedMatch.name + ". Change something to save again." : editingSaved ? "Update " + lastSaved.name + " in My rosters" : "Save to My rosters on this device";
+  // The opponent's photo for one of their operatives: only for the team they're playing.
+  const oppPhotoFor = (o) => oppPhotos && oppRoster && oppPhotos.team === oppRoster.factionId ? oppPhotos.items[String(o.id).replace(/~\d+$/, "")] || null : null;
   // Photos belong to the army: one per operative type for this team, used by every roster of it.
   const pickPhoto = (op) => { setPhotoTarget(op); if (photoInput.current) { photoInput.current.value = ""; photoInput.current.click(); } };
   const takePhoto = (file) => {
@@ -10500,7 +10569,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
         const taken = new Set(shot.targets.map(t => t.owner + t.op.id).concat("A" + shot.atk.op.id));
         const others = shot.stage === "more" ? [...opsOf("B").map(op => entry("B", op)), ...opsOf("A").map(op => entry("A", op))].filter(e => alive(e) && !taken.has(e.key)) : [];
         const oppColor = oppF ? oppF.color : "var(--muted)";
-        return <ShootScreen shot={shot} photoOf={(o, side) => side === "mine" ? photoFor(fid, o.id) : null} dropped={shot.online && !linkUp()} options={options} others={others}
+        return <ShootScreen shot={shot} photoOf={(o, side) => side === "mine" ? photoFor(fid, o.id) : oppPhotoFor(o)} dropped={shot.online && !linkUp()} options={options} others={others}
           sideColor={(side) => side === "mine" ? (f ? f.color : "var(--accent)") : oppColor}
           onAct={(a) => dispatchShot(a, false)} onClose={() => showShot(null)} onTakeOver={takeOverShot}
           importHint={sideOf("B") === "opp" ? "Their team isn't in KillSheet yet. Add it from the ⋯ menu on your team bar (Add enemy roster), or play online, to shoot their operatives here." : "None of your operatives can be shot."} />;
@@ -10511,7 +10580,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
         const enemies = fight.stage === "target" ? enemyOps.map(op => ({ op, side: enemySide, info: fightOpInfo(enemySide, op) })).filter(e => e.info.start > 0) : [];
         const defOp = fight.def && (fight.def.side === "mine" ? roster : oppOps()).find(o => o.id === fight.def.op.id);
         const oppColor = oppF ? oppF.color : "var(--muted)";
-        return <FightScreen fight={fight} photoOf={(o, side) => side === "mine" ? photoFor(fid, o.id) : null} dropped={fight.online && !linkUp()} enemies={enemies} defWeapons={fight.stage === "weapon" && defOp && fight.roles.includes("def") ? meleeFor(fight.def.side, defOp) : []}
+        return <FightScreen fight={fight} photoOf={(o, side) => side === "mine" ? photoFor(fid, o.id) : oppPhotoFor(o)} dropped={fight.online && !linkUp()} enemies={enemies} defWeapons={fight.stage === "weapon" && defOp && fight.roles.includes("def") ? meleeFor(fight.def.side, defOp) : []}
           sideColor={(side) => side === "mine" ? (f ? f.color : "var(--accent)") : oppColor}
           onAct={(a) => dispatchFight(a, false)} onClose={() => showFight(null)} onTakeOver={takeOverFight}
           importHint={enemySide === "opp" ? "Their team isn't in KillSheet yet. Add it from the ⋯ menu on your team bar (Add enemy roster), or play online, to fight their operatives here." : "None of your operatives can fight back."} />;
@@ -11444,7 +11513,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                     {oppRoster.operatives.map(op => {
                       const result = oppEquip(op);
                       const oCollapsed = oppCollapsed[op.id] || false;
-                      return (<Datacard key={"opp-" + op.id} side="opp" narrow op={op} preview={!rosterLocked} f={oppF} fc={oppF ? oppF.color : "var(--muted)"} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getOppWounds(op.id, op.wounds)} onWound={(delta) => { logOpp(op, delta, "hand"); if (mp && mp.status === "connected" && delta < 0) { mp.send({ type: "applyRemoteDamage", opId: op.id, amount: -delta }); } else if (mp && mp.status === "connected" && delta > 0) { mp.send({ type: "applyRemoteHeal", opId: op.id, amount: delta }); } else { setOppWound(op.id, op.wounds, delta); if (delta) mp.sendOrQueue({ type: delta < 0 ? "applyRemoteDamage" : "applyRemoteHeal", opId: op.id, amount: Math.abs(delta) }); } }} collapsed={oCollapsed} onToggle={() => setOppCollapsed(prev => ({ ...prev, [op.id]: !oCollapsed }))} ignoreInjured={result.ignoreInjured} cp={0} setCp={() => {}} requestFight={mp && mp.status === "connected" ? undefined : (o, w) => startFight("opp", o, w)} requestShoot={mp && mp.status === "connected" ? undefined : (o, w) => startShot("opp", o, w)} scars={scars["opp:" + op.id]} />);
+                      return (<Datacard key={"opp-" + op.id} side="opp" narrow op={op} preview={!rosterLocked} photo={oppPhotoFor(op)} f={oppF} fc={oppF ? oppF.color : "var(--muted)"} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getOppWounds(op.id, op.wounds)} onWound={(delta) => { logOpp(op, delta, "hand"); if (mp && mp.status === "connected" && delta < 0) { mp.send({ type: "applyRemoteDamage", opId: op.id, amount: -delta }); } else if (mp && mp.status === "connected" && delta > 0) { mp.send({ type: "applyRemoteHeal", opId: op.id, amount: delta }); } else { setOppWound(op.id, op.wounds, delta); if (delta) mp.sendOrQueue({ type: delta < 0 ? "applyRemoteDamage" : "applyRemoteHeal", opId: op.id, amount: Math.abs(delta) }); } }} collapsed={oCollapsed} onToggle={() => setOppCollapsed(prev => ({ ...prev, [op.id]: !oCollapsed }))} ignoreInjured={result.ignoreInjured} cp={0} setCp={() => {}} requestFight={mp && mp.status === "connected" ? undefined : (o, w) => startFight("opp", o, w)} requestShoot={mp && mp.status === "connected" ? undefined : (o, w) => startShot("opp", o, w)} scars={scars["opp:" + op.id]} />);
                     })}
                   </div>
                 </div>
@@ -11504,7 +11573,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                       {oppRoster.operatives.map(op => {
                         const result = oppEquip(op);
                         const oCollapsed = oppCollapsed[op.id] || false;
-                        return (<Datacard key={"opp-m-" + op.id} side="opp" op={op} preview={!rosterLocked} f={oppF} fc={oppF ? oppF.color : "var(--muted)"} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getOppWounds(op.id, op.wounds)} onWound={(delta) => { logOpp(op, delta, "hand"); if (mp && mp.status === "connected" && delta < 0) { mp.send({ type: "applyRemoteDamage", opId: op.id, amount: -delta }); } else if (mp && mp.status === "connected" && delta > 0) { mp.send({ type: "applyRemoteHeal", opId: op.id, amount: delta }); } else { setOppWound(op.id, op.wounds, delta); if (delta) mp.sendOrQueue({ type: delta < 0 ? "applyRemoteDamage" : "applyRemoteHeal", opId: op.id, amount: Math.abs(delta) }); } }} collapsed={oCollapsed} onToggle={() => setOppCollapsed(prev => ({ ...prev, [op.id]: !oCollapsed }))} ignoreInjured={result.ignoreInjured} cp={0} setCp={() => {}} requestFight={mp && mp.status === "connected" ? undefined : (o, w) => startFight("opp", o, w)} requestShoot={mp && mp.status === "connected" ? undefined : (o, w) => startShot("opp", o, w)} scars={scars["opp:" + op.id]} />);
+                        return (<Datacard key={"opp-m-" + op.id} side="opp" op={op} preview={!rosterLocked} photo={oppPhotoFor(op)} f={oppF} fc={oppF ? oppF.color : "var(--muted)"} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getOppWounds(op.id, op.wounds)} onWound={(delta) => { logOpp(op, delta, "hand"); if (mp && mp.status === "connected" && delta < 0) { mp.send({ type: "applyRemoteDamage", opId: op.id, amount: -delta }); } else if (mp && mp.status === "connected" && delta > 0) { mp.send({ type: "applyRemoteHeal", opId: op.id, amount: delta }); } else { setOppWound(op.id, op.wounds, delta); if (delta) mp.sendOrQueue({ type: delta < 0 ? "applyRemoteDamage" : "applyRemoteHeal", opId: op.id, amount: Math.abs(delta) }); } }} collapsed={oCollapsed} onToggle={() => setOppCollapsed(prev => ({ ...prev, [op.id]: !oCollapsed }))} ignoreInjured={result.ignoreInjured} cp={0} setCp={() => {}} requestFight={mp && mp.status === "connected" ? undefined : (o, w) => startFight("opp", o, w)} requestShoot={mp && mp.status === "connected" ? undefined : (o, w) => startShot("opp", o, w)} scars={scars["opp:" + op.id]} />);
                       })}
                     </div>
                   )}
@@ -18947,6 +19016,7 @@ function FeaturesPage({ onClose, focus, onNews, onFeedback, account, onAccount }
   const { feat, setFeat, setMode, validate, setValidate } = React.useContext(FeatureCtx);
   const mode = featureMode(feat);
   const [crashReports, setCrashReports] = useLocalStorage("crashReports", true); // read by sendCrashReport
+  const [sharePhotos, setSharePhotos] = useLocalStorage("sharePhotos", true); // read by photosToShare
   const [explain, setExplain] = useState(typeof focus === "string" ? { [focus]: true } : {});
   React.useEffect(() => {
     const el = typeof focus === "string" && document.getElementById("feat-" + focus);
@@ -19007,6 +19077,7 @@ function FeaturesPage({ onClose, focus, onNews, onFeedback, account, onAccount }
         {row("validation", "Roster validation", "Checks your roster against the team's rules while you build it, so it's legal to play.", validate, setValidate)}
         <div style={{ ...h3, color: "var(--accent)", margin: "18px 0 4px" }}>PRIVACY</div>
         {row("crashreports", "Send crash reports", "If something in KillSheet breaks, it sends the error, the KillSheet version, your device type, screen size and the tab you were on, so it can be fixed. Nothing that identifies you.", crashReports, setCrashReports)}
+        {row("sharephotos", "Show my photos to my opponent", "In online games, the photos of your operatives show on your opponent's screen during that game. They aren't kept.", sharePhotos, (v) => { setSharePhotos(v); setTimeout(() => window.dispatchEvent(new Event("ks-photos")), 50); })}
         <button onClick={onClose} style={{ ...bs("var(--accent)"), width: "100%", padding: "12px 0", marginTop: 16, fontSize: 14, background: "color-mix(in srgb, var(--accent) 8%, transparent)" }}>Done</button>
       </div>
     </div>,
@@ -19019,6 +19090,8 @@ function FeaturesPage({ onClose, focus, onNews, onFeedback, account, onAccount }
 // notice changed, in plain words. kind: "new", "better" or "fixed". Add an entry with every such change.
 const CHANGELOG = [
   { date: "2026-11-14", items: [
+    ["new", "In online games, your opponent sees the photos of your operatives, and you see theirs. Turn it off in Settings, under Privacy."],
+    ["new", "Signed in, your operative photos back up with your account and show up on your other devices."],
     ["new", "Sign in to back up your rosters, game history and settings, and use them on any device. In Settings, tap Account. It's optional: KillSheet works the same without an account."],
     ["new", "Add photos of your painted models: tap Add photo on a datacard in the Rosters tab. One photo covers every operative of that type in all your rosters for that team, and shows on the datacard and when shooting and fighting."],
     ["fixed", "Opening KillSheet during a game goes straight to your game on the Battle tab, instead of the team list."],
@@ -19468,6 +19541,7 @@ async function syncNow() {
       done = true;
     }
     if (!done) throw new Error("sync kept conflicting");
+    await syncPhotos().catch(() => {}); // photos go separately, one at a time; a failure here doesn't stop the rest
     writeStored("syncLastAt", Date.now());
     setSyncState("ok");
   } catch (e) {
@@ -19578,7 +19652,7 @@ function AccountPanel({ account, setAccount, note, onClose }) {
               <div style={{ fontSize: 13, color: "var(--muted)" }}>Signed in as</div>
               <div data-account-email="true" style={{ fontSize: 16, fontWeight: 600, overflowWrap: "anywhere", marginBottom: 8 }}>{account.email}</div>
               <p role="status" style={{ ...mu, fontSize: 14, margin: "0 0 12px" }}>{status}</p>
-              <p style={{ ...mu, fontSize: 13, margin: "0 0 12px" }}>Your saved rosters, game history and settings are backed up, and show up on any device you sign in on. A game in progress stays on this device.</p>
+              <p style={{ ...mu, fontSize: 13, margin: "0 0 12px" }}>Your saved rosters, game history, settings and operative photos are backed up, and show up on any device you sign in on. A game in progress stays on this device.</p>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <button onClick={syncNow} disabled={syncState === "syncing"} style={{ ...bs("var(--accent)"), padding: "10px 14px", fontSize: 13 }}>Back up now</button>
                 <button onClick={signOutHere} disabled={busy} style={{ ...bs("var(--muted)"), padding: "10px 14px", fontSize: 13 }}>Sign out</button>
@@ -21104,6 +21178,68 @@ async function runSelfTest(hooks) {
       return "cropped to a " + PHOTO_SIZE + " px square, on every " + op.name + ", in the backup, and on the Shoot screen" + (shoot ? "" : " (no ranged weapon to check)");
     } finally {
       await setPhoto(key, had).catch(() => {});
+    }
+  });
+  await step("Photos online and with your account", async () => {
+    const cv = document.createElement("canvas"); cv.width = cv.height = 40; const g = cv.getContext("2d"); g.fillStyle = "#3b4a2f"; g.fillRect(0, 0, 40, 40);
+    const jpeg = cv.toDataURL("image/jpeg", 0.8);
+    await loadPhotos();
+    const team = "selftestteam", keyA = team + "|alpha", keyB = team + "|bravo";
+    const roster = [{ id: "alpha" }, { id: "alpha~2" }, { id: "charlie" }];
+    try {
+      // Stage 2: only photos of the operatives in this roster go to the opponent, and none when the switch is off.
+      await setPhoto(keyA, jpeg, 1000, true); await setPhoto(keyB, jpeg, 1000, true);
+      const share = photosToShare(team, roster);
+      if (!share || share.team !== team || JSON.stringify(Object.keys(share.items)) !== JSON.stringify(["alpha"])) throw new Error("the photos sent online aren't just this roster's: " + JSON.stringify(share && Object.keys(share.items)));
+      const was = readStored("sharePhotos", true);
+      writeStored("sharePhotos", false);
+      const off = photosToShare(team, roster);
+      writeStored("sharePhotos", was);
+      if (off) throw new Error("photos were sent with Show my photos to my opponent off");
+      // What arrives is checked: small JPEGs only.
+      if (acceptOppPhotos({ team: "t", items: { a: "data:image/png;base64,AAAA" } }) || acceptOppPhotos({ team: "t", items: { a: "data:image/jpeg;base64," + "A".repeat(OPP_PHOTO_MAX) } }) || acceptOppPhotos("nonsense")) throw new Error("an opponent's photo that isn't a small JPEG was accepted");
+      const ok = acceptOppPhotos({ team: "t", items: { a: jpeg, b: "<script>" } });
+      if (!ok || ok.items.a !== jpeg || "b" in ok.items) throw new Error("an opponent's photo wasn't checked item by item");
+      // The opponent's photo shows on their operative, and goes when they send none.
+      const opp = store("oppRoster");
+      const oppCard = () => all("[data-side='opp']").find(c => c.querySelector("[data-op-photo]"));
+      if (opp && opp.operatives && opp.operatives.length) {
+        await nav("Battle");
+        const base = String(opp.operatives[0].id).replace(/~\d+$/, "");
+        hooks.mpMessage({ type: "photos", payload: { team: opp.factionId, items: { [base]: jpeg } } }); await settle(20);
+        const dcs = btn("Datacards", true); if (dcs) await click(dcs, "Datacards");
+        if (!oppCard() && all("[data-side='opp']").length) throw new Error("the opponent's photo doesn't show on their datacard");
+        hooks.mpMessage({ type: "photos", payload: null }); await settle(20);
+        if (oppCard()) throw new Error("the opponent's photo stayed after they stopped sharing");
+      }
+      // Stage 3: a pretend account server. The newest change to each photo wins, and removals spread.
+      const realFetch = window.fetch, server = {};
+      window.fetch = async (url, opts = {}) => {
+        const u = String(url); if (!u.startsWith("/api/photos")) return realFetch(url, opts);
+        const reply = (st, j) => new Response(JSON.stringify(j || {}), { status: st });
+        if ((opts.method || "GET") === "PUT") { const b = JSON.parse(opts.body); if (server[b.key] && server[b.key].t > b.t) return reply(409, { t: server[b.key].t }); server[b.key] = { t: b.t, data: b.data }; return reply(200, { t: b.t }); }
+        const q = new URL(u, location.href).searchParams.get("key");
+        if (q) return server[q] && server[q].data ? reply(200, { key: q, data: server[q].data, t: server[q].t }) : reply(404);
+        const items = {}; Object.keys(server).forEach(k => { items[k] = { t: server[k].t, gone: !server[k].data }; }); return reply(200, { items });
+      };
+      try {
+        await syncPhotos();
+        if (!server[keyA] || server[keyA].data !== jpeg || server[keyA].t !== 1000) throw new Error("a photo here didn't upload");
+        const newer = jpeg.slice(0, -4) + "AAAA"; // a newer photo, from another device
+        server[keyB] = { t: 5000, data: newer };
+        await syncPhotos();
+        if (photoCache[keyB] !== newer || photoTimes[keyB] !== 5000) throw new Error("a newer photo from another device didn't come down");
+        await setPhoto(keyA, null, 6000);
+        await syncPhotos();
+        if (server[keyA].data || server[keyA].t !== 6000) throw new Error("removing a photo here didn't remove it from the account");
+        server[keyB] = { t: 7000, data: null }; // removed on another device
+        await syncPhotos();
+        if (photoCache[keyB]) throw new Error("a photo removed on another device stayed here");
+      } finally { window.fetch = realFetch; }
+      return "only this roster's photos go online, none when off; incoming photos checked; upload, newer download and removals both ways";
+    } finally {
+      await setPhoto(keyA, null, 1, true).catch(() => {}); await setPhoto(keyB, null, 1, true).catch(() => {});
+      const d = readStored("photoDeleted", {}); delete d[keyA]; delete d[keyB]; writeStored("photoDeleted", d);
     }
   });
   await step("Old saves get current datacards", async () => {

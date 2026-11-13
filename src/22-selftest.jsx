@@ -1476,6 +1476,68 @@ async function runSelfTest(hooks) {
       await setPhoto(key, had).catch(() => {});
     }
   });
+  await step("Photos online and with your account", async () => {
+    const cv = document.createElement("canvas"); cv.width = cv.height = 40; const g = cv.getContext("2d"); g.fillStyle = "#3b4a2f"; g.fillRect(0, 0, 40, 40);
+    const jpeg = cv.toDataURL("image/jpeg", 0.8);
+    await loadPhotos();
+    const team = "selftestteam", keyA = team + "|alpha", keyB = team + "|bravo";
+    const roster = [{ id: "alpha" }, { id: "alpha~2" }, { id: "charlie" }];
+    try {
+      // Stage 2: only photos of the operatives in this roster go to the opponent, and none when the switch is off.
+      await setPhoto(keyA, jpeg, 1000, true); await setPhoto(keyB, jpeg, 1000, true);
+      const share = photosToShare(team, roster);
+      if (!share || share.team !== team || JSON.stringify(Object.keys(share.items)) !== JSON.stringify(["alpha"])) throw new Error("the photos sent online aren't just this roster's: " + JSON.stringify(share && Object.keys(share.items)));
+      const was = readStored("sharePhotos", true);
+      writeStored("sharePhotos", false);
+      const off = photosToShare(team, roster);
+      writeStored("sharePhotos", was);
+      if (off) throw new Error("photos were sent with Show my photos to my opponent off");
+      // What arrives is checked: small JPEGs only.
+      if (acceptOppPhotos({ team: "t", items: { a: "data:image/png;base64,AAAA" } }) || acceptOppPhotos({ team: "t", items: { a: "data:image/jpeg;base64," + "A".repeat(OPP_PHOTO_MAX) } }) || acceptOppPhotos("nonsense")) throw new Error("an opponent's photo that isn't a small JPEG was accepted");
+      const ok = acceptOppPhotos({ team: "t", items: { a: jpeg, b: "<script>" } });
+      if (!ok || ok.items.a !== jpeg || "b" in ok.items) throw new Error("an opponent's photo wasn't checked item by item");
+      // The opponent's photo shows on their operative, and goes when they send none.
+      const opp = store("oppRoster");
+      const oppCard = () => all("[data-side='opp']").find(c => c.querySelector("[data-op-photo]"));
+      if (opp && opp.operatives && opp.operatives.length) {
+        await nav("Battle");
+        const base = String(opp.operatives[0].id).replace(/~\d+$/, "");
+        hooks.mpMessage({ type: "photos", payload: { team: opp.factionId, items: { [base]: jpeg } } }); await settle(20);
+        const dcs = btn("Datacards", true); if (dcs) await click(dcs, "Datacards");
+        if (!oppCard() && all("[data-side='opp']").length) throw new Error("the opponent's photo doesn't show on their datacard");
+        hooks.mpMessage({ type: "photos", payload: null }); await settle(20);
+        if (oppCard()) throw new Error("the opponent's photo stayed after they stopped sharing");
+      }
+      // Stage 3: a pretend account server. The newest change to each photo wins, and removals spread.
+      const realFetch = window.fetch, server = {};
+      window.fetch = async (url, opts = {}) => {
+        const u = String(url); if (!u.startsWith("/api/photos")) return realFetch(url, opts);
+        const reply = (st, j) => new Response(JSON.stringify(j || {}), { status: st });
+        if ((opts.method || "GET") === "PUT") { const b = JSON.parse(opts.body); if (server[b.key] && server[b.key].t > b.t) return reply(409, { t: server[b.key].t }); server[b.key] = { t: b.t, data: b.data }; return reply(200, { t: b.t }); }
+        const q = new URL(u, location.href).searchParams.get("key");
+        if (q) return server[q] && server[q].data ? reply(200, { key: q, data: server[q].data, t: server[q].t }) : reply(404);
+        const items = {}; Object.keys(server).forEach(k => { items[k] = { t: server[k].t, gone: !server[k].data }; }); return reply(200, { items });
+      };
+      try {
+        await syncPhotos();
+        if (!server[keyA] || server[keyA].data !== jpeg || server[keyA].t !== 1000) throw new Error("a photo here didn't upload");
+        const newer = jpeg.slice(0, -4) + "AAAA"; // a newer photo, from another device
+        server[keyB] = { t: 5000, data: newer };
+        await syncPhotos();
+        if (photoCache[keyB] !== newer || photoTimes[keyB] !== 5000) throw new Error("a newer photo from another device didn't come down");
+        await setPhoto(keyA, null, 6000);
+        await syncPhotos();
+        if (server[keyA].data || server[keyA].t !== 6000) throw new Error("removing a photo here didn't remove it from the account");
+        server[keyB] = { t: 7000, data: null }; // removed on another device
+        await syncPhotos();
+        if (photoCache[keyB]) throw new Error("a photo removed on another device stayed here");
+      } finally { window.fetch = realFetch; }
+      return "only this roster's photos go online, none when off; incoming photos checked; upload, newer download and removals both ways";
+    } finally {
+      await setPhoto(keyA, null, 1, true).catch(() => {}); await setPhoto(keyB, null, 1, true).catch(() => {});
+      const d = readStored("photoDeleted", {}); delete d[keyA]; delete d[keyB]; writeStored("photoDeleted", d);
+    }
+  });
   await step("Old saves get current datacards", async () => {
     const pm = FACTIONS.plaguemarines;
     const old = [{ id: "champion", name: "Plague Champion", wounds: 1 }, { id: "fighter", name: "PM Fighter" }, { id: "fighter", name: "PM Fighter" }, { id: "gone_op", name: "Removed" }];

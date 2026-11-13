@@ -4,7 +4,7 @@
 //   node --experimental-sqlite tools/test_api.mjs        (Node 22+)
 import { DatabaseSync } from "node:sqlite";
 import { postFeedback, listFeedback, deleteFeedback } from "../server/feedback.js";
-import { startEmail, verifyEmail, googleStart, googleCallback, getAccount, signOut, deleteAccount, getSync, putSync } from "../server/account.js";
+import { startEmail, verifyEmail, googleStart, googleCallback, getAccount, signOut, deleteAccount, getSync, putSync, getPhotos, putPhoto } from "../server/account.js";
 
 // A D1 lookalike over node:sqlite: prepare(sql).bind(...).run() / .all() / .first().
 function fakeD1() {
@@ -176,6 +176,33 @@ check((await getAccount(req("/x", "GET", undefined, session), acct)).status === 
 const again = await signIn("player@example.com", "8.8.8.8");
 check((await (await getSync(req("/x", "GET", undefined, again), acct)).json()).data === null, "signing up again after deleting starts empty");
 check((await (await getSync(req("/x", "GET", undefined, other), acct)).json()).rev === 0 && (await getAccount(req("/x", "GET", undefined, other), acct)).status === 200, "deleting one account leaves others alone");
+// ── Operative photos ──
+const jpeg = "data:image/jpeg;base64," + "A".repeat(3000);
+const ph = (method, body, cookie, query = "", now) => (method === "GET" ? getPhotos : putPhoto)(new Request(site + "/api/photos" + query, { method, headers: { "Content-Type": "application/json", ...(cookie ? { Cookie: cookie } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) }), acct, now);
+check((await ph("GET", null, null)).status === 401, "photos need a session");
+check((await ph("PUT", { key: "kasrkin|trooper", data: jpeg, t: 1000 }, null)).status === 401, "saving a photo needs a session");
+check((await ph("PUT", { key: "kasrkin|trooper", data: jpeg, t: 1000 }, other)).status === 200, "a photo saves");
+check((await ph("PUT", { key: "bad key!", data: jpeg, t: 1000 }, other)).status === 400, "a bad photo key is refused");
+check((await ph("PUT", { key: "kasrkin|trooper", data: "data:image/png;base64,AAAA", t: 2000 }, other)).status === 400, "only JPEG photos are kept");
+check((await ph("PUT", { key: "kasrkin|trooper", data: "data:image/jpeg;base64," + "A".repeat(201000), t: 2000 }, other)).status === 413, "an oversized photo is refused");
+let man = await (await ph("GET", null, other)).json();
+check(man.items["kasrkin|trooper"] && man.items["kasrkin|trooper"].t === 1000 && !man.items["kasrkin|trooper"].gone, "the list shows the photo and when it changed");
+const one = await (await ph("GET", null, other, "?key=" + encodeURIComponent("kasrkin|trooper"))).json();
+check(one.data === jpeg, "one photo comes back whole");
+check((await ph("GET", null, other, "?key=" + encodeURIComponent("kasrkin|sergeant"))).status === 404, "a photo that isn't there is a 404");
+const older = await ph("PUT", { key: "kasrkin|trooper", data: jpeg.replace("AAAA", "BBBB"), t: 500 }, other);
+check(older.status === 409 && (await older.json()).t === 1000, "an older change loses to the newer one");
+check((await ph("PUT", { key: "kasrkin|trooper", data: null, t: 3000 }, other)).status === 200, "a photo can be deleted");
+man = await (await ph("GET", null, other)).json();
+check(man.items["kasrkin|trooper"].gone === true && man.items["kasrkin|trooper"].t === 3000, "a delete is remembered, so other devices delete it too");
+check((await ph("GET", null, other, "?key=" + encodeURIComponent("kasrkin|trooper"))).status === 404, "a deleted photo isn't served");
+const farAhead = await ph("PUT", { key: "kasrkin|gunner", data: jpeg, t: 9e12 }, other, "", 5000);
+check(farAhead.status === 200 && (await farAhead.json()).t <= 5000 + 60000, "a device clock far ahead can't win forever");
+check((await (await ph("GET", null, again)).json()).items["kasrkin|gunner"] === undefined, "another account can't see these photos");
+check((await deleteAccount(req("/x", "DELETE", { confirm: "DELETE" }, other), acct)).status === 200, "deleting the account with photos works");
+const back = await signIn("other@example.com", "9.9.9.8");
+check(Object.keys((await (await ph("GET", null, back)).json()).items).length === 0, "deleting an account deletes its photos");
+
 globalThis.fetch = realFetch;
 
 console.log(failed ? "\n" + failed + " API test(s) FAILED." : "\nAPI tests passed.");

@@ -202,6 +202,7 @@ function FeaturesPage({ onClose, focus, onNews, onFeedback, account, onAccount }
   const { feat, setFeat, setMode, validate, setValidate } = React.useContext(FeatureCtx);
   const mode = featureMode(feat);
   const [crashReports, setCrashReports] = useLocalStorage("crashReports", true); // read by sendCrashReport
+  const [sharePhotos, setSharePhotos] = useLocalStorage("sharePhotos", true); // read by photosToShare
   const [explain, setExplain] = useState(typeof focus === "string" ? { [focus]: true } : {});
   React.useEffect(() => {
     const el = typeof focus === "string" && document.getElementById("feat-" + focus);
@@ -262,6 +263,7 @@ function FeaturesPage({ onClose, focus, onNews, onFeedback, account, onAccount }
         {row("validation", "Roster validation", "Checks your roster against the team's rules while you build it, so it's legal to play.", validate, setValidate)}
         <div style={{ ...h3, color: "var(--accent)", margin: "18px 0 4px" }}>PRIVACY</div>
         {row("crashreports", "Send crash reports", "If something in KillSheet breaks, it sends the error, the KillSheet version, your device type, screen size and the tab you were on, so it can be fixed. Nothing that identifies you.", crashReports, setCrashReports)}
+        {row("sharephotos", "Show my photos to my opponent", "In online games, the photos of your operatives show on your opponent's screen during that game. They aren't kept.", sharePhotos, (v) => { setSharePhotos(v); setTimeout(() => window.dispatchEvent(new Event("ks-photos")), 50); })}
         <button onClick={onClose} style={{ ...bs("var(--accent)"), width: "100%", padding: "12px 0", marginTop: 16, fontSize: 14, background: "color-mix(in srgb, var(--accent) 8%, transparent)" }}>Done</button>
       </div>
     </div>,

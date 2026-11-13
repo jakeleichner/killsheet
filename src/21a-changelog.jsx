@@ -3,6 +3,8 @@
 // notice changed, in plain words. kind: "new", "better" or "fixed". Add an entry with every such change.
 const CHANGELOG = [
   { date: "2026-11-14", items: [
+    ["new", "In online games, your opponent sees the photos of your operatives, and you see theirs. Turn it off in Settings, under Privacy."],
+    ["new", "Signed in, your operative photos back up with your account and show up on your other devices."],
     ["new", "Sign in to back up your rosters, game history and settings, and use them on any device. In Settings, tap Account. It's optional: KillSheet works the same without an account."],
     ["new", "Add photos of your painted models: tap Add photo on a datacard in the Rosters tab. One photo covers every operative of that type in all your rosters for that team, and shows on the datacard and when shooting and fighting."],
     ["fixed", "Opening KillSheet during a game goes straight to your game on the Battle tab, instead of the team list."],

@@ -58,6 +58,8 @@ export async function setUpAccounts(db) {
     "CREATE TABLE IF NOT EXISTS sessions (token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL)",
     "CREATE INDEX IF NOT EXISTS sessions_user ON sessions (user_id)",
     "CREATE TABLE IF NOT EXISTS user_data (user_id TEXT PRIMARY KEY, data TEXT NOT NULL, rev INTEGER NOT NULL, updated_at INTEGER NOT NULL, prev_data TEXT, prev_at INTEGER)",
+    // Operative photos: one row per team and operative type; data NULL means deleted (so other devices delete it too).
+    "CREATE TABLE IF NOT EXISTS user_photos (user_id TEXT NOT NULL, key TEXT NOT NULL, data TEXT, updated_at INTEGER NOT NULL, PRIMARY KEY (user_id, key))",
   ]) await db.prepare(sql).run();
   ready.add(db);
 }
@@ -193,6 +195,7 @@ export async function deleteAccount(request, env, now = Date.now()) {
   if (!body || body.confirm !== "DELETE") return json(400, { error: "not confirmed" });
   await env.DB.batch([
     env.DB.prepare("DELETE FROM user_data WHERE user_id = ?").bind(user.id),
+    env.DB.prepare("DELETE FROM user_photos WHERE user_id = ?").bind(user.id),
     env.DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(user.id),
     env.DB.prepare("DELETE FROM login_codes WHERE email = ?").bind(user.email),
     env.DB.prepare("DELETE FROM users WHERE id = ?").bind(user.id),
@@ -235,4 +238,51 @@ export async function putSync(request, env, now = Date.now()) {
   }
   if (!changed.meta || !changed.meta.changes) return json(409, { error: "changed elsewhere" });
   return json(200, { rev: next });
+}
+
+// ── Operative photos (stage 3) ──
+const PHOTO_MAX = 200000; // characters of a data URL, about 150 KB; the app makes 20-40 KB ones
+const PHOTOS_PER_USER = 400;
+const photoKeyOk = (k) => typeof k === "string" && k.length <= 100 && /^[\w-]+\|[\w-]+$/.test(k);
+
+// GET /api/photos: which photos this account has, and when each last changed ({ items: { key: { t, gone } } }).
+// GET /api/photos?key=K: one photo ({ key, data, t }).
+export async function getPhotos(request, env, now = Date.now()) {
+  if (!env.DB) return json(503, { error: "not set up" });
+  await setUpAccounts(env.DB);
+  const user = await userForRequest(request, env, now);
+  if (!user) return json(401, { error: "signed out" });
+  const key = new URL(request.url).searchParams.get("key");
+  if (key !== null) {
+    if (!photoKeyOk(key)) return json(400, { error: "bad key" });
+    const row = await env.DB.prepare("SELECT data, updated_at FROM user_photos WHERE user_id = ? AND key = ?").bind(user.id, key).first();
+    return row && row.data ? json(200, { key, data: row.data, t: row.updated_at }) : json(404, { error: "no photo" });
+  }
+  const r = await env.DB.prepare("SELECT key, updated_at, data IS NULL AS gone FROM user_photos WHERE user_id = ?").bind(user.id).all();
+  const items = {};
+  (r.results || []).forEach(x => { items[x.key] = { t: x.updated_at, gone: !!x.gone }; });
+  return json(200, { items });
+}
+
+// PUT /api/photos { key, data (a JPEG data URL, or null to delete), t (when it changed on the device) }.
+// The newer change wins: an older one gets 409 with the stored time, and the device takes the stored photo instead.
+export async function putPhoto(request, env, now = Date.now()) {
+  if (!env.DB) return json(503, { error: "not set up" });
+  await setUpAccounts(env.DB);
+  const user = await userForRequest(request, env, now);
+  if (!user) return json(401, { error: "signed out" });
+  const { body, tooBig } = await readJson(request, PHOTO_MAX + 500);
+  if (tooBig) return json(413, { error: "too big" });
+  if (!body || !photoKeyOk(body.key) || !Number.isInteger(body.t) || body.t < 0) return json(400, { error: "bad photo" });
+  const data = body.data === null ? null : body.data;
+  if (data !== null && !(typeof data === "string" && data.length <= PHOTO_MAX && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(data))) return json(400, { error: "not a photo" });
+  const t = Math.min(body.t, now + 60000); // a device clock far ahead can't win forever
+  const had = await env.DB.prepare("SELECT updated_at, data IS NULL AS gone FROM user_photos WHERE user_id = ? AND key = ?").bind(user.id, body.key).first();
+  if (had && had.updated_at > t) return json(409, { error: "newer here", t: had.updated_at });
+  if (data !== null && (!had || had.gone)) {
+    const n = await env.DB.prepare("SELECT COUNT(*) AS n FROM user_photos WHERE user_id = ? AND data IS NOT NULL").bind(user.id).first();
+    if (n.n >= PHOTOS_PER_USER) return json(413, { error: "too many photos" });
+  }
+  await env.DB.prepare("INSERT INTO user_photos (user_id, key, data, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT (user_id, key) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at").bind(user.id, body.key, data, t).run();
+  return json(200, { ok: true, t });
 }

@@ -263,7 +263,8 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   const [activated, setActivated] = useLocalStorage("activated", {});
   const [npoUnits, setNpoUnits] = useLocalStorage("npoUnits", []);
   const [savedRosters, setSavedRosters] = useLocalStorage("savedRosters", []);
-  usePhotos(); // operative photos (12a-photos): this redraws when they load or change
+  const photoVersion = usePhotos(); // operative photos (12a-photos): this redraws when they load or change
+  const [oppPhotos, setOppPhotos] = useState(null); // the opponent's photos, sent in an online game; never saved
   const photoInput = React.useRef(null);
   const [photoTarget, setPhotoTarget] = useState(null); // the operative an Add photo is for
   // The saved roster last loaded or saved, so saving again offers its name (and replaces it) instead of making a copy.
@@ -531,6 +532,8 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
         const p = msg.payload;
         if (p.tp !== undefined) setTp(p.tp);
         if (p.hasInitiative !== undefined) setHasInitiative(!p.hasInitiative);
+      } else if (msg.type === "photos") {
+        setOppPhotos(msg.payload ? acceptOppPhotos(msg.payload) : null);
       } else if (msg.type === "chat" && msg.text) {
         showToast("Opponent: " + msg.text);
         setChatHistory(prev => [...prev, { from: "them", text: String(msg.text).slice(0, 500), ts: Date.now() }].slice(-50));
@@ -556,6 +559,16 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
     if (mp.status !== "connected" || mpSuppressRef.current) return;
     mp.send({ type: "shared", payload: { tp, hasInitiative } });
   }, [tp, hasInitiative, mp.status]);
+  // Online: send the photos of the operatives in your roster (or none, if sharing is off), again only when they change.
+  const sentPhotos = React.useRef("");
+  useEffect(() => {
+    if (mp.status !== "connected") { sentPhotos.current = ""; if (mp.status === "idle") setOppPhotos(null); return; }
+    const share = photosToShare(fid, roster);
+    const sig = share ? share.team + "|" + Object.keys(share.items).sort().map(k => k + ":" + share.items[k].length).join(",") : "none";
+    if (sig === sentPhotos.current) return;
+    sentPhotos.current = sig;
+    mp.send({ type: "photos", payload: share });
+  }, [mp.status, fid, roster.map(o => o.id).join(), photoVersion]);
   // On host's first connect, send an initial snapshot including shared seed
   useEffect(() => {
     if (mp.status === "connected" && mp.role === "host") {
@@ -989,6 +1002,8 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   const editingSaved = !savedMatch && lastSaved && lastSaved.f === fid && savedRosters.some(r => r.name.toLowerCase() === lastSaved.name.toLowerCase());
   const saveLabel = savedMatch ? "Saved \u2713" : editingSaved ? "Save changes" : "Save roster";
   const saveTitle = savedMatch ? "Saved as " + savedMatch.name + ". Change something to save again." : editingSaved ? "Update " + lastSaved.name + " in My rosters" : "Save to My rosters on this device";
+  // The opponent's photo for one of their operatives: only for the team they're playing.
+  const oppPhotoFor = (o) => oppPhotos && oppRoster && oppPhotos.team === oppRoster.factionId ? oppPhotos.items[String(o.id).replace(/~\d+$/, "")] || null : null;
   // Photos belong to the army: one per operative type for this team, used by every roster of it.
   const pickPhoto = (op) => { setPhotoTarget(op); if (photoInput.current) { photoInput.current.value = ""; photoInput.current.click(); } };
   const takePhoto = (file) => {
@@ -1618,7 +1633,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
         const taken = new Set(shot.targets.map(t => t.owner + t.op.id).concat("A" + shot.atk.op.id));
         const others = shot.stage === "more" ? [...opsOf("B").map(op => entry("B", op)), ...opsOf("A").map(op => entry("A", op))].filter(e => alive(e) && !taken.has(e.key)) : [];
         const oppColor = oppF ? oppF.color : "var(--muted)";
-        return <ShootScreen shot={shot} photoOf={(o, side) => side === "mine" ? photoFor(fid, o.id) : null} dropped={shot.online && !linkUp()} options={options} others={others}
+        return <ShootScreen shot={shot} photoOf={(o, side) => side === "mine" ? photoFor(fid, o.id) : oppPhotoFor(o)} dropped={shot.online && !linkUp()} options={options} others={others}
           sideColor={(side) => side === "mine" ? (f ? f.color : "var(--accent)") : oppColor}
           onAct={(a) => dispatchShot(a, false)} onClose={() => showShot(null)} onTakeOver={takeOverShot}
           importHint={sideOf("B") === "opp" ? "Their team isn't in KillSheet yet. Add it from the ⋯ menu on your team bar (Add enemy roster), or play online, to shoot their operatives here." : "None of your operatives can be shot."} />;
@@ -1629,7 +1644,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
         const enemies = fight.stage === "target" ? enemyOps.map(op => ({ op, side: enemySide, info: fightOpInfo(enemySide, op) })).filter(e => e.info.start > 0) : [];
         const defOp = fight.def && (fight.def.side === "mine" ? roster : oppOps()).find(o => o.id === fight.def.op.id);
         const oppColor = oppF ? oppF.color : "var(--muted)";
-        return <FightScreen fight={fight} photoOf={(o, side) => side === "mine" ? photoFor(fid, o.id) : null} dropped={fight.online && !linkUp()} enemies={enemies} defWeapons={fight.stage === "weapon" && defOp && fight.roles.includes("def") ? meleeFor(fight.def.side, defOp) : []}
+        return <FightScreen fight={fight} photoOf={(o, side) => side === "mine" ? photoFor(fid, o.id) : oppPhotoFor(o)} dropped={fight.online && !linkUp()} enemies={enemies} defWeapons={fight.stage === "weapon" && defOp && fight.roles.includes("def") ? meleeFor(fight.def.side, defOp) : []}
           sideColor={(side) => side === "mine" ? (f ? f.color : "var(--accent)") : oppColor}
           onAct={(a) => dispatchFight(a, false)} onClose={() => showFight(null)} onTakeOver={takeOverFight}
           importHint={enemySide === "opp" ? "Their team isn't in KillSheet yet. Add it from the ⋯ menu on your team bar (Add enemy roster), or play online, to fight their operatives here." : "None of your operatives can fight back."} />;
@@ -2562,7 +2577,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                     {oppRoster.operatives.map(op => {
                       const result = oppEquip(op);
                       const oCollapsed = oppCollapsed[op.id] || false;
-                      return (<Datacard key={"opp-" + op.id} side="opp" narrow op={op} preview={!rosterLocked} f={oppF} fc={oppF ? oppF.color : "var(--muted)"} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getOppWounds(op.id, op.wounds)} onWound={(delta) => { logOpp(op, delta, "hand"); if (mp && mp.status === "connected" && delta < 0) { mp.send({ type: "applyRemoteDamage", opId: op.id, amount: -delta }); } else if (mp && mp.status === "connected" && delta > 0) { mp.send({ type: "applyRemoteHeal", opId: op.id, amount: delta }); } else { setOppWound(op.id, op.wounds, delta); if (delta) mp.sendOrQueue({ type: delta < 0 ? "applyRemoteDamage" : "applyRemoteHeal", opId: op.id, amount: Math.abs(delta) }); } }} collapsed={oCollapsed} onToggle={() => setOppCollapsed(prev => ({ ...prev, [op.id]: !oCollapsed }))} ignoreInjured={result.ignoreInjured} cp={0} setCp={() => {}} requestFight={mp && mp.status === "connected" ? undefined : (o, w) => startFight("opp", o, w)} requestShoot={mp && mp.status === "connected" ? undefined : (o, w) => startShot("opp", o, w)} scars={scars["opp:" + op.id]} />);
+                      return (<Datacard key={"opp-" + op.id} side="opp" narrow op={op} preview={!rosterLocked} photo={oppPhotoFor(op)} f={oppF} fc={oppF ? oppF.color : "var(--muted)"} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getOppWounds(op.id, op.wounds)} onWound={(delta) => { logOpp(op, delta, "hand"); if (mp && mp.status === "connected" && delta < 0) { mp.send({ type: "applyRemoteDamage", opId: op.id, amount: -delta }); } else if (mp && mp.status === "connected" && delta > 0) { mp.send({ type: "applyRemoteHeal", opId: op.id, amount: delta }); } else { setOppWound(op.id, op.wounds, delta); if (delta) mp.sendOrQueue({ type: delta < 0 ? "applyRemoteDamage" : "applyRemoteHeal", opId: op.id, amount: Math.abs(delta) }); } }} collapsed={oCollapsed} onToggle={() => setOppCollapsed(prev => ({ ...prev, [op.id]: !oCollapsed }))} ignoreInjured={result.ignoreInjured} cp={0} setCp={() => {}} requestFight={mp && mp.status === "connected" ? undefined : (o, w) => startFight("opp", o, w)} requestShoot={mp && mp.status === "connected" ? undefined : (o, w) => startShot("opp", o, w)} scars={scars["opp:" + op.id]} />);
                     })}
                   </div>
                 </div>
@@ -2622,7 +2637,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                       {oppRoster.operatives.map(op => {
                         const result = oppEquip(op);
                         const oCollapsed = oppCollapsed[op.id] || false;
-                        return (<Datacard key={"opp-m-" + op.id} side="opp" op={op} preview={!rosterLocked} f={oppF} fc={oppF ? oppF.color : "var(--muted)"} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getOppWounds(op.id, op.wounds)} onWound={(delta) => { logOpp(op, delta, "hand"); if (mp && mp.status === "connected" && delta < 0) { mp.send({ type: "applyRemoteDamage", opId: op.id, amount: -delta }); } else if (mp && mp.status === "connected" && delta > 0) { mp.send({ type: "applyRemoteHeal", opId: op.id, amount: delta }); } else { setOppWound(op.id, op.wounds, delta); if (delta) mp.sendOrQueue({ type: delta < 0 ? "applyRemoteDamage" : "applyRemoteHeal", opId: op.id, amount: Math.abs(delta) }); } }} collapsed={oCollapsed} onToggle={() => setOppCollapsed(prev => ({ ...prev, [op.id]: !oCollapsed }))} ignoreInjured={result.ignoreInjured} cp={0} setCp={() => {}} requestFight={mp && mp.status === "connected" ? undefined : (o, w) => startFight("opp", o, w)} requestShoot={mp && mp.status === "connected" ? undefined : (o, w) => startShot("opp", o, w)} scars={scars["opp:" + op.id]} />);
+                        return (<Datacard key={"opp-m-" + op.id} side="opp" op={op} preview={!rosterLocked} photo={oppPhotoFor(op)} f={oppF} fc={oppF ? oppF.color : "var(--muted)"} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getOppWounds(op.id, op.wounds)} onWound={(delta) => { logOpp(op, delta, "hand"); if (mp && mp.status === "connected" && delta < 0) { mp.send({ type: "applyRemoteDamage", opId: op.id, amount: -delta }); } else if (mp && mp.status === "connected" && delta > 0) { mp.send({ type: "applyRemoteHeal", opId: op.id, amount: delta }); } else { setOppWound(op.id, op.wounds, delta); if (delta) mp.sendOrQueue({ type: delta < 0 ? "applyRemoteDamage" : "applyRemoteHeal", opId: op.id, amount: Math.abs(delta) }); } }} collapsed={oCollapsed} onToggle={() => setOppCollapsed(prev => ({ ...prev, [op.id]: !oCollapsed }))} ignoreInjured={result.ignoreInjured} cp={0} setCp={() => {}} requestFight={mp && mp.status === "connected" ? undefined : (o, w) => startFight("opp", o, w)} requestShoot={mp && mp.status === "connected" ? undefined : (o, w) => startShot("opp", o, w)} scars={scars["opp:" + op.id]} />);
                       })}
                     </div>
                   )}

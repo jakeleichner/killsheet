@@ -86,6 +86,7 @@ async function syncNow() {
       done = true;
     }
     if (!done) throw new Error("sync kept conflicting");
+    await syncPhotos().catch(() => {}); // photos go separately, one at a time; a failure here doesn't stop the rest
     writeStored("syncLastAt", Date.now());
     setSyncState("ok");
   } catch (e) {
@@ -196,7 +197,7 @@ function AccountPanel({ account, setAccount, note, onClose }) {
               <div style={{ fontSize: 13, color: "var(--muted)" }}>Signed in as</div>
               <div data-account-email="true" style={{ fontSize: 16, fontWeight: 600, overflowWrap: "anywhere", marginBottom: 8 }}>{account.email}</div>
               <p role="status" style={{ ...mu, fontSize: 14, margin: "0 0 12px" }}>{status}</p>
-              <p style={{ ...mu, fontSize: 13, margin: "0 0 12px" }}>Your saved rosters, game history and settings are backed up, and show up on any device you sign in on. A game in progress stays on this device.</p>
+              <p style={{ ...mu, fontSize: 13, margin: "0 0 12px" }}>Your saved rosters, game history, settings and operative photos are backed up, and show up on any device you sign in on. A game in progress stays on this device.</p>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <button onClick={syncNow} disabled={syncState === "syncing"} style={{ ...bs("var(--accent)"), padding: "10px 14px", fontSize: 13 }}>Back up now</button>
                 <button onClick={signOutHere} disabled={busy} style={{ ...bs("var(--muted)"), padding: "10px 14px", fontSize: 13 }}>Sign out</button>
