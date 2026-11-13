@@ -217,7 +217,7 @@ function TurnGuide({ tp, numTPs, setTp, hasInitiative, onInitiative, cp, f, rost
   );
 }
 
-function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen, setTutorialSeen, openTutorial, campaign, setCampaign, onTeamColor, openMove, showBattle }) {
+function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen, setTutorialSeen, openTutorial, campaign, setCampaign, onTeamColor, openMove, showBattle, view, showRosters }) {
   const phone = useIsMobile();
   const compactBar = useIsMobile(1000); // the full score bar needs about 1000px; below that it uses the phone layout
   const tinyBar = useIsMobile(350); // the smallest phones (320px): the phone bar drops its "VP" label and some padding to fit
@@ -781,6 +781,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
     setFight(null); fightRef.current = null; setShot(null); shotRef.current = null;
     setRosterLocked(false);
     setPickerGroup(f ? factionGroup(f) : null); setPickerSearch(""); setPickerOpen(true);
+    if (showRosters) showRosters();
     window.scrollTo(0, 0);
   });
   const computedVpOpp = primarySumOpp;
@@ -962,6 +963,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
     });
     setLastSaved({ f: entry.f, name: entry.name });
     setPickerOpen(false); setPickerSearch(""); setSavedMenu(null); setPeek(null);
+    if (play) { if (showBattle) showBattle(); } else if (showRosters) showRosters();
     window.scrollTo(0, 0);
   };
   const renameSaved = (entry) => {
@@ -973,6 +975,14 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
     withUndo("Deleted " + entry.name, () => { noteSyncDeleted(entry.id); setSavedRosters(savedRosters.filter(r => r.id !== entry.id)); });
     setSavedMenu(null);
   };
+  // Start the game: lock the roster and go to the Battle tab.
+  const startGame = () => { setRosterLocked(true); setMobilePanel("cards"); collapseAll(); if (showBattle) showBattle(); window.scrollTo(0, 0); };
+  // Whether the roster on screen is saved: the same team, operatives, equipment, choices and names as a saved roster.
+  const rosterKey = (d) => JSON.stringify({ f: d.f, o: d.o, fe: [...(d.fe || [])].sort(), ue: [...(d.ue || [])].sort(), cp: d.cp || "", cs: d.cs || "", cv: d.cv || {}, cw: d.cw || {}, nk: (d.nk || []).some(Boolean) ? d.nk : [] });
+  const savedMatch = fid && roster.length ? savedRosters.find(r => rosterKey(r) === rosterKey(rosterData())) : null;
+  const editingSaved = !savedMatch && lastSaved && lastSaved.f === fid && savedRosters.some(r => r.name.toLowerCase() === lastSaved.name.toLowerCase());
+  const saveLabel = savedMatch ? "Saved \u2713" : editingSaved ? "Save changes" : "Save roster";
+  const saveTitle = savedMatch ? "Saved as " + savedMatch.name + ". Change something to save again." : editingSaved ? "Update " + lastSaved.name + " in My rosters" : "Save to My rosters on this device";
   // Name one of your operatives (empty clears it). Before the game starts, from its datacard.
   const renameOp = (op) => {
     const typed = prompt("Name this operative (leave empty to use \"" + op.name + "\"):", op.nick || "");
@@ -1835,6 +1845,33 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
         );
       })()}
 
+      {view === "battle" && !rosterLocked ? (
+        // The Battle tab with no game: start the one that's built, or play a saved roster.
+        <div data-no-game="true">
+          <div style={{ ...cd, padding: 16 }}>
+            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", color: "var(--text)" }}>No game in progress</div>
+            <p style={{ ...mu, fontSize: 14, margin: "4px 0 12px" }}>{savedRosters.length ? "Tap Play on a saved roster, or build one in the Rosters tab." : "Build a roster in the Rosters tab, then start a game from there."}</p>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {f && roster.length > 0 && <button onClick={startGame} style={{ ...bs("#5A9C3A"), padding: "10px 14px", fontSize: 13 }}>Start a game with {f.name} ({roster.length}) <Fwd /></button>}
+              <button onClick={() => { if (showRosters) showRosters(); window.scrollTo(0, 0); }} style={{ ...bs("var(--accent)"), padding: "10px 14px", fontSize: 13 }}>{f && roster.length ? "Change the roster" : "Build a roster"}</button>
+            </div>
+          </div>
+          <SavedRosterLibrary rosters={savedRosters} menuId={savedMenu} setMenuId={setSavedMenu} onPlay={(r) => loadSaved(r, true)} onEdit={(r) => loadSaved(r)} onRename={renameSaved} onCopy={copySavedCode} onDelete={deleteSaved} />
+        </div>
+      ) : view === "rosters" && rosterLocked ? (
+        // The Rosters tab during a game: the library stays, but nothing here can replace the roster being played.
+        <div data-game-on="true">
+          <div style={{ ...cd, padding: 16, borderLeft: "3px solid var(--gold)" }}>
+            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", color: "var(--text)" }}>A game is in progress{f ? " with " + f.name : ""}</div>
+            <p style={{ ...mu, fontSize: 14, margin: "4px 0 12px" }}>To change rosters, end the game first: on the Battle tab, open the {"\u22EF"} menu and tap End game. You can save the roster you're playing now.</p>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button onClick={() => { if (showBattle) showBattle(); window.scrollTo(0, 0); }} style={{ ...bs("#5A9C3A"), padding: "10px 14px", fontSize: 13 }}>Back to the game <Fwd /></button>
+              {roster.length > 0 && <button onClick={saveRoster} disabled={!!savedMatch} data-save-state={savedMatch ? "saved" : editingSaved ? "changed" : "new"} title={saveTitle} style={{ ...bs(savedMatch ? "#5A9C3A" : "var(--accent)"), padding: "10px 14px", fontSize: 13, opacity: 1, cursor: savedMatch ? "default" : "pointer" }}>{saveLabel}</button>}
+            </div>
+          </div>
+          <SavedRosterLibrary rosters={savedRosters} menuId={savedMenu} setMenuId={setSavedMenu} locked onPlay={(r) => loadSaved(r, true)} onEdit={(r) => loadSaved(r)} onRename={renameSaved} onCopy={copySavedCode} onDelete={deleteSaved} />
+        </div>
+      ) : (<>
       {/* Faction select: collapses to one bar once a team is picked */}
       {f && !pickerOpen ? (rosterLocked ? null :
         <div style={{ ...cd, display: "flex", alignItems: "center", gap: mobile ? 6 : 10, padding: "10px 12px", marginBottom: 14, borderTop: "2px solid " + f.color }}>
@@ -1912,36 +1949,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                 <span style={{ color: f.color, display: "inline-flex" }}><Fwd size={20} /></span>
               </button>
             )}
-            {savedRosters.length > 0 && (
-              <div id="ks-saved-rosters" style={{ marginBottom: 12 }}>
-                <div style={{ ...h3, marginBottom: 6 }}>My saved rosters</div>
-                {savedRosters.map(r => {
-                  const fc = FACTIONS[r.f];
-                  const menu = savedMenu === r.id;
-                  const small = { ...bs("var(--muted)"), padding: "5px 10px", fontSize: 11 };
-                  return (
-                    <div key={r.id} data-saved-roster={r.id} style={{ ...cd, padding: "8px 10px", marginBottom: 6, borderLeft: "3px solid " + (fc ? fc.color : "var(--line)") }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif", overflowWrap: "anywhere" }}>{r.name}</div>
-                          <div style={{ fontSize: 12, color: "var(--muted)" }}>{fc ? fc.name : "Unknown team"} {"\u00b7"} {r.o.length} operative{r.o.length === 1 ? "" : "s"} {"\u00b7"} {new Date(r.savedAt).toLocaleDateString()}</div>
-                        </div>
-                        <button onClick={() => loadSaved(r, true)} title="Start a game with this roster" style={{ ...bs("#5A9C3A"), padding: "6px 12px", fontSize: 12 }}>Play</button>
-                        <button onClick={() => loadSaved(r)} title="Load it to change operatives or equipment" style={{ ...bs("var(--muted)"), padding: "6px 10px", fontSize: 12 }}>Edit</button>
-                        <button onClick={() => setSavedMenu(menu ? null : r.id)} aria-label="More options" style={{ ...bs("var(--muted)"), padding: "6px 10px", fontSize: 12 }}>{"\u22EF"}</button>
-                      </div>
-                      {menu && (
-                        <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
-                          <button onClick={() => renameSaved(r)} style={small}>Rename</button>
-                          <button onClick={() => copySavedCode(r)} style={small}>Copy code</button>
-                          <button onClick={() => deleteSaved(r)} style={{ ...small, color: "#E0664A", borderColor: "#B8341C60" }}>Delete</button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+            <SavedRosterLibrary rosters={savedRosters} menuId={savedMenu} setMenuId={setSavedMenu} onPlay={(r) => loadSaved(r, true)} onEdit={(r) => loadSaved(r)} onRename={renameSaved} onCopy={copySavedCode} onDelete={deleteSaved} />
             {gameHistory.length > 0 && (() => {
               const tally = (games) => games.reduce((t, g) => ({ ...t, [g.result]: t[g.result] + 1 }), { win: 0, loss: 0, draw: 0 });
               const all = tally(gameHistory);
@@ -2183,7 +2191,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                       {v.selections}{f.composition ? "/" + f.composition.total : ""} selections {"\u2022"} {roster.length} operatives {"\u2022"} {roster.reduce((s, o) => s + o.wounds, 0)}W
                     </div>
                   </div>
-                  <button onClick={() => { setRosterLocked(false); setMobilePanel("roster"); }} style={{ ...bs("var(--muted)"), fontSize: 12, padding: "8px 12px" }}>Edit roster</button>
+                  <button onClick={() => { setRosterLocked(false); setMobilePanel("roster"); if (showRosters) showRosters(); }} style={{ ...bs("var(--muted)"), fontSize: 12, padding: "8px 12px" }}>Edit roster</button>
                 </div>
               </div>
             ) : (
@@ -2296,8 +2304,8 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                   </div>
                   {roster.length > 0 && (
                     <div style={{ display: "flex", gap: 6, flexShrink: 0, marginLeft: "auto" }}>
-                      <button onClick={saveRoster} title="Save to My rosters on this device" style={{ ...bs("var(--muted)"), fontSize: 13, padding: "8px 12px" }}>Save roster</button>
-                      <button onClick={() => { setRosterLocked(true); setMobilePanel("cards"); collapseAll(); window.scrollTo(0, 0); }} style={{ ...bs("#5A9C3A"), fontSize: 13, padding: "8px 14px" }}>Start game <Fwd /></button>
+                      <button onClick={saveRoster} disabled={!!savedMatch} data-save-state={savedMatch ? "saved" : editingSaved ? "changed" : "new"} title={saveTitle} style={{ ...bs(savedMatch ? "#5A9C3A" : "var(--accent)"), fontSize: 13, padding: "8px 12px", opacity: 1, cursor: savedMatch ? "default" : "pointer" }}>{saveLabel}</button>
+                      <button onClick={startGame} style={{ ...bs("#5A9C3A"), fontSize: 13, padding: "8px 14px" }}>Start game <Fwd /></button>
                     </div>
                   )}
                 </div>
@@ -2525,8 +2533,8 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                         const allCollapsed = roster.length > 0 && roster.every(op => cardCollapsed[op.id]);
                         return <button onClick={allCollapsed ? expandAll : collapseAll} title={allCollapsed ? "Expand all" : "Collapse all"} style={{ ...bs("var(--muted)"), fontSize: 11, padding: mobile ? "6px 8px" : "2px 5px" }}><Icon name={allCollapsed ? "chevronDown" : "chevronUp"} size={20} /></button>;
                       })()}
-                      <button onClick={saveRoster} title="Save to My Rosters on this device" style={{ ...bs("#5A9C3A"), fontSize: 11, padding: mobile ? "5px 8px" : "2px 7px", display: "flex", alignItems: "center", gap: 4 }}>
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }}><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" /></svg>Save
+                      <button onClick={saveRoster} disabled={!!savedMatch} title={saveTitle} style={{ ...bs(savedMatch ? "#5A9C3A" : "var(--accent)"), fontSize: 11, padding: mobile ? "5px 8px" : "2px 7px", display: "flex", alignItems: "center", gap: 4, opacity: 1, cursor: savedMatch ? "default" : "pointer" }}>
+                        {savedMatch ? <Icon name="check" size={11} /> : <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }}><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" /></svg>}{savedMatch ? "Saved" : editingSaved ? "Save changes" : "Save"}
                       </button>
                       {rosterLocked && <button data-logbtn="true" onClick={() => openLog()} aria-label={"Battle log" + (unreadHits ? ", " + unreadHits + " new" : "")} title="Every hit this game" style={{ ...bs("var(--blue)"), fontSize: 11, padding: mobile ? "5px 8px" : "2px 7px", display: "flex", alignItems: "center", gap: 4, position: "relative" }}>
                         {unreadHits > 0 && <span data-unread={unreadHits} aria-hidden="true" style={{ position: "absolute", top: -7, right: -7, minWidth: 17, height: 17, padding: "0 4px", borderRadius: 9, background: "var(--miss)", color: "#fff", fontSize: 11, fontWeight: 700, lineHeight: "17px", textAlign: "center", fontFamily: "'Rajdhani', sans-serif" }}>{unreadHits}</span>}<Icon name="log" size={12} />Log</button>}
@@ -2687,6 +2695,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
         </div>
         </div>
       )}
+      </>)}
     </div>
   );
 }

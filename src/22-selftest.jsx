@@ -64,7 +64,7 @@ async function runSelfTest(hooks) {
     if (!btn("Play online")) throw new Error("Play online doesn't show for a learning player");
     await click(document.querySelector("[aria-label='Game menu']"), "game menu (close)");
     const cog = () => all("button[aria-label='Settings']")[0];
-    for (const t of ["Rules", "Missions", ...(COMMUNITY_LIVE ? ["Community"] : []), "Battle"]) { await nav(t); if (!cog()) throw new Error("the Settings cog doesn't show on " + t); }
+    for (const t of ["Rules", "Missions", "Rosters", ...(COMMUNITY_LIVE ? ["Community"] : []), "Battle"]) { await nav(t); if (!cog()) throw new Error("the Settings cog doesn't show on " + t); }
     await click(cog(), "Settings cog");
     const page = document.querySelector("[role=dialog][aria-label='Settings']");
     if (!page) throw new Error("the Settings page didn't open");
@@ -82,7 +82,7 @@ async function runSelfTest(hooks) {
   });
 
   await step("Every tab opens", async () => {
-    for (const t of ["Rules", "Missions", "Battle", ...(COMMUNITY_LIVE ? ["Community"] : [])]) { await nav(t); if (!all("h1,h2,div").length) throw new Error(t + " is empty"); }
+    for (const t of ["Rules", "Missions", "Rosters", "Battle", ...(COMMUNITY_LIVE ? ["Community"] : [])]) { await nav(t); if (!all("h1,h2,div").length) throw new Error(t + " is empty"); }
     if (!COMMUNITY_LIVE && [...document.querySelectorAll("nav button")].some(b => b.textContent.trim() === "Community")) throw new Error("the Community tab shows before the board is live");
     if (!/tabular-nums/.test(getComputedStyle(document.body).fontVariantNumeric)) throw new Error("numbers aren't set to keep their width");
     if (document.documentElement.scrollWidth > window.innerWidth + 1) throw new Error("the page scrolls sideways (" + document.documentElement.scrollWidth + "px wide in a " + window.innerWidth + "px window)");
@@ -187,7 +187,7 @@ async function runSelfTest(hooks) {
     return packs + " packs, " + missions + " missions, " + maps + " maps opened";
   });
   await step("Every team: pick, build, play, end game", async () => {
-    await nav("Battle");
+    await nav("Rosters");
     let done = 0; const problems = [];
     for (const fc of Object.values(FACTIONS)) {
       progress("team " + fc.name + " (" + (done + 1) + "/" + Object.keys(FACTIONS).length + ")");
@@ -228,7 +228,7 @@ async function runSelfTest(hooks) {
     return done + " teams played, " + games + " games recorded";
   });
   await step("Game history stats", async () => {
-    await nav("Battle");
+    await nav("Rosters");
     const change = btn("Change team", true); if (change) await click(change, "Change team");
     const head = all("[role=button]").find(e => /^Game history/.test(e.textContent.trim()));
     if (!head) throw new Error("no Game history card on the team list");
@@ -241,7 +241,7 @@ async function runSelfTest(hooks) {
     return head.textContent.replace(/^Game history/, "").trim();
   });
   await step("Save a roster and back up", async () => {
-    await nav("Battle");
+    await nav("Rosters");
     const dc = btn("Datacards", true); if (dc) await click(dc, "Datacards");
     const back = all("button").find(b => /Continue with/.test(b.textContent)); if (back) await click(back, "Continue with the team"); // the earlier steps can leave the team list open
     const dc2 = btn("Datacards", true); if (dc2) await click(dc2, "Datacards");
@@ -289,7 +289,7 @@ async function runSelfTest(hooks) {
 
   // Runs last: it leaves a game in progress, which shrinks the campaign card on the Battle tab.
   await step("Mission scoring checklist", async () => {
-    await nav("Battle");
+    await nav("Rosters");
     const change = btn("Change team", true); if (change) await click(change, "Change team");
     await typeInto(all("input").find(i => i.placeholder === "Search teams or factions"), "Kasrkin");
     await click(all("[role=button]").find(e => e.textContent.trim().endsWith("Kasrkin")), "Kasrkin");
@@ -702,10 +702,10 @@ async function runSelfTest(hooks) {
     const sampleCol = () => getComputedStyle(preview().querySelector("span")).color;
     const teamName = store("fid") && FACTIONS[store("fid")] ? FACTIONS[store("fid")].name : null;
     const offCol = sampleCol();
-    if (teamName && !preview().textContent.includes("Off: the Battle tab uses your theme's color")) throw new Error("Match my team (off) doesn't say what it does: " + preview().textContent);
+    if (teamName && !preview().textContent.includes("Off: the Rosters and Battle tabs use your theme's color")) throw new Error("Match my team (off) doesn't say what it does: " + preview().textContent);
     await click(sw, "Match my team");
     if (teamName) {
-      if (!preview().textContent.includes("On: the Battle tab uses the " + teamName + " color")) throw new Error("Match my team (on) doesn't name the team: " + preview().textContent);
+      if (!preview().textContent.includes("On: the Rosters and Battle tabs use the " + teamName + " color")) throw new Error("Match my team (on) doesn't name the team: " + preview().textContent);
       if (sampleCol() === offCol) throw new Error("the sample button didn't change color with Match my team");
     } else if (!/Pick a team in Battle/.test(preview().textContent)) throw new Error("Match my team doesn't say to pick a team first");
     if (!(store("appearance") || {}).matchTeam) throw new Error("Match my team didn't save");
@@ -1070,8 +1070,8 @@ async function runSelfTest(hooks) {
     if (store("rosterLocked")) throw new Error("Edit started a game");
     if (store("fid") !== r.f || (store("roster") || []).length !== r.o.length) throw new Error("Edit loaded the wrong roster");
     if (!btn("Start game")) throw new Error("no Start game after Edit");
-    await click(btn("Save roster", true), "Save roster");
-    if ((store("savedRosters") || []).length !== saved.length) throw new Error("saving the loaded roster again made a copy instead of replacing it");
+    const state = all("[data-save-state]")[0];
+    if (!state || state.getAttribute("data-save-state") !== "saved" || !state.disabled || !/Saved/.test(state.textContent)) throw new Error("a roster loaded unchanged doesn't show as Saved");
     await click(btn("My rosters", true), "My rosters");
     if (!card()) throw new Error("My rosters didn't show the saved rosters");
     return "Play starts a game, Edit loads it, saving again replaces it";
@@ -1096,7 +1096,10 @@ async function runSelfTest(hooks) {
     if (!freshOps(FACTIONS[store("fid")], store("roster")).some(o => o.nick === "Scuba Steve")) throw new Error("refreshing the datacards loses the name");
     // Saved with the roster, kept by Play, and not editable during the game. (Phones show one panel at a time.)
     const build = btn("Build roster", true); if (build) await click(build, "Build roster");
-    await click(btn("Save roster", true), "Save roster");
+    const changed = all("[data-save-state]")[0];
+    if (!changed || changed.getAttribute("data-save-state") !== "changed" || changed.textContent.trim() !== "Save changes") throw new Error("an edited saved roster doesn't offer Save changes: " + (changed && changed.textContent));
+    await click(changed, "Save changes");
+    if ((store("savedRosters") || []).length !== (store("savedRosters") || []).filter((x, i, a) => a.findIndex(y => y.id === x.id) === i).length || all("[data-save-state]")[0].getAttribute("data-save-state") !== "saved") throw new Error("Save changes didn't update the saved roster");
     const again = (store("savedRosters") || []).find(x => x.id === r.id);
     if (!again || !(again.nk || []).includes("Scuba Steve")) throw new Error("saving the roster didn't keep the name");
     await click(btn("My rosters", true), "My rosters");
@@ -1381,6 +1384,31 @@ async function runSelfTest(hooks) {
     if (btn("Back up")) throw new Error("Back didn't close the game menu");
     if (location.search.indexOf("selftest") < 0) throw new Error("Back left KillSheet");
     return "nested pages close one at a time; X removes its entry; the game menu closes; never leaves the app (history " + startLen + " to " + window.history.length + ")";
+  });
+  await step("Rosters and Battle tabs", async () => {
+    if (store("rosterLocked")) throw new Error("expected no game in progress here");
+    await nav("Battle");
+    const noGame = () => all("[data-no-game]")[0], gameOn = () => all("[data-game-on]")[0];
+    if (!noGame()) throw new Error("the Battle tab with no game doesn't say so");
+    const shown = all("[data-saved-roster]").find(c => !/\b0 operatives/.test(c.textContent)); // earlier steps also leave empty test rosters
+    if (!shown) throw new Error("the Battle tab with no game doesn't list saved rosters");
+    const rid = shown.getAttribute("data-saved-roster");
+    const playBtn = () => [...(all("[data-saved-roster='" + rid + "']")[0] || document.createElement("div")).querySelectorAll("button")].find(b => b.textContent.trim() === "Play");
+    if (!playBtn()) throw new Error("the Battle tab with no game doesn't list saved rosters with Play");
+    await click(playBtn(), "Play");
+    if (!store("rosterLocked") || store("tab") !== "builder" || noGame() || !document.querySelector("[data-logbtn]")) throw new Error("Play didn't start the game on the Battle tab");
+    // The Rosters tab during a game: nothing there replaces the roster being played.
+    await nav("Rosters");
+    if (!gameOn()) throw new Error("the Rosters tab doesn't say a game is in progress");
+    if (!playBtn() || !playBtn().disabled) throw new Error("Play is available on the Rosters tab during a game");
+    if (all("input").some(i => i.placeholder === "Search teams or factions")) throw new Error("the team picker shows during a game");
+    await click(all("button").find(b => /Back to the game/.test(b.textContent)), "Back to the game");
+    if (store("tab") !== "builder" || !document.querySelector("[data-logbtn]")) throw new Error("Back to the game didn't go to the Battle tab");
+    // Edit roster from the game goes to the Rosters tab, unlocked.
+    await click(all("button").find(b => b.textContent.trim() === "Edit roster") || btn("Ploys & rules", true), "Edit roster");
+    const edit = all("button").find(b => b.textContent.trim() === "Edit roster"); if (edit) await click(edit, "Edit roster");
+    if (store("rosterLocked") || store("tab") !== "rosters" || !btn("Start game")) throw new Error("Edit roster didn't go to the Rosters tab to change it");
+    return "no-game screen with Play, game starts on Battle, Rosters tab locked during the game, back and forth";
   });
   await step("Old saves get current datacards", async () => {
     const pm = FACTIONS.plaguemarines;

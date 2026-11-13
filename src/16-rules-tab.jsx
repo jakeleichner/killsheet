@@ -22,7 +22,7 @@ const RULE_SECTIONS = [
     { title: "Weapon rules", items: Object.entries(WR).map(([k, v]) => ({ name: k, ...splitRule(v) })) },
   ] },
   { id: "equipment", label: "Equipment", groups: [
-    { title: "Universal equipment", intro: "Any kill team can take these. Each option can be selected once per game. Your team's own equipment is listed in the Battle tab.", items: UNIV_EQUIPMENT.map(e => ({ name: e.name, tag: e.type, tagColor: EQUIP_TYPE_COLOR[e.type], summary: e.desc, stats: e.stats, detail: e.note })) },
+    { title: "Universal equipment", intro: "Any kill team can take these. Each option can be selected once per game. Your team's own equipment is listed in the Rosters tab.", items: UNIV_EQUIPMENT.map(e => ({ name: e.name, tag: e.type, tagColor: EQUIP_TYPE_COLOR[e.type], summary: e.desc, stats: e.stats, detail: e.note })) },
   ] },
   { id: "glossary", label: "Glossary", glossary: true },
 ];

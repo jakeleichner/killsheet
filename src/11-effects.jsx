@@ -14,6 +14,7 @@ const ICON_PATHS = {
   play: <path d="M7 4l12 8-12 8z" />,
   rulebook: <g><path d="M3 5.5c3-1.2 6-1 9 1v13c-3-2-6-2.2-9-1z" /><path d="M21 5.5c-3-1.2-6-1-9 1v13c3-2 6-2.2 9-1z" /></g>,
   map: <g><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z" /><path d="M9 3v15M15 6v15" /></g>,
+  roster: <g><rect x="5" y="4" width="14" height="17" rx="2" /><path d="M9 4V2.5h6V4M9 10h6M9 14h6M9 18h4" /></g>,
   swords: <g><path d="M5 3l12 12M14 18l4-4M16 16l4 4" /><path d="M19 3L7 15M6 14l4 4M8 16l-4 4" /></g>,
   people: <g><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6" /><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.3c2.2.7 3.5 2.8 3.5 5.7" /></g>,
   heart: <path d="M12 20s-7.5-4.6-7.5-10.2A4.2 4.2 0 0 1 12 7.3a4.2 4.2 0 0 1 7.5 2.5C19.5 15.4 12 20 12 20z" />,

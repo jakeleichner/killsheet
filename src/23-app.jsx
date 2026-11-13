@@ -1,6 +1,8 @@
 /* ═══ APP ═══ */
 function App() {
-  const [tab, setTab] = useLocalStorage("tab", "builder");
+  // Rosters and Battle are two views of the same Battle tab code (Builder, view prop): build and save before a game, play
+  // during one. New players start on Rosters.
+  const [tab, setTab] = useLocalStorage("tab", "rosters");
   // The tutorial lives inside Rules; the Builder shows new players a one-time banner pointing to it.
   const [tutorialOpen, setTutorialOpen] = useState(false);
   const [tutorialSeen, setTutorialSeen] = useLocalStorage("tutorialSeen", false);
@@ -98,7 +100,7 @@ function App() {
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, []);
-  const tabs = [["rules", "Rules"], ["missions", "Missions"], ["builder", "Battle"], ["community", "Community"]];
+  const tabs = [["rules", "Rules"], ["missions", "Missions"], ["rosters", "Rosters"], ["builder", "Battle"], ["community", "Community"]];
   const navTabs = tabs.filter(([id]) => id !== "community" || COMMUNITY_LIVE);
   // Multiplayer hosted at App level so banner is visible across tabs
   const mpHandlerRef = React.useRef(null);
@@ -191,7 +193,7 @@ function App() {
       {/* CONTENT: all tabs stay mounted, hidden with display:none to preserve state */}
       <div className="ks-appear" style={{ display: tab === "rules" ? "block" : "none" }}><ErrorBoundary where="Rules"><Rules search={ruleSearch} tutorialOpen={tutorialOpen} openTutorial={openTutorial} closeTutorial={() => { setTutorialOpen(false); window.scrollTo(0, 0); }} /></ErrorBoundary></div>
       <div className="ks-appear" style={{ display: tab === "missions" ? "block" : "none" }}><ErrorBoundary where="Missions"><Missions campaign={campaign} startCampaign={() => { if (!campaign) setCampaign(cteNew("solo", "m26", 7, "", "")); setTab("builder"); window.scrollTo(0, 0); }} /><CrashTest /></ErrorBoundary></div>
-      <div id="panel-builder" className="ks-appear" style={{ display: tab === "builder" ? "block" : "none", ...(battleAccent ? { "--accent": battleAccent } : {}) }}><ErrorBoundary where="Battle"><Builder tp={tp} setTp={setTp} mp={mp} mpHandlerRef={mpHandlerRef} showMP={showMP} setShowMP={setShowMP} tutorialSeen={tutorialSeen} setTutorialSeen={setTutorialSeen} openTutorial={openTutorial} campaign={campaign} setCampaign={setCampaign} onTeamColor={setTeamId} openMove={() => setShowMove(true)} showBattle={() => setTab("builder")} /></ErrorBoundary></div>
+      <div id="panel-builder" className="ks-appear" style={{ display: tab === "rosters" ? "block" : tab === "builder" ? "block" : "none", ...(battleAccent ? { "--accent": battleAccent } : {}) }}><ErrorBoundary where="Battle"><Builder tp={tp} setTp={setTp} mp={mp} mpHandlerRef={mpHandlerRef} showMP={showMP} setShowMP={setShowMP} tutorialSeen={tutorialSeen} setTutorialSeen={setTutorialSeen} openTutorial={openTutorial} campaign={campaign} setCampaign={setCampaign} onTeamColor={setTeamId} openMove={() => setShowMove(true)} showBattle={() => setTab("builder")} view={tab === "rosters" ? "rosters" : "battle"} showRosters={() => setTab("rosters")} /></ErrorBoundary></div>
       <div className="ks-appear" style={{ display: tab === "community" ? "block" : "none" }}><ErrorBoundary where="Community"><CommunityRosters /></ErrorBoundary></div>
 
       {/* FOOTER */}

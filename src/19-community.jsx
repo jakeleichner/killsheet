@@ -10,10 +10,10 @@ const COMMUNITY_EXAMPLES = [
 function CommunityRosters() {
   const mobile = useIsMobile();
   const steps = [
-    ["Save your roster", "In the Battle tab, tap Save on your datacards bar and give it a name."],
+    ["Save your roster", "In the Rosters tab, tap Save roster and give it a name."],
     ["Copy its code", "In the team list under My saved rosters, tap ⋯ then Copy code."],
     ["Send the code", "Paste it into a message to your friend."],
-    ["They import it", "In their Battle tab: Import a roster, choose My roster or Opponent, and paste."],
+    ["They import it", "In their Rosters tab: Import a roster, choose My roster or Opponent, and paste."],
   ];
   return (
     <div style={{ maxWidth: 900, margin: "0 auto", padding: "20px 16px" }}>
@@ -103,6 +103,7 @@ const Logo = ({ size = 22 }) => {
 const TAB_ICONS = {
   rules: "rulebook",
   missions: "map",
+  rosters: "roster",
   builder: "swords",
   community: "people",
 };

@@ -3,6 +3,8 @@
 // notice changed, in plain words. kind: "new", "better" or "fixed". Add an entry with every such change.
 const CHANGELOG = [
   { date: "2026-11-13", items: [
+    ["new", "A new Rosters tab for building, saving and sharing rosters. The Battle tab is now just the game: Start game or Play on a saved roster takes you there."],
+    ["better", "The save button shows whether your roster is saved: Save roster, Saved, or Save changes after you edit a saved roster."],
     ["better", "In online games, every hit reaches your opponent exactly once, even when the connection drops for a moment."],
     ["new", "On Android, the Back gesture closes the panel or menu you have open, instead of leaving KillSheet."],
     ["better", "The message that slides out when you're hit goes away when you tap anywhere else, so it never covers your datacards."],
@@ -178,7 +180,7 @@ function MovePanel({ onClose }) {
       <p style={{ ...mu, margin: "0 0 6px" }}>A Home Screen app keeps its data apart from Safari, so it moves with a backup file.</p>
       {stepRow(1, <><button onClick={() => downloadBackup(true)} style={{ ...bs("var(--accent)"), padding: "6px 12px", fontSize: 13 }}>Back up</button> <span style={{ color: "var(--text2)" }}>and tap Save to Files.</span></>)}
       {stepRow(2, <>In Safari, open <a href={NEW_HOME} target="_blank" rel="noopener" style={{ color: "var(--accent)" }}>killsheet.app</a>, tap Share, then Add to Home Screen.</>)}
-      {stepRow(3, <>Open the new KillSheet from your Home Screen. On the Battle tab, open the {"⋯"} menu, tap Restore from backup and pick the file.</>)}
+      {stepRow(3, <>Open the new KillSheet from your Home Screen. On the Rosters tab, open the {"⋯"} menu, tap Restore from backup and pick the file.</>)}
       {stepRow(4, <>Once your data is there, delete the old KillSheet from your Home Screen.</>)}
     </div>
   );

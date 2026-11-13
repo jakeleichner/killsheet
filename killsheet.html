@@ -1415,7 +1415,7 @@ const FACTIONS = {
     equipment: [
       { id: "mutated_symptoms", name: "Mutated Symptoms", desc: "Once per battle when activating, that operative gains a second Techno-curse until the end of the turning point.", gw: null, mod: null, ex: [] },
       { id: "plague_bellows", name: "Plague Bellows", desc: "When a Hulk is shot from more than 6\" away, retain one defense roll of 3 as a normal success.", gw: null, mod: null, ex: [] },
-      { id: "mutoid_vermin", name: "Mutoid Vermin", desc: "Add 4 Mutoid Vermin operatives to the team (pick them in the Battle tab).", gw: null, mod: null, ex: [] },
+      { id: "mutoid_vermin", name: "Mutoid Vermin", desc: "Add 4 Mutoid Vermin operatives to the team (pick them in the Rosters tab).", gw: null, mod: null, ex: [] },
       { id: "polluted_stockpile", name: "Polluted Stockpile", desc: "Roll 2D6. On a 7+, remove one of your opponent's equipment. Otherwise, they remove one of their own. It can't be selected again.", gw: null, mod: null, ex: [] },
     ],
     operatives: [
@@ -7761,6 +7761,7 @@ const ICON_PATHS = {
   play: <path d="M7 4l12 8-12 8z" />,
   rulebook: <g><path d="M3 5.5c3-1.2 6-1 9 1v13c-3-2-6-2.2-9-1z" /><path d="M21 5.5c-3-1.2-6-1-9 1v13c3-2 6-2.2 9-1z" /></g>,
   map: <g><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z" /><path d="M9 3v15M15 6v15" /></g>,
+  roster: <g><rect x="5" y="4" width="14" height="17" rx="2" /><path d="M9 4V2.5h6V4M9 10h6M9 14h6M9 18h4" /></g>,
   swords: <g><path d="M5 3l12 12M14 18l4-4M16 16l4 4" /><path d="M19 3L7 15M6 14l4 4M8 16l-4 4" /></g>,
   people: <g><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6" /><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.3c2.2.7 3.5 2.8 3.5 5.7" /></g>,
   heart: <path d="M12 20s-7.5-4.6-7.5-10.2A4.2 4.2 0 0 1 12 7.3a4.2 4.2 0 0 1 7.5 2.5C19.5 15.4 12 20 12 20z" />,
@@ -9018,7 +9019,7 @@ function TurnGuide({ tp, numTPs, setTp, hasInitiative, onInitiative, cp, f, rost
   );
 }
 
-function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen, setTutorialSeen, openTutorial, campaign, setCampaign, onTeamColor, openMove, showBattle }) {
+function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen, setTutorialSeen, openTutorial, campaign, setCampaign, onTeamColor, openMove, showBattle, view, showRosters }) {
   const phone = useIsMobile();
   const compactBar = useIsMobile(1000); // the full score bar needs about 1000px; below that it uses the phone layout
   const tinyBar = useIsMobile(350); // the smallest phones (320px): the phone bar drops its "VP" label and some padding to fit
@@ -9582,6 +9583,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
     setFight(null); fightRef.current = null; setShot(null); shotRef.current = null;
     setRosterLocked(false);
     setPickerGroup(f ? factionGroup(f) : null); setPickerSearch(""); setPickerOpen(true);
+    if (showRosters) showRosters();
     window.scrollTo(0, 0);
   });
   const computedVpOpp = primarySumOpp;
@@ -9763,6 +9765,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
     });
     setLastSaved({ f: entry.f, name: entry.name });
     setPickerOpen(false); setPickerSearch(""); setSavedMenu(null); setPeek(null);
+    if (play) { if (showBattle) showBattle(); } else if (showRosters) showRosters();
     window.scrollTo(0, 0);
   };
   const renameSaved = (entry) => {
@@ -9774,6 +9777,14 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
     withUndo("Deleted " + entry.name, () => { noteSyncDeleted(entry.id); setSavedRosters(savedRosters.filter(r => r.id !== entry.id)); });
     setSavedMenu(null);
   };
+  // Start the game: lock the roster and go to the Battle tab.
+  const startGame = () => { setRosterLocked(true); setMobilePanel("cards"); collapseAll(); if (showBattle) showBattle(); window.scrollTo(0, 0); };
+  // Whether the roster on screen is saved: the same team, operatives, equipment, choices and names as a saved roster.
+  const rosterKey = (d) => JSON.stringify({ f: d.f, o: d.o, fe: [...(d.fe || [])].sort(), ue: [...(d.ue || [])].sort(), cp: d.cp || "", cs: d.cs || "", cv: d.cv || {}, cw: d.cw || {}, nk: (d.nk || []).some(Boolean) ? d.nk : [] });
+  const savedMatch = fid && roster.length ? savedRosters.find(r => rosterKey(r) === rosterKey(rosterData())) : null;
+  const editingSaved = !savedMatch && lastSaved && lastSaved.f === fid && savedRosters.some(r => r.name.toLowerCase() === lastSaved.name.toLowerCase());
+  const saveLabel = savedMatch ? "Saved \u2713" : editingSaved ? "Save changes" : "Save roster";
+  const saveTitle = savedMatch ? "Saved as " + savedMatch.name + ". Change something to save again." : editingSaved ? "Update " + lastSaved.name + " in My rosters" : "Save to My rosters on this device";
   // Name one of your operatives (empty clears it). Before the game starts, from its datacard.
   const renameOp = (op) => {
     const typed = prompt("Name this operative (leave empty to use \"" + op.name + "\"):", op.nick || "");
@@ -10636,6 +10647,33 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
         );
       })()}
 
+      {view === "battle" && !rosterLocked ? (
+        // The Battle tab with no game: start the one that's built, or play a saved roster.
+        <div data-no-game="true">
+          <div style={{ ...cd, padding: 16 }}>
+            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", color: "var(--text)" }}>No game in progress</div>
+            <p style={{ ...mu, fontSize: 14, margin: "4px 0 12px" }}>{savedRosters.length ? "Tap Play on a saved roster, or build one in the Rosters tab." : "Build a roster in the Rosters tab, then start a game from there."}</p>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {f && roster.length > 0 && <button onClick={startGame} style={{ ...bs("#5A9C3A"), padding: "10px 14px", fontSize: 13 }}>Start a game with {f.name} ({roster.length}) <Fwd /></button>}
+              <button onClick={() => { if (showRosters) showRosters(); window.scrollTo(0, 0); }} style={{ ...bs("var(--accent)"), padding: "10px 14px", fontSize: 13 }}>{f && roster.length ? "Change the roster" : "Build a roster"}</button>
+            </div>
+          </div>
+          <SavedRosterLibrary rosters={savedRosters} menuId={savedMenu} setMenuId={setSavedMenu} onPlay={(r) => loadSaved(r, true)} onEdit={(r) => loadSaved(r)} onRename={renameSaved} onCopy={copySavedCode} onDelete={deleteSaved} />
+        </div>
+      ) : view === "rosters" && rosterLocked ? (
+        // The Rosters tab during a game: the library stays, but nothing here can replace the roster being played.
+        <div data-game-on="true">
+          <div style={{ ...cd, padding: 16, borderLeft: "3px solid var(--gold)" }}>
+            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", color: "var(--text)" }}>A game is in progress{f ? " with " + f.name : ""}</div>
+            <p style={{ ...mu, fontSize: 14, margin: "4px 0 12px" }}>To change rosters, end the game first: on the Battle tab, open the {"\u22EF"} menu and tap End game. You can save the roster you're playing now.</p>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button onClick={() => { if (showBattle) showBattle(); window.scrollTo(0, 0); }} style={{ ...bs("#5A9C3A"), padding: "10px 14px", fontSize: 13 }}>Back to the game <Fwd /></button>
+              {roster.length > 0 && <button onClick={saveRoster} disabled={!!savedMatch} data-save-state={savedMatch ? "saved" : editingSaved ? "changed" : "new"} title={saveTitle} style={{ ...bs(savedMatch ? "#5A9C3A" : "var(--accent)"), padding: "10px 14px", fontSize: 13, opacity: 1, cursor: savedMatch ? "default" : "pointer" }}>{saveLabel}</button>}
+            </div>
+          </div>
+          <SavedRosterLibrary rosters={savedRosters} menuId={savedMenu} setMenuId={setSavedMenu} locked onPlay={(r) => loadSaved(r, true)} onEdit={(r) => loadSaved(r)} onRename={renameSaved} onCopy={copySavedCode} onDelete={deleteSaved} />
+        </div>
+      ) : (<>
       {/* Faction select: collapses to one bar once a team is picked */}
       {f && !pickerOpen ? (rosterLocked ? null :
         <div style={{ ...cd, display: "flex", alignItems: "center", gap: mobile ? 6 : 10, padding: "10px 12px", marginBottom: 14, borderTop: "2px solid " + f.color }}>
@@ -10713,36 +10751,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                 <span style={{ color: f.color, display: "inline-flex" }}><Fwd size={20} /></span>
               </button>
             )}
-            {savedRosters.length > 0 && (
-              <div id="ks-saved-rosters" style={{ marginBottom: 12 }}>
-                <div style={{ ...h3, marginBottom: 6 }}>My saved rosters</div>
-                {savedRosters.map(r => {
-                  const fc = FACTIONS[r.f];
-                  const menu = savedMenu === r.id;
-                  const small = { ...bs("var(--muted)"), padding: "5px 10px", fontSize: 11 };
-                  return (
-                    <div key={r.id} data-saved-roster={r.id} style={{ ...cd, padding: "8px 10px", marginBottom: 6, borderLeft: "3px solid " + (fc ? fc.color : "var(--line)") }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif", overflowWrap: "anywhere" }}>{r.name}</div>
-                          <div style={{ fontSize: 12, color: "var(--muted)" }}>{fc ? fc.name : "Unknown team"} {"\u00b7"} {r.o.length} operative{r.o.length === 1 ? "" : "s"} {"\u00b7"} {new Date(r.savedAt).toLocaleDateString()}</div>
-                        </div>
-                        <button onClick={() => loadSaved(r, true)} title="Start a game with this roster" style={{ ...bs("#5A9C3A"), padding: "6px 12px", fontSize: 12 }}>Play</button>
-                        <button onClick={() => loadSaved(r)} title="Load it to change operatives or equipment" style={{ ...bs("var(--muted)"), padding: "6px 10px", fontSize: 12 }}>Edit</button>
-                        <button onClick={() => setSavedMenu(menu ? null : r.id)} aria-label="More options" style={{ ...bs("var(--muted)"), padding: "6px 10px", fontSize: 12 }}>{"\u22EF"}</button>
-                      </div>
-                      {menu && (
-                        <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
-                          <button onClick={() => renameSaved(r)} style={small}>Rename</button>
-                          <button onClick={() => copySavedCode(r)} style={small}>Copy code</button>
-                          <button onClick={() => deleteSaved(r)} style={{ ...small, color: "#E0664A", borderColor: "#B8341C60" }}>Delete</button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+            <SavedRosterLibrary rosters={savedRosters} menuId={savedMenu} setMenuId={setSavedMenu} onPlay={(r) => loadSaved(r, true)} onEdit={(r) => loadSaved(r)} onRename={renameSaved} onCopy={copySavedCode} onDelete={deleteSaved} />
             {gameHistory.length > 0 && (() => {
               const tally = (games) => games.reduce((t, g) => ({ ...t, [g.result]: t[g.result] + 1 }), { win: 0, loss: 0, draw: 0 });
               const all = tally(gameHistory);
@@ -10984,7 +10993,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                       {v.selections}{f.composition ? "/" + f.composition.total : ""} selections {"\u2022"} {roster.length} operatives {"\u2022"} {roster.reduce((s, o) => s + o.wounds, 0)}W
                     </div>
                   </div>
-                  <button onClick={() => { setRosterLocked(false); setMobilePanel("roster"); }} style={{ ...bs("var(--muted)"), fontSize: 12, padding: "8px 12px" }}>Edit roster</button>
+                  <button onClick={() => { setRosterLocked(false); setMobilePanel("roster"); if (showRosters) showRosters(); }} style={{ ...bs("var(--muted)"), fontSize: 12, padding: "8px 12px" }}>Edit roster</button>
                 </div>
               </div>
             ) : (
@@ -11097,8 +11106,8 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                   </div>
                   {roster.length > 0 && (
                     <div style={{ display: "flex", gap: 6, flexShrink: 0, marginLeft: "auto" }}>
-                      <button onClick={saveRoster} title="Save to My rosters on this device" style={{ ...bs("var(--muted)"), fontSize: 13, padding: "8px 12px" }}>Save roster</button>
-                      <button onClick={() => { setRosterLocked(true); setMobilePanel("cards"); collapseAll(); window.scrollTo(0, 0); }} style={{ ...bs("#5A9C3A"), fontSize: 13, padding: "8px 14px" }}>Start game <Fwd /></button>
+                      <button onClick={saveRoster} disabled={!!savedMatch} data-save-state={savedMatch ? "saved" : editingSaved ? "changed" : "new"} title={saveTitle} style={{ ...bs(savedMatch ? "#5A9C3A" : "var(--accent)"), fontSize: 13, padding: "8px 12px", opacity: 1, cursor: savedMatch ? "default" : "pointer" }}>{saveLabel}</button>
+                      <button onClick={startGame} style={{ ...bs("#5A9C3A"), fontSize: 13, padding: "8px 14px" }}>Start game <Fwd /></button>
                     </div>
                   )}
                 </div>
@@ -11326,8 +11335,8 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                         const allCollapsed = roster.length > 0 && roster.every(op => cardCollapsed[op.id]);
                         return <button onClick={allCollapsed ? expandAll : collapseAll} title={allCollapsed ? "Expand all" : "Collapse all"} style={{ ...bs("var(--muted)"), fontSize: 11, padding: mobile ? "6px 8px" : "2px 5px" }}><Icon name={allCollapsed ? "chevronDown" : "chevronUp"} size={20} /></button>;
                       })()}
-                      <button onClick={saveRoster} title="Save to My Rosters on this device" style={{ ...bs("#5A9C3A"), fontSize: 11, padding: mobile ? "5px 8px" : "2px 7px", display: "flex", alignItems: "center", gap: 4 }}>
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }}><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" /></svg>Save
+                      <button onClick={saveRoster} disabled={!!savedMatch} title={saveTitle} style={{ ...bs(savedMatch ? "#5A9C3A" : "var(--accent)"), fontSize: 11, padding: mobile ? "5px 8px" : "2px 7px", display: "flex", alignItems: "center", gap: 4, opacity: 1, cursor: savedMatch ? "default" : "pointer" }}>
+                        {savedMatch ? <Icon name="check" size={11} /> : <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }}><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" /></svg>}{savedMatch ? "Saved" : editingSaved ? "Save changes" : "Save"}
                       </button>
                       {rosterLocked && <button data-logbtn="true" onClick={() => openLog()} aria-label={"Battle log" + (unreadHits ? ", " + unreadHits + " new" : "")} title="Every hit this game" style={{ ...bs("var(--blue)"), fontSize: 11, padding: mobile ? "5px 8px" : "2px 7px", display: "flex", alignItems: "center", gap: 4, position: "relative" }}>
                         {unreadHits > 0 && <span data-unread={unreadHits} aria-hidden="true" style={{ position: "absolute", top: -7, right: -7, minWidth: 17, height: 17, padding: "0 4px", borderRadius: 9, background: "var(--miss)", color: "#fff", fontSize: 11, fontWeight: 700, lineHeight: "17px", textAlign: "center", fontFamily: "'Rajdhani', sans-serif" }}>{unreadHits}</span>}<Icon name="log" size={12} />Log</button>}
@@ -11488,10 +11497,48 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
         </div>
         </div>
       )}
+      </>)}
     </div>
   );
 }
 
+/* ═══ SAVED ROSTERS ═══ */
+// The roster library: the rosters saved on this device, each with Play, Edit and a menu (Rename, Copy code, Delete).
+// The first piece moved out of the Battle tab's Builder (owner, Nov 13: the middle path). It holds no data itself: the
+// Builder passes the list and what each button does. locked: a game is in progress, so Play and Edit wait for it to end.
+function SavedRosterLibrary({ rosters, menuId, setMenuId, onPlay, onEdit, onRename, onCopy, onDelete, locked }) {
+  if (!rosters.length) return null;
+  const small = { ...bs("var(--muted)"), padding: "5px 10px", fontSize: 11 };
+  return (
+    <div id="ks-saved-rosters" style={{ marginBottom: 12 }}>
+      <div style={{ ...h3, marginBottom: 6 }}>My saved rosters</div>
+      {rosters.map(r => {
+        const fc = FACTIONS[r.f];
+        const menu = menuId === r.id;
+        return (
+          <div key={r.id} data-saved-roster={r.id} style={{ ...cd, padding: "8px 10px", marginBottom: 6, borderLeft: "3px solid " + (fc ? fc.color : "var(--line)") }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif", overflowWrap: "anywhere" }}>{r.name}</div>
+                <div style={{ fontSize: 12, color: "var(--muted)" }}>{fc ? fc.name : "Unknown team"} {"\u00b7"} {r.o.length} operative{r.o.length === 1 ? "" : "s"} {"\u00b7"} {new Date(r.savedAt).toLocaleDateString()}</div>
+              </div>
+              <button onClick={() => onPlay(r)} disabled={locked} title={locked ? "End the game in progress first" : "Start a game with this roster"} style={{ ...bs("#5A9C3A"), padding: "6px 12px", fontSize: 12, opacity: locked ? 0.4 : 1 }}>Play</button>
+              <button onClick={() => onEdit(r)} disabled={locked} title={locked ? "End the game in progress first" : "Load it to change operatives or equipment"} style={{ ...bs("var(--muted)"), padding: "6px 10px", fontSize: 12, opacity: locked ? 0.4 : 1 }}>Edit</button>
+              <button onClick={() => setMenuId(menu ? null : r.id)} aria-label="More options" style={{ ...bs("var(--muted)"), padding: "6px 10px", fontSize: 12 }}>{"\u22EF"}</button>
+            </div>
+            {menu && (
+              <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+                <button onClick={() => onRename(r)} style={small}>Rename</button>
+                <button onClick={() => onCopy(r)} style={small}>Copy code</button>
+                <button onClick={() => onDelete(r)} style={{ ...small, color: "#E0664A", borderColor: "#B8341C60" }}>Delete</button>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 /* ═══ TERRAIN TYPES ═══ */
 const TERRAIN_TYPES = [
   { name: "Heavy", color: "#E0664A", desc: "Larger terrain features. Can obscure operatives: if Heavy terrain is intervening between shooter and target (and more than 1\" from both), the target is obscured.", rules: ["Attacker must discard one success when target is obscured.", "All attacker crits become normal successes when target is obscured.", "Cannot obscure if within 1\" of either operative."] },
@@ -16456,7 +16503,7 @@ const RULE_SECTIONS = [
     { title: "Weapon rules", items: Object.entries(WR).map(([k, v]) => ({ name: k, ...splitRule(v) })) },
   ] },
   { id: "equipment", label: "Equipment", groups: [
-    { title: "Universal equipment", intro: "Any kill team can take these. Each option can be selected once per game. Your team's own equipment is listed in the Battle tab.", items: UNIV_EQUIPMENT.map(e => ({ name: e.name, tag: e.type, tagColor: EQUIP_TYPE_COLOR[e.type], summary: e.desc, stats: e.stats, detail: e.note })) },
+    { title: "Universal equipment", intro: "Any kill team can take these. Each option can be selected once per game. Your team's own equipment is listed in the Rosters tab.", items: UNIV_EQUIPMENT.map(e => ({ name: e.name, tag: e.type, tagColor: EQUIP_TYPE_COLOR[e.type], summary: e.desc, stats: e.stats, detail: e.note })) },
   ] },
   { id: "glossary", label: "Glossary", glossary: true },
 ];
@@ -17935,10 +17982,10 @@ const COMMUNITY_EXAMPLES = [
 function CommunityRosters() {
   const mobile = useIsMobile();
   const steps = [
-    ["Save your roster", "In the Battle tab, tap Save on your datacards bar and give it a name."],
+    ["Save your roster", "In the Rosters tab, tap Save roster and give it a name."],
     ["Copy its code", "In the team list under My saved rosters, tap ⋯ then Copy code."],
     ["Send the code", "Paste it into a message to your friend."],
-    ["They import it", "In their Battle tab: Import a roster, choose My roster or Opponent, and paste."],
+    ["They import it", "In their Rosters tab: Import a roster, choose My roster or Opponent, and paste."],
   ];
   return (
     <div style={{ maxWidth: 900, margin: "0 auto", padding: "20px 16px" }}>
@@ -18028,6 +18075,7 @@ const Logo = ({ size = 22 }) => {
 const TAB_ICONS = {
   rules: "rulebook",
   missions: "map",
+  rosters: "roster",
   builder: "swords",
   community: "people",
 };
@@ -18760,14 +18808,14 @@ function AppearancePicker() {
       <div style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "12px 0", marginTop: 10, borderTop: "1px solid var(--raised)" }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif" }}>Match my team</div>
-          <div style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.45, marginTop: 2 }}>On the Battle tab, buttons and highlights take your team's color, on top of your theme. A few team colors are adjusted so they stay readable and don't look like dice or damage colors.</div>
+          <div style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.45, marginTop: 2 }}>On the Rosters and Battle tabs, buttons and highlights take your team's color, on top of your theme. A few team colors are adjusted so they stay readable and don't look like dice or damage colors.</div>
           {/* What the switch does right now, with a sample Battle-tab button in the color it gives. */}
           <div data-match-preview="true" style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
             <span aria-hidden="true" style={{ ...bs(battleCol), padding: "5px 10px", fontSize: 12, background: al(battleCol, "18"), pointerEvents: "none" }}>Shoot</span>
             <span style={{ fontSize: 12, color: "var(--muted)", flex: "1 1 160px", lineHeight: 1.4 }}>
               {!teamCol ? "Pick a team in Battle to see its color here."
-                : appearance.matchTeam ? "On: the Battle tab uses the " + FACTIONS[teamId].name + " color."
-                : "Off: the Battle tab uses your theme's color. Turn it on to use the " + FACTIONS[teamId].name + " color."}
+                : appearance.matchTeam ? "On: the Rosters and Battle tabs use the " + FACTIONS[teamId].name + " color."
+                : "Off: the Rosters and Battle tabs use your theme's color. Turn it on to use the " + FACTIONS[teamId].name + " color."}
             </span>
           </div>
         </div>
@@ -18850,6 +18898,8 @@ function FeaturesPage({ onClose, focus, onNews, onFeedback, account, onAccount }
 // notice changed, in plain words. kind: "new", "better" or "fixed". Add an entry with every such change.
 const CHANGELOG = [
   { date: "2026-11-13", items: [
+    ["new", "A new Rosters tab for building, saving and sharing rosters. The Battle tab is now just the game: Start game or Play on a saved roster takes you there."],
+    ["better", "The save button shows whether your roster is saved: Save roster, Saved, or Save changes after you edit a saved roster."],
     ["better", "In online games, every hit reaches your opponent exactly once, even when the connection drops for a moment."],
     ["new", "On Android, the Back gesture closes the panel or menu you have open, instead of leaving KillSheet."],
     ["better", "The message that slides out when you're hit goes away when you tap anywhere else, so it never covers your datacards."],
@@ -19025,7 +19075,7 @@ function MovePanel({ onClose }) {
       <p style={{ ...mu, margin: "0 0 6px" }}>A Home Screen app keeps its data apart from Safari, so it moves with a backup file.</p>
       {stepRow(1, <><button onClick={() => downloadBackup(true)} style={{ ...bs("var(--accent)"), padding: "6px 12px", fontSize: 13 }}>Back up</button> <span style={{ color: "var(--text2)" }}>and tap Save to Files.</span></>)}
       {stepRow(2, <>In Safari, open <a href={NEW_HOME} target="_blank" rel="noopener" style={{ color: "var(--accent)" }}>killsheet.app</a>, tap Share, then Add to Home Screen.</>)}
-      {stepRow(3, <>Open the new KillSheet from your Home Screen. On the Battle tab, open the {"⋯"} menu, tap Restore from backup and pick the file.</>)}
+      {stepRow(3, <>Open the new KillSheet from your Home Screen. On the Rosters tab, open the {"⋯"} menu, tap Restore from backup and pick the file.</>)}
       {stepRow(4, <>Once your data is there, delete the old KillSheet from your Home Screen.</>)}
     </div>
   );
@@ -19514,7 +19564,7 @@ async function runSelfTest(hooks) {
     if (!btn("Play online")) throw new Error("Play online doesn't show for a learning player");
     await click(document.querySelector("[aria-label='Game menu']"), "game menu (close)");
     const cog = () => all("button[aria-label='Settings']")[0];
-    for (const t of ["Rules", "Missions", ...(COMMUNITY_LIVE ? ["Community"] : []), "Battle"]) { await nav(t); if (!cog()) throw new Error("the Settings cog doesn't show on " + t); }
+    for (const t of ["Rules", "Missions", "Rosters", ...(COMMUNITY_LIVE ? ["Community"] : []), "Battle"]) { await nav(t); if (!cog()) throw new Error("the Settings cog doesn't show on " + t); }
     await click(cog(), "Settings cog");
     const page = document.querySelector("[role=dialog][aria-label='Settings']");
     if (!page) throw new Error("the Settings page didn't open");
@@ -19532,7 +19582,7 @@ async function runSelfTest(hooks) {
   });
 
   await step("Every tab opens", async () => {
-    for (const t of ["Rules", "Missions", "Battle", ...(COMMUNITY_LIVE ? ["Community"] : [])]) { await nav(t); if (!all("h1,h2,div").length) throw new Error(t + " is empty"); }
+    for (const t of ["Rules", "Missions", "Rosters", "Battle", ...(COMMUNITY_LIVE ? ["Community"] : [])]) { await nav(t); if (!all("h1,h2,div").length) throw new Error(t + " is empty"); }
     if (!COMMUNITY_LIVE && [...document.querySelectorAll("nav button")].some(b => b.textContent.trim() === "Community")) throw new Error("the Community tab shows before the board is live");
     if (!/tabular-nums/.test(getComputedStyle(document.body).fontVariantNumeric)) throw new Error("numbers aren't set to keep their width");
     if (document.documentElement.scrollWidth > window.innerWidth + 1) throw new Error("the page scrolls sideways (" + document.documentElement.scrollWidth + "px wide in a " + window.innerWidth + "px window)");
@@ -19637,7 +19687,7 @@ async function runSelfTest(hooks) {
     return packs + " packs, " + missions + " missions, " + maps + " maps opened";
   });
   await step("Every team: pick, build, play, end game", async () => {
-    await nav("Battle");
+    await nav("Rosters");
     let done = 0; const problems = [];
     for (const fc of Object.values(FACTIONS)) {
       progress("team " + fc.name + " (" + (done + 1) + "/" + Object.keys(FACTIONS).length + ")");
@@ -19678,7 +19728,7 @@ async function runSelfTest(hooks) {
     return done + " teams played, " + games + " games recorded";
   });
   await step("Game history stats", async () => {
-    await nav("Battle");
+    await nav("Rosters");
     const change = btn("Change team", true); if (change) await click(change, "Change team");
     const head = all("[role=button]").find(e => /^Game history/.test(e.textContent.trim()));
     if (!head) throw new Error("no Game history card on the team list");
@@ -19691,7 +19741,7 @@ async function runSelfTest(hooks) {
     return head.textContent.replace(/^Game history/, "").trim();
   });
   await step("Save a roster and back up", async () => {
-    await nav("Battle");
+    await nav("Rosters");
     const dc = btn("Datacards", true); if (dc) await click(dc, "Datacards");
     const back = all("button").find(b => /Continue with/.test(b.textContent)); if (back) await click(back, "Continue with the team"); // the earlier steps can leave the team list open
     const dc2 = btn("Datacards", true); if (dc2) await click(dc2, "Datacards");
@@ -19739,7 +19789,7 @@ async function runSelfTest(hooks) {
 
   // Runs last: it leaves a game in progress, which shrinks the campaign card on the Battle tab.
   await step("Mission scoring checklist", async () => {
-    await nav("Battle");
+    await nav("Rosters");
     const change = btn("Change team", true); if (change) await click(change, "Change team");
     await typeInto(all("input").find(i => i.placeholder === "Search teams or factions"), "Kasrkin");
     await click(all("[role=button]").find(e => e.textContent.trim().endsWith("Kasrkin")), "Kasrkin");
@@ -20152,10 +20202,10 @@ async function runSelfTest(hooks) {
     const sampleCol = () => getComputedStyle(preview().querySelector("span")).color;
     const teamName = store("fid") && FACTIONS[store("fid")] ? FACTIONS[store("fid")].name : null;
     const offCol = sampleCol();
-    if (teamName && !preview().textContent.includes("Off: the Battle tab uses your theme's color")) throw new Error("Match my team (off) doesn't say what it does: " + preview().textContent);
+    if (teamName && !preview().textContent.includes("Off: the Rosters and Battle tabs use your theme's color")) throw new Error("Match my team (off) doesn't say what it does: " + preview().textContent);
     await click(sw, "Match my team");
     if (teamName) {
-      if (!preview().textContent.includes("On: the Battle tab uses the " + teamName + " color")) throw new Error("Match my team (on) doesn't name the team: " + preview().textContent);
+      if (!preview().textContent.includes("On: the Rosters and Battle tabs use the " + teamName + " color")) throw new Error("Match my team (on) doesn't name the team: " + preview().textContent);
       if (sampleCol() === offCol) throw new Error("the sample button didn't change color with Match my team");
     } else if (!/Pick a team in Battle/.test(preview().textContent)) throw new Error("Match my team doesn't say to pick a team first");
     if (!(store("appearance") || {}).matchTeam) throw new Error("Match my team didn't save");
@@ -20520,8 +20570,8 @@ async function runSelfTest(hooks) {
     if (store("rosterLocked")) throw new Error("Edit started a game");
     if (store("fid") !== r.f || (store("roster") || []).length !== r.o.length) throw new Error("Edit loaded the wrong roster");
     if (!btn("Start game")) throw new Error("no Start game after Edit");
-    await click(btn("Save roster", true), "Save roster");
-    if ((store("savedRosters") || []).length !== saved.length) throw new Error("saving the loaded roster again made a copy instead of replacing it");
+    const state = all("[data-save-state]")[0];
+    if (!state || state.getAttribute("data-save-state") !== "saved" || !state.disabled || !/Saved/.test(state.textContent)) throw new Error("a roster loaded unchanged doesn't show as Saved");
     await click(btn("My rosters", true), "My rosters");
     if (!card()) throw new Error("My rosters didn't show the saved rosters");
     return "Play starts a game, Edit loads it, saving again replaces it";
@@ -20546,7 +20596,10 @@ async function runSelfTest(hooks) {
     if (!freshOps(FACTIONS[store("fid")], store("roster")).some(o => o.nick === "Scuba Steve")) throw new Error("refreshing the datacards loses the name");
     // Saved with the roster, kept by Play, and not editable during the game. (Phones show one panel at a time.)
     const build = btn("Build roster", true); if (build) await click(build, "Build roster");
-    await click(btn("Save roster", true), "Save roster");
+    const changed = all("[data-save-state]")[0];
+    if (!changed || changed.getAttribute("data-save-state") !== "changed" || changed.textContent.trim() !== "Save changes") throw new Error("an edited saved roster doesn't offer Save changes: " + (changed && changed.textContent));
+    await click(changed, "Save changes");
+    if ((store("savedRosters") || []).length !== (store("savedRosters") || []).filter((x, i, a) => a.findIndex(y => y.id === x.id) === i).length || all("[data-save-state]")[0].getAttribute("data-save-state") !== "saved") throw new Error("Save changes didn't update the saved roster");
     const again = (store("savedRosters") || []).find(x => x.id === r.id);
     if (!again || !(again.nk || []).includes("Scuba Steve")) throw new Error("saving the roster didn't keep the name");
     await click(btn("My rosters", true), "My rosters");
@@ -20832,6 +20885,31 @@ async function runSelfTest(hooks) {
     if (location.search.indexOf("selftest") < 0) throw new Error("Back left KillSheet");
     return "nested pages close one at a time; X removes its entry; the game menu closes; never leaves the app (history " + startLen + " to " + window.history.length + ")";
   });
+  await step("Rosters and Battle tabs", async () => {
+    if (store("rosterLocked")) throw new Error("expected no game in progress here");
+    await nav("Battle");
+    const noGame = () => all("[data-no-game]")[0], gameOn = () => all("[data-game-on]")[0];
+    if (!noGame()) throw new Error("the Battle tab with no game doesn't say so");
+    const shown = all("[data-saved-roster]").find(c => !/\b0 operatives/.test(c.textContent)); // earlier steps also leave empty test rosters
+    if (!shown) throw new Error("the Battle tab with no game doesn't list saved rosters");
+    const rid = shown.getAttribute("data-saved-roster");
+    const playBtn = () => [...(all("[data-saved-roster='" + rid + "']")[0] || document.createElement("div")).querySelectorAll("button")].find(b => b.textContent.trim() === "Play");
+    if (!playBtn()) throw new Error("the Battle tab with no game doesn't list saved rosters with Play");
+    await click(playBtn(), "Play");
+    if (!store("rosterLocked") || store("tab") !== "builder" || noGame() || !document.querySelector("[data-logbtn]")) throw new Error("Play didn't start the game on the Battle tab");
+    // The Rosters tab during a game: nothing there replaces the roster being played.
+    await nav("Rosters");
+    if (!gameOn()) throw new Error("the Rosters tab doesn't say a game is in progress");
+    if (!playBtn() || !playBtn().disabled) throw new Error("Play is available on the Rosters tab during a game");
+    if (all("input").some(i => i.placeholder === "Search teams or factions")) throw new Error("the team picker shows during a game");
+    await click(all("button").find(b => /Back to the game/.test(b.textContent)), "Back to the game");
+    if (store("tab") !== "builder" || !document.querySelector("[data-logbtn]")) throw new Error("Back to the game didn't go to the Battle tab");
+    // Edit roster from the game goes to the Rosters tab, unlocked.
+    await click(all("button").find(b => b.textContent.trim() === "Edit roster") || btn("Ploys & rules", true), "Edit roster");
+    const edit = all("button").find(b => b.textContent.trim() === "Edit roster"); if (edit) await click(edit, "Edit roster");
+    if (store("rosterLocked") || store("tab") !== "rosters" || !btn("Start game")) throw new Error("Edit roster didn't go to the Rosters tab to change it");
+    return "no-game screen with Play, game starts on Battle, Rosters tab locked during the game, back and forth";
+  });
   await step("Old saves get current datacards", async () => {
     const pm = FACTIONS.plaguemarines;
     const old = [{ id: "champion", name: "Plague Champion", wounds: 1 }, { id: "fighter", name: "PM Fighter" }, { id: "fighter", name: "PM Fighter" }, { id: "gone_op", name: "Removed" }];
@@ -20874,7 +20952,9 @@ async function runSelfTest(hooks) {
 
 /* ═══ APP ═══ */
 function App() {
-  const [tab, setTab] = useLocalStorage("tab", "builder");
+  // Rosters and Battle are two views of the same Battle tab code (Builder, view prop): build and save before a game, play
+  // during one. New players start on Rosters.
+  const [tab, setTab] = useLocalStorage("tab", "rosters");
   // The tutorial lives inside Rules; the Builder shows new players a one-time banner pointing to it.
   const [tutorialOpen, setTutorialOpen] = useState(false);
   const [tutorialSeen, setTutorialSeen] = useLocalStorage("tutorialSeen", false);
@@ -20972,7 +21052,7 @@ function App() {
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, []);
-  const tabs = [["rules", "Rules"], ["missions", "Missions"], ["builder", "Battle"], ["community", "Community"]];
+  const tabs = [["rules", "Rules"], ["missions", "Missions"], ["rosters", "Rosters"], ["builder", "Battle"], ["community", "Community"]];
   const navTabs = tabs.filter(([id]) => id !== "community" || COMMUNITY_LIVE);
   // Multiplayer hosted at App level so banner is visible across tabs
   const mpHandlerRef = React.useRef(null);
@@ -21065,7 +21145,7 @@ function App() {
       {/* CONTENT: all tabs stay mounted, hidden with display:none to preserve state */}
       <div className="ks-appear" style={{ display: tab === "rules" ? "block" : "none" }}><ErrorBoundary where="Rules"><Rules search={ruleSearch} tutorialOpen={tutorialOpen} openTutorial={openTutorial} closeTutorial={() => { setTutorialOpen(false); window.scrollTo(0, 0); }} /></ErrorBoundary></div>
       <div className="ks-appear" style={{ display: tab === "missions" ? "block" : "none" }}><ErrorBoundary where="Missions"><Missions campaign={campaign} startCampaign={() => { if (!campaign) setCampaign(cteNew("solo", "m26", 7, "", "")); setTab("builder"); window.scrollTo(0, 0); }} /><CrashTest /></ErrorBoundary></div>
-      <div id="panel-builder" className="ks-appear" style={{ display: tab === "builder" ? "block" : "none", ...(battleAccent ? { "--accent": battleAccent } : {}) }}><ErrorBoundary where="Battle"><Builder tp={tp} setTp={setTp} mp={mp} mpHandlerRef={mpHandlerRef} showMP={showMP} setShowMP={setShowMP} tutorialSeen={tutorialSeen} setTutorialSeen={setTutorialSeen} openTutorial={openTutorial} campaign={campaign} setCampaign={setCampaign} onTeamColor={setTeamId} openMove={() => setShowMove(true)} showBattle={() => setTab("builder")} /></ErrorBoundary></div>
+      <div id="panel-builder" className="ks-appear" style={{ display: tab === "rosters" ? "block" : tab === "builder" ? "block" : "none", ...(battleAccent ? { "--accent": battleAccent } : {}) }}><ErrorBoundary where="Battle"><Builder tp={tp} setTp={setTp} mp={mp} mpHandlerRef={mpHandlerRef} showMP={showMP} setShowMP={setShowMP} tutorialSeen={tutorialSeen} setTutorialSeen={setTutorialSeen} openTutorial={openTutorial} campaign={campaign} setCampaign={setCampaign} onTeamColor={setTeamId} openMove={() => setShowMove(true)} showBattle={() => setTab("builder")} view={tab === "rosters" ? "rosters" : "battle"} showRosters={() => setTab("rosters")} /></ErrorBoundary></div>
       <div className="ks-appear" style={{ display: tab === "community" ? "block" : "none" }}><ErrorBoundary where="Community"><CommunityRosters /></ErrorBoundary></div>
 
       {/* FOOTER */}

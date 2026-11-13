@@ -181,14 +181,14 @@ function AppearancePicker() {
       <div style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "12px 0", marginTop: 10, borderTop: "1px solid var(--raised)" }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif" }}>Match my team</div>
-          <div style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.45, marginTop: 2 }}>On the Battle tab, buttons and highlights take your team's color, on top of your theme. A few team colors are adjusted so they stay readable and don't look like dice or damage colors.</div>
+          <div style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.45, marginTop: 2 }}>On the Rosters and Battle tabs, buttons and highlights take your team's color, on top of your theme. A few team colors are adjusted so they stay readable and don't look like dice or damage colors.</div>
           {/* What the switch does right now, with a sample Battle-tab button in the color it gives. */}
           <div data-match-preview="true" style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
             <span aria-hidden="true" style={{ ...bs(battleCol), padding: "5px 10px", fontSize: 12, background: al(battleCol, "18"), pointerEvents: "none" }}>Shoot</span>
             <span style={{ fontSize: 12, color: "var(--muted)", flex: "1 1 160px", lineHeight: 1.4 }}>
               {!teamCol ? "Pick a team in Battle to see its color here."
-                : appearance.matchTeam ? "On: the Battle tab uses the " + FACTIONS[teamId].name + " color."
-                : "Off: the Battle tab uses your theme's color. Turn it on to use the " + FACTIONS[teamId].name + " color."}
+                : appearance.matchTeam ? "On: the Rosters and Battle tabs use the " + FACTIONS[teamId].name + " color."
+                : "Off: the Rosters and Battle tabs use your theme's color. Turn it on to use the " + FACTIONS[teamId].name + " color."}
             </span>
           </div>
         </div>

@@ -1151,7 +1151,7 @@ const FACTIONS = {
     equipment: [
       { id: "mutated_symptoms", name: "Mutated Symptoms", desc: "Once per battle when activating, that operative gains a second Techno-curse until the end of the turning point.", gw: null, mod: null, ex: [] },
       { id: "plague_bellows", name: "Plague Bellows", desc: "When a Hulk is shot from more than 6\" away, retain one defense roll of 3 as a normal success.", gw: null, mod: null, ex: [] },
-      { id: "mutoid_vermin", name: "Mutoid Vermin", desc: "Add 4 Mutoid Vermin operatives to the team (pick them in the Battle tab).", gw: null, mod: null, ex: [] },
+      { id: "mutoid_vermin", name: "Mutoid Vermin", desc: "Add 4 Mutoid Vermin operatives to the team (pick them in the Rosters tab).", gw: null, mod: null, ex: [] },
       { id: "polluted_stockpile", name: "Polluted Stockpile", desc: "Roll 2D6. On a 7+, remove one of your opponent's equipment. Otherwise, they remove one of their own. It can't be selected again.", gw: null, mod: null, ex: [] },
     ],
     operatives: [
