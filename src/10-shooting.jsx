@@ -78,7 +78,7 @@ function reduceShot(s, a) {
   }
 }
 
-function ShootScreen({ shot, dropped, options, others, sideColor, onAct, onClose, onTakeOver, importHint }) {
+function ShootScreen({ shot, dropped, options, others, sideColor, onAct, onClose, onTakeOver, importHint, photoOf }) {
   const { feat } = React.useContext(FeatureCtx);
   const s = shot, t = s.targets[s.ti];
   const mine = (player) => s.roles.includes(player);
@@ -171,6 +171,7 @@ function ShootScreen({ shot, dropped, options, others, sideColor, onAct, onClose
           <div style={{ ...h3, marginBottom: 0, color: col, flex: 1, minWidth: 0 }}>{isAtk ? "Shooting" : s.targets.length > 1 ? "Target " + (s.ti + 1) + " of " + s.targets.length : "Target"}{s.online && mine(owner) ? " (you)" : ""}</div>
           <span style={{ fontSize: 14, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", color: hp <= 0 ? "#B8341C" : hp < op.max / 2 ? "var(--gold)" : "var(--text)" }}>{hp}/{op.max}W</span>
         </div>
+        {photoOf && photoOf(op, sideOf(owner)) && <img data-vs-photo={role} src={photoOf(op, sideOf(owner))} alt="" style={{ display: "block", width: 64, height: 64, borderRadius: 8, objectFit: "cover", margin: "4px 0", border: "2px solid " + col, opacity: hp <= 0 ? 0.5 : 1 }} />}
         <div data-vs-name={role} style={{ ...vsName, textDecoration: hp <= 0 ? "line-through" : "none" }}>{opLabel(op)}</div>
         <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
           {isAtk ? <>{s.atk.weapon.name} {"·"} {s.atk.weapon.atk} {"·"} {s.atk.weapon.hit} {"·"} {s.atk.weapon.dmg}{s.atk.weapon.wr && s.atk.weapon.wr !== "-" ? " · " + s.atk.weapon.wr : ""}{op.injured ? " · injured: hits on 1 worse" : ""}</>

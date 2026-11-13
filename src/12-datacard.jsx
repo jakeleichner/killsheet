@@ -186,7 +186,7 @@ function HitBubble({ n, tail, animate, onOpen, onDismiss }) {
   );
 }
 
-function Datacard({ side, op, preview, onRename, f, fc, equipWeapons, equipEffects, curWounds, onWound, collapsed, onToggle, ignoreInjured, cp, setCp, isActivated, onActivate, order, onOrder, uses, setUse, carried, onCarried, narrow, requestFight, requestShoot, scars }) {
+function Datacard({ side, op, preview, onRename, photo, onPhoto, onRemovePhoto, f, fc, equipWeapons, equipEffects, curWounds, onWound, collapsed, onToggle, ignoreInjured, cp, setCp, isActivated, onActivate, order, onOrder, uses, setUse, carried, onCarried, narrow, requestFight, requestShoot, scars }) {
   const [pickWeapons, setPickWeapons] = useState(false);
   const { feat } = React.useContext(FeatureCtx);
   const opRules = React.useMemo(() => opWeaponRules(op), [op]);
@@ -287,11 +287,14 @@ function Datacard({ side, op, preview, onRename, f, fc, equipWeapons, equipEffec
         <div role="button" tabIndex={0} onClick={onToggle} style={{ padding: collapsed ? "10px 12px" : "14px 16px 12px", cursor: "pointer", userSelect: "none", opacity: isActivated ? 0.55 : 1 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: collapsed ? "center" : "flex-start", gap: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
+              {photo && <img data-op-photo="true" src={photo} alt="" style={{ width: collapsed ? 32 : 40, height: collapsed ? 32 : 40, borderRadius: "50%", objectFit: "cover", flexShrink: 0, border: "2px solid " + fc }} />}
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div style={{ fontFamily: DS.fontDisplay, fontSize: 18, fontWeight: 600, color: DS.textPrimary, lineHeight: 1.15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: isActivated ? "line-through" : "none" }}>{opLabel(op)}{op.nick && <span style={{ fontSize: 13, fontWeight: 500, color: "var(--muted)", marginLeft: 6 }}>{op.name}</span>}</div>
                 {!collapsed && <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 3, minWidth: 0 }}>
                   <div style={{ fontFamily: DS.fontDisplay, fontSize: 11, fontWeight: 500, color: fc, letterSpacing: "0.14em", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{op.kw || "OPERATIVE"}</div>
                   {onRename && <button className="compact-btn link-btn" onClick={(e) => { e.stopPropagation(); onRename(); }} aria-label={(op.nick ? "Rename " : "Name ") + opLabel(op)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--accent)", fontSize: 12, fontFamily: "'Inter', sans-serif", textDecoration: "underline", flexShrink: 0 }}>{op.nick ? "Rename" : "Name it"}</button>}
+                  {onPhoto && <button className="compact-btn link-btn" onClick={(e) => { e.stopPropagation(); onPhoto(); }} aria-label={(photo ? "Change the photo of " : "Add a photo of ") + op.name} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--accent)", fontSize: 12, fontFamily: "'Inter', sans-serif", textDecoration: "underline", flexShrink: 0 }}>{photo ? "Change photo" : "Add photo"}</button>}
+                  {onPhoto && photo && onRemovePhoto && <button className="compact-btn link-btn" onClick={(e) => { e.stopPropagation(); onRemovePhoto(); }} aria-label={"Remove the photo of " + op.name} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--muted)", fontSize: 12, fontFamily: "'Inter', sans-serif", textDecoration: "underline", flexShrink: 0 }}>Remove</button>}
                 </div>}
               </div>
               {collapsed && !mobile && statsInline}

@@ -265,7 +265,7 @@ function useDiceTumble(scope) {
   });
 }
 
-function FightScreen({ fight, dropped, enemies, defWeapons, sideColor, onAct, onClose, onTakeOver, importHint }) {
+function FightScreen({ fight, dropped, enemies, defWeapons, sideColor, onAct, onClose, onTakeOver, importHint, photoOf }) {
   const { feat } = React.useContext(FeatureCtx);
   const f = fight;
   const mine = (role) => f.roles.includes(role);
@@ -377,6 +377,7 @@ function FightScreen({ fight, dropped, enemies, defWeapons, sideColor, onAct, on
           <div style={{ ...h3, marginBottom: 0, color: col, flex: 1, minWidth: 0 }}>{role === "atk" ? "Attacking" : "Fights back"}{f.online && mine(role) ? " (you)" : ""}</div>
           <span style={{ fontSize: 14, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", color: hp <= 0 ? "#B8341C" : hp < s.op.max / 2 ? "var(--gold)" : "var(--text)" }}>{hp}/{s.op.max}W</span>
         </div>
+        {photoOf && photoOf(s.op, s.side) && <img data-vs-photo={role} src={photoOf(s.op, s.side)} alt="" style={{ display: "block", width: 64, height: 64, borderRadius: 8, objectFit: "cover", margin: "4px 0", border: "2px solid " + col, opacity: hp <= 0 ? 0.5 : 1 }} />}
         <div data-vs-name={role} style={{ ...vsName, textDecoration: hp <= 0 ? "line-through" : "none" }}>{opLabel(s.op)}</div>
         {s.weapon
           ? <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{s.weapon.name} {"·"} {s.weapon.atk} {"·"} {s.weapon.hit} {"·"} {s.weapon.dmg}{s.weapon.wr && s.weapon.wr !== "-" ? " · " + s.weapon.wr : ""}{s.op.injured ? " · injured: hits on 1 worse" : ""}</div>

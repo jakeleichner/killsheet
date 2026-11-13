@@ -263,6 +263,9 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   const [activated, setActivated] = useLocalStorage("activated", {});
   const [npoUnits, setNpoUnits] = useLocalStorage("npoUnits", []);
   const [savedRosters, setSavedRosters] = useLocalStorage("savedRosters", []);
+  usePhotos(); // operative photos (12a-photos): this redraws when they load or change
+  const photoInput = React.useRef(null);
+  const [photoTarget, setPhotoTarget] = useState(null); // the operative an Add photo is for
   // The saved roster last loaded or saved, so saving again offers its name (and replaces it) instead of making a copy.
   const [lastSaved, setLastSaved] = useState(null);
   const [orders, setOrders] = useLocalStorage("orders", {});
@@ -325,7 +328,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
     if (b.app !== "KillSheet" || keys.length === 0 || !keys.every(k => k.indexOf(LS_PREFIX) === 0)) throw new Error("not a backup");
     let rosters = 0;
     try { rosters = JSON.parse(b.data[LS_PREFIX + "savedRosters"] || "[]").length; } catch (e) { /* older backup */ }
-    setPendingRestore({ data: b.data, savedAt: b.savedAt, rosters, moved });
+    setPendingRestore({ data: b.data, savedAt: b.savedAt, rosters, moved, photos: b.photos && typeof b.photos === "object" ? b.photos : null });
     window.scrollTo(0, 0);
   };
   const readBackup = (file) => {
@@ -975,6 +978,9 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
     withUndo("Deleted " + entry.name, () => { noteSyncDeleted(entry.id); setSavedRosters(savedRosters.filter(r => r.id !== entry.id)); });
     setSavedMenu(null);
   };
+  // The team picker belongs to the Rosters tab: during a game the Battle tab always shows the game, even straight after
+  // the app opens (the picker starts open, with "Continue with" your team).
+  const pickerShown = pickerOpen && !(view === "battle" && rosterLocked);
   // Start the game: lock the roster and go to the Battle tab.
   const startGame = () => { setRosterLocked(true); setMobilePanel("cards"); collapseAll(); if (showBattle) showBattle(); window.scrollTo(0, 0); };
   // Whether the roster on screen is saved: the same team, operatives, equipment, choices and names as a saved roster.
@@ -983,6 +989,15 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   const editingSaved = !savedMatch && lastSaved && lastSaved.f === fid && savedRosters.some(r => r.name.toLowerCase() === lastSaved.name.toLowerCase());
   const saveLabel = savedMatch ? "Saved \u2713" : editingSaved ? "Save changes" : "Save roster";
   const saveTitle = savedMatch ? "Saved as " + savedMatch.name + ". Change something to save again." : editingSaved ? "Update " + lastSaved.name + " in My rosters" : "Save to My rosters on this device";
+  // Photos belong to the army: one per operative type for this team, used by every roster of it.
+  const pickPhoto = (op) => { setPhotoTarget(op); if (photoInput.current) { photoInput.current.value = ""; photoInput.current.click(); } };
+  const takePhoto = (file) => {
+    const op = photoTarget;
+    if (!file || !op || !fid) return;
+    shrinkPhoto(file).then(url => setPhoto(photoKey(fid, op.id), url)).then(() => showToast("Photo added for every " + op.name + " in " + f.name))
+      .catch(() => showToast("That file couldn't be used as a photo.", 4000));
+  };
+  const removePhoto = (op) => { setPhoto(photoKey(fid, op.id), null).then(() => showToast("Photo removed")).catch(() => {}); };
   // Name one of your operatives (empty clears it). Before the game starts, from its datacard.
   const renameOp = (op) => {
     const typed = prompt("Name this operative (leave empty to use \"" + op.name + "\"):", op.nick || "");
@@ -1603,7 +1618,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
         const taken = new Set(shot.targets.map(t => t.owner + t.op.id).concat("A" + shot.atk.op.id));
         const others = shot.stage === "more" ? [...opsOf("B").map(op => entry("B", op)), ...opsOf("A").map(op => entry("A", op))].filter(e => alive(e) && !taken.has(e.key)) : [];
         const oppColor = oppF ? oppF.color : "var(--muted)";
-        return <ShootScreen shot={shot} dropped={shot.online && !linkUp()} options={options} others={others}
+        return <ShootScreen shot={shot} photoOf={(o, side) => side === "mine" ? photoFor(fid, o.id) : null} dropped={shot.online && !linkUp()} options={options} others={others}
           sideColor={(side) => side === "mine" ? (f ? f.color : "var(--accent)") : oppColor}
           onAct={(a) => dispatchShot(a, false)} onClose={() => showShot(null)} onTakeOver={takeOverShot}
           importHint={sideOf("B") === "opp" ? "Their team isn't in KillSheet yet. Add it from the ⋯ menu on your team bar (Add enemy roster), or play online, to shoot their operatives here." : "None of your operatives can be shot."} />;
@@ -1614,7 +1629,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
         const enemies = fight.stage === "target" ? enemyOps.map(op => ({ op, side: enemySide, info: fightOpInfo(enemySide, op) })).filter(e => e.info.start > 0) : [];
         const defOp = fight.def && (fight.def.side === "mine" ? roster : oppOps()).find(o => o.id === fight.def.op.id);
         const oppColor = oppF ? oppF.color : "var(--muted)";
-        return <FightScreen fight={fight} dropped={fight.online && !linkUp()} enemies={enemies} defWeapons={fight.stage === "weapon" && defOp && fight.roles.includes("def") ? meleeFor(fight.def.side, defOp) : []}
+        return <FightScreen fight={fight} photoOf={(o, side) => side === "mine" ? photoFor(fid, o.id) : null} dropped={fight.online && !linkUp()} enemies={enemies} defWeapons={fight.stage === "weapon" && defOp && fight.roles.includes("def") ? meleeFor(fight.def.side, defOp) : []}
           sideColor={(side) => side === "mine" ? (f ? f.color : "var(--accent)") : oppColor}
           onAct={(a) => dispatchFight(a, false)} onClose={() => showFight(null)} onTakeOver={takeOverFight}
           importHint={enemySide === "opp" ? "Their team isn't in KillSheet yet. Add it from the ⋯ menu on your team bar (Add enemy roster), or play online, to fight their operatives here." : "None of your operatives can fight back."} />;
@@ -1793,8 +1808,9 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
         </div>
       </div>
 
-      {campaign && feat.campaign && <CampaignBoundary><CampaignCard c={campaign} setC={setCampaign} mobile={mobile} f={f} showToast={showToast} playing={!!(f && rosterLocked && !pickerOpen)} /></CampaignBoundary>}
+      {campaign && feat.campaign && <CampaignBoundary><CampaignCard c={campaign} setC={setCampaign} mobile={mobile} f={f} showToast={showToast} playing={!!(f && rosterLocked && !pickerShown)} /></CampaignBoundary>}
       <input ref={restoreInput} type="file" accept=".json,application/json" style={{ display: "none" }} onChange={e => { readBackup(e.target.files[0]); e.target.value = ""; }} />
+      <input ref={photoInput} data-photo-input="true" type="file" accept="image/*" style={{ display: "none" }} onChange={e => takePhoto(e.target.files[0])} />
       {pendingRestore && (
         <div role="alertdialog" aria-label="Restore backup" className="ks-appear" style={{ ...cd, padding: 14, borderLeft: "3px solid var(--gold)" }}>
           <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif" }}>{pendingRestore.moved ? "Bring over your data from the old address?" : "Restore this backup?"}</div>
@@ -1802,7 +1818,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
             {pendingRestore.moved ? "Sent from killsheet.pages.dev" : "Saved"} {pendingRestore.savedAt ? new Date(pendingRestore.savedAt).toLocaleString() : "at an unknown time"}, with {pendingRestore.rosters} saved roster{pendingRestore.rosters === 1 ? "" : "s"}. It replaces the rosters, game and settings on this device. To keep what's here, back it up first.
           </div>
           <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-            <button onClick={() => { restoreKillSheetStorage(pendingRestore.data); window.location.reload(); }} style={{ ...bs("var(--gold)"), padding: "8px 16px", fontSize: 13 }}>Restore</button>
+            <button onClick={() => { restoreKillSheetStorage(pendingRestore.data); Promise.all(Object.entries(pendingRestore.photos || {}).filter(([k, v]) => typeof v === "string" && /^data:image\//.test(v)).map(([k, v]) => setPhoto(k, v))).catch(() => {}).then(() => window.location.reload()); }} style={{ ...bs("var(--gold)"), padding: "8px 16px", fontSize: 13 }}>Restore</button>
             <button onClick={backUp} style={{ ...bs("var(--muted)"), padding: "8px 16px", fontSize: 13 }}>Back up this device first</button>
             <button onClick={() => setPendingRestore(null)} style={{ ...bs("var(--muted)"), padding: "8px 16px", fontSize: 13 }}>Cancel</button>
           </div>
@@ -1855,7 +1871,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
         </GameOnScreen>
       ) : (<>
       {/* Faction select: collapses to one bar once a team is picked */}
-      {f && !pickerOpen ? (rosterLocked ? null :
+      {f && !pickerShown ? (rosterLocked ? null :
         <div style={{ ...cd, display: "flex", alignItems: "center", gap: mobile ? 6 : 10, padding: "10px 12px", marginBottom: 14, borderTop: "2px solid " + f.color }}>
           {!mobile && <div style={bg(f.color)}>{f.badge}</div>}
           <div style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", color: f.color, letterSpacing: "0.04em" }}>{f.name}</div>
@@ -1960,7 +1976,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
         );
       })()}
 
-      {f && !pickerOpen && (
+      {f && !pickerShown && (
         <div className="ks-appear">
           {/* Score bar: slim, stays under the nav while you scroll. Only during a game. Its big numbers are sized as
               "22px" strings, which Text size leaves alone, so the phone bar still fits on one line at Larger. */}
@@ -2518,7 +2534,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                   return aAlive - bAlive;
                 }).map(op => {
                   const result = getEquipForOp(op);
-                  return (<Datacard key={op.id} op={op} preview={!rosterLocked} onRename={rosterLocked ? null : () => renameOp(op)} f={f} fc={f.color} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getWounds(op.id, op.wounds)} onWound={(delta) => { logMine(op, delta, "hand"); setOpWounds(op.id, op.wounds, delta); }} collapsed={cardCollapsed[op.id] || false} onToggle={() => toggleCardCollapse(op.id)} ignoreInjured={result.ignoreInjured} cp={cp} setCp={setCp} isActivated={activated[op.id] || false} onActivate={() => setActivated(prev => ({ ...prev, [op.id]: !prev[op.id] }))} requestFight={(o, w) => startFight("mine", o, w)} requestShoot={(o, w) => startShot("mine", o, w)} scars={scars["mine:" + op.id]} order={orders[op.id] || "conceal"} onOrder={() => setOrders(prev => ({ ...prev, [op.id]: prev[op.id] === "engage" ? "conceal" : "engage" }))} uses={feat.uses ? battleUses : null} setUse={(k, n) => setBattleUses(prev => ({ ...prev, [k]: n }))} carried={carried[op.id]} onCarried={(list) => setCarried(prev => ({ ...prev, [op.id]: list }))} />);
+                  return (<Datacard key={op.id} op={op} preview={!rosterLocked} onRename={rosterLocked ? null : () => renameOp(op)} photo={photoFor(fid, op.id)} onPhoto={rosterLocked ? null : () => pickPhoto(op)} onRemovePhoto={() => removePhoto(op)} f={f} fc={f.color} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getWounds(op.id, op.wounds)} onWound={(delta) => { logMine(op, delta, "hand"); setOpWounds(op.id, op.wounds, delta); }} collapsed={cardCollapsed[op.id] || false} onToggle={() => toggleCardCollapse(op.id)} ignoreInjured={result.ignoreInjured} cp={cp} setCp={setCp} isActivated={activated[op.id] || false} onActivate={() => setActivated(prev => ({ ...prev, [op.id]: !prev[op.id] }))} requestFight={(o, w) => startFight("mine", o, w)} requestShoot={(o, w) => startShot("mine", o, w)} scars={scars["mine:" + op.id]} order={orders[op.id] || "conceal"} onOrder={() => setOrders(prev => ({ ...prev, [op.id]: prev[op.id] === "engage" ? "conceal" : "engage" }))} uses={feat.uses ? battleUses : null} setUse={(k, n) => setBattleUses(prev => ({ ...prev, [k]: n }))} carried={carried[op.id]} onCarried={(list) => setCarried(prev => ({ ...prev, [op.id]: list }))} />);
                 })}
 
               </div>

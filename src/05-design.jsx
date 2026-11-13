@@ -168,6 +168,7 @@ function writeStored(key, value) { try { if (!window.__ksFrozen) window.localSto
 // Returns the file name when it downloaded. Plain function, so the crash screen can use it without the app running.
 function downloadBackup(share) {
   const payload = { app: "KillSheet", kind: "backup", version: 1, savedAt: new Date().toISOString(), data: snapshotKillSheetStorage() };
+  if (typeof photoCache !== "undefined" && Object.keys(photoCache).length) payload.photos = { ...photoCache }; // operative photos (12a-photos)
   const d = new Date();
   const name = "killsheet-backup-" + d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0") + ".json";
   const file = new File([JSON.stringify(payload)], name, { type: "application/json" });

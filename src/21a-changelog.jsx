@@ -2,6 +2,10 @@
 // The change log players see (Settings > What's new). Newest first, one entry per day something a player would
 // notice changed, in plain words. kind: "new", "better" or "fixed". Add an entry with every such change.
 const CHANGELOG = [
+  { date: "2026-11-14", items: [
+    ["new", "Add photos of your painted models: tap Add photo on a datacard in the Rosters tab. One photo covers every operative of that type in all your rosters for that team, and shows on the datacard and when shooting and fighting."],
+    ["fixed", "Opening KillSheet during a game goes straight to your game on the Battle tab, instead of the team list."],
+  ] },
   { date: "2026-11-13", items: [
     ["better", "Datacards on the Rosters tab are for building: stats, weapons and abilities, without wound buttons, orders, or Shoot and Fight. Those appear once the game starts."],
     ["new", "If something breaks, KillSheet sends a crash report so it can be fixed: the error and your device type, nothing that identifies you. You can turn it off in Settings, under Privacy."],

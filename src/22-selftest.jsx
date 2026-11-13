@@ -1423,6 +1423,59 @@ async function runSelfTest(hooks) {
     if (cards.some(c => [...c.querySelectorAll("button")].some(gameControl))) throw new Error("datacards before a game show game controls");
     return "no-game screen with Play, game starts on Battle, Rosters tab locked during the game, back and forth";
   });
+  await step("Operative photos", async () => {
+    // A picture from a pretend camera: wider than tall, so it gets cropped to a square.
+    const cv = document.createElement("canvas"); cv.width = 600; cv.height = 400;
+    const g = cv.getContext("2d"); g.fillStyle = "#c9772e"; g.fillRect(0, 0, 600, 400); g.fillStyle = "#222"; g.fillRect(250, 150, 100, 100);
+    const file = await new Promise(ok => cv.toBlob(b => ok(new File([b], "trooper.png", { type: "image/png" })), "image/png"));
+    await nav("Rosters");
+    if (store("rosterLocked")) throw new Error("expected the Rosters tab before a game");
+    const team = store("fid"), op = (store("roster") || [])[0];
+    if (!team || !op) throw new Error("no roster to add photos to");
+    await loadPhotos();
+    const key = photoKey(team, op.id), had = photoCache[key] || null; // put back whatever was there
+    try {
+      if (had) await setPhoto(key, null);
+      const dcs = btn("Datacards", true); if (dcs) await click(dcs, "Datacards");
+      const firstCard = all(".datacard-print")[0];
+      if (firstCard && !firstCard.querySelector("button[aria-label^='Add a photo of ']")) { firstCard.querySelector("[role=button]").click(); await settle(); } // open a folded card
+      const add = all("button[aria-label^='Add a photo of ']")[0];
+      if (!add) throw new Error("no Add photo on the datacards before a game");
+      await click(add, "Add photo");
+      const input = document.querySelector("[data-photo-input]");
+      const dt = new DataTransfer(); dt.items.add(file);
+      input.files = dt.files; input.dispatchEvent(new Event("change", { bubbles: true }));
+      for (let i = 0; i < 80 && !photoCache[key]; i++) await wait(25);
+      await settle(20);
+      const url = photoCache[key];
+      if (!url || !/^data:image\/jpeg/.test(url)) throw new Error("the photo wasn't saved as a small JPEG");
+      const shown = await new Promise(ok => { const im = new Image(); im.onload = () => ok([im.naturalWidth, im.naturalHeight]); im.onerror = () => ok(null); im.src = url; });
+      if (!shown || shown[0] !== PHOTO_SIZE || shown[1] !== PHOTO_SIZE) throw new Error("the photo wasn't cropped to a " + PHOTO_SIZE + " px square: " + shown);
+      const cardsWith = all(".datacard-print").filter(c => c.querySelector("[data-op-photo]"));
+      const sameType = (store("roster") || []).filter(o => photoKey(team, o.id) === key).length;
+      if (cardsWith.length !== sameType) throw new Error("the photo shows on " + cardsWith.length + " cards, not every " + op.name + " (" + sameType + ")");
+      // It belongs to the army: a backup carries it.
+      lastBlob = null; downloadBackup(false);
+      const backup = lastBlob && JSON.parse(await lastBlob.text());
+      if (!backup || !backup.photos || backup.photos[key] !== url) throw new Error("the backup file doesn't include the photo");
+      // In a game: on your side of the Shoot screen, above the name. (Phones show Start game on the Build roster view.)
+      const build = btn("Build roster", true); if (build) await click(build, "Build roster");
+      await click(btn("Start game"), "Start game");
+      const dc2 = btn("Datacards", true); if (dc2) await click(dc2, "Datacards");
+      const card = all(".datacard-print").find(c => c.querySelector("[data-op-photo]"));
+      if (!card) throw new Error("the photo doesn't show on the datacard during a game");
+      if (card.querySelector("[role=button]") && !card.querySelector("button[aria-label^='Shoot with']")) card.querySelector("[role=button]").click(); await settle();
+      const shoot = card.querySelector("button[aria-label^='Shoot with']");
+      if (shoot) {
+        await click(shoot, "Shoot");
+        if (!document.querySelector("[data-shot-card='atk'] [data-vs-photo]")) throw new Error("the photo doesn't show on the Shoot screen");
+        window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })); await settle(20);
+      }
+      return "cropped to a " + PHOTO_SIZE + " px square, on every " + op.name + ", in the backup, and on the Shoot screen" + (shoot ? "" : " (no ranged weapon to check)");
+    } finally {
+      await setPhoto(key, had).catch(() => {});
+    }
+  });
   await step("Old saves get current datacards", async () => {
     const pm = FACTIONS.plaguemarines;
     const old = [{ id: "champion", name: "Plague Champion", wounds: 1 }, { id: "fighter", name: "PM Fighter" }, { id: "fighter", name: "PM Fighter" }, { id: "gone_op", name: "Removed" }];

@@ -6094,6 +6094,7 @@ function writeStored(key, value) { try { if (!window.__ksFrozen) window.localSto
 // Returns the file name when it downloaded. Plain function, so the crash screen can use it without the app running.
 function downloadBackup(share) {
   const payload = { app: "KillSheet", kind: "backup", version: 1, savedAt: new Date().toISOString(), data: snapshotKillSheetStorage() };
+  if (typeof photoCache !== "undefined" && Object.keys(photoCache).length) payload.photos = { ...photoCache }; // operative photos (12a-photos)
   const d = new Date();
   const name = "killsheet-backup-" + d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0") + ".json";
   const file = new File([JSON.stringify(payload)], name, { type: "application/json" });
@@ -7187,7 +7188,7 @@ function useDiceTumble(scope) {
   });
 }
 
-function FightScreen({ fight, dropped, enemies, defWeapons, sideColor, onAct, onClose, onTakeOver, importHint }) {
+function FightScreen({ fight, dropped, enemies, defWeapons, sideColor, onAct, onClose, onTakeOver, importHint, photoOf }) {
   const { feat } = React.useContext(FeatureCtx);
   const f = fight;
   const mine = (role) => f.roles.includes(role);
@@ -7299,6 +7300,7 @@ function FightScreen({ fight, dropped, enemies, defWeapons, sideColor, onAct, on
           <div style={{ ...h3, marginBottom: 0, color: col, flex: 1, minWidth: 0 }}>{role === "atk" ? "Attacking" : "Fights back"}{f.online && mine(role) ? " (you)" : ""}</div>
           <span style={{ fontSize: 14, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", color: hp <= 0 ? "#B8341C" : hp < s.op.max / 2 ? "var(--gold)" : "var(--text)" }}>{hp}/{s.op.max}W</span>
         </div>
+        {photoOf && photoOf(s.op, s.side) && <img data-vs-photo={role} src={photoOf(s.op, s.side)} alt="" style={{ display: "block", width: 64, height: 64, borderRadius: 8, objectFit: "cover", margin: "4px 0", border: "2px solid " + col, opacity: hp <= 0 ? 0.5 : 1 }} />}
         <div data-vs-name={role} style={{ ...vsName, textDecoration: hp <= 0 ? "line-through" : "none" }}>{opLabel(s.op)}</div>
         {s.weapon
           ? <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{s.weapon.name} {"·"} {s.weapon.atk} {"·"} {s.weapon.hit} {"·"} {s.weapon.dmg}{s.weapon.wr && s.weapon.wr !== "-" ? " · " + s.weapon.wr : ""}{s.op.injured ? " · injured: hits on 1 worse" : ""}</div>
@@ -7498,7 +7500,7 @@ function reduceShot(s, a) {
   }
 }
 
-function ShootScreen({ shot, dropped, options, others, sideColor, onAct, onClose, onTakeOver, importHint }) {
+function ShootScreen({ shot, dropped, options, others, sideColor, onAct, onClose, onTakeOver, importHint, photoOf }) {
   const { feat } = React.useContext(FeatureCtx);
   const s = shot, t = s.targets[s.ti];
   const mine = (player) => s.roles.includes(player);
@@ -7591,6 +7593,7 @@ function ShootScreen({ shot, dropped, options, others, sideColor, onAct, onClose
           <div style={{ ...h3, marginBottom: 0, color: col, flex: 1, minWidth: 0 }}>{isAtk ? "Shooting" : s.targets.length > 1 ? "Target " + (s.ti + 1) + " of " + s.targets.length : "Target"}{s.online && mine(owner) ? " (you)" : ""}</div>
           <span style={{ fontSize: 14, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", color: hp <= 0 ? "#B8341C" : hp < op.max / 2 ? "var(--gold)" : "var(--text)" }}>{hp}/{op.max}W</span>
         </div>
+        {photoOf && photoOf(op, sideOf(owner)) && <img data-vs-photo={role} src={photoOf(op, sideOf(owner))} alt="" style={{ display: "block", width: 64, height: 64, borderRadius: 8, objectFit: "cover", margin: "4px 0", border: "2px solid " + col, opacity: hp <= 0 ? 0.5 : 1 }} />}
         <div data-vs-name={role} style={{ ...vsName, textDecoration: hp <= 0 ? "line-through" : "none" }}>{opLabel(op)}</div>
         <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
           {isAtk ? <>{s.atk.weapon.name} {"·"} {s.atk.weapon.atk} {"·"} {s.atk.weapon.hit} {"·"} {s.atk.weapon.dmg}{s.atk.weapon.wr && s.atk.weapon.wr !== "-" ? " · " + s.atk.weapon.wr : ""}{op.injured ? " · injured: hits on 1 worse" : ""}</>
@@ -8575,7 +8578,7 @@ function HitBubble({ n, tail, animate, onOpen, onDismiss }) {
   );
 }
 
-function Datacard({ side, op, preview, onRename, f, fc, equipWeapons, equipEffects, curWounds, onWound, collapsed, onToggle, ignoreInjured, cp, setCp, isActivated, onActivate, order, onOrder, uses, setUse, carried, onCarried, narrow, requestFight, requestShoot, scars }) {
+function Datacard({ side, op, preview, onRename, photo, onPhoto, onRemovePhoto, f, fc, equipWeapons, equipEffects, curWounds, onWound, collapsed, onToggle, ignoreInjured, cp, setCp, isActivated, onActivate, order, onOrder, uses, setUse, carried, onCarried, narrow, requestFight, requestShoot, scars }) {
   const [pickWeapons, setPickWeapons] = useState(false);
   const { feat } = React.useContext(FeatureCtx);
   const opRules = React.useMemo(() => opWeaponRules(op), [op]);
@@ -8676,11 +8679,14 @@ function Datacard({ side, op, preview, onRename, f, fc, equipWeapons, equipEffec
         <div role="button" tabIndex={0} onClick={onToggle} style={{ padding: collapsed ? "10px 12px" : "14px 16px 12px", cursor: "pointer", userSelect: "none", opacity: isActivated ? 0.55 : 1 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: collapsed ? "center" : "flex-start", gap: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
+              {photo && <img data-op-photo="true" src={photo} alt="" style={{ width: collapsed ? 32 : 40, height: collapsed ? 32 : 40, borderRadius: "50%", objectFit: "cover", flexShrink: 0, border: "2px solid " + fc }} />}
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div style={{ fontFamily: DS.fontDisplay, fontSize: 18, fontWeight: 600, color: DS.textPrimary, lineHeight: 1.15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: isActivated ? "line-through" : "none" }}>{opLabel(op)}{op.nick && <span style={{ fontSize: 13, fontWeight: 500, color: "var(--muted)", marginLeft: 6 }}>{op.name}</span>}</div>
                 {!collapsed && <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 3, minWidth: 0 }}>
                   <div style={{ fontFamily: DS.fontDisplay, fontSize: 11, fontWeight: 500, color: fc, letterSpacing: "0.14em", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{op.kw || "OPERATIVE"}</div>
                   {onRename && <button className="compact-btn link-btn" onClick={(e) => { e.stopPropagation(); onRename(); }} aria-label={(op.nick ? "Rename " : "Name ") + opLabel(op)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--accent)", fontSize: 12, fontFamily: "'Inter', sans-serif", textDecoration: "underline", flexShrink: 0 }}>{op.nick ? "Rename" : "Name it"}</button>}
+                  {onPhoto && <button className="compact-btn link-btn" onClick={(e) => { e.stopPropagation(); onPhoto(); }} aria-label={(photo ? "Change the photo of " : "Add a photo of ") + op.name} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--accent)", fontSize: 12, fontFamily: "'Inter', sans-serif", textDecoration: "underline", flexShrink: 0 }}>{photo ? "Change photo" : "Add photo"}</button>}
+                  {onPhoto && photo && onRemovePhoto && <button className="compact-btn link-btn" onClick={(e) => { e.stopPropagation(); onRemovePhoto(); }} aria-label={"Remove the photo of " + op.name} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--muted)", fontSize: 12, fontFamily: "'Inter', sans-serif", textDecoration: "underline", flexShrink: 0 }}>Remove</button>}
                 </div>}
               </div>
               {collapsed && !mobile && statsInline}
@@ -8804,6 +8810,75 @@ function Datacard({ side, op, preview, onRename, f, fc, equipWeapons, equipEffec
   );
 }
 
+/* ═══ OPERATIVE PHOTOS ═══ */
+// Photos of your own painted models (owner, Nov 13). One per operative type for each army ("Kasrkin Trooper"), so every
+// roster of that team uses it, new or saved, and five Troopers share one photo. Kept on this device in IndexedDB (too
+// big for the normal saves), shrunk to a small square first, and included in backup files. Shown with the name, never
+// instead of it, and only on your own operatives: the other side's models aren't yours, even in a mirror match.
+const PHOTO_DB = "killsheet-photos";
+const PHOTO_SIZE = 320; // pixels square; about 20-40 KB each
+const photoCache = {}; // "team|operative type" -> data URL
+let photosLoaded = null;
+const photoKey = (teamId, opId) => teamId + "|" + String(opId).replace(/~\d+$/, "");
+const photoFor = (teamId, opId) => (teamId && opId && photoCache[photoKey(teamId, opId)]) || null;
+
+function photoDb() {
+  return new Promise((ok, fail) => {
+    if (!window.indexedDB) { fail(new Error("no IndexedDB")); return; }
+    const r = window.indexedDB.open(PHOTO_DB, 1);
+    r.onupgradeneeded = () => r.result.createObjectStore("photos");
+    r.onsuccess = () => ok(r.result);
+    r.onerror = () => fail(r.error);
+  });
+}
+function loadPhotos() {
+  if (!photosLoaded) photosLoaded = photoDb().then(db => new Promise(ok => {
+    const req = db.transaction("photos", "readonly").objectStore("photos").openCursor();
+    req.onsuccess = () => { const c = req.result; if (c) { photoCache[c.key] = c.value; c.continue(); } else ok(); };
+    req.onerror = () => ok();
+  })).catch(() => {}).then(() => window.dispatchEvent(new Event("ks-photos")));
+  return photosLoaded;
+}
+// Save (or, with no data URL, remove) one photo.
+async function setPhoto(key, dataUrl) {
+  const db = await photoDb();
+  await new Promise((ok, fail) => {
+    const tx = db.transaction("photos", "readwrite");
+    if (dataUrl) tx.objectStore("photos").put(dataUrl, key); else tx.objectStore("photos").delete(key);
+    tx.oncomplete = ok;
+    tx.onerror = () => fail(tx.error);
+  });
+  if (dataUrl) photoCache[key] = dataUrl; else delete photoCache[key];
+  window.dispatchEvent(new Event("ks-photos"));
+}
+// A picked photo, cropped to its middle square and shrunk to PHOTO_SIZE, as a JPEG data URL.
+function shrinkPhoto(file) {
+  return new Promise((ok, fail) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const side = Math.min(img.naturalWidth, img.naturalHeight);
+      const c = document.createElement("canvas");
+      c.width = c.height = PHOTO_SIZE;
+      c.getContext("2d").drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, PHOTO_SIZE, PHOTO_SIZE);
+      URL.revokeObjectURL(url);
+      ok(c.toDataURL("image/jpeg", 0.82));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); fail(new Error("not an image")); };
+    img.src = url;
+  });
+}
+// Redraws when photos load or change.
+function usePhotos() {
+  const [, redraw] = useState(0);
+  useEffect(() => {
+    const on = () => redraw(n => n + 1);
+    window.addEventListener("ks-photos", on);
+    loadPhotos();
+    return () => window.removeEventListener("ks-photos", on);
+  }, []);
+  return photoCache;
+}
 /* ═══ BUILDER ═══ */
 // Line icons for multiplayer, drawn in the same style as the share/print icons.
 const MP_ICON_PATHS = {
@@ -9069,6 +9144,9 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   const [activated, setActivated] = useLocalStorage("activated", {});
   const [npoUnits, setNpoUnits] = useLocalStorage("npoUnits", []);
   const [savedRosters, setSavedRosters] = useLocalStorage("savedRosters", []);
+  usePhotos(); // operative photos (12a-photos): this redraws when they load or change
+  const photoInput = React.useRef(null);
+  const [photoTarget, setPhotoTarget] = useState(null); // the operative an Add photo is for
   // The saved roster last loaded or saved, so saving again offers its name (and replaces it) instead of making a copy.
   const [lastSaved, setLastSaved] = useState(null);
   const [orders, setOrders] = useLocalStorage("orders", {});
@@ -9131,7 +9209,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
     if (b.app !== "KillSheet" || keys.length === 0 || !keys.every(k => k.indexOf(LS_PREFIX) === 0)) throw new Error("not a backup");
     let rosters = 0;
     try { rosters = JSON.parse(b.data[LS_PREFIX + "savedRosters"] || "[]").length; } catch (e) { /* older backup */ }
-    setPendingRestore({ data: b.data, savedAt: b.savedAt, rosters, moved });
+    setPendingRestore({ data: b.data, savedAt: b.savedAt, rosters, moved, photos: b.photos && typeof b.photos === "object" ? b.photos : null });
     window.scrollTo(0, 0);
   };
   const readBackup = (file) => {
@@ -9781,6 +9859,9 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
     withUndo("Deleted " + entry.name, () => { noteSyncDeleted(entry.id); setSavedRosters(savedRosters.filter(r => r.id !== entry.id)); });
     setSavedMenu(null);
   };
+  // The team picker belongs to the Rosters tab: during a game the Battle tab always shows the game, even straight after
+  // the app opens (the picker starts open, with "Continue with" your team).
+  const pickerShown = pickerOpen && !(view === "battle" && rosterLocked);
   // Start the game: lock the roster and go to the Battle tab.
   const startGame = () => { setRosterLocked(true); setMobilePanel("cards"); collapseAll(); if (showBattle) showBattle(); window.scrollTo(0, 0); };
   // Whether the roster on screen is saved: the same team, operatives, equipment, choices and names as a saved roster.
@@ -9789,6 +9870,15 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   const editingSaved = !savedMatch && lastSaved && lastSaved.f === fid && savedRosters.some(r => r.name.toLowerCase() === lastSaved.name.toLowerCase());
   const saveLabel = savedMatch ? "Saved \u2713" : editingSaved ? "Save changes" : "Save roster";
   const saveTitle = savedMatch ? "Saved as " + savedMatch.name + ". Change something to save again." : editingSaved ? "Update " + lastSaved.name + " in My rosters" : "Save to My rosters on this device";
+  // Photos belong to the army: one per operative type for this team, used by every roster of it.
+  const pickPhoto = (op) => { setPhotoTarget(op); if (photoInput.current) { photoInput.current.value = ""; photoInput.current.click(); } };
+  const takePhoto = (file) => {
+    const op = photoTarget;
+    if (!file || !op || !fid) return;
+    shrinkPhoto(file).then(url => setPhoto(photoKey(fid, op.id), url)).then(() => showToast("Photo added for every " + op.name + " in " + f.name))
+      .catch(() => showToast("That file couldn't be used as a photo.", 4000));
+  };
+  const removePhoto = (op) => { setPhoto(photoKey(fid, op.id), null).then(() => showToast("Photo removed")).catch(() => {}); };
   // Name one of your operatives (empty clears it). Before the game starts, from its datacard.
   const renameOp = (op) => {
     const typed = prompt("Name this operative (leave empty to use \"" + op.name + "\"):", op.nick || "");
@@ -10409,7 +10499,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
         const taken = new Set(shot.targets.map(t => t.owner + t.op.id).concat("A" + shot.atk.op.id));
         const others = shot.stage === "more" ? [...opsOf("B").map(op => entry("B", op)), ...opsOf("A").map(op => entry("A", op))].filter(e => alive(e) && !taken.has(e.key)) : [];
         const oppColor = oppF ? oppF.color : "var(--muted)";
-        return <ShootScreen shot={shot} dropped={shot.online && !linkUp()} options={options} others={others}
+        return <ShootScreen shot={shot} photoOf={(o, side) => side === "mine" ? photoFor(fid, o.id) : null} dropped={shot.online && !linkUp()} options={options} others={others}
           sideColor={(side) => side === "mine" ? (f ? f.color : "var(--accent)") : oppColor}
           onAct={(a) => dispatchShot(a, false)} onClose={() => showShot(null)} onTakeOver={takeOverShot}
           importHint={sideOf("B") === "opp" ? "Their team isn't in KillSheet yet. Add it from the ⋯ menu on your team bar (Add enemy roster), or play online, to shoot their operatives here." : "None of your operatives can be shot."} />;
@@ -10420,7 +10510,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
         const enemies = fight.stage === "target" ? enemyOps.map(op => ({ op, side: enemySide, info: fightOpInfo(enemySide, op) })).filter(e => e.info.start > 0) : [];
         const defOp = fight.def && (fight.def.side === "mine" ? roster : oppOps()).find(o => o.id === fight.def.op.id);
         const oppColor = oppF ? oppF.color : "var(--muted)";
-        return <FightScreen fight={fight} dropped={fight.online && !linkUp()} enemies={enemies} defWeapons={fight.stage === "weapon" && defOp && fight.roles.includes("def") ? meleeFor(fight.def.side, defOp) : []}
+        return <FightScreen fight={fight} photoOf={(o, side) => side === "mine" ? photoFor(fid, o.id) : null} dropped={fight.online && !linkUp()} enemies={enemies} defWeapons={fight.stage === "weapon" && defOp && fight.roles.includes("def") ? meleeFor(fight.def.side, defOp) : []}
           sideColor={(side) => side === "mine" ? (f ? f.color : "var(--accent)") : oppColor}
           onAct={(a) => dispatchFight(a, false)} onClose={() => showFight(null)} onTakeOver={takeOverFight}
           importHint={enemySide === "opp" ? "Their team isn't in KillSheet yet. Add it from the ⋯ menu on your team bar (Add enemy roster), or play online, to fight their operatives here." : "None of your operatives can fight back."} />;
@@ -10599,8 +10689,9 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
         </div>
       </div>
 
-      {campaign && feat.campaign && <CampaignBoundary><CampaignCard c={campaign} setC={setCampaign} mobile={mobile} f={f} showToast={showToast} playing={!!(f && rosterLocked && !pickerOpen)} /></CampaignBoundary>}
+      {campaign && feat.campaign && <CampaignBoundary><CampaignCard c={campaign} setC={setCampaign} mobile={mobile} f={f} showToast={showToast} playing={!!(f && rosterLocked && !pickerShown)} /></CampaignBoundary>}
       <input ref={restoreInput} type="file" accept=".json,application/json" style={{ display: "none" }} onChange={e => { readBackup(e.target.files[0]); e.target.value = ""; }} />
+      <input ref={photoInput} data-photo-input="true" type="file" accept="image/*" style={{ display: "none" }} onChange={e => takePhoto(e.target.files[0])} />
       {pendingRestore && (
         <div role="alertdialog" aria-label="Restore backup" className="ks-appear" style={{ ...cd, padding: 14, borderLeft: "3px solid var(--gold)" }}>
           <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif" }}>{pendingRestore.moved ? "Bring over your data from the old address?" : "Restore this backup?"}</div>
@@ -10608,7 +10699,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
             {pendingRestore.moved ? "Sent from killsheet.pages.dev" : "Saved"} {pendingRestore.savedAt ? new Date(pendingRestore.savedAt).toLocaleString() : "at an unknown time"}, with {pendingRestore.rosters} saved roster{pendingRestore.rosters === 1 ? "" : "s"}. It replaces the rosters, game and settings on this device. To keep what's here, back it up first.
           </div>
           <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-            <button onClick={() => { restoreKillSheetStorage(pendingRestore.data); window.location.reload(); }} style={{ ...bs("var(--gold)"), padding: "8px 16px", fontSize: 13 }}>Restore</button>
+            <button onClick={() => { restoreKillSheetStorage(pendingRestore.data); Promise.all(Object.entries(pendingRestore.photos || {}).filter(([k, v]) => typeof v === "string" && /^data:image\//.test(v)).map(([k, v]) => setPhoto(k, v))).catch(() => {}).then(() => window.location.reload()); }} style={{ ...bs("var(--gold)"), padding: "8px 16px", fontSize: 13 }}>Restore</button>
             <button onClick={backUp} style={{ ...bs("var(--muted)"), padding: "8px 16px", fontSize: 13 }}>Back up this device first</button>
             <button onClick={() => setPendingRestore(null)} style={{ ...bs("var(--muted)"), padding: "8px 16px", fontSize: 13 }}>Cancel</button>
           </div>
@@ -10661,7 +10752,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
         </GameOnScreen>
       ) : (<>
       {/* Faction select: collapses to one bar once a team is picked */}
-      {f && !pickerOpen ? (rosterLocked ? null :
+      {f && !pickerShown ? (rosterLocked ? null :
         <div style={{ ...cd, display: "flex", alignItems: "center", gap: mobile ? 6 : 10, padding: "10px 12px", marginBottom: 14, borderTop: "2px solid " + f.color }}>
           {!mobile && <div style={bg(f.color)}>{f.badge}</div>}
           <div style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", color: f.color, letterSpacing: "0.04em" }}>{f.name}</div>
@@ -10766,7 +10857,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
         );
       })()}
 
-      {f && !pickerOpen && (
+      {f && !pickerShown && (
         <div className="ks-appear">
           {/* Score bar: slim, stays under the nav while you scroll. Only during a game. Its big numbers are sized as
               "22px" strings, which Text size leaves alone, so the phone bar still fits on one line at Larger. */}
@@ -11324,7 +11415,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                   return aAlive - bAlive;
                 }).map(op => {
                   const result = getEquipForOp(op);
-                  return (<Datacard key={op.id} op={op} preview={!rosterLocked} onRename={rosterLocked ? null : () => renameOp(op)} f={f} fc={f.color} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getWounds(op.id, op.wounds)} onWound={(delta) => { logMine(op, delta, "hand"); setOpWounds(op.id, op.wounds, delta); }} collapsed={cardCollapsed[op.id] || false} onToggle={() => toggleCardCollapse(op.id)} ignoreInjured={result.ignoreInjured} cp={cp} setCp={setCp} isActivated={activated[op.id] || false} onActivate={() => setActivated(prev => ({ ...prev, [op.id]: !prev[op.id] }))} requestFight={(o, w) => startFight("mine", o, w)} requestShoot={(o, w) => startShot("mine", o, w)} scars={scars["mine:" + op.id]} order={orders[op.id] || "conceal"} onOrder={() => setOrders(prev => ({ ...prev, [op.id]: prev[op.id] === "engage" ? "conceal" : "engage" }))} uses={feat.uses ? battleUses : null} setUse={(k, n) => setBattleUses(prev => ({ ...prev, [k]: n }))} carried={carried[op.id]} onCarried={(list) => setCarried(prev => ({ ...prev, [op.id]: list }))} />);
+                  return (<Datacard key={op.id} op={op} preview={!rosterLocked} onRename={rosterLocked ? null : () => renameOp(op)} photo={photoFor(fid, op.id)} onPhoto={rosterLocked ? null : () => pickPhoto(op)} onRemovePhoto={() => removePhoto(op)} f={f} fc={f.color} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getWounds(op.id, op.wounds)} onWound={(delta) => { logMine(op, delta, "hand"); setOpWounds(op.id, op.wounds, delta); }} collapsed={cardCollapsed[op.id] || false} onToggle={() => toggleCardCollapse(op.id)} ignoreInjured={result.ignoreInjured} cp={cp} setCp={setCp} isActivated={activated[op.id] || false} onActivate={() => setActivated(prev => ({ ...prev, [op.id]: !prev[op.id] }))} requestFight={(o, w) => startFight("mine", o, w)} requestShoot={(o, w) => startShot("mine", o, w)} scars={scars["mine:" + op.id]} order={orders[op.id] || "conceal"} onOrder={() => setOrders(prev => ({ ...prev, [op.id]: prev[op.id] === "engage" ? "conceal" : "engage" }))} uses={feat.uses ? battleUses : null} setUse={(k, n) => setBattleUses(prev => ({ ...prev, [k]: n }))} carried={carried[op.id]} onCarried={(list) => setCarried(prev => ({ ...prev, [op.id]: list }))} />);
                 })}
 
               </div>
@@ -18926,6 +19017,10 @@ function FeaturesPage({ onClose, focus, onNews, onFeedback, account, onAccount }
 // The change log players see (Settings > What's new). Newest first, one entry per day something a player would
 // notice changed, in plain words. kind: "new", "better" or "fixed". Add an entry with every such change.
 const CHANGELOG = [
+  { date: "2026-11-14", items: [
+    ["new", "Add photos of your painted models: tap Add photo on a datacard in the Rosters tab. One photo covers every operative of that type in all your rosters for that team, and shows on the datacard and when shooting and fighting."],
+    ["fixed", "Opening KillSheet during a game goes straight to your game on the Battle tab, instead of the team list."],
+  ] },
   { date: "2026-11-13", items: [
     ["better", "Datacards on the Rosters tab are for building: stats, weapons and abilities, without wound buttons, orders, or Shoot and Fight. Those appear once the game starts."],
     ["new", "If something breaks, KillSheet sends a crash report so it can be fixed: the error and your device type, nothing that identifies you. You can turn it off in Settings, under Privacy."],
@@ -20955,6 +21050,59 @@ async function runSelfTest(hooks) {
     const gameControl = (b) => /^(Shoot|Fight)\b/.test(b.getAttribute("aria-label") || "") || /^[\u2212+]$/.test(b.textContent.trim()) || /^(Ready|Expended)$/.test(b.textContent.trim());
     if (cards.some(c => [...c.querySelectorAll("button")].some(gameControl))) throw new Error("datacards before a game show game controls");
     return "no-game screen with Play, game starts on Battle, Rosters tab locked during the game, back and forth";
+  });
+  await step("Operative photos", async () => {
+    // A picture from a pretend camera: wider than tall, so it gets cropped to a square.
+    const cv = document.createElement("canvas"); cv.width = 600; cv.height = 400;
+    const g = cv.getContext("2d"); g.fillStyle = "#c9772e"; g.fillRect(0, 0, 600, 400); g.fillStyle = "#222"; g.fillRect(250, 150, 100, 100);
+    const file = await new Promise(ok => cv.toBlob(b => ok(new File([b], "trooper.png", { type: "image/png" })), "image/png"));
+    await nav("Rosters");
+    if (store("rosterLocked")) throw new Error("expected the Rosters tab before a game");
+    const team = store("fid"), op = (store("roster") || [])[0];
+    if (!team || !op) throw new Error("no roster to add photos to");
+    await loadPhotos();
+    const key = photoKey(team, op.id), had = photoCache[key] || null; // put back whatever was there
+    try {
+      if (had) await setPhoto(key, null);
+      const dcs = btn("Datacards", true); if (dcs) await click(dcs, "Datacards");
+      const firstCard = all(".datacard-print")[0];
+      if (firstCard && !firstCard.querySelector("button[aria-label^='Add a photo of ']")) { firstCard.querySelector("[role=button]").click(); await settle(); } // open a folded card
+      const add = all("button[aria-label^='Add a photo of ']")[0];
+      if (!add) throw new Error("no Add photo on the datacards before a game");
+      await click(add, "Add photo");
+      const input = document.querySelector("[data-photo-input]");
+      const dt = new DataTransfer(); dt.items.add(file);
+      input.files = dt.files; input.dispatchEvent(new Event("change", { bubbles: true }));
+      for (let i = 0; i < 80 && !photoCache[key]; i++) await wait(25);
+      await settle(20);
+      const url = photoCache[key];
+      if (!url || !/^data:image\/jpeg/.test(url)) throw new Error("the photo wasn't saved as a small JPEG");
+      const shown = await new Promise(ok => { const im = new Image(); im.onload = () => ok([im.naturalWidth, im.naturalHeight]); im.onerror = () => ok(null); im.src = url; });
+      if (!shown || shown[0] !== PHOTO_SIZE || shown[1] !== PHOTO_SIZE) throw new Error("the photo wasn't cropped to a " + PHOTO_SIZE + " px square: " + shown);
+      const cardsWith = all(".datacard-print").filter(c => c.querySelector("[data-op-photo]"));
+      const sameType = (store("roster") || []).filter(o => photoKey(team, o.id) === key).length;
+      if (cardsWith.length !== sameType) throw new Error("the photo shows on " + cardsWith.length + " cards, not every " + op.name + " (" + sameType + ")");
+      // It belongs to the army: a backup carries it.
+      lastBlob = null; downloadBackup(false);
+      const backup = lastBlob && JSON.parse(await lastBlob.text());
+      if (!backup || !backup.photos || backup.photos[key] !== url) throw new Error("the backup file doesn't include the photo");
+      // In a game: on your side of the Shoot screen, above the name. (Phones show Start game on the Build roster view.)
+      const build = btn("Build roster", true); if (build) await click(build, "Build roster");
+      await click(btn("Start game"), "Start game");
+      const dc2 = btn("Datacards", true); if (dc2) await click(dc2, "Datacards");
+      const card = all(".datacard-print").find(c => c.querySelector("[data-op-photo]"));
+      if (!card) throw new Error("the photo doesn't show on the datacard during a game");
+      if (card.querySelector("[role=button]") && !card.querySelector("button[aria-label^='Shoot with']")) card.querySelector("[role=button]").click(); await settle();
+      const shoot = card.querySelector("button[aria-label^='Shoot with']");
+      if (shoot) {
+        await click(shoot, "Shoot");
+        if (!document.querySelector("[data-shot-card='atk'] [data-vs-photo]")) throw new Error("the photo doesn't show on the Shoot screen");
+        window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })); await settle(20);
+      }
+      return "cropped to a " + PHOTO_SIZE + " px square, on every " + op.name + ", in the backup, and on the Shoot screen" + (shoot ? "" : " (no ranged weapon to check)");
+    } finally {
+      await setPhoto(key, had).catch(() => {});
+    }
   });
   await step("Old saves get current datacards", async () => {
     const pm = FACTIONS.plaguemarines;
