@@ -79,6 +79,7 @@ function MapLegend({ svgs, mode }) {
 
 function MapImages({ ids, diagram, mode }) {
   const [view, setView] = useState(null);
+  useBackClose(view != null, () => setView(null));
   const [zoom, setZoom] = useState(false);
   const [original, setOriginal] = useState(false);
   const [turned, setTurned] = useState(false);

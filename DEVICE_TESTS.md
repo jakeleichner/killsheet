@@ -60,3 +60,11 @@ These need your real email and Google account, so Claude can't do them. While ac
 | 6 | Read `killsheet.app/privacy` and `killsheet.app/terms`. | Tell Claude anything to change. Check the line saying feedback is deleted once it's been dealt with: you'd delete messages on the admin page after handling them. |
 | 7 | After going live: open the Home Screen app. Cog, Account, email code. | Signs in with the code. Continue with Google isn't offered there. |
 
+## 6. Back gesture and online hits (Nov 13)
+
+| Step | What to do | What should happen |
+|---|---|---|
+| 1 | On an Android phone, open Settings, then What's new. Swipe back (or press Back). | What's new closes, Settings stays. Swipe back again: Settings closes. Once more: you leave KillSheet as usual. |
+| 2 | On Android, open the ⋯ game menu and swipe back. Then open Shoot on a datacard and swipe back. | Each closes, and you stay on the Battle tab. |
+| 3 | Online on two phones: turn on Airplane Mode on phone B for 20 seconds while phone A shoots one of B's operatives. Turn it off. | When B reconnects, the hit lands once, not twice, and A's "changes to send" count goes back to none. |
+

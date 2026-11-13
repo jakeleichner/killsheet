@@ -923,7 +923,14 @@ async function runSelfTest(hooks) {
     if (!at || at.getAttribute("data-note") !== second || !/Boss Nob/.test(at.textContent)) throw new Error("the log didn't open at that hit");
     if (document.querySelector("[data-unread]") || bubbles().length) throw new Error("opening the log didn't clear the count and bubbles");
     await click(btn("Close", true) || [...log.querySelectorAll("button")].find(b => /Close/.test(b.textContent)), "close the log");
-    return "two hits stacked, counted, and the log opened at the one tapped";
+    // A tap anywhere else puts a message away, so it never sits on top of a datacard's buttons.
+    hooks.mpMessage({ type: "applyRemoteDamage", opId: mineOp.id, amount: 1, by: "Boss Nob", weapon: "Big choppa" }); await settle(20);
+    if (bubbles().length !== 1) throw new Error("no bubble for the third hit");
+    await wait(700);
+    document.body.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    await settle(20);
+    if (bubbles().length) throw new Error("a tap elsewhere didn't put the hit message away");
+    return "two hits stacked, counted, the log opened at the one tapped, and a tap elsewhere puts them away";
   });
   await step("End-of-game recap", async () => {
     // The sums, from a made-up game.
@@ -1284,6 +1291,16 @@ async function runSelfTest(hooks) {
       const b = sent[sent.length - 1].body;
       if (b.kind !== "problem" || b.message !== "Self-test message" || !b.device || !b.screen || !b.version || b.website !== "") throw new Error("the message went without its details: " + JSON.stringify(b));
       await click([...form().querySelectorAll("button")].find(x => x.textContent.trim() === "Done"), "Done");
+      // A crash reports itself once a day, with its error; the preview and the self-test's own crash never send.
+      const before = sent.length;
+      if (sendCrashReport(new Error("Self-test crash report"), "Rules")) throw new Error("the preview sent a crash report");
+      window.__ksCrashReportsOn = true;
+      try {
+        sendCrashReport(new Error("Self-test crash report"), "Rules"); sendCrashReport(new Error("Self-test crash report"), "Rules"); await settle();
+        for (let i = 0; i < 20 && sent.length === before; i++) await wait(25);
+        const reports = sent.slice(before).filter(x => x.body && x.body.kind === "crash");
+        if (reports.length !== 1 || !/Self-test crash report/.test(reports[0].body.error) || reports[0].body.tab !== "Rules" || !reports[0].body.device) throw new Error("a crash report wasn't sent once with its details: " + reports.length);
+      } finally { delete window.__ksCrashReportsOn; }
       await click(document.querySelector("[role=dialog][aria-label='Settings'] [aria-label='Close']"), "close Settings");
       // The admin page: a wrong password is refused; the right one lists messages; Delete removes one.
       hooks.setShowAdmin(true); await settle(20);
@@ -1309,6 +1326,61 @@ async function runSelfTest(hooks) {
       window.fetch = realFetch;
       hooks.setShowAdmin(false); await settle();
     }
+  });
+  await step("Online hits arrive exactly once", async () => {
+    // Two pretend phones: A's hit is lost once, then arrives, then arrives again; B applies it once and A stops resending.
+    const hit = { type: "applyRemoteDamage", opId: "x", amount: 2 };
+    let [outbox, tagged] = mpOutboxAdd([], hit);
+    if (!tagged.mid || outbox.length !== 1) throw new Error("a hit didn't get a tag");
+    let due = mpOutboxDue(outbox, 1000, true); outbox = due.keep;
+    if (due.send.length !== 1 || due.send[0].mid !== tagged.mid || "sentAt" in due.send[0]) throw new Error("a new hit wasn't sent at once");
+    if (mpOutboxDue(outbox, 3000, true).send.length) throw new Error("a hit was resent before " + MP_RESEND_MS + " ms");
+    let seen = [], applied = 0;
+    due = mpOutboxDue(outbox, 1000 + MP_RESEND_MS, true); outbox = due.keep;
+    let r = mpReceive(seen, due.send[0]); seen = r.seen; if (r.deliver) applied++;
+    // B's "got it" was lost too, so A sends it once more; B answers again and doesn't apply it twice.
+    due = mpOutboxDue(outbox, 1000 + 2 * MP_RESEND_MS, true); outbox = due.keep;
+    r = mpReceive(seen, due.send[0]); seen = r.seen; if (r.deliver) applied++;
+    if (applied !== 1 || !r.ack || r.ack.mid !== tagged.mid) throw new Error("a repeated hit was applied " + applied + " times");
+    outbox = mpAcked(outbox, r.ack.mid);
+    if (outbox.length || mpOutboxDue(outbox, 99999, true).send.length) throw new Error("A kept resending after B answered");
+    // A phone on an older KillSheet never answers: each hit goes once, as before, so it can't double.
+    let [old] = mpOutboxAdd([], hit);
+    due = mpOutboxDue(old, 0, false);
+    if (due.send.length !== 1 || mpOutboxDue(due.keep, 99999, false).send.length) throw new Error("an older phone would get a hit twice");
+    // Many tags are remembered, the oldest dropped.
+    let many = [];
+    for (let i = 0; i < MP_SEEN_MAX + 20; i++) many = mpReceive(many, { mid: "m" + i }).seen;
+    if (many.length !== MP_SEEN_MAX || many[0] !== "m20") throw new Error("the list of seen hits doesn't keep the newest " + MP_SEEN_MAX);
+    return "lost, repeated and unanswered hits each applied once; nothing resent to an older KillSheet";
+  });
+  await step("Back gesture closes the panel on top", async () => {
+    await nav("Battle");
+    const popped = () => new Promise(res => { const on = () => { window.removeEventListener("popstate", on); setTimeout(res, 30); }; window.addEventListener("popstate", on); window.history.back(); });
+    const settingsOpen = () => !!document.querySelector("[role=dialog][aria-label='Settings']");
+    const newsOpen = () => !!document.querySelector("[role=dialog][aria-label=\"What's new\"]");
+    const startLen = window.history.length;
+    await click(all("button[aria-label='Settings']")[0], "Settings cog");
+    if (!(window.history.state && window.history.state.ksPanel)) throw new Error("opening Settings didn't add a history entry");
+    await click(btn("What's new"), "What's new");
+    if (!newsOpen() || !settingsOpen()) throw new Error("What's new didn't open over Settings");
+    await popped(); await settle();
+    if (newsOpen() || !settingsOpen()) throw new Error("Back didn't close only the page on top");
+    await popped(); await settle();
+    if (settingsOpen()) throw new Error("Back didn't close Settings");
+    if (location.search.indexOf("selftest") < 0) throw new Error("Back left KillSheet");
+    // Closed with its X: the entry goes quietly, and the next Back doesn't close anything else or leave.
+    await click(all("button[aria-label='Settings']")[0], "Settings cog");
+    await click(document.querySelector("[role=dialog][aria-label='Settings'] [aria-label='Close']"), "close Settings");
+    await wait(80);
+    if (window.history.state && window.history.state.ksPanel) throw new Error("closing Settings with X left its history entry");
+    // The game menu closes with Back too.
+    await click(document.querySelector("[aria-label='Game menu']"), "game menu");
+    if (!btn("Back up")) throw new Error("the game menu didn't open");
+    await popped(); await settle();
+    if (btn("Back up")) throw new Error("Back didn't close the game menu");
+    if (location.search.indexOf("selftest") < 0) throw new Error("Back left KillSheet");
+    return "nested pages close one at a time; X removes its entry; the game menu closes; never leaves the app (history " + startLen + " to " + window.history.length + ")";
   });
   await step("Old saves get current datacards", async () => {
     const pm = FACTIONS.plaguemarines;

@@ -39,13 +39,15 @@ check((await post(env, "x".repeat(20001))).status === 413, "a body over 20 KB is
 const robot = await post(env, { message: "buy now", website: "spam.example" });
 check(robot.status === 200, "a filled-in hidden field is told it worked");
 check((await post(env, { kind: "nonsense", message: "odd kind", contact: "c".repeat(500) }, "5.6.7.8")).status === 200, "an unknown kind and a long contact are still accepted");
+check((await post(env, { kind: "crash", message: "KillSheet crashed in the Rules tab: boom", error: "boom\n  at Rules" }, "5.6.7.9")).status === 200, "an automatic crash report is accepted");
 
 // Reading (the owner).
 check((await admin(env, "GET", "wrong")).status === 401, "a wrong password can't read messages");
 check((await admin(env, "GET", "")).status === 401, "no password can't read messages");
 const list = await (await admin(env, "GET", env.ADMIN_KEY)).json();
-check(Array.isArray(list.items) && list.items.length === 2, "the owner sees the two real messages (not the robot's): " + (list.items || []).length);
-const [odd, first] = list.items;
+check(Array.isArray(list.items) && list.items.length === 3, "the owner sees the three real messages (not the robot's): " + (list.items || []).length);
+const [crash, odd, first] = list.items;
+check(crash.kind === "crash" && /boom/.test(crash.error), "a crash report keeps its kind and error");
 check(first.message === "The dice froze" && first.kind === "problem" && first.version === "abc123" && first.device === "iPhone · Safari", "the message is stored trimmed, with its details");
 check(odd.kind === "other" && odd.contact.length === 200, "an unknown kind becomes other; contact is cut to 200 characters");
 check(!("sender" in first), "the sender code isn't sent to the admin page");

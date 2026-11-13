@@ -206,6 +206,7 @@ function FeaturesPage({ onClose, focus, onNews, onFeedback, account, onAccount }
     const el = typeof focus === "string" && document.getElementById("feat-" + focus);
     if (el) el.scrollIntoView({ block: "center" });
   }, [focus]);
+  useBackClose(true, onClose);
   React.useEffect(() => {
     const onKey = (e) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);

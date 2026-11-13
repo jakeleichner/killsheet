@@ -24,6 +24,32 @@ function genRoomCode() {
 const MP_RETRY_MS = 3000;
 const MP_RETRIES = 20; // about a minute of trying the same room
 const MP_ROOM_HOURS = 12; // how long the Rejoin bar offers a dropped room
+// Hits and heals arrive exactly once. Each gets a tag (mid) and waits in the outbox until the other phone says "got it"
+// (an ack); it's resent every few seconds and on reconnect, and a phone that has seen a tag ignores it the second time.
+// A phone on an older KillSheet never acks, so nothing is resent to it unless it has acked before (no double hits there).
+// Pure, so the self-test can run two pretend phones through drops and repeats.
+const MP_RESEND_MS = 4000;
+const MP_SEEN_MAX = 300;
+const mpTag = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+function mpOutboxAdd(outbox, msg) { const out = { ...msg, mid: mpTag() }; return [[...(outbox || []), out].slice(-50), out]; }
+// What to send now: everything never sent, plus (once the other phone acks) anything unanswered for MP_RESEND_MS.
+// Returns the messages to send and the outbox to keep. Without acks, a message is sent once, as before tags.
+function mpOutboxDue(outbox, now, peerAcks) {
+  const send = [], keep = [];
+  (outbox || []).forEach(m => {
+    if (m.sentAt == null) { send.push(m); keep.push({ ...m, sentAt: now }); }
+    else if (peerAcks) { if (now - m.sentAt >= MP_RESEND_MS) { send.push(m); keep.push({ ...m, sentAt: now }); } else keep.push(m); }
+  });
+  return { send: send.map(({ sentAt, ...m }) => m), keep };
+}
+const mpAcked = (outbox, mid) => (outbox || []).filter(m => m.mid !== mid);
+// An incoming tagged message: always answer "got it"; pass it on only the first time.
+function mpReceive(seen, msg) {
+  const ack = { type: "ack", mid: msg.mid };
+  if ((seen || []).includes(msg.mid)) return { deliver: false, ack, seen };
+  return { deliver: true, ack, seen: [...(seen || []), msg.mid].slice(-MP_SEEN_MAX) };
+}
+
 function useMultiplayer(onMessage) {
   // status: 'idle' | 'hosting' | 'joining' | 'connected' | 'error'
   const [status, setStatus] = useState("idle");
@@ -33,8 +59,12 @@ function useMultiplayer(onMessage) {
   const [lost, setLost] = useState(false); // the link dropped and we're waiting for it to come back
   // The room survives reloads so either player can rejoin it with one tap.
   const [lastRoom, setLastRoom] = useLocalStorage("mpRoom", null); // { code, role, ts }
-  // Damage and heals sent to the opponent while the link was down; sent when it comes back.
+  // Damage and heals waiting for the other phone's "got it" (sent, or held while the link is down). Kept across reloads.
   const [pending, setPending] = useLocalStorage("mpPending", []);
+  const [seen, setSeen] = useLocalStorage("mpSeen", []); // tags already applied here
+  const seenRef = React.useRef(seen);
+  seenRef.current = seen;
+  const peerAcksRef = React.useRef(false); // the other phone answers "got it" (a current KillSheet)
   const peerRef = React.useRef(null);
   const connRef = React.useRef(null);
   const timerRef = React.useRef(null);
@@ -44,6 +74,16 @@ function useMultiplayer(onMessage) {
   const onMessageRef = React.useRef(onMessage);
   useEffect(() => { onMessageRef.current = onMessage; }, [onMessage]);
 
+  // Send what's due in the outbox on this connection; all = everything waiting (just reconnected).
+  const flush = (conn, all) => {
+    const now = Date.now(), waiting = pendingRef.current || [];
+    const due = all ? { send: waiting.map(({ sentAt, ...m }) => m), keep: waiting.map(m => ({ ...m, sentAt: now })) } : mpOutboxDue(waiting, now, peerAcksRef.current);
+    if (!due.send.length) return;
+    try { due.send.forEach(m => conn.send(m)); } catch (e) { return; } // left as they were: the next try or reconnect sends them
+    // Without "got it" from the other phone, a message sent once is done (as before tags).
+    const keep = peerAcksRef.current ? due.keep : due.keep.filter(m => !due.send.some(x => x.mid === m.mid));
+    pendingRef.current = keep; setPending(keep);
+  };
   const cleanup = () => {
     clearTimeout(timerRef.current);
     const conn = connRef.current, peer = peerRef.current;
@@ -75,11 +115,24 @@ function useMultiplayer(onMessage) {
       setStatus("connected"); setPeerError(""); setLost(false);
       triesRef.current = 0;
       setLastRoom({ code, role: asRole, ts: Date.now() });
-      const queued = pendingRef.current || [];
-      queued.forEach(m => { try { conn.send(m); } catch (e) {} });
-      if (queued.length) setPending([]);
+      // Say this KillSheet answers "got it", then send everything not yet answered; the other phone ignores repeats.
+      try { conn.send({ type: "hello", acks: 1 }); } catch (e) {}
+      flush(conn, true);
     });
     conn.on("data", (msg) => {
+      if (msg && msg.type === "hello") { if (msg.acks) peerAcksRef.current = true; return; }
+      if (msg && msg.type === "ack" && typeof msg.mid === "string") {
+        peerAcksRef.current = true;
+        setPending(prev => mpAcked(prev, msg.mid));
+        return;
+      }
+      if (msg && typeof msg.mid === "string") {
+        peerAcksRef.current = true; // it tags its messages, so it answers ours
+        const r = mpReceive(seenRef.current, msg);
+        try { conn.send(r.ack); } catch (e) {}
+        if (!r.deliver) return;
+        seenRef.current = r.seen; setSeen(r.seen);
+      }
       if (msg && msg.type === "bye") { // they pressed Disconnect: don't wait for them to come back
         connRef.current = null;
         cleanup();
@@ -197,6 +250,8 @@ function useMultiplayer(onMessage) {
     setLost(false);
     setLastRoom(null);
     setPending([]);
+    setSeen([]);
+    peerAcksRef.current = false;
   };
 
   const rejoin = () => {
@@ -212,14 +267,23 @@ function useMultiplayer(onMessage) {
     }
     return false;
   };
-  // Send now, or hold it until the dropped room comes back.
+  // Hits and heals: into the outbox with a tag, sent now if connected, and resent until the other phone answers.
   const sendOrQueue = (msg) => {
-    if (send(msg)) return true;
-    if (lastRoom) setPending(prev => [...(prev || []), msg].slice(-50));
+    if (!lastRoom && status !== "connected") return false;
+    const [outbox] = mpOutboxAdd(pendingRef.current, msg);
+    pendingRef.current = outbox; setPending(outbox);
+    const conn = connRef.current;
+    if (conn && status === "connected") { flush(conn); return true; }
     return false;
   };
+  // While connected, resend anything the other phone hasn't answered.
+  useEffect(() => {
+    if (status !== "connected") return;
+    const t = setInterval(() => { const conn = connRef.current; if (conn && (pendingRef.current || []).length) flush(conn); }, 1000);
+    return () => clearInterval(t);
+  }, [status]);
 
   const roomFresh = lastRoom && Date.now() - lastRoom.ts < MP_ROOM_HOURS * 3600 * 1000 ? lastRoom : null;
-  return { status, role, roomCode, peerError, lost, lastRoom: roomFresh, pendingCount: (pending || []).length, host, join, rejoin, disconnect, send, sendOrQueue };
+  return { status, role, roomCode, peerError, lost, lastRoom: roomFresh, pendingCount: (pending || []).filter(m => m.sentAt == null || Date.now() - m.sentAt > MP_RESEND_MS).length, host, join, rejoin, disconnect, send, sendOrQueue };
 }
 

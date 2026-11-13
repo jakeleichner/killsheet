@@ -6054,6 +6054,38 @@ function fetchWithin(url, opts, ms) {
   setTimeout(() => ctl.abort(), window.__ksTimeoutMs || ms || 15000);
   return fetch(url, { ...(opts || {}), signal: ctl.signal });
 }
+// The phone's Back gesture closes the panel on top instead of leaving KillSheet. While any panel is open there's one
+// extra history step (a "sentinel"); Back lands below it, the top panel closes the way its X or Escape would, and if
+// anything is still open the step goes back on. When the last panel closes another way, KillSheet steps back off it.
+// History is only changed when no step of ours is still under way, so the count can't drift however fast panels
+// open and close.
+const backStack = []; // open panels, top last
+let backPending = false; // our own history.back() hasn't landed yet
+const onBackSentinel = () => !!(window.history.state && window.history.state.ksPanel);
+function backArm() { if (!backPending && backStack.length && !onBackSentinel()) window.history.pushState({ ksPanel: true }, ""); }
+function backDisarm() { if (!backPending && !backStack.length && onBackSentinel()) { backPending = true; window.history.back(); } }
+if (typeof window !== "undefined" && window.history && window.history.pushState) window.addEventListener("popstate", () => {
+  if (backPending) { backPending = false; backArm(); return; } // our own step back; a panel may have opened meanwhile
+  if (onBackSentinel()) return; // stepped forward onto it: nothing to close
+  const top = backStack[backStack.length - 1];
+  if (top) top.back();
+  setTimeout(backArm, 0); // still something open (or the panel didn't close): put the step back
+});
+function useBackClose(open, onClose) {
+  const closeRef = React.useRef(onClose);
+  closeRef.current = onClose;
+  React.useEffect(() => {
+    if (!open || !window.history || !window.history.pushState) return;
+    const entry = { back: () => closeRef.current() };
+    backStack.push(entry);
+    backArm();
+    return () => {
+      const i = backStack.indexOf(entry);
+      if (i >= 0) backStack.splice(i, 1);
+      setTimeout(backDisarm, 0); // after React has finished: another panel may be opening in its place
+    };
+  }, [open]);
+}
 // For the cloud backup, which reads and writes outside React (useLocalStorage above picks changes up from "ks-sync-applied").
 function readStored(key, fallback) { try { const v = window.localStorage.getItem(LS_PREFIX + key); return v !== null ? JSON.parse(v) : fallback; } catch (e) { return fallback; } }
 function writeStored(key, value) { try { if (!window.__ksFrozen) window.localStorage.setItem(LS_PREFIX + key, JSON.stringify(value)); } catch (e) { /* storage full or blocked */ } }
@@ -6104,7 +6136,7 @@ function useKeepAwake(on) {
 class ErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { error: null }; }
   static getDerivedStateFromError(error) { return { error }; }
-  componentDidCatch(error) { if (window.console) console.error("KillSheet crashed in " + (this.props.where || "the app") + ":", error); }
+  componentDidCatch(error) { if (window.console) console.error("KillSheet crashed in " + (this.props.where || "the app") + ":", error); sendCrashReport(error, this.props.where); }
   render() {
     const error = this.state.error;
     if (!error) return this.props.children;
@@ -6194,6 +6226,32 @@ function genRoomCode() {
 const MP_RETRY_MS = 3000;
 const MP_RETRIES = 20; // about a minute of trying the same room
 const MP_ROOM_HOURS = 12; // how long the Rejoin bar offers a dropped room
+// Hits and heals arrive exactly once. Each gets a tag (mid) and waits in the outbox until the other phone says "got it"
+// (an ack); it's resent every few seconds and on reconnect, and a phone that has seen a tag ignores it the second time.
+// A phone on an older KillSheet never acks, so nothing is resent to it unless it has acked before (no double hits there).
+// Pure, so the self-test can run two pretend phones through drops and repeats.
+const MP_RESEND_MS = 4000;
+const MP_SEEN_MAX = 300;
+const mpTag = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+function mpOutboxAdd(outbox, msg) { const out = { ...msg, mid: mpTag() }; return [[...(outbox || []), out].slice(-50), out]; }
+// What to send now: everything never sent, plus (once the other phone acks) anything unanswered for MP_RESEND_MS.
+// Returns the messages to send and the outbox to keep. Without acks, a message is sent once, as before tags.
+function mpOutboxDue(outbox, now, peerAcks) {
+  const send = [], keep = [];
+  (outbox || []).forEach(m => {
+    if (m.sentAt == null) { send.push(m); keep.push({ ...m, sentAt: now }); }
+    else if (peerAcks) { if (now - m.sentAt >= MP_RESEND_MS) { send.push(m); keep.push({ ...m, sentAt: now }); } else keep.push(m); }
+  });
+  return { send: send.map(({ sentAt, ...m }) => m), keep };
+}
+const mpAcked = (outbox, mid) => (outbox || []).filter(m => m.mid !== mid);
+// An incoming tagged message: always answer "got it"; pass it on only the first time.
+function mpReceive(seen, msg) {
+  const ack = { type: "ack", mid: msg.mid };
+  if ((seen || []).includes(msg.mid)) return { deliver: false, ack, seen };
+  return { deliver: true, ack, seen: [...(seen || []), msg.mid].slice(-MP_SEEN_MAX) };
+}
+
 function useMultiplayer(onMessage) {
   // status: 'idle' | 'hosting' | 'joining' | 'connected' | 'error'
   const [status, setStatus] = useState("idle");
@@ -6203,8 +6261,12 @@ function useMultiplayer(onMessage) {
   const [lost, setLost] = useState(false); // the link dropped and we're waiting for it to come back
   // The room survives reloads so either player can rejoin it with one tap.
   const [lastRoom, setLastRoom] = useLocalStorage("mpRoom", null); // { code, role, ts }
-  // Damage and heals sent to the opponent while the link was down; sent when it comes back.
+  // Damage and heals waiting for the other phone's "got it" (sent, or held while the link is down). Kept across reloads.
   const [pending, setPending] = useLocalStorage("mpPending", []);
+  const [seen, setSeen] = useLocalStorage("mpSeen", []); // tags already applied here
+  const seenRef = React.useRef(seen);
+  seenRef.current = seen;
+  const peerAcksRef = React.useRef(false); // the other phone answers "got it" (a current KillSheet)
   const peerRef = React.useRef(null);
   const connRef = React.useRef(null);
   const timerRef = React.useRef(null);
@@ -6214,6 +6276,16 @@ function useMultiplayer(onMessage) {
   const onMessageRef = React.useRef(onMessage);
   useEffect(() => { onMessageRef.current = onMessage; }, [onMessage]);
 
+  // Send what's due in the outbox on this connection; all = everything waiting (just reconnected).
+  const flush = (conn, all) => {
+    const now = Date.now(), waiting = pendingRef.current || [];
+    const due = all ? { send: waiting.map(({ sentAt, ...m }) => m), keep: waiting.map(m => ({ ...m, sentAt: now })) } : mpOutboxDue(waiting, now, peerAcksRef.current);
+    if (!due.send.length) return;
+    try { due.send.forEach(m => conn.send(m)); } catch (e) { return; } // left as they were: the next try or reconnect sends them
+    // Without "got it" from the other phone, a message sent once is done (as before tags).
+    const keep = peerAcksRef.current ? due.keep : due.keep.filter(m => !due.send.some(x => x.mid === m.mid));
+    pendingRef.current = keep; setPending(keep);
+  };
   const cleanup = () => {
     clearTimeout(timerRef.current);
     const conn = connRef.current, peer = peerRef.current;
@@ -6245,11 +6317,24 @@ function useMultiplayer(onMessage) {
       setStatus("connected"); setPeerError(""); setLost(false);
       triesRef.current = 0;
       setLastRoom({ code, role: asRole, ts: Date.now() });
-      const queued = pendingRef.current || [];
-      queued.forEach(m => { try { conn.send(m); } catch (e) {} });
-      if (queued.length) setPending([]);
+      // Say this KillSheet answers "got it", then send everything not yet answered; the other phone ignores repeats.
+      try { conn.send({ type: "hello", acks: 1 }); } catch (e) {}
+      flush(conn, true);
     });
     conn.on("data", (msg) => {
+      if (msg && msg.type === "hello") { if (msg.acks) peerAcksRef.current = true; return; }
+      if (msg && msg.type === "ack" && typeof msg.mid === "string") {
+        peerAcksRef.current = true;
+        setPending(prev => mpAcked(prev, msg.mid));
+        return;
+      }
+      if (msg && typeof msg.mid === "string") {
+        peerAcksRef.current = true; // it tags its messages, so it answers ours
+        const r = mpReceive(seenRef.current, msg);
+        try { conn.send(r.ack); } catch (e) {}
+        if (!r.deliver) return;
+        seenRef.current = r.seen; setSeen(r.seen);
+      }
       if (msg && msg.type === "bye") { // they pressed Disconnect: don't wait for them to come back
         connRef.current = null;
         cleanup();
@@ -6367,6 +6452,8 @@ function useMultiplayer(onMessage) {
     setLost(false);
     setLastRoom(null);
     setPending([]);
+    setSeen([]);
+    peerAcksRef.current = false;
   };
 
   const rejoin = () => {
@@ -6382,15 +6469,24 @@ function useMultiplayer(onMessage) {
     }
     return false;
   };
-  // Send now, or hold it until the dropped room comes back.
+  // Hits and heals: into the outbox with a tag, sent now if connected, and resent until the other phone answers.
   const sendOrQueue = (msg) => {
-    if (send(msg)) return true;
-    if (lastRoom) setPending(prev => [...(prev || []), msg].slice(-50));
+    if (!lastRoom && status !== "connected") return false;
+    const [outbox] = mpOutboxAdd(pendingRef.current, msg);
+    pendingRef.current = outbox; setPending(outbox);
+    const conn = connRef.current;
+    if (conn && status === "connected") { flush(conn); return true; }
     return false;
   };
+  // While connected, resend anything the other phone hasn't answered.
+  useEffect(() => {
+    if (status !== "connected") return;
+    const t = setInterval(() => { const conn = connRef.current; if (conn && (pendingRef.current || []).length) flush(conn); }, 1000);
+    return () => clearInterval(t);
+  }, [status]);
 
   const roomFresh = lastRoom && Date.now() - lastRoom.ts < MP_ROOM_HOURS * 3600 * 1000 ? lastRoom : null;
-  return { status, role, roomCode, peerError, lost, lastRoom: roomFresh, pendingCount: (pending || []).length, host, join, rejoin, disconnect, send, sendOrQueue };
+  return { status, role, roomCode, peerError, lost, lastRoom: roomFresh, pendingCount: (pending || []).filter(m => m.sentAt == null || Date.now() - m.sentAt > MP_RESEND_MS).length, host, join, rejoin, disconnect, send, sendOrQueue };
 }
 
 /* ═══ RULE TIPS ═══ */
@@ -8441,6 +8537,17 @@ function HitBubbles({ notes, onOpen, onDismiss }) {
     const right0 = window.innerWidth - r.right, right = Math.max(8, Math.min(right0, window.innerWidth - w - 8));
     setPos({ top: r.bottom + 10, right, w, tail: Math.max(8, Math.round(right0 - right + r.width / 2 - 6)) });
   }, [notes.length]);
+  // Never in the way: a tap anywhere else, or scrolling, puts the messages away (after a moment, so the scroll that
+  // brings you to the Battle tab doesn't). Tapping a message still opens the log.
+  const notesRef = React.useRef(notes);
+  notesRef.current = notes;
+  React.useEffect(() => {
+    if (!notes.length) return;
+    const away = (e) => { if (e.target && e.target.closest && e.target.closest("[data-hit-note]")) return; notesRef.current.forEach(n => onDismiss(n.id)); };
+    let on = false;
+    const t = setTimeout(() => { on = true; document.addEventListener("pointerdown", away, true); window.addEventListener("scroll", away, { passive: true }); }, 600);
+    return () => { clearTimeout(t); if (on) { document.removeEventListener("pointerdown", away, true); window.removeEventListener("scroll", away); } };
+  }, [notes.length > 0]);
   if (!notes.length || !pos) return null;
   return (
     <div aria-live="polite" style={{ position: "fixed", top: pos.top, right: pos.right, zIndex: 10001, display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end", width: pos.w, pointerEvents: "none" }}>
@@ -9111,6 +9218,14 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
       if (JSON.stringify(next) !== JSON.stringify(oppRoster)) setOppRoster(next);
     }
   }, [fid]);
+  // The phone's Back gesture closes the same things Escape does, top one first.
+  useBackClose(!!shot, () => { if (shotApi.current) shotApi.current.escape(); });
+  useBackClose(!!fight, () => { if (fightApi.current) fightApi.current.escape(); });
+  useBackClose(showLog, () => setShowLog(false));
+  useBackClose(showMP, () => setShowMP(false));
+  useBackClose(addingOpp, () => setAddingOpp(false));
+  useBackClose(cardsMenu, () => setCardsMenu(false));
+  useBackClose(gameMenu, () => setGameMenu(false));
   // Escape closes whatever is on top: the target screen, the battle log, Play online, then the ⋯ menus.
   React.useEffect(() => {
     const onKey = (e) => {
@@ -9574,8 +9689,8 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   const pushHitNote = (note) => {
     setHitNotes(prev => [note, ...prev.filter(x => x.id !== note.id)].slice(0, 3));
     setUnreadHits(u => u + 1);
-    setTimeout(() => setHitNotes(prev => prev.map(x => x.id === note.id ? { ...x, leaving: true } : x)), 8000);
-    setTimeout(() => setHitNotes(prev => prev.filter(x => x.id !== note.id)), 8300);
+    setTimeout(() => setHitNotes(prev => prev.map(x => x.id === note.id ? { ...x, leaving: true } : x)), 5000);
+    setTimeout(() => setHitNotes(prev => prev.filter(x => x.id !== note.id)), 5300);
   };
   const openLog = (focus) => { setLogFocus(focus || null); setShowLog(true); setUnreadHits(0); setHitNotes([]); };
 
@@ -16554,6 +16669,7 @@ function MapLegend({ svgs, mode }) {
 
 function MapImages({ ids, diagram, mode }) {
   const [view, setView] = useState(null);
+  useBackClose(view != null, () => setView(null));
   const [zoom, setZoom] = useState(false);
   const [original, setOriginal] = useState(false);
   const [turned, setTurned] = useState(false);
@@ -18669,6 +18785,7 @@ function FeaturesPage({ onClose, focus, onNews, onFeedback, account, onAccount }
     const el = typeof focus === "string" && document.getElementById("feat-" + focus);
     if (el) el.scrollIntoView({ block: "center" });
   }, [focus]);
+  useBackClose(true, onClose);
   React.useEffect(() => {
     const onKey = (e) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
@@ -18733,6 +18850,9 @@ function FeaturesPage({ onClose, focus, onNews, onFeedback, account, onAccount }
 // notice changed, in plain words. kind: "new", "better" or "fixed". Add an entry with every such change.
 const CHANGELOG = [
   { date: "2026-11-13", items: [
+    ["better", "In online games, every hit reaches your opponent exactly once, even when the connection drops for a moment."],
+    ["new", "On Android, the Back gesture closes the panel or menu you have open, instead of leaving KillSheet."],
+    ["better", "The message that slides out when you're hit goes away when you tap anywhere else, so it never covers your datacards."],
     ["better", "Numbers that change during a game, like wounds, CP and VP, no longer make the text beside them shift."],
     ["better", "Small buttons, like the wound buttons on datacards, are easier to tap on a phone."],
     ["better", "Titles and longer text wrap more evenly on narrow screens."],
@@ -18788,6 +18908,7 @@ const newsSince = (seen) => seen ? CHANGELOG.filter(e => e.date > seen) : [];
 const newsDate = (d) => new Date(d + "T12:00:00").toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
 
 function WhatsNew({ onClose }) {
+  useBackClose(true, onClose);
   React.useEffect(() => {
     const onKey = (e) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
@@ -18881,6 +19002,7 @@ async function readMoveLink(hash) {
 function MovePanel({ onClose }) {
   const [busy, setBusy] = useState(false);
   const homeApp = isHomeScreenApp();
+  useBackClose(true, onClose);
   React.useEffect(() => {
     const onKey = (e) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
@@ -18942,12 +19064,34 @@ function deviceSummary() {
   return device + " · " + browser + (isHomeScreenApp() ? " · Home Screen app" : "");
 }
 
+// Crashes report themselves to the admin page: the error, version, device type, screen size and tab, nothing personal.
+// Each different error goes once a day from a device, and only from the live site: not the preview or the self-test's
+// deliberate crash. window.__ksCrashReportsOn lets the self-test try it.
+function sendCrashReport(error, where) {
+  if (!window.__ksCrashReportsOn && (!window.KS_VERSION || /[?&]selftest\b/.test(window.location.search) || window.__ksCrashTest)) return false;
+  const text = String((error && error.message) || error || "unknown error").slice(0, 300);
+  const sig = (where || "app") + "|" + text, day = new Date().toISOString().slice(0, 10);
+  const sent = readStored("crashSent", {});
+  if (sent[sig] === day) return false;
+  const keep = {};
+  Object.keys(sent).filter(k => sent[k] === day).slice(-20).forEach(k => { keep[k] = day; });
+  keep[sig] = day;
+  writeStored("crashSent", keep);
+  const stack = String((error && error.stack) || "").split("\n").slice(0, 6).join("\n");
+  fetchWithin("/api/feedback", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+    kind: "crash", message: "KillSheet crashed" + (where ? " in the " + where + " tab" : "") + ": " + text,
+    version: window.KS_VERSION || "preview", device: deviceSummary(), screen: window.innerWidth + "x" + window.innerHeight, tab: where || "", error: (text + "\n" + stack).slice(0, 1000),
+  }) }).catch(() => {});
+  return true;
+}
+
 function FeedbackForm({ onClose, tab, error }) {
   const [kind, setKind] = useState(error ? "problem" : "idea");
   const [message, setMessage] = useState("");
   const [contact, setContact] = useState("");
   const [trap, setTrap] = useState(""); // hidden from people; spam robots fill it in
   const [state, setState] = useState("ready"); // ready, sending, sent, failed, busy
+  useBackClose(true, onClose);
   React.useEffect(() => {
     const onKey = (e) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
@@ -19007,6 +19151,7 @@ function FeedbackForm({ onClose, tab, error }) {
 
 // killsheet.app/?admin: the owner's page for reading feedback.
 function AdminPage({ onClose }) {
+  useBackClose(true, onClose);
   const [key, setKey] = useState("");
   const [items, setItems] = useState(null);
   const [note, setNote] = useState("");
@@ -19022,7 +19167,7 @@ function AdminPage({ onClose }) {
     call("DELETE", "?id=" + m.id).then(r => { if (r.ok) setItems(list => list.filter(x => x.id !== m.id)); else setNote("Couldn't delete (error " + r.status + ")."); })
       .catch(() => setNote("Couldn't reach the site. Check your connection."));
   };
-  const kindLabel = Object.fromEntries(FEEDBACK_KINDS);
+  const kindLabel = { ...Object.fromEntries(FEEDBACK_KINDS), crash: "Crash, sent automatically" };
   return ReactDOM.createPortal(
     <div role="dialog" aria-modal="true" aria-label="Admin" style={{ position: "fixed", inset: 0, zIndex: 9300, background: "var(--bg)", overflowY: "auto", color: "var(--text)", fontFamily: "'Inter', sans-serif" }}>
       <div style={{ maxWidth: 720, margin: "0 auto", padding: "16px 16px 40px" }}>
@@ -19038,7 +19183,7 @@ function AdminPage({ onClose }) {
         {note && <p role="status" style={{ ...mu, fontSize: 14, margin: "0 0 10px" }}>{note}</p>}
         {items && items.length === 0 && <p style={{ ...mu, fontSize: 14 }}>No messages.</p>}
         {items && items.map(m => (
-          <div key={m.id} data-feedback={m.id} style={{ ...cd, padding: 12, marginBottom: 8, borderLeft: "3px solid " + (m.kind === "problem" ? "#E0664A" : m.kind === "idea" ? "var(--blue)" : "var(--line)") }}>
+          <div key={m.id} data-feedback={m.id} style={{ ...cd, padding: 12, marginBottom: 8, borderLeft: "3px solid " + (m.kind === "problem" || m.kind === "crash" ? "#E0664A" : m.kind === "idea" ? "var(--blue)" : "var(--line)") }}>
             <div style={{ display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
               <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text2)", textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "'Rajdhani', sans-serif" }}>{kindLabel[m.kind] || m.kind}</span>
               <span style={{ fontSize: 12, color: "var(--muted)", flex: 1 }}>{new Date(m.created_at).toLocaleString()}</span>
@@ -19198,6 +19343,7 @@ function AccountPanel({ account, setAccount, note, onClose }) {
   const [message, setMessage] = useState(note || "");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [, redraw] = useState(0);
+  useBackClose(true, onClose);
   React.useEffect(() => {
     const onKey = (e) => { if (e.key === "Escape") onClose(); };
     const onStatus = () => redraw(n => n + 1);
@@ -20227,7 +20373,14 @@ async function runSelfTest(hooks) {
     if (!at || at.getAttribute("data-note") !== second || !/Boss Nob/.test(at.textContent)) throw new Error("the log didn't open at that hit");
     if (document.querySelector("[data-unread]") || bubbles().length) throw new Error("opening the log didn't clear the count and bubbles");
     await click(btn("Close", true) || [...log.querySelectorAll("button")].find(b => /Close/.test(b.textContent)), "close the log");
-    return "two hits stacked, counted, and the log opened at the one tapped";
+    // A tap anywhere else puts a message away, so it never sits on top of a datacard's buttons.
+    hooks.mpMessage({ type: "applyRemoteDamage", opId: mineOp.id, amount: 1, by: "Boss Nob", weapon: "Big choppa" }); await settle(20);
+    if (bubbles().length !== 1) throw new Error("no bubble for the third hit");
+    await wait(700);
+    document.body.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    await settle(20);
+    if (bubbles().length) throw new Error("a tap elsewhere didn't put the hit message away");
+    return "two hits stacked, counted, the log opened at the one tapped, and a tap elsewhere puts them away";
   });
   await step("End-of-game recap", async () => {
     // The sums, from a made-up game.
@@ -20588,6 +20741,16 @@ async function runSelfTest(hooks) {
       const b = sent[sent.length - 1].body;
       if (b.kind !== "problem" || b.message !== "Self-test message" || !b.device || !b.screen || !b.version || b.website !== "") throw new Error("the message went without its details: " + JSON.stringify(b));
       await click([...form().querySelectorAll("button")].find(x => x.textContent.trim() === "Done"), "Done");
+      // A crash reports itself once a day, with its error; the preview and the self-test's own crash never send.
+      const before = sent.length;
+      if (sendCrashReport(new Error("Self-test crash report"), "Rules")) throw new Error("the preview sent a crash report");
+      window.__ksCrashReportsOn = true;
+      try {
+        sendCrashReport(new Error("Self-test crash report"), "Rules"); sendCrashReport(new Error("Self-test crash report"), "Rules"); await settle();
+        for (let i = 0; i < 20 && sent.length === before; i++) await wait(25);
+        const reports = sent.slice(before).filter(x => x.body && x.body.kind === "crash");
+        if (reports.length !== 1 || !/Self-test crash report/.test(reports[0].body.error) || reports[0].body.tab !== "Rules" || !reports[0].body.device) throw new Error("a crash report wasn't sent once with its details: " + reports.length);
+      } finally { delete window.__ksCrashReportsOn; }
       await click(document.querySelector("[role=dialog][aria-label='Settings'] [aria-label='Close']"), "close Settings");
       // The admin page: a wrong password is refused; the right one lists messages; Delete removes one.
       hooks.setShowAdmin(true); await settle(20);
@@ -20613,6 +20776,61 @@ async function runSelfTest(hooks) {
       window.fetch = realFetch;
       hooks.setShowAdmin(false); await settle();
     }
+  });
+  await step("Online hits arrive exactly once", async () => {
+    // Two pretend phones: A's hit is lost once, then arrives, then arrives again; B applies it once and A stops resending.
+    const hit = { type: "applyRemoteDamage", opId: "x", amount: 2 };
+    let [outbox, tagged] = mpOutboxAdd([], hit);
+    if (!tagged.mid || outbox.length !== 1) throw new Error("a hit didn't get a tag");
+    let due = mpOutboxDue(outbox, 1000, true); outbox = due.keep;
+    if (due.send.length !== 1 || due.send[0].mid !== tagged.mid || "sentAt" in due.send[0]) throw new Error("a new hit wasn't sent at once");
+    if (mpOutboxDue(outbox, 3000, true).send.length) throw new Error("a hit was resent before " + MP_RESEND_MS + " ms");
+    let seen = [], applied = 0;
+    due = mpOutboxDue(outbox, 1000 + MP_RESEND_MS, true); outbox = due.keep;
+    let r = mpReceive(seen, due.send[0]); seen = r.seen; if (r.deliver) applied++;
+    // B's "got it" was lost too, so A sends it once more; B answers again and doesn't apply it twice.
+    due = mpOutboxDue(outbox, 1000 + 2 * MP_RESEND_MS, true); outbox = due.keep;
+    r = mpReceive(seen, due.send[0]); seen = r.seen; if (r.deliver) applied++;
+    if (applied !== 1 || !r.ack || r.ack.mid !== tagged.mid) throw new Error("a repeated hit was applied " + applied + " times");
+    outbox = mpAcked(outbox, r.ack.mid);
+    if (outbox.length || mpOutboxDue(outbox, 99999, true).send.length) throw new Error("A kept resending after B answered");
+    // A phone on an older KillSheet never answers: each hit goes once, as before, so it can't double.
+    let [old] = mpOutboxAdd([], hit);
+    due = mpOutboxDue(old, 0, false);
+    if (due.send.length !== 1 || mpOutboxDue(due.keep, 99999, false).send.length) throw new Error("an older phone would get a hit twice");
+    // Many tags are remembered, the oldest dropped.
+    let many = [];
+    for (let i = 0; i < MP_SEEN_MAX + 20; i++) many = mpReceive(many, { mid: "m" + i }).seen;
+    if (many.length !== MP_SEEN_MAX || many[0] !== "m20") throw new Error("the list of seen hits doesn't keep the newest " + MP_SEEN_MAX);
+    return "lost, repeated and unanswered hits each applied once; nothing resent to an older KillSheet";
+  });
+  await step("Back gesture closes the panel on top", async () => {
+    await nav("Battle");
+    const popped = () => new Promise(res => { const on = () => { window.removeEventListener("popstate", on); setTimeout(res, 30); }; window.addEventListener("popstate", on); window.history.back(); });
+    const settingsOpen = () => !!document.querySelector("[role=dialog][aria-label='Settings']");
+    const newsOpen = () => !!document.querySelector("[role=dialog][aria-label=\"What's new\"]");
+    const startLen = window.history.length;
+    await click(all("button[aria-label='Settings']")[0], "Settings cog");
+    if (!(window.history.state && window.history.state.ksPanel)) throw new Error("opening Settings didn't add a history entry");
+    await click(btn("What's new"), "What's new");
+    if (!newsOpen() || !settingsOpen()) throw new Error("What's new didn't open over Settings");
+    await popped(); await settle();
+    if (newsOpen() || !settingsOpen()) throw new Error("Back didn't close only the page on top");
+    await popped(); await settle();
+    if (settingsOpen()) throw new Error("Back didn't close Settings");
+    if (location.search.indexOf("selftest") < 0) throw new Error("Back left KillSheet");
+    // Closed with its X: the entry goes quietly, and the next Back doesn't close anything else or leave.
+    await click(all("button[aria-label='Settings']")[0], "Settings cog");
+    await click(document.querySelector("[role=dialog][aria-label='Settings'] [aria-label='Close']"), "close Settings");
+    await wait(80);
+    if (window.history.state && window.history.state.ksPanel) throw new Error("closing Settings with X left its history entry");
+    // The game menu closes with Back too.
+    await click(document.querySelector("[aria-label='Game menu']"), "game menu");
+    if (!btn("Back up")) throw new Error("the game menu didn't open");
+    await popped(); await settle();
+    if (btn("Back up")) throw new Error("Back didn't close the game menu");
+    if (location.search.indexOf("selftest") < 0) throw new Error("Back left KillSheet");
+    return "nested pages close one at a time; X removes its entry; the game menu closes; never leaves the app (history " + startLen + " to " + window.history.length + ")";
   });
   await step("Old saves get current datacards", async () => {
     const pm = FACTIONS.plaguemarines;

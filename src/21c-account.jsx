@@ -141,6 +141,7 @@ function AccountPanel({ account, setAccount, note, onClose }) {
   const [message, setMessage] = useState(note || "");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [, redraw] = useState(0);
+  useBackClose(true, onClose);
   React.useEffect(() => {
     const onKey = (e) => { if (e.key === "Escape") onClose(); };
     const onStatus = () => redraw(n => n + 1);

@@ -5,7 +5,7 @@
 // No accounts and no IP addresses are stored. Each message keeps a short code made from the sender's IP address and
 // the day, only so one person can't send more than LIMIT_PER_HOUR messages an hour; the code changes every day.
 
-const KINDS = ["problem", "idea", "other"];
+const KINDS = ["problem", "idea", "other", "crash"]; // crash: sent by the app itself (sendCrashReport)
 const LIMIT_PER_HOUR = 5;
 const MAX_BODY = 20000;
 // Field: longest it may be. Longer text is cut, except the message, which is refused (the form stops at this length).

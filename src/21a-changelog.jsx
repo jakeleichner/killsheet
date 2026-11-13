@@ -3,6 +3,9 @@
 // notice changed, in plain words. kind: "new", "better" or "fixed". Add an entry with every such change.
 const CHANGELOG = [
   { date: "2026-11-13", items: [
+    ["better", "In online games, every hit reaches your opponent exactly once, even when the connection drops for a moment."],
+    ["new", "On Android, the Back gesture closes the panel or menu you have open, instead of leaving KillSheet."],
+    ["better", "The message that slides out when you're hit goes away when you tap anywhere else, so it never covers your datacards."],
     ["better", "Numbers that change during a game, like wounds, CP and VP, no longer make the text beside them shift."],
     ["better", "Small buttons, like the wound buttons on datacards, are easier to tap on a phone."],
     ["better", "Titles and longer text wrap more evenly on narrow screens."],
@@ -58,6 +61,7 @@ const newsSince = (seen) => seen ? CHANGELOG.filter(e => e.date > seen) : [];
 const newsDate = (d) => new Date(d + "T12:00:00").toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
 
 function WhatsNew({ onClose }) {
+  useBackClose(true, onClose);
   React.useEffect(() => {
     const onKey = (e) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
@@ -151,6 +155,7 @@ async function readMoveLink(hash) {
 function MovePanel({ onClose }) {
   const [busy, setBusy] = useState(false);
   const homeApp = isHomeScreenApp();
+  useBackClose(true, onClose);
   React.useEffect(() => {
     const onKey = (e) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);

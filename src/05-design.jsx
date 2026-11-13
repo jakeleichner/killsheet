@@ -128,6 +128,38 @@ function fetchWithin(url, opts, ms) {
   setTimeout(() => ctl.abort(), window.__ksTimeoutMs || ms || 15000);
   return fetch(url, { ...(opts || {}), signal: ctl.signal });
 }
+// The phone's Back gesture closes the panel on top instead of leaving KillSheet. While any panel is open there's one
+// extra history step (a "sentinel"); Back lands below it, the top panel closes the way its X or Escape would, and if
+// anything is still open the step goes back on. When the last panel closes another way, KillSheet steps back off it.
+// History is only changed when no step of ours is still under way, so the count can't drift however fast panels
+// open and close.
+const backStack = []; // open panels, top last
+let backPending = false; // our own history.back() hasn't landed yet
+const onBackSentinel = () => !!(window.history.state && window.history.state.ksPanel);
+function backArm() { if (!backPending && backStack.length && !onBackSentinel()) window.history.pushState({ ksPanel: true }, ""); }
+function backDisarm() { if (!backPending && !backStack.length && onBackSentinel()) { backPending = true; window.history.back(); } }
+if (typeof window !== "undefined" && window.history && window.history.pushState) window.addEventListener("popstate", () => {
+  if (backPending) { backPending = false; backArm(); return; } // our own step back; a panel may have opened meanwhile
+  if (onBackSentinel()) return; // stepped forward onto it: nothing to close
+  const top = backStack[backStack.length - 1];
+  if (top) top.back();
+  setTimeout(backArm, 0); // still something open (or the panel didn't close): put the step back
+});
+function useBackClose(open, onClose) {
+  const closeRef = React.useRef(onClose);
+  closeRef.current = onClose;
+  React.useEffect(() => {
+    if (!open || !window.history || !window.history.pushState) return;
+    const entry = { back: () => closeRef.current() };
+    backStack.push(entry);
+    backArm();
+    return () => {
+      const i = backStack.indexOf(entry);
+      if (i >= 0) backStack.splice(i, 1);
+      setTimeout(backDisarm, 0); // after React has finished: another panel may be opening in its place
+    };
+  }, [open]);
+}
 // For the cloud backup, which reads and writes outside React (useLocalStorage above picks changes up from "ks-sync-applied").
 function readStored(key, fallback) { try { const v = window.localStorage.getItem(LS_PREFIX + key); return v !== null ? JSON.parse(v) : fallback; } catch (e) { return fallback; } }
 function writeStored(key, value) { try { if (!window.__ksFrozen) window.localStorage.setItem(LS_PREFIX + key, JSON.stringify(value)); } catch (e) { /* storage full or blocked */ } }
@@ -178,7 +210,7 @@ function useKeepAwake(on) {
 class ErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { error: null }; }
   static getDerivedStateFromError(error) { return { error }; }
-  componentDidCatch(error) { if (window.console) console.error("KillSheet crashed in " + (this.props.where || "the app") + ":", error); }
+  componentDidCatch(error) { if (window.console) console.error("KillSheet crashed in " + (this.props.where || "the app") + ":", error); sendCrashReport(error, this.props.where); }
   render() {
     const error = this.state.error;
     if (!error) return this.props.children;

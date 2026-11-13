@@ -150,6 +150,17 @@ function HitBubbles({ notes, onOpen, onDismiss }) {
     const right0 = window.innerWidth - r.right, right = Math.max(8, Math.min(right0, window.innerWidth - w - 8));
     setPos({ top: r.bottom + 10, right, w, tail: Math.max(8, Math.round(right0 - right + r.width / 2 - 6)) });
   }, [notes.length]);
+  // Never in the way: a tap anywhere else, or scrolling, puts the messages away (after a moment, so the scroll that
+  // brings you to the Battle tab doesn't). Tapping a message still opens the log.
+  const notesRef = React.useRef(notes);
+  notesRef.current = notes;
+  React.useEffect(() => {
+    if (!notes.length) return;
+    const away = (e) => { if (e.target && e.target.closest && e.target.closest("[data-hit-note]")) return; notesRef.current.forEach(n => onDismiss(n.id)); };
+    let on = false;
+    const t = setTimeout(() => { on = true; document.addEventListener("pointerdown", away, true); window.addEventListener("scroll", away, { passive: true }); }, 600);
+    return () => { clearTimeout(t); if (on) { document.removeEventListener("pointerdown", away, true); window.removeEventListener("scroll", away); } };
+  }, [notes.length > 0]);
   if (!notes.length || !pos) return null;
   return (
     <div aria-live="polite" style={{ position: "fixed", top: pos.top, right: pos.right, zIndex: 10001, display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end", width: pos.w, pointerEvents: "none" }}>

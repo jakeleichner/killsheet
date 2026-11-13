@@ -417,6 +417,14 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
       if (JSON.stringify(next) !== JSON.stringify(oppRoster)) setOppRoster(next);
     }
   }, [fid]);
+  // The phone's Back gesture closes the same things Escape does, top one first.
+  useBackClose(!!shot, () => { if (shotApi.current) shotApi.current.escape(); });
+  useBackClose(!!fight, () => { if (fightApi.current) fightApi.current.escape(); });
+  useBackClose(showLog, () => setShowLog(false));
+  useBackClose(showMP, () => setShowMP(false));
+  useBackClose(addingOpp, () => setAddingOpp(false));
+  useBackClose(cardsMenu, () => setCardsMenu(false));
+  useBackClose(gameMenu, () => setGameMenu(false));
   // Escape closes whatever is on top: the target screen, the battle log, Play online, then the ⋯ menus.
   React.useEffect(() => {
     const onKey = (e) => {
@@ -880,8 +888,8 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
   const pushHitNote = (note) => {
     setHitNotes(prev => [note, ...prev.filter(x => x.id !== note.id)].slice(0, 3));
     setUnreadHits(u => u + 1);
-    setTimeout(() => setHitNotes(prev => prev.map(x => x.id === note.id ? { ...x, leaving: true } : x)), 8000);
-    setTimeout(() => setHitNotes(prev => prev.filter(x => x.id !== note.id)), 8300);
+    setTimeout(() => setHitNotes(prev => prev.map(x => x.id === note.id ? { ...x, leaving: true } : x)), 5000);
+    setTimeout(() => setHitNotes(prev => prev.filter(x => x.id !== note.id)), 5300);
   };
   const openLog = (focus) => { setLogFocus(focus || null); setShowLog(true); setUnreadHits(0); setHitNotes([]); };
 

@@ -12,12 +12,34 @@ function deviceSummary() {
   return device + " · " + browser + (isHomeScreenApp() ? " · Home Screen app" : "");
 }
 
+// Crashes report themselves to the admin page: the error, version, device type, screen size and tab, nothing personal.
+// Each different error goes once a day from a device, and only from the live site: not the preview or the self-test's
+// deliberate crash. window.__ksCrashReportsOn lets the self-test try it.
+function sendCrashReport(error, where) {
+  if (!window.__ksCrashReportsOn && (!window.KS_VERSION || /[?&]selftest\b/.test(window.location.search) || window.__ksCrashTest)) return false;
+  const text = String((error && error.message) || error || "unknown error").slice(0, 300);
+  const sig = (where || "app") + "|" + text, day = new Date().toISOString().slice(0, 10);
+  const sent = readStored("crashSent", {});
+  if (sent[sig] === day) return false;
+  const keep = {};
+  Object.keys(sent).filter(k => sent[k] === day).slice(-20).forEach(k => { keep[k] = day; });
+  keep[sig] = day;
+  writeStored("crashSent", keep);
+  const stack = String((error && error.stack) || "").split("\n").slice(0, 6).join("\n");
+  fetchWithin("/api/feedback", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+    kind: "crash", message: "KillSheet crashed" + (where ? " in the " + where + " tab" : "") + ": " + text,
+    version: window.KS_VERSION || "preview", device: deviceSummary(), screen: window.innerWidth + "x" + window.innerHeight, tab: where || "", error: (text + "\n" + stack).slice(0, 1000),
+  }) }).catch(() => {});
+  return true;
+}
+
 function FeedbackForm({ onClose, tab, error }) {
   const [kind, setKind] = useState(error ? "problem" : "idea");
   const [message, setMessage] = useState("");
   const [contact, setContact] = useState("");
   const [trap, setTrap] = useState(""); // hidden from people; spam robots fill it in
   const [state, setState] = useState("ready"); // ready, sending, sent, failed, busy
+  useBackClose(true, onClose);
   React.useEffect(() => {
     const onKey = (e) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
@@ -77,6 +99,7 @@ function FeedbackForm({ onClose, tab, error }) {
 
 // killsheet.app/?admin: the owner's page for reading feedback.
 function AdminPage({ onClose }) {
+  useBackClose(true, onClose);
   const [key, setKey] = useState("");
   const [items, setItems] = useState(null);
   const [note, setNote] = useState("");
@@ -92,7 +115,7 @@ function AdminPage({ onClose }) {
     call("DELETE", "?id=" + m.id).then(r => { if (r.ok) setItems(list => list.filter(x => x.id !== m.id)); else setNote("Couldn't delete (error " + r.status + ")."); })
       .catch(() => setNote("Couldn't reach the site. Check your connection."));
   };
-  const kindLabel = Object.fromEntries(FEEDBACK_KINDS);
+  const kindLabel = { ...Object.fromEntries(FEEDBACK_KINDS), crash: "Crash, sent automatically" };
   return ReactDOM.createPortal(
     <div role="dialog" aria-modal="true" aria-label="Admin" style={{ position: "fixed", inset: 0, zIndex: 9300, background: "var(--bg)", overflowY: "auto", color: "var(--text)", fontFamily: "'Inter', sans-serif" }}>
       <div style={{ maxWidth: 720, margin: "0 auto", padding: "16px 16px 40px" }}>
@@ -108,7 +131,7 @@ function AdminPage({ onClose }) {
         {note && <p role="status" style={{ ...mu, fontSize: 14, margin: "0 0 10px" }}>{note}</p>}
         {items && items.length === 0 && <p style={{ ...mu, fontSize: 14 }}>No messages.</p>}
         {items && items.map(m => (
-          <div key={m.id} data-feedback={m.id} style={{ ...cd, padding: 12, marginBottom: 8, borderLeft: "3px solid " + (m.kind === "problem" ? "#E0664A" : m.kind === "idea" ? "var(--blue)" : "var(--line)") }}>
+          <div key={m.id} data-feedback={m.id} style={{ ...cd, padding: 12, marginBottom: 8, borderLeft: "3px solid " + (m.kind === "problem" || m.kind === "crash" ? "#E0664A" : m.kind === "idea" ? "var(--blue)" : "var(--line)") }}>
             <div style={{ display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
               <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text2)", textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "'Rajdhani', sans-serif" }}>{kindLabel[m.kind] || m.kind}</span>
               <span style={{ fontSize: 12, color: "var(--muted)", flex: 1 }}>{new Date(m.created_at).toLocaleString()}</span>
