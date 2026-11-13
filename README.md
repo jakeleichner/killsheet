@@ -358,6 +358,7 @@ Estimated 2-3 hours. Should be its own focused session with its own QA pass (mix
 - Pre-ship checker added: `python3 tools/check.py` (hooks before early returns, every tab has an icon and panel, unique localStorage keys, no direct localStorage use, print class, JSX script tag).
 
 ### Other open tasks (rough priority order)
+- **A switch for crash reports (owner, Nov 13: option 1).** In Settings: "Send crash reports" (on by default), saying what's sent (the error, version, device type, screen size, tab; nothing personal). `sendCrashReport` checks it. The crash screen adds "A crash report was sent. You can turn this off in Settings." The Privacy page says it can be switched off. No pop-up.
 - **KTDash comparison (Nov 2, 2026): decisions for the owner.** Things ktdash.app does that KillSheet doesn't. Each is the owner's call; Claude's view in brackets.
   1. **Decision: accounts and cloud sync**, so rosters follow you to any device. (Already foundation 1 below; KTDash's biggest edge.)
   2. **Decision: a community roster board** with browsing and import, like KTDash's Roster Spotlight and player pages. (Already planned as Community board v1, decided Nov 1; waits on the owner's go-ahead to build.)
