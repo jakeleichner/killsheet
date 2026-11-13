@@ -3,6 +3,9 @@
 // notice changed, in plain words. kind: "new", "better" or "fixed". Add an entry with every such change.
 const CHANGELOG = [
   { date: "2026-11-14", items: [
+    ["better", "The Rosters tab is easier to find your way around: Your rosters, then New roster to pick a team, then building, with a Back button at the top of each step."],
+    ["better", "While building, Save sits at the top right and Start game stays at the bottom of the screen."],
+    ["better", "During a game, the Rosters tab still shows your rosters: View cards opens any saved roster's datacards, and a bar at the top takes you back to the game or ends it."],
     ["new", "Tap an operative's photo to see it full size."],
     ["better", "On the Shoot and Fight screens, photos slam in with the names. New photos are saved sharper."],
     ["new", "In online games, your opponent sees the photos of your operatives, and you see theirs. Turn it off in Settings, under Privacy."],

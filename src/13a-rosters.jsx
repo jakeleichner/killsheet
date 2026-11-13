@@ -2,12 +2,12 @@
 // The roster library: the rosters saved on this device, each with Play, Edit and a menu (Rename, Copy code, Delete).
 // The first piece moved out of the Battle tab's Builder (owner, Nov 13: the middle path). It holds no data itself: the
 // Builder passes the list and what each button does. locked: a game is in progress, so Play and Edit wait for it to end.
-function SavedRosterLibrary({ rosters, menuId, setMenuId, onPlay, onEdit, onRename, onCopy, onDelete, locked }) {
+function SavedRosterLibrary({ rosters, menuId, setMenuId, onPlay, onEdit, onRename, onCopy, onDelete, locked, onView }) {
   if (!rosters.length) return null;
   const small = { ...bs("var(--muted)"), padding: "5px 10px", fontSize: 11 };
   return (
     <div id="ks-saved-rosters" style={{ marginBottom: 12 }}>
-      <div style={{ ...h3, marginBottom: 6 }}>My saved rosters</div>
+      <div style={{ ...h3, marginBottom: 6 }}>Saved rosters</div>
       {rosters.map(r => {
         const fc = FACTIONS[r.f];
         const menu = menuId === r.id;
@@ -18,8 +18,12 @@ function SavedRosterLibrary({ rosters, menuId, setMenuId, onPlay, onEdit, onRena
                 <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif", overflowWrap: "anywhere" }}>{r.name}</div>
                 <div style={{ fontSize: 12, color: "var(--muted)" }}>{fc ? fc.name : "Unknown team"} {"\u00b7"} {r.o.length} operative{r.o.length === 1 ? "" : "s"} {"\u00b7"} {new Date(r.savedAt).toLocaleDateString()}</div>
               </div>
-              <button onClick={() => onPlay(r)} disabled={locked} title={locked ? "End the game in progress first" : "Start a game with this roster"} style={{ ...bs("#5A9C3A"), padding: "6px 12px", fontSize: 12, opacity: locked ? 0.4 : 1 }}>Play</button>
-              <button onClick={() => onEdit(r)} disabled={locked} title={locked ? "End the game in progress first" : "Load it to change operatives or equipment"} style={{ ...bs("var(--muted)"), padding: "6px 10px", fontSize: 12, opacity: locked ? 0.4 : 1 }}>Edit</button>
+              {locked
+                ? onView && <button onClick={() => onView(r)} title="Read its datacards" style={{ ...bs("var(--muted)"), padding: "6px 10px", fontSize: 12 }}>View cards</button>
+                : <>
+                  <button onClick={() => onPlay(r)} title="Start a game with this roster" style={{ ...bs("#5A9C3A"), padding: "6px 12px", fontSize: 12 }}>Play</button>
+                  <button onClick={() => onEdit(r)} title="Load it to change operatives or equipment" style={{ ...bs("var(--muted)"), padding: "6px 10px", fontSize: 12 }}>Edit</button>
+                </>}
               <button onClick={() => setMenuId(menu ? null : r.id)} aria-label="More options" style={{ ...bs("var(--muted)"), padding: "6px 10px", fontSize: 12 }}>{"\u22EF"}</button>
             </div>
             {menu && (
@@ -119,20 +123,48 @@ function NoGameScreen({ team, rosterSize, hasSaved, onStart, onBuild, children }
   );
 }
 
-// The Rosters tab during a game: the library stays (children), but nothing here can replace the roster being played.
-// save: the save button's label, title and state, or null when there's nothing to save.
-function GameOnScreen({ team, onBack, save, children }) {
+// The Rosters tab during a game: a slim bar to get back to the game or end it, then your rosters (children), which you
+// can read (View cards) but not play or edit until the game ends.
+function GameOnScreen({ team, onBack, onEnd, children }) {
   return (
     <div data-game-on="true">
-      <div style={{ ...cd, padding: 16, borderLeft: "3px solid var(--gold)" }}>
-        <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", color: "var(--text)" }}>A game is in progress{team ? " with " + team.name : ""}</div>
-        <p style={{ ...mu, fontSize: 14, margin: "4px 0 12px" }}>To change rosters, end the game first: on the Battle tab, open the {"\u22EF"} menu and tap End game. You can save the roster you're playing now.</p>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button onClick={onBack} style={{ ...bs("#5A9C3A"), padding: "10px 14px", fontSize: 13 }}>Back to the game <Fwd /></button>
-          {save && <button onClick={save.onSave} disabled={save.state === "saved"} data-save-state={save.state} title={save.title} style={{ ...bs(save.state === "saved" ? "#5A9C3A" : "var(--accent)"), padding: "10px 14px", fontSize: 13, opacity: 1, cursor: save.state === "saved" ? "default" : "pointer" }}>{save.label}</button>}
-        </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", padding: "8px 10px", marginBottom: 12, borderRadius: 6, background: "color-mix(in srgb, var(--gold) 12%, var(--card))", border: "1px solid color-mix(in srgb, var(--gold) 40%, transparent)" }}>
+        <div style={{ flex: "1 1 160px", minWidth: 0, fontSize: 14, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", color: "var(--text)" }}>Game in progress{team ? ": " + team.name : ""}</div>
+        <button onClick={onBack} style={{ ...bs("#5A9C3A"), padding: "6px 12px", fontSize: 12 }}>Back to the game <Fwd /></button>
+        <button onClick={onEnd} style={{ ...bs("var(--muted)"), padding: "6px 12px", fontSize: 12 }}>End game</button>
       </div>
+      <p style={{ ...mu, fontSize: 13, margin: "0 0 8px" }}>Play and Edit come back when the game ends.</p>
       {children}
     </div>
+  );
+}
+
+// A saved roster's datacards, to read during a game. It opens over everything, like the other full-screen pages.
+function RosterViewer({ entry, onClose }) {
+  useBackClose(true, onClose);
+  const [open, setOpen] = useState({});
+  React.useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  const fc = FACTIONS[entry.f];
+  const ops = fc ? makeInstances(fc, entry.o).map((o, i) => entry.nk && entry.nk[i] ? { ...o, nick: entry.nk[i] } : o) : [];
+  const equip = fc ? [...(entry.fe || []).map(id => (fc.equipment.find(q => q.id === id) || {}).name), ...(entry.ue || []).map(id => (UNIV_EQUIP.find(q => q.id === id) || {}).name)].filter(Boolean) : [];
+  return ReactDOM.createPortal(
+    <div role="dialog" aria-modal="true" aria-label={"Datacards: " + entry.name} style={{ position: "fixed", inset: 0, zIndex: 9200, background: "var(--bg)", overflowY: "auto", color: "var(--text)", fontFamily: "'Inter', sans-serif" }}>
+      <div className="ks-appear" style={{ maxWidth: 720, margin: "0 auto", padding: "16px 16px 40px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+          <div style={{ flex: 1, minWidth: 0, fontSize: 22, fontWeight: 700, color: "var(--accent)", fontFamily: "'Rajdhani', sans-serif", overflowWrap: "anywhere" }}>{entry.name}</div>
+          <button autoFocus onClick={onClose} aria-label="Close" style={{ ...bs("var(--muted)"), padding: "8px 10px", display: "inline-flex" }}><Icon name="x" size={18} /></button>
+        </div>
+        <p style={{ ...mu, fontSize: 13, margin: "0 0 12px" }}>{fc ? fc.name : "Unknown team"} {"\u00b7"} {ops.length} operative{ops.length === 1 ? "" : "s"}{equip.length ? " \u00b7 Equipment: " + equip.join(", ") : ""}</p>
+        {fc ? ops.map(op => (
+          <Datacard key={op.id} op={op} preview f={fc} fc={fc.color} equipWeapons={[]} equipEffects={[]} photo={photoFor(entry.f, op.id)}
+            collapsed={!open[op.id]} onToggle={() => setOpen(o => ({ ...o, [op.id]: !o[op.id] }))} />
+        )) : <p style={mu}>This team is no longer in KillSheet.</p>}
+      </div>
+    </div>,
+    document.body
   );
 }
