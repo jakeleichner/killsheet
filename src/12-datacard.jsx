@@ -186,10 +186,13 @@ function HitBubble({ n, tail, animate, onOpen, onDismiss }) {
   );
 }
 
-function Datacard({ side, op, onRename, f, fc, equipWeapons, equipEffects, curWounds, onWound, collapsed, onToggle, ignoreInjured, cp, setCp, isActivated, onActivate, order, onOrder, uses, setUse, carried, onCarried, narrow, requestFight, requestShoot, scars }) {
+function Datacard({ side, op, preview, onRename, f, fc, equipWeapons, equipEffects, curWounds, onWound, collapsed, onToggle, ignoreInjured, cp, setCp, isActivated, onActivate, order, onOrder, uses, setUse, carried, onCarried, narrow, requestFight, requestShoot, scars }) {
   const [pickWeapons, setPickWeapons] = useState(false);
   const { feat } = React.useContext(FeatureCtx);
   const opRules = React.useMemo(() => opWeaponRules(op), [op]);
+  // preview: the Rosters tab, before a game. The card is for reading and building (stats, weapons, abilities, names,
+  // loadout), so the game's controls stay off: wounds, health bar, orders, Ready, Shoot and Fight, use pips, damage.
+  if (preview) { onWound = null; onOrder = null; onActivate = null; requestShoot = null; requestFight = null; uses = null; scars = null; curWounds = undefined; }
   const loadout = op.abilities.find(a => /^Loadout/i.test(a));
   const bases = [...new Set([...op.ranged, ...op.melee].map(x => weaponBase(x.name)))];
   const chosen = carried && carried.length ? new Set(carried) : null;
@@ -311,7 +314,7 @@ function Datacard({ side, op, onRename, f, fc, equipWeapons, equipEffects, curWo
         </div>
 
         {/* Health bar: always visible, in the same 3px of height the old wound strip used (it overlaps the header's padding). */}
-        <HealthBar cw={cw} maxW={maxW} color={woundColorTone} />
+        {!preview && <HealthBar cw={cw} maxW={maxW} color={woundColorTone} />}
 
         {/* Expanded content */}
         {!collapsed && (
@@ -331,11 +334,11 @@ function Datacard({ side, op, onRename, f, fc, equipWeapons, equipEffects, curWo
               {/* Interactive wounds cell */}
               <div style={{ textAlign: "center", padding: "10px 4px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
-                  <button className="compact-btn" onClick={(e) => { e.stopPropagation(); onWound(-1); }} style={{ width: 32, height: 32, border: "1px solid " + DS.divider, borderRadius: 4, background: DS.bgElevated, color: DS.threat, cursor: "pointer", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, lineHeight: 1 }}>{"\u2212"}</button>
+                  {onWound && <button className="compact-btn" onClick={(e) => { e.stopPropagation(); onWound(-1); }} style={{ width: 32, height: 32, border: "1px solid " + DS.divider, borderRadius: 4, background: DS.bgElevated, color: DS.threat, cursor: "pointer", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, lineHeight: 1 }}>{"\u2212"}</button>}
                   <div style={{ fontFamily: DS.fontDisplay, fontSize: 28, fontWeight: 700, color: woundColorTone, lineHeight: 1, minWidth: 50 }}>
-                    {cw}<span style={{ fontSize: 13, color: DS.textSecondary, fontWeight: 500 }}>/{maxW}</span>
+                    {cw}{!preview && <span style={{ fontSize: 13, color: DS.textSecondary, fontWeight: 500 }}>/{maxW}</span>}
                   </div>
-                  <button className="compact-btn" onClick={(e) => { e.stopPropagation(); onWound(1); }} style={{ width: 32, height: 32, border: "1px solid " + DS.divider, borderRadius: 4, background: DS.bgElevated, color: DS.success, cursor: "pointer", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, lineHeight: 1 }}>+</button>
+                  {onWound && <button className="compact-btn" onClick={(e) => { e.stopPropagation(); onWound(1); }} style={{ width: 32, height: 32, border: "1px solid " + DS.divider, borderRadius: 4, background: DS.bgElevated, color: DS.success, cursor: "pointer", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, lineHeight: 1 }}>+</button>}
                 </div>
                 <div style={{ fontFamily: DS.fontDisplay, fontSize: 14, fontWeight: 600, color: injured ? DS.threat : (rawInjured && ignoreInjured) ? DS.success : DS.textSecondary, marginTop: 6, letterSpacing: "0.1em", textTransform: "uppercase" }}><Term k="Wounds" style={rawInjured || incapacitated ? { color: "inherit" } : undefined}>{injured ? "Injured" : incapacitated ? "Down" : rawInjured ? "Low" : "Wounds"}</Term></div>
               </div>

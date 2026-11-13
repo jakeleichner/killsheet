@@ -8575,10 +8575,13 @@ function HitBubble({ n, tail, animate, onOpen, onDismiss }) {
   );
 }
 
-function Datacard({ side, op, onRename, f, fc, equipWeapons, equipEffects, curWounds, onWound, collapsed, onToggle, ignoreInjured, cp, setCp, isActivated, onActivate, order, onOrder, uses, setUse, carried, onCarried, narrow, requestFight, requestShoot, scars }) {
+function Datacard({ side, op, preview, onRename, f, fc, equipWeapons, equipEffects, curWounds, onWound, collapsed, onToggle, ignoreInjured, cp, setCp, isActivated, onActivate, order, onOrder, uses, setUse, carried, onCarried, narrow, requestFight, requestShoot, scars }) {
   const [pickWeapons, setPickWeapons] = useState(false);
   const { feat } = React.useContext(FeatureCtx);
   const opRules = React.useMemo(() => opWeaponRules(op), [op]);
+  // preview: the Rosters tab, before a game. The card is for reading and building (stats, weapons, abilities, names,
+  // loadout), so the game's controls stay off: wounds, health bar, orders, Ready, Shoot and Fight, use pips, damage.
+  if (preview) { onWound = null; onOrder = null; onActivate = null; requestShoot = null; requestFight = null; uses = null; scars = null; curWounds = undefined; }
   const loadout = op.abilities.find(a => /^Loadout/i.test(a));
   const bases = [...new Set([...op.ranged, ...op.melee].map(x => weaponBase(x.name)))];
   const chosen = carried && carried.length ? new Set(carried) : null;
@@ -8700,7 +8703,7 @@ function Datacard({ side, op, onRename, f, fc, equipWeapons, equipEffects, curWo
         </div>
 
         {/* Health bar: always visible, in the same 3px of height the old wound strip used (it overlaps the header's padding). */}
-        <HealthBar cw={cw} maxW={maxW} color={woundColorTone} />
+        {!preview && <HealthBar cw={cw} maxW={maxW} color={woundColorTone} />}
 
         {/* Expanded content */}
         {!collapsed && (
@@ -8720,11 +8723,11 @@ function Datacard({ side, op, onRename, f, fc, equipWeapons, equipEffects, curWo
               {/* Interactive wounds cell */}
               <div style={{ textAlign: "center", padding: "10px 4px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
-                  <button className="compact-btn" onClick={(e) => { e.stopPropagation(); onWound(-1); }} style={{ width: 32, height: 32, border: "1px solid " + DS.divider, borderRadius: 4, background: DS.bgElevated, color: DS.threat, cursor: "pointer", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, lineHeight: 1 }}>{"\u2212"}</button>
+                  {onWound && <button className="compact-btn" onClick={(e) => { e.stopPropagation(); onWound(-1); }} style={{ width: 32, height: 32, border: "1px solid " + DS.divider, borderRadius: 4, background: DS.bgElevated, color: DS.threat, cursor: "pointer", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, lineHeight: 1 }}>{"\u2212"}</button>}
                   <div style={{ fontFamily: DS.fontDisplay, fontSize: 28, fontWeight: 700, color: woundColorTone, lineHeight: 1, minWidth: 50 }}>
-                    {cw}<span style={{ fontSize: 13, color: DS.textSecondary, fontWeight: 500 }}>/{maxW}</span>
+                    {cw}{!preview && <span style={{ fontSize: 13, color: DS.textSecondary, fontWeight: 500 }}>/{maxW}</span>}
                   </div>
-                  <button className="compact-btn" onClick={(e) => { e.stopPropagation(); onWound(1); }} style={{ width: 32, height: 32, border: "1px solid " + DS.divider, borderRadius: 4, background: DS.bgElevated, color: DS.success, cursor: "pointer", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, lineHeight: 1 }}>+</button>
+                  {onWound && <button className="compact-btn" onClick={(e) => { e.stopPropagation(); onWound(1); }} style={{ width: 32, height: 32, border: "1px solid " + DS.divider, borderRadius: 4, background: DS.bgElevated, color: DS.success, cursor: "pointer", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, lineHeight: 1 }}>+</button>}
                 </div>
                 <div style={{ fontFamily: DS.fontDisplay, fontSize: 14, fontWeight: 600, color: injured ? DS.threat : (rawInjured && ignoreInjured) ? DS.success : DS.textSecondary, marginTop: 6, letterSpacing: "0.1em", textTransform: "uppercase" }}><Term k="Wounds" style={rawInjured || incapacitated ? { color: "inherit" } : undefined}>{injured ? "Injured" : incapacitated ? "Down" : rawInjured ? "Low" : "Wounds"}</Term></div>
               </div>
@@ -11248,7 +11251,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                       <div style={{ minWidth: 0 }}>
                         <div style={{ fontSize: 15, fontWeight: 700, color: f.color, fontFamily: "'Rajdhani', sans-serif" }}>{f.name}</div>
                         <div style={{ fontSize: 12, color: "var(--muted)" }}>
-                          {roster.filter(o => getWounds(o.id, o.wounds) > 0).length}/{roster.length} alive {"\u00b7"} {roster.reduce((s, o) => s + getWounds(o.id, o.wounds), 0)}W
+                          {rosterLocked ? roster.filter(o => getWounds(o.id, o.wounds) > 0).length + "/" + roster.length + " alive" : roster.length + " operative" + (roster.length === 1 ? "" : "s")} {"\u00b7"} {rosterLocked ? roster.reduce((s, o) => s + getWounds(o.id, o.wounds), 0) : roster.reduce((s, o) => s + o.wounds, 0)}W
                         </div>
                       </div>
                     </div>
@@ -11321,7 +11324,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                   return aAlive - bAlive;
                 }).map(op => {
                   const result = getEquipForOp(op);
-                  return (<Datacard key={op.id} op={op} onRename={rosterLocked ? null : () => renameOp(op)} f={f} fc={f.color} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getWounds(op.id, op.wounds)} onWound={(delta) => { logMine(op, delta, "hand"); setOpWounds(op.id, op.wounds, delta); }} collapsed={cardCollapsed[op.id] || false} onToggle={() => toggleCardCollapse(op.id)} ignoreInjured={result.ignoreInjured} cp={cp} setCp={setCp} isActivated={activated[op.id] || false} onActivate={() => setActivated(prev => ({ ...prev, [op.id]: !prev[op.id] }))} requestFight={(o, w) => startFight("mine", o, w)} requestShoot={(o, w) => startShot("mine", o, w)} scars={scars["mine:" + op.id]} order={orders[op.id] || "conceal"} onOrder={() => setOrders(prev => ({ ...prev, [op.id]: prev[op.id] === "engage" ? "conceal" : "engage" }))} uses={feat.uses ? battleUses : null} setUse={(k, n) => setBattleUses(prev => ({ ...prev, [k]: n }))} carried={carried[op.id]} onCarried={(list) => setCarried(prev => ({ ...prev, [op.id]: list }))} />);
+                  return (<Datacard key={op.id} op={op} preview={!rosterLocked} onRename={rosterLocked ? null : () => renameOp(op)} f={f} fc={f.color} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getWounds(op.id, op.wounds)} onWound={(delta) => { logMine(op, delta, "hand"); setOpWounds(op.id, op.wounds, delta); }} collapsed={cardCollapsed[op.id] || false} onToggle={() => toggleCardCollapse(op.id)} ignoreInjured={result.ignoreInjured} cp={cp} setCp={setCp} isActivated={activated[op.id] || false} onActivate={() => setActivated(prev => ({ ...prev, [op.id]: !prev[op.id] }))} requestFight={(o, w) => startFight("mine", o, w)} requestShoot={(o, w) => startShot("mine", o, w)} scars={scars["mine:" + op.id]} order={orders[op.id] || "conceal"} onOrder={() => setOrders(prev => ({ ...prev, [op.id]: prev[op.id] === "engage" ? "conceal" : "engage" }))} uses={feat.uses ? battleUses : null} setUse={(k, n) => setBattleUses(prev => ({ ...prev, [k]: n }))} carried={carried[op.id]} onCarried={(list) => setCarried(prev => ({ ...prev, [op.id]: list }))} />);
                 })}
 
               </div>
@@ -11349,7 +11352,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                     {oppRoster.operatives.map(op => {
                       const result = oppEquip(op);
                       const oCollapsed = oppCollapsed[op.id] || false;
-                      return (<Datacard key={"opp-" + op.id} side="opp" narrow op={op} f={oppF} fc={oppF ? oppF.color : "var(--muted)"} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getOppWounds(op.id, op.wounds)} onWound={(delta) => { logOpp(op, delta, "hand"); if (mp && mp.status === "connected" && delta < 0) { mp.send({ type: "applyRemoteDamage", opId: op.id, amount: -delta }); } else if (mp && mp.status === "connected" && delta > 0) { mp.send({ type: "applyRemoteHeal", opId: op.id, amount: delta }); } else { setOppWound(op.id, op.wounds, delta); if (delta) mp.sendOrQueue({ type: delta < 0 ? "applyRemoteDamage" : "applyRemoteHeal", opId: op.id, amount: Math.abs(delta) }); } }} collapsed={oCollapsed} onToggle={() => setOppCollapsed(prev => ({ ...prev, [op.id]: !oCollapsed }))} ignoreInjured={result.ignoreInjured} cp={0} setCp={() => {}} requestFight={mp && mp.status === "connected" ? undefined : (o, w) => startFight("opp", o, w)} requestShoot={mp && mp.status === "connected" ? undefined : (o, w) => startShot("opp", o, w)} scars={scars["opp:" + op.id]} />);
+                      return (<Datacard key={"opp-" + op.id} side="opp" narrow op={op} preview={!rosterLocked} f={oppF} fc={oppF ? oppF.color : "var(--muted)"} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getOppWounds(op.id, op.wounds)} onWound={(delta) => { logOpp(op, delta, "hand"); if (mp && mp.status === "connected" && delta < 0) { mp.send({ type: "applyRemoteDamage", opId: op.id, amount: -delta }); } else if (mp && mp.status === "connected" && delta > 0) { mp.send({ type: "applyRemoteHeal", opId: op.id, amount: delta }); } else { setOppWound(op.id, op.wounds, delta); if (delta) mp.sendOrQueue({ type: delta < 0 ? "applyRemoteDamage" : "applyRemoteHeal", opId: op.id, amount: Math.abs(delta) }); } }} collapsed={oCollapsed} onToggle={() => setOppCollapsed(prev => ({ ...prev, [op.id]: !oCollapsed }))} ignoreInjured={result.ignoreInjured} cp={0} setCp={() => {}} requestFight={mp && mp.status === "connected" ? undefined : (o, w) => startFight("opp", o, w)} requestShoot={mp && mp.status === "connected" ? undefined : (o, w) => startShot("opp", o, w)} scars={scars["opp:" + op.id]} />);
                     })}
                   </div>
                 </div>
@@ -11409,7 +11412,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                       {oppRoster.operatives.map(op => {
                         const result = oppEquip(op);
                         const oCollapsed = oppCollapsed[op.id] || false;
-                        return (<Datacard key={"opp-m-" + op.id} side="opp" op={op} f={oppF} fc={oppF ? oppF.color : "var(--muted)"} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getOppWounds(op.id, op.wounds)} onWound={(delta) => { logOpp(op, delta, "hand"); if (mp && mp.status === "connected" && delta < 0) { mp.send({ type: "applyRemoteDamage", opId: op.id, amount: -delta }); } else if (mp && mp.status === "connected" && delta > 0) { mp.send({ type: "applyRemoteHeal", opId: op.id, amount: delta }); } else { setOppWound(op.id, op.wounds, delta); if (delta) mp.sendOrQueue({ type: delta < 0 ? "applyRemoteDamage" : "applyRemoteHeal", opId: op.id, amount: Math.abs(delta) }); } }} collapsed={oCollapsed} onToggle={() => setOppCollapsed(prev => ({ ...prev, [op.id]: !oCollapsed }))} ignoreInjured={result.ignoreInjured} cp={0} setCp={() => {}} requestFight={mp && mp.status === "connected" ? undefined : (o, w) => startFight("opp", o, w)} requestShoot={mp && mp.status === "connected" ? undefined : (o, w) => startShot("opp", o, w)} scars={scars["opp:" + op.id]} />);
+                        return (<Datacard key={"opp-m-" + op.id} side="opp" op={op} preview={!rosterLocked} f={oppF} fc={oppF ? oppF.color : "var(--muted)"} equipWeapons={result.weapons} equipEffects={result.effects} curWounds={getOppWounds(op.id, op.wounds)} onWound={(delta) => { logOpp(op, delta, "hand"); if (mp && mp.status === "connected" && delta < 0) { mp.send({ type: "applyRemoteDamage", opId: op.id, amount: -delta }); } else if (mp && mp.status === "connected" && delta > 0) { mp.send({ type: "applyRemoteHeal", opId: op.id, amount: delta }); } else { setOppWound(op.id, op.wounds, delta); if (delta) mp.sendOrQueue({ type: delta < 0 ? "applyRemoteDamage" : "applyRemoteHeal", opId: op.id, amount: Math.abs(delta) }); } }} collapsed={oCollapsed} onToggle={() => setOppCollapsed(prev => ({ ...prev, [op.id]: !oCollapsed }))} ignoreInjured={result.ignoreInjured} cp={0} setCp={() => {}} requestFight={mp && mp.status === "connected" ? undefined : (o, w) => startFight("opp", o, w)} requestShoot={mp && mp.status === "connected" ? undefined : (o, w) => startShot("opp", o, w)} scars={scars["opp:" + op.id]} />);
                       })}
                     </div>
                   )}
@@ -18924,6 +18927,7 @@ function FeaturesPage({ onClose, focus, onNews, onFeedback, account, onAccount }
 // notice changed, in plain words. kind: "new", "better" or "fixed". Add an entry with every such change.
 const CHANGELOG = [
   { date: "2026-11-13", items: [
+    ["better", "Datacards on the Rosters tab are for building: stats, weapons and abilities, without wound buttons, orders, or Shoot and Fight. Those appear once the game starts."],
     ["new", "If something breaks, KillSheet sends a crash report so it can be fixed: the error and your device type, nothing that identifies you. You can turn it off in Settings, under Privacy."],
     ["new", "A new Rosters tab for building, saving and sharing rosters. The Battle tab is now just the game: Start game or Play on a saved roster takes you there."],
     ["better", "The save button shows whether your roster is saved: Save roster, Saved, or Save changes after you edit a saved roster."],
@@ -20944,6 +20948,12 @@ async function runSelfTest(hooks) {
     await click(all("button").find(b => b.textContent.trim() === "Edit roster") || btn("Ploys & rules", true), "Edit roster");
     const edit = all("button").find(b => b.textContent.trim() === "Edit roster"); if (edit) await click(edit, "Edit roster");
     if (store("rosterLocked") || store("tab") !== "rosters" || !btn("Start game")) throw new Error("Edit roster didn't go to the Rosters tab to change it");
+    // Datacards before a game are for reading and building: no wounds, health bar, orders, Shoot or Fight.
+    const dcs = btn("Datacards", true); if (dcs) await click(dcs, "Datacards");
+    const cards = all(".datacard-print");
+    if (!cards.length) throw new Error("no datacards to preview on the Rosters tab");
+    const gameControl = (b) => /^(Shoot|Fight)\b/.test(b.getAttribute("aria-label") || "") || /^[\u2212+]$/.test(b.textContent.trim()) || /^(Ready|Expended)$/.test(b.textContent.trim());
+    if (cards.some(c => [...c.querySelectorAll("button")].some(gameControl))) throw new Error("datacards before a game show game controls");
     return "no-game screen with Play, game starts on Battle, Rosters tab locked during the game, back and forth";
   });
   await step("Old saves get current datacards", async () => {

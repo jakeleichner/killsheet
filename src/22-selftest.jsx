@@ -1415,6 +1415,12 @@ async function runSelfTest(hooks) {
     await click(all("button").find(b => b.textContent.trim() === "Edit roster") || btn("Ploys & rules", true), "Edit roster");
     const edit = all("button").find(b => b.textContent.trim() === "Edit roster"); if (edit) await click(edit, "Edit roster");
     if (store("rosterLocked") || store("tab") !== "rosters" || !btn("Start game")) throw new Error("Edit roster didn't go to the Rosters tab to change it");
+    // Datacards before a game are for reading and building: no wounds, health bar, orders, Shoot or Fight.
+    const dcs = btn("Datacards", true); if (dcs) await click(dcs, "Datacards");
+    const cards = all(".datacard-print");
+    if (!cards.length) throw new Error("no datacards to preview on the Rosters tab");
+    const gameControl = (b) => /^(Shoot|Fight)\b/.test(b.getAttribute("aria-label") || "") || /^[\u2212+]$/.test(b.textContent.trim()) || /^(Ready|Expended)$/.test(b.textContent.trim());
+    if (cards.some(c => [...c.querySelectorAll("button")].some(gameControl))) throw new Error("datacards before a game show game controls");
     return "no-game screen with Play, game starts on Battle, Rosters tab locked during the game, back and forth";
   });
   await step("Old saves get current datacards", async () => {

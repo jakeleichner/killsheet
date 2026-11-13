@@ -3,6 +3,7 @@
 // notice changed, in plain words. kind: "new", "better" or "fixed". Add an entry with every such change.
 const CHANGELOG = [
   { date: "2026-11-13", items: [
+    ["better", "Datacards on the Rosters tab are for building: stats, weapons and abilities, without wound buttons, orders, or Shoot and Fight. Those appear once the game starts."],
     ["new", "If something breaks, KillSheet sends a crash report so it can be fixed: the error and your device type, nothing that identifies you. You can turn it off in Settings, under Privacy."],
     ["new", "A new Rosters tab for building, saving and sharing rosters. The Battle tab is now just the game: Start game or Play on a saved roster takes you there."],
     ["better", "The save button shows whether your roster is saved: Save roster, Saved, or Save changes after you edit a saved roster."],
