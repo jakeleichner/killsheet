@@ -98,7 +98,7 @@ function ShootScreen({ shot, dropped, options, others, sideColor, onAct, onClose
     faced.current = key;
     if (!fresh || !feat.fx || !document.body.animate) return;
     const screen = document.querySelector("[role=dialog][aria-label='Shoot']");
-    playVersusFx(screen, ["atk", "t"].map(r => document.querySelector("[data-shot-card] [data-vs-name='" + r + "']")), document.querySelector("[data-vs='shoot']"));
+    playVersusFx(screen, ["atk", "t"].map(r => document.querySelector("[data-shot-card] [data-vs-slam='" + r + "']")), document.querySelector("[data-vs='shoot']"));
   }, [t && t.op && t.op.id, s.ti]);
   React.useEffect(() => { const i = setInterval(() => setNow(Date.now()), 5000); return () => clearInterval(i); }, []);
   React.useEffect(() => { setEntry(null); }, [s.stage, s.ti]);
@@ -171,8 +171,10 @@ function ShootScreen({ shot, dropped, options, others, sideColor, onAct, onClose
           <div style={{ ...h3, marginBottom: 0, color: col, flex: 1, minWidth: 0 }}>{isAtk ? "Shooting" : s.targets.length > 1 ? "Target " + (s.ti + 1) + " of " + s.targets.length : "Target"}{s.online && mine(owner) ? " (you)" : ""}</div>
           <span style={{ fontSize: 14, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", color: hp <= 0 ? "#B8341C" : hp < op.max / 2 ? "var(--gold)" : "var(--text)" }}>{hp}/{op.max}W</span>
         </div>
-        {photoOf && photoOf(op, sideOf(owner)) && <img data-vs-photo={role} src={photoOf(op, sideOf(owner))} alt="" style={{ display: "block", width: 64, height: 64, borderRadius: 8, objectFit: "cover", margin: "4px 0", border: "2px solid " + col, opacity: hp <= 0 ? 0.5 : 1 }} />}
-        <div data-vs-name={role} style={{ ...vsName, textDecoration: hp <= 0 ? "line-through" : "none" }}>{opLabel(op)}</div>
+        <div data-vs-slam={role}>
+          {photoOf && photoOf(op, sideOf(owner)) && <button className="compact-btn" data-vs-photo={role} onClick={() => showPhoto(photoOf(op, sideOf(owner)), opLabel(op))} aria-label={"Show the photo of " + opLabel(op)} style={{ display: "block", padding: 0, background: "none", border: "none", cursor: "zoom-in", margin: "4px 0" }}><img src={photoOf(op, sideOf(owner))} alt="" style={{ display: "block", width: 64, height: 64, borderRadius: 8, objectFit: "cover", border: "2px solid " + col, opacity: hp <= 0 ? 0.5 : 1 }} /></button>}
+          <div data-vs-name={role} style={{ ...vsName, textDecoration: hp <= 0 ? "line-through" : "none" }}>{opLabel(op)}</div>
+        </div>
         <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
           {isAtk ? <>{s.atk.weapon.name} {"·"} {s.atk.weapon.atk} {"·"} {s.atk.weapon.hit} {"·"} {s.atk.weapon.dmg}{s.atk.weapon.wr && s.atk.weapon.wr !== "-" ? " · " + s.atk.weapon.wr : ""}{op.injured ? " · injured: hits on 1 worse" : ""}</>
             : <>Save {t.save}+{t.cover ? " · in cover" : ""}{t.obscured ? " · obscured" : ""}</>}

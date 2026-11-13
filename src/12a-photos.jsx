@@ -4,7 +4,7 @@
 // big for the normal saves), shrunk to a small square first, and included in backup files. Shown with the name, never
 // instead of it, and only on your own operatives: the other side's models aren't yours, even in a mirror match.
 const PHOTO_DB = "killsheet-photos";
-const PHOTO_SIZE = 320; // pixels square; about 20-40 KB each
+const PHOTO_SIZE = 640; // pixels square, sharp enough to open full screen on a phone (photos from before are 320)
 const photoCache = {}; // "team|operative type" -> data URL
 const photoTimes = {}; // "team|operative type" -> when it last changed (for syncing with an account; 1 for photos from before)
 let photosLoaded = null;
@@ -75,7 +75,9 @@ async function syncPhotos() {
     }
   }
 }
-// A picked photo, cropped to its middle square and shrunk to PHOTO_SIZE, as a JPEG data URL.
+// A picked photo, cropped to its middle square and shrunk to PHOTO_SIZE, as a JPEG data URL. A busy picture is saved a
+// little softer so it stays under PHOTO_LIMIT, the size the opponent's phone and the account accept.
+const PHOTO_LIMIT = 180000; // characters of the data URL
 function shrinkPhoto(file) {
   return new Promise((ok, fail) => {
     const url = URL.createObjectURL(file);
@@ -86,7 +88,9 @@ function shrinkPhoto(file) {
       c.width = c.height = PHOTO_SIZE;
       c.getContext("2d").drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, PHOTO_SIZE, PHOTO_SIZE);
       URL.revokeObjectURL(url);
-      ok(c.toDataURL("image/jpeg", 0.82));
+      let out = c.toDataURL("image/jpeg", 0.8);
+      for (const q of [0.7, 0.6, 0.5]) if (out.length > PHOTO_LIMIT) out = c.toDataURL("image/jpeg", q);
+      ok(out);
     };
     img.onerror = () => { URL.revokeObjectURL(url); fail(new Error("not an image")); };
     img.src = url;
@@ -120,4 +124,31 @@ function usePhotos() {
     return () => window.removeEventListener("ks-photos", on);
   }, []);
   return version;
+}
+
+// Tap a photo to see it large: showPhoto(url, name) opens it over everything; a tap, Escape or Back closes it.
+function showPhoto(url, label) { if (url) window.dispatchEvent(new CustomEvent("ks-photo-preview", { detail: { url, label } })); }
+function PhotoPreview() {
+  const [shown, setShown] = useState(null);
+  useEffect(() => {
+    const on = (e) => setShown(e.detail);
+    window.addEventListener("ks-photo-preview", on);
+    return () => window.removeEventListener("ks-photo-preview", on);
+  }, []);
+  useBackClose(!!shown, () => setShown(null));
+  useEffect(() => {
+    if (!shown) return;
+    const onKey = (e) => { if (e.key === "Escape") setShown(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [shown]);
+  if (!shown) return null;
+  return ReactDOM.createPortal(
+    <div role="dialog" aria-modal="true" aria-label={"Photo of " + shown.label} onClick={() => setShown(null)} style={{ position: "fixed", inset: 0, zIndex: 10050, background: "rgba(0,0,0,0.85)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 16, cursor: "zoom-out" }}>
+      <img src={shown.url} alt={"Photo of " + shown.label} className="ks-appear" style={{ width: "min(92vw, 80vh, 640px)", height: "auto", borderRadius: 10, boxShadow: "0 12px 40px rgba(0,0,0,0.6)" }} />
+      <div style={{ marginTop: 12, fontSize: 18, fontWeight: 700, color: "#F1F2F5", fontFamily: "'Rajdhani', sans-serif", textAlign: "center" }}>{shown.label}</div>
+      <div style={{ marginTop: 4, fontSize: 12, color: "#9AA5B1" }}>Tap anywhere to close</div>
+    </div>,
+    document.body
+  );
 }

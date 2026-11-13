@@ -118,6 +118,7 @@ function App() {
       {showFeedback && <FeedbackForm tab={tab} onClose={() => setShowFeedback(false)} />}
       {showAdmin && <AdminPage onClose={() => setShowAdmin(false)} />}
       {showNews && <WhatsNew onClose={() => setShowNews(false)} />}
+      <PhotoPreview />
       {showMove && <MovePanel onClose={() => setShowMove(false)} />}
 
       {/* HEADER: phones show the logo above the tabs; desktop puts it inside the tab bar. The cog (Settings) sits top right on both. */}

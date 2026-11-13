@@ -1454,6 +1454,14 @@ async function runSelfTest(hooks) {
       const cardsWith = all(".datacard-print").filter(c => c.querySelector("[data-op-photo]"));
       const sameType = (store("roster") || []).filter(o => photoKey(team, o.id) === key).length;
       if (cardsWith.length !== sameType) throw new Error("the photo shows on " + cardsWith.length + " cards, not every " + op.name + " (" + sameType + ")");
+      // Tapping it opens it large, without folding the card; a tap closes it.
+      const preview = () => document.querySelector("[role=dialog][aria-label^='Photo of ']");
+      await click(cardsWith[0].querySelector("[data-op-photo]"), "the photo");
+      for (let i = 0; i < 20 && !preview(); i++) await wait(25);
+      if (!preview() || preview().querySelector("img").getAttribute("src") !== url) throw new Error("tapping the photo didn't open it large");
+      if (!cardsWith[0].querySelector("[aria-label^='Add a photo of '], [aria-label^='Change the photo of ']")) throw new Error("tapping the photo folded the card");
+      await click(preview(), "close the photo");
+      if (preview()) throw new Error("tapping the large photo didn't close it");
       // It belongs to the army: a backup carries it.
       lastBlob = null; downloadBackup(false);
       const backup = lastBlob && JSON.parse(await lastBlob.text());
