@@ -1303,6 +1303,13 @@ async function runSelfTest(hooks) {
         for (let i = 0; i < 20 && sent.length === before; i++) await wait(25);
         const reports = sent.slice(before).filter(x => x.body && x.body.kind === "crash");
         if (reports.length !== 1 || !/Self-test crash report/.test(reports[0].body.error) || reports[0].body.tab !== "Rules" || !reports[0].body.device) throw new Error("a crash report wasn't sent once with its details: " + reports.length);
+        // Switched off in Settings, Privacy (Settings is still open from Send feedback): nothing goes.
+        const sw = () => document.querySelector("#feat-crashreports [role=switch]");
+        if (!sw() || sw().getAttribute("aria-checked") !== "true") throw new Error("no Send crash reports switch, on by default, in Settings");
+        await click(sw(), "Send crash reports (off)");
+        const offBefore = sent.length;
+        if (sendCrashReport(new Error("Another self-test crash"), "Missions") || sent.length !== offBefore) throw new Error("a crash report went with the switch off");
+        await click(sw(), "Send crash reports (on)");
       } finally { delete window.__ksCrashReportsOn; }
       await click(document.querySelector("[role=dialog][aria-label='Settings'] [aria-label='Close']"), "close Settings");
       // The admin page: a wrong password is refused; the right one lists messages; Delete removes one.

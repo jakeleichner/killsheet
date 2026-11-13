@@ -35,3 +35,104 @@ function SavedRosterLibrary({ rosters, menuId, setMenuId, onPlay, onEdit, onRena
     </div>
   );
 }
+
+// Game history: wins, losses and draws overall, by your team and against each team, average score, the current streak,
+// and the last ten games with their recaps. Moved out of the Builder (middle path); remove asks the Builder (Undo).
+function GameHistoryCard({ games, open, setOpen, openGame, setOpenGame, onRemove }) {
+  if (!games.length) return null;
+  const tally = (games) => games.reduce((t, g) => ({ ...t, [g.result]: t[g.result] + 1 }), { win: 0, loss: 0, draw: 0 });
+  const all = tally(games);
+  const byTeam = Object.values(games.reduce((m, g) => { (m[g.f] = m[g.f] || { f: g.f, team: g.team, games: [] }).games.push(g); return m; }, {})).sort((a, b) => b.games.length - a.games.length);
+  const resColor = { win: "#5A9C3A", loss: "#E0664A", draw: "var(--gold)" };
+  // Lifetime numbers: win rate (draws count as games), average score, the current run of results, record against each team.
+  const winRate = Math.round(100 * all.win / games.length);
+  const avg = (k) => { const v = games.reduce((t, g) => t + (Number(g[k]) || 0), 0) / games.length; return Math.round(v * 10) / 10; };
+  let streak = 0; while (streak < games.length && games[streak].result === games[0].result) streak++;
+  const streakText = streak >= 2 ? streak + " " + { win: "wins", loss: "losses", draw: "draws" }[games[0].result] + " in a row" : null;
+  const vsTeam = Object.values(games.filter(g => g.oppId).reduce((m, g) => { (m[g.oppId] = m[g.oppId] || { f: g.oppId, team: g.opp, games: [] }).games.push(g); return m; }, {})).sort((a, b) => b.games.length - a.games.length);
+  const teamRow = (t) => {
+    const r = tally(t.games); const fc = FACTIONS[t.f];
+    return (
+      <div key={t.f} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderTop: "1px solid var(--raised)" }}>
+        <span style={{ width: 8, height: 8, borderRadius: "50%", background: fc ? fc.color : "var(--line)", flexShrink: 0 }} />
+        <span style={{ flex: 1, minWidth: 0, fontSize: 14, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.team}</span>
+        <span style={{ fontSize: 13, color: "var(--text2)", fontFamily: "'Rajdhani', sans-serif", fontWeight: 700 }}>{r.win}W {r.loss}L {r.draw}D</span>
+      </div>
+    );
+  };
+  return (
+    <div style={{ ...cd, padding: 0, marginBottom: 12, overflow: "hidden" }}>
+      <div role="button" tabIndex={0} aria-expanded={open} onClick={() => setOpen(!open)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", cursor: "pointer" }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif" }}>Game history</div>
+          <div style={{ fontSize: 12, color: "var(--muted)" }}>{games.length} game{games.length === 1 ? "" : "s"} {"\u00b7"} {all.win}W {all.loss}L {all.draw}D {"\u00b7"} {winRate}% wins</div>
+        </div>
+        <Arrow open={open} />
+      </div>
+      {open && (
+        <div style={{ padding: "0 12px 12px" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 16px", fontSize: 13, color: "var(--text2)", padding: "2px 0 8px" }}>
+            <span>Average score: <strong style={{ color: "#5A9C3A" }}>You {avg("you")}</strong> {"\u00b7"} <strong style={{ color: "#E0664A" }}>Opponents {avg("them")}</strong></span>
+            {streakText && <span>Streak: <strong style={{ color: resColor[games[0].result] }}>{streakText}</strong></span>}
+          </div>
+          <div style={{ ...h3, margin: "4px 0 4px" }}>Your teams</div>
+          {byTeam.map(teamRow)}
+          {vsTeam.length > 0 && <div style={{ ...h3, margin: "12px 0 4px" }}>Against each team</div>}
+          {vsTeam.map(teamRow)}
+          <div style={{ ...h3, margin: "12px 0 4px" }}>Recent games</div>
+          {games.slice(0, 10).map(g => (
+            <React.Fragment key={g.id}>
+            <div onClick={g.recap ? () => setOpenGame(openGame === g.id ? null : g.id) : undefined} role={g.recap ? "button" : undefined} aria-expanded={g.recap ? openGame === g.id : undefined} aria-label={g.recap ? "Recap of " + g.team + (g.opp ? " vs " + g.opp : "") : undefined}
+              style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderTop: "1px solid var(--raised)", cursor: g.recap ? "pointer" : "default" }}>
+              <span style={{ ...bg(resColor[g.result]), flexShrink: 0 }}>{g.result === "win" ? "W" : g.result === "loss" ? "L" : "D"}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.team}{g.opp ? " vs " + g.opp : ""}</div>
+                <div style={{ fontSize: 12, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{new Date(g.date).toLocaleDateString()} {"\u00b7"} {g.mission}</div>
+              </div>
+              <span style={{ flexShrink: 0, fontSize: 15, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif" }}>{g.you}{"\u2013"}{g.them}</span>
+              {g.recap && <Arrow open={openGame === g.id} />}
+              <button className="compact-btn" onClick={(e) => { e.stopPropagation(); onRemove(g); }} aria-label="Remove this game" style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer", padding: 0, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon name="x" size={16} /></button>
+            </div>
+            {openGame === g.id && g.recap && <div style={{ padding: "0 0 10px 4px" }}><GameRecap recap={g.recap} /></div>}
+            </React.Fragment>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// The Battle tab with no game: start the roster that's built, or play a saved one (children: the library).
+function NoGameScreen({ team, rosterSize, hasSaved, onStart, onBuild, children }) {
+  return (
+    <div data-no-game="true">
+      <div style={{ ...cd, padding: 16 }}>
+        <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", color: "var(--text)" }}>No game in progress</div>
+        <p style={{ ...mu, fontSize: 14, margin: "4px 0 12px" }}>{hasSaved ? "Tap Play on a saved roster, or build one in the Rosters tab." : "Build a roster in the Rosters tab, then start a game from there."}</p>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {team && rosterSize > 0 && <button onClick={onStart} style={{ ...bs("#5A9C3A"), padding: "10px 14px", fontSize: 13 }}>Start a game with {team.name} ({rosterSize}) <Fwd /></button>}
+          <button onClick={onBuild} style={{ ...bs("var(--accent)"), padding: "10px 14px", fontSize: 13 }}>{team && rosterSize ? "Change the roster" : "Build a roster"}</button>
+        </div>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// The Rosters tab during a game: the library stays (children), but nothing here can replace the roster being played.
+// save: the save button's label, title and state, or null when there's nothing to save.
+function GameOnScreen({ team, onBack, save, children }) {
+  return (
+    <div data-game-on="true">
+      <div style={{ ...cd, padding: 16, borderLeft: "3px solid var(--gold)" }}>
+        <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "'Rajdhani', sans-serif", color: "var(--text)" }}>A game is in progress{team ? " with " + team.name : ""}</div>
+        <p style={{ ...mu, fontSize: 14, margin: "4px 0 12px" }}>To change rosters, end the game first: on the Battle tab, open the {"\u22EF"} menu and tap End game. You can save the roster you're playing now.</p>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button onClick={onBack} style={{ ...bs("#5A9C3A"), padding: "10px 14px", fontSize: 13 }}>Back to the game <Fwd /></button>
+          {save && <button onClick={save.onSave} disabled={save.state === "saved"} data-save-state={save.state} title={save.title} style={{ ...bs(save.state === "saved" ? "#5A9C3A" : "var(--accent)"), padding: "10px 14px", fontSize: 13, opacity: 1, cursor: save.state === "saved" ? "default" : "pointer" }}>{save.label}</button>}
+        </div>
+      </div>
+      {children}
+    </div>
+  );
+}

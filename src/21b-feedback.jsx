@@ -14,13 +14,15 @@ function deviceSummary() {
 
 // Crashes report themselves to the admin page: the error, version, device type, screen size and tab, nothing personal.
 // Each different error goes once a day from a device, and only from the live site: not the preview or the self-test's
-// deliberate crash. window.__ksCrashReportsOn lets the self-test try it.
+// deliberate crash. Players can switch it off (Settings, Privacy: ks_crashReports). window.__ksCrashReportsOn lets the
+// self-test try it. Returns "sent", "already" (this error was sent today) or false.
 function sendCrashReport(error, where) {
+  if (readStored("crashReports", true) === false) return false;
   if (!window.__ksCrashReportsOn && (!window.KS_VERSION || /[?&]selftest\b/.test(window.location.search) || window.__ksCrashTest)) return false;
   const text = String((error && error.message) || error || "unknown error").slice(0, 300);
   const sig = (where || "app") + "|" + text, day = new Date().toISOString().slice(0, 10);
   const sent = readStored("crashSent", {});
-  if (sent[sig] === day) return false;
+  if (sent[sig] === day) return "already";
   const keep = {};
   Object.keys(sent).filter(k => sent[k] === day).slice(-20).forEach(k => { keep[k] = day; });
   keep[sig] = day;
@@ -30,7 +32,7 @@ function sendCrashReport(error, where) {
     kind: "crash", message: "KillSheet crashed" + (where ? " in the " + where + " tab" : "") + ": " + text,
     version: window.KS_VERSION || "preview", device: deviceSummary(), screen: window.innerWidth + "x" + window.innerHeight, tab: where || "", error: (text + "\n" + stack).slice(0, 1000),
   }) }).catch(() => {});
-  return true;
+  return "sent";
 }
 
 function FeedbackForm({ onClose, tab, error }) {

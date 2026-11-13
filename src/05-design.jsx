@@ -210,7 +210,7 @@ function useKeepAwake(on) {
 class ErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { error: null }; }
   static getDerivedStateFromError(error) { return { error }; }
-  componentDidCatch(error) { if (window.console) console.error("KillSheet crashed in " + (this.props.where || "the app") + ":", error); sendCrashReport(error, this.props.where); }
+  componentDidCatch(error) { if (window.console) console.error("KillSheet crashed in " + (this.props.where || "the app") + ":", error); this.setState({ reported: !!sendCrashReport(error, this.props.where) }); }
   render() {
     const error = this.state.error;
     if (!error) return this.props.children;
@@ -226,6 +226,7 @@ class ErrorBoundary extends React.Component {
             <button onClick={() => this.setState({ error: null })} style={{ ...bs("var(--muted)"), padding: "10px 16px", fontSize: 14 }}>Try again</button>
             <button onClick={() => this.setState({ reporting: true })} style={{ ...bs("var(--muted)"), padding: "10px 16px", fontSize: 14 }}>Report this problem</button>
           </div>
+          {this.state.reported && <p style={{ ...mu, fontSize: 12, margin: "10px 0 0" }}>A crash report was sent, so this can be fixed. You can turn crash reports off in Settings, under Privacy.</p>}
           {this.state.reporting && <FeedbackForm tab={where || "app"} error={(where ? where + ": " : "") + String((error && error.message) || error)} onClose={() => this.setState({ reporting: false })} />}
           <details style={{ marginTop: 12 }}><summary style={{ ...mu, fontSize: 12, cursor: "pointer" }}>Error details</summary><code style={{ display: "block", fontSize: 12, color: "var(--muted)", marginTop: 6, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{String((error && error.message) || error)}</code></details>
         </div>
