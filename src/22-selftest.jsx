@@ -252,7 +252,20 @@ async function runSelfTest(hooks) {
     if (!lastBlob) throw new Error("no backup file was made");
     const data = JSON.parse(await lastBlob.text());
     if (data.app !== "KillSheet" || !Object.keys(data.data || {}).length) throw new Error("backup file is empty");
-    return Object.keys(data.data).length + " items in the backup";
+    // Restoring it: the file is read and offered (Restore reloads the page, so the self-test puts the data back itself and compares).
+    const input = document.querySelector("input[type=file][accept*='json']");
+    const dt = new DataTransfer(); dt.items.add(new File([JSON.stringify(data)], "killsheet-backup.json", { type: "application/json" }));
+    input.files = dt.files; input.dispatchEvent(new Event("change", { bubbles: true }));
+    let card = null;
+    for (let i = 0; i < 40 && !card; i++) { await wait(25); card = document.querySelector("[role=alertdialog][aria-label='Restore backup']"); }
+    const rostersInFile = JSON.parse(data.data[LS_PREFIX + "savedRosters"] || "[]").length;
+    if (!card || !card.textContent.includes(rostersInFile + " saved roster")) throw new Error("the backup file wasn't offered for restoring with its rosters");
+    await click([...card.querySelectorAll("button")].find(b => b.textContent.trim() === "Cancel"), "Cancel");
+    writeStored("savedRosters", []);
+    restoreKillSheetStorage(data.data);
+    const restored = snapshotKillSheetStorage();
+    if (JSON.stringify(Object.keys(restored).sort()) !== JSON.stringify(Object.keys(data.data).sort()) || Object.keys(restored).some(k => restored[k] !== data.data[k])) throw new Error("restoring the backup didn't put everything back exactly");
+    return Object.keys(data.data).length + " items backed up and restored exactly";
   });
   await step("Campaign: set up and play a round", async () => {
     await nav("Missions");
@@ -1121,6 +1134,7 @@ async function runSelfTest(hooks) {
       if (u === "/api/auth/signout") { server.signouts++; return reply(200); }
       if (u === "/api/account" && method === "DELETE") { server.deletes++; return reply(body && body.confirm === "DELETE" ? 200 : 400); }
       if (u === "/api/sync") {
+        if (server.hang) return new Promise((ok, fail) => opts.signal && opts.signal.addEventListener("abort", () => fail(new DOMException("Timed out", "AbortError"))));
         if (server.down) return reply(500);
         if (server.signedOut) return reply(401);
         if (method === "GET") return reply(200, { data: server.data, rev: server.rev });
@@ -1187,10 +1201,19 @@ async function runSelfTest(hooks) {
       await syncNow(); await settle();
       if (JSON.stringify(rosters()) !== before || !/Couldn't back up just now/.test(dialog().textContent)) throw new Error("a failed backup changed something or didn't say so");
       server.down = false;
+      // A backup that never gets an answer gives up, and the next one still runs.
+      server.hang = true; window.__ksTimeoutMs = 60;
+      await syncNow(); await settle();
+      server.hang = false; delete window.__ksTimeoutMs;
+      if (!/Couldn't back up just now/.test(dialog().textContent)) throw new Error("a backup with no answer didn't give up");
+      const revBefore = server.rev;
+      writeStored("savedRosters", [{ id: "after-hang", name: "After a hang", f: store("fid"), o: [], savedAt: Date.now() }, ...rosters()]);
+      await syncNow(); await settle();
+      if (!server.data.savedRosters.some(r => r.id === "after-hang") || server.rev === revBefore) throw new Error("backups stopped after one got no answer");
       // Signing out keeps what's on the device.
       await click(inDialog("Sign out"), "Sign out");
       await until(() => !dialog().querySelector("[data-account-email]"), "signing out");
-      if (server.signouts !== 1 || store("account") || JSON.stringify(rosters()) !== before) throw new Error("signing out lost something");
+      if (server.signouts !== 1 || store("account") || !rosters().some(r => r.id === "after-hang")) throw new Error("signing out lost something");
       const rev = server.rev;
       await syncNow();
       if (server.rev !== rev) throw new Error("a backup ran while signed out");
@@ -1226,6 +1249,7 @@ async function runSelfTest(hooks) {
     let answer = 200, stored = [{ id: 7, created_at: "2026-11-02T10:00:00Z", kind: "problem", message: "Dice froze", contact: "me@example.com", version: "abc", device: "iPhone \u00b7 Safari", screen: "390x844", tab: "builder", error: "" }];
     window.fetch = async (url, opts = {}) => {
       if (!String(url).startsWith("/api/")) return realFetch(url, opts);
+      if (answer === "hang") return new Promise((ok, fail) => opts.signal && opts.signal.addEventListener("abort", () => fail(new DOMException("Timed out", "AbortError"))));
       sent.push({ url: String(url), method: opts.method || "GET", headers: opts.headers || {}, body: opts.body ? JSON.parse(opts.body) : null });
       if (String(url).startsWith("/api/admin/") && (opts.headers || {}).Authorization !== "Bearer test-key") return new Response("{}", { status: 401 });
       if ((opts.method || "GET") === "GET") return new Response(JSON.stringify({ items: stored }), { status: 200 });
@@ -1241,9 +1265,18 @@ async function runSelfTest(hooks) {
       if (!sendBtn().disabled) throw new Error("Send works with an empty message");
       await click([...form().querySelectorAll("[role=radio]")].find(b => b.textContent === "Something's wrong"), "Something's wrong");
       await typeText(form().querySelector("textarea"), "Self-test message");
-      // The server is down: the message stays so it can be sent again.
+      // The server never answers: it gives up instead of spinning, and keeps the message.
+      answer = "hang"; window.__ksTimeoutMs = 60;
+      await click(sendBtn(), "Send (no answer)"); for (let i = 0; i < 40 && !form().querySelector("[role=alert]"); i++) await wait(25);
+      delete window.__ksTimeoutMs;
+      if (!/Couldn't send/.test(form().textContent) || form().querySelector("textarea").value !== "Self-test message") throw new Error("a request with no answer didn't give up and say so");
+      // A fast double tap sends once.
       answer = 500;
-      await click(sendBtn(), "Send"); for (let i = 0; i < 20 && !form().querySelector("[role=alert]"); i++) await wait(25);
+      const sentBefore = sent.length;
+      sendBtn().click(); sendBtn().click(); await settle();
+      for (let i = 0; i < 20 && !form().querySelector("[role=alert]"); i++) await wait(25);
+      if (sent.length !== sentBefore + 1) throw new Error("a double tap sent " + (sent.length - sentBefore) + " times");
+      // The server is down: the message stays so it can be sent again.
       if (!/Couldn't send/.test(form().textContent) || form().querySelector("textarea").value !== "Self-test message") throw new Error("a failed send didn't say so or lost the message");
       answer = 200;
       await click(sendBtn(), "Send again"); for (let i = 0; i < 20 && !/Thanks/.test(form().textContent); i++) await wait(25);

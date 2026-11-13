@@ -23,13 +23,16 @@ function FeedbackForm({ onClose, tab, error }) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+  const sending = React.useRef(false); // a fast double tap sends once
   const send = () => {
-    if (!message.trim() || state === "sending") return;
+    if (!message.trim() || sending.current) return;
+    sending.current = true;
     setState("sending");
     const body = { kind, message: message.trim(), contact: contact.trim(), version: window.KS_VERSION || "preview", device: deviceSummary(), screen: window.innerWidth + "x" + window.innerHeight, tab: tab || "", error: error || "", website: trap };
-    fetch("/api/feedback", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+    fetchWithin("/api/feedback", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
       .then(r => setState(r.ok ? "sent" : r.status === 429 ? "busy" : "failed"))
-      .catch(() => setState("failed"));
+      .catch(() => setState("failed"))
+      .finally(() => { sending.current = false; });
   };
   const field = { width: "100%", background: "var(--card)", border: "1px solid var(--line)", borderRadius: 6, color: "var(--text)", padding: "10px 12px", fontSize: 16, fontFamily: "'Inter', sans-serif" };
   return ReactDOM.createPortal(
@@ -77,7 +80,7 @@ function AdminPage({ onClose }) {
   const [key, setKey] = useState("");
   const [items, setItems] = useState(null);
   const [note, setNote] = useState("");
-  const call = (method, query) => fetch("/api/admin/feedback" + (query || ""), { method, headers: { Authorization: "Bearer " + key }, cache: "no-store" });
+  const call = (method, query) => fetchWithin("/api/admin/feedback" + (query || ""), { method, headers: { Authorization: "Bearer " + key }, cache: "no-store" });
   const load = () => {
     setNote("Loading...");
     call("GET").then(r => r.ok ? r.json().then(j => { setItems(j.items || []); setNote(""); })

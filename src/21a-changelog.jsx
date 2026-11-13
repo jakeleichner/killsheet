@@ -99,7 +99,7 @@ function useUpdateCheck() {
     let alive = true;
     const check = () => {
       if (document.visibilityState !== "visible") return;
-      fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.json() : null)
+      fetchWithin("version.json?t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.json() : null)
         .then(j => { if (alive && j && j.version && j.version !== window.KS_VERSION) setReady(j.version); }).catch(() => {});
       // The offline copy updates itself too, so the next start has the new files.
       if (navigator.serviceWorker && navigator.serviceWorker.getRegistration) navigator.serviceWorker.getRegistration().then(r => r && r.update()).catch(() => {});

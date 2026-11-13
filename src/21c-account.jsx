@@ -70,7 +70,7 @@ async function syncNow() {
   try {
     let done = false;
     for (let tries = 0; tries < 3 && !done; tries++) {
-      const got = await fetch("/api/sync", { cache: "no-store" });
+      const got = await fetchWithin("/api/sync", { cache: "no-store" });
       if (got.status === 401) { window.dispatchEvent(new Event("ks-signed-out")); setSyncState("idle"); return; }
       if (!got.ok) throw new Error("sync " + got.status);
       const { data, rev } = await got.json();
@@ -78,7 +78,7 @@ async function syncNow() {
       const merged = mergeSyncData(localSyncData(Date.now()), data);
       applySyncData(merged);
       if (data && JSON.stringify(syncShape(merged)) === JSON.stringify(syncShape(data))) { done = true; break; }
-      const put = await fetch("/api/sync", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ rev, data: merged }) });
+      const put = await fetchWithin("/api/sync", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ rev, data: merged }) });
       if (put.status === 413) { setSyncState("tooBig"); return; }
       if (put.status === 409) continue; // another device saved first: merge with that
       if (put.status === 401) { window.dispatchEvent(new Event("ks-signed-out")); setSyncState("idle"); return; }
@@ -123,7 +123,7 @@ function useAccount() {
     }
     if (!accountsOn()) return;
     if (back === "failed") setPanelNote("Google sign-in didn't finish. Try again, or use your email.");
-    fetch("/api/account", { cache: "no-store" }).then(r => {
+    fetchWithin("/api/account", { cache: "no-store" }).then(r => {
       if (r.status === 401) { setAccount(null); return null; }
       return r.ok ? r.json() : null;
     }).then(j => {
@@ -149,33 +149,33 @@ function AccountPanel({ account, setAccount, note, onClose }) {
     return () => { window.removeEventListener("keydown", onKey); window.removeEventListener("ks-sync-status", onStatus); };
   }, [onClose]);
   React.useEffect(() => { setStage("email"); setCode(""); }, [!!account]); // signed in or out: start from the email box next time
-  const post = (url, body) => fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  // One request at a time from this page: a fast double tap on a button sends once.
+  const inFlight = React.useRef(false);
+  const once = (run) => () => { if (inFlight.current) return; inFlight.current = true; setBusy(true); run().finally(() => { inFlight.current = false; setBusy(false); }); };
+  const post = (url, body) => fetchWithin(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   const offline = "Couldn't reach KillSheet. Check your connection and try again.";
-  const sendCode = () => {
-    setBusy(true); setMessage("");
-    post("/api/auth/email/start", { email }).then(r => {
+  const sendCode = once(() => {
+    setMessage("");
+    return post("/api/auth/email/start", { email }).then(r => {
       if (r.ok) { setStage("code"); setCode(""); }
       else setMessage(r.status === 400 ? "That doesn't look like an email address." : r.status === 429 ? "That's a lot of codes in a short time. Try again in 15 minutes." : "Couldn't send the code. Try again in a minute.");
-    }).catch(() => setMessage(offline)).finally(() => setBusy(false));
-  };
-  const verify = () => {
-    setBusy(true); setMessage("");
-    post("/api/auth/email/verify", { email, code }).then(r => r.json().catch(() => ({})).then(j => {
+    }).catch(() => setMessage(offline));
+  });
+  const verify = once(() => {
+    setMessage("");
+    return post("/api/auth/email/verify", { email, code }).then(r => r.json().catch(() => ({})).then(j => {
       if (r.ok && j.user) setAccount({ email: j.user.email });
       else setMessage(j.error === "expired" ? "That code has expired or had too many tries. Ask for a new one." : "That code isn't right. Check the email and try again.");
-    })).catch(() => setMessage(offline)).finally(() => setBusy(false));
-  };
-  const signOutHere = () => {
-    setBusy(true);
-    post("/api/auth/signout", {}).catch(() => {}).finally(() => { setBusy(false); setAccount(null); setStage("email"); setMessage("Signed out. Your rosters and games stay on this device."); });
-  };
-  const deleteIt = () => {
-    setBusy(true); setMessage("");
-    fetch("/api/account", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ confirm: "DELETE" }) }).then(r => {
+    })).catch(() => setMessage(offline));
+  });
+  const signOutHere = once(() => post("/api/auth/signout", {}).catch(() => {}).then(() => { setAccount(null); setStage("email"); setMessage("Signed out. Your rosters and games stay on this device."); }));
+  const deleteIt = once(() => {
+    setMessage("");
+    return fetchWithin("/api/account", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ confirm: "DELETE" }) }).then(r => {
       if (r.ok || r.status === 401) { setAccount(null); setConfirmDelete(false); setStage("email"); setMessage("Your account and cloud backup are deleted. Your rosters and games stay on this device."); }
       else setMessage("Couldn't delete it. Try again in a minute.");
-    }).catch(() => setMessage(offline)).finally(() => setBusy(false));
-  };
+    }).catch(() => setMessage(offline));
+  });
   const googleOK = window.__ksShowGoogle || (window.location.hostname === "killsheet.app" && !navigator.standalone);
   const lastAt = readStored("syncLastAt", 0);
   const status = syncState === "syncing" ? "Backing up..." : syncState === "failed" ? "Couldn't back up just now. KillSheet will try again." : syncState === "tooBig" ? "Your backup is too big to save. Delete some old games from your history, then try again." : lastAt ? "Last backed up " + new Date(lastAt).toLocaleString() + "." : "Not backed up yet.";

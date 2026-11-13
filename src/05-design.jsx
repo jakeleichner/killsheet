@@ -121,6 +121,13 @@ function useLocalStorage(key, initialValue) {
   }, [fullKey]);
   return [value, setValue];
 }
+// Network requests give up after 15 seconds (venue Wi-Fi can hang without failing), so nothing spins forever and the
+// cloud backup can try again. The timer also covers reading the reply. window.__ksTimeoutMs is the self-test's.
+function fetchWithin(url, opts, ms) {
+  const ctl = new AbortController();
+  setTimeout(() => ctl.abort(), window.__ksTimeoutMs || ms || 15000);
+  return fetch(url, { ...(opts || {}), signal: ctl.signal });
+}
 // For the cloud backup, which reads and writes outside React (useLocalStorage above picks changes up from "ks-sync-applied").
 function readStored(key, fallback) { try { const v = window.localStorage.getItem(LS_PREFIX + key); return v !== null ? JSON.parse(v) : fallback; } catch (e) { return fallback; } }
 function writeStored(key, value) { try { if (!window.__ksFrozen) window.localStorage.setItem(LS_PREFIX + key, JSON.stringify(value)); } catch (e) { /* storage full or blocked */ } }

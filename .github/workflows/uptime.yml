@@ -1,0 +1,28 @@
+# Every hour: is killsheet.app up? Checks the page, the version file, and that the server and its database answer
+# (a signed-out request to /api/account should get 401; 503 means the database connection is missing).
+# A failure marks this workflow red on GitHub and emails the owner. Each check gets three tries, a minute apart, so a
+# short blip doesn't send an email. GitHub pauses scheduled workflows after 60 days without a push; pushing turns it back on.
+name: Uptime
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check killsheet.app
+        run: |
+          try() { # name, command that must succeed
+            for i in 1 2 3; do
+              if eval "$2"; then echo "OK: $1"; return 0; fi
+              echo "Not yet: $1 (try $i)"; sleep 60
+            done
+            echo "::error::$1 failed three times"; return 1
+          }
+          ok=0
+          try "the page loads" 'curl -sf --max-time 20 https://killsheet.app/ | grep -q "KillSheet"' || ok=1
+          try "the version file" 'curl -sf --max-time 20 "https://killsheet.app/version.json?t=$(date +%s)" | grep -q "\"version\""' || ok=1
+          try "the server and database" '[ "$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 https://killsheet.app/api/account)" = "401" ]' || ok=1
+          exit $ok

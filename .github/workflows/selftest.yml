@@ -35,7 +35,19 @@ jobs:
       - name: Self-test in headless Chrome (tools/run_selftest.mjs)
         run: node tools/run_selftest.mjs
       - name: Publish to killsheet.app
+        id: publish
         if: env.CAN_PUBLISH == 'true' && github.ref == 'refs/heads/main'
+        continue-on-error: true # Cloudflare's upload service has short outages; the next step tries once more
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy deploy --project-name=killsheet --branch=main --commit-dirty=true
+      - name: Wait, then publish again (only if the first try failed)
+        if: steps.publish.outcome == 'failure'
+        run: sleep 120
+      - name: Publish to killsheet.app (second try)
+        if: steps.publish.outcome == 'failure'
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
