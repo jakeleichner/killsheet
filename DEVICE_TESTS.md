@@ -46,7 +46,7 @@ mobile data instead of Wi-Fi, so the two are on different networks.
 
 It should open normally, including a mission map on the Missions tab.
 
-## 5. Accounts and cloud backup (before going live)
+## 5. Accounts and cloud backup (passed Nov 14; repeat after big changes to sign-in or backup)
 
 These need your real email and Google account, so Claude can't do them. While accounts are hidden, opening `killsheet.app/?accounts` turns on the Account button in that browser. The Home Screen app has no address bar, so check it right after going live.
 
