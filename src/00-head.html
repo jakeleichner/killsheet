@@ -40,7 +40,7 @@
     /* Theme colors (Appearance in Settings). These are the Default theme; applyTheme() swaps them. */
     :root { --bg: #0E0F13; --card: #1A1D24; --raised: #262A33; --line: #3A4150; --text: #F1F2F5; --text2: #C8CDD3; --muted: #9AA5B1; --muted2: #8B95A1; --dim: #5A6470; --accent: #C9772E; --gold: #FFB627; --blue: #6B9BF7; --hit: #6AAE45; --miss: #D9603F; color-scheme: dark; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body, #root { min-height: 100vh; }
+    html, body { min-height: 100vh; } /* not #root: the About KillSheet footer follows the app straight after its content */
     body { background: var(--bg); }
     /* Numbers keep their width as they change (wounds, CP, VP, dice), so nothing beside them shifts. */
     body { font-variant-numeric: tabular-nums; }

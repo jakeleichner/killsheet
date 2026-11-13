@@ -111,7 +111,7 @@ function App() {
 
   return (
     <FeatureCtx.Provider value={featureCtx}>
-    <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)", fontFamily: "'Inter', 'Segoe UI', sans-serif", fontSize: 14 }}>
+    <div style={{ background: "var(--bg)", color: "var(--text)", fontFamily: "'Inter', 'Segoe UI', sans-serif", fontSize: 14 }}>
       {features === null && !returning && <Welcome />}
       {showFeatures && <FeaturesPage focus={showFeatures} onClose={() => setShowFeatures(false)} onNews={openNews} onFeedback={() => setShowFeedback(true)} account={account} onAccount={accountsOn() ? () => setShowAccount(true) : null} />}
       {(showAccount || panelNote) && <AccountPanel account={account} setAccount={setAccount} note={panelNote} onClose={() => { setShowAccount(false); setPanelNote(null); }} />}
@@ -197,11 +197,7 @@ function App() {
       <div id="panel-builder" className="ks-appear" style={{ display: tab === "rosters" ? "block" : tab === "builder" ? "block" : "none", ...(battleAccent ? { "--accent": battleAccent } : {}) }}><ErrorBoundary where="Battle"><Builder tp={tp} setTp={setTp} mp={mp} mpHandlerRef={mpHandlerRef} showMP={showMP} setShowMP={setShowMP} tutorialSeen={tutorialSeen} setTutorialSeen={setTutorialSeen} openTutorial={openTutorial} campaign={campaign} setCampaign={setCampaign} onTeamColor={setTeamId} openMove={() => setShowMove(true)} showBattle={() => setTab("builder")} view={tab === "rosters" ? "rosters" : "battle"} showRosters={() => setTab("rosters")} /></ErrorBoundary></div>
       <div className="ks-appear" style={{ display: tab === "community" ? "block" : "none" }}><ErrorBoundary where="Community"><CommunityRosters /></ErrorBoundary></div>
 
-      {/* FOOTER */}
-      <div style={{ textAlign: "center", padding: "20px 16px", borderTop: "1px solid var(--line)", background: "linear-gradient(180deg, var(--bg), #08070600)" }}>
-        <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.6 }}>KillSheet: rosters, rules and game tracking for Kill Team players.</div>
-        <div style={{ fontSize: 12, color: "var(--muted2)", lineHeight: 1.6 }}>Fan-made and not affiliated with Games Workshop. Rules are condensed from the free official downloads.</div>
-      </div>
+      {/* The footer is About KillSheet, plain HTML after the app (src/99-tail.html), so search engines read it too. */}
     </div>
     </FeatureCtx.Provider>
   );
