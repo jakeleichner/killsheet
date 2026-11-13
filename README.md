@@ -356,6 +356,9 @@ Estimated 2-3 hours. Should be its own focused session with its own QA pass (mix
 - Pre-ship checker added: `python3 tools/check.py` (hooks before early returns, every tab has an icon and panel, unique localStorage keys, no direct localStorage use, print class, JSX script tag).
 
 ### Other open tasks (rough priority order)
+- **Online hits arrive exactly once (owner, Nov 13; do first of these three).** Online damage travels as "take 2 damage" (`applyRemoteDamage`/`applyRemoteHeal`, `mp.sendOrQueue`) with no ID. On a shaky connection `send()` can succeed into a dying data channel and the hit is lost; adding automatic resends would risk doubling it. Give each message an ID, reply "got it", resend until acknowledged, and ignore IDs already applied (kept for the room's lifetime).
+- **The phone's back gesture closes the open panel (owner, Nov 13).** On Android, Back currently ignores KillSheet's panels (Settings, What's new, Account, Shoot/Fight, menus) and leaves the page. Push a history entry when a panel opens and close it on `popstate`; newer Android shows the panel closing as you swipe (predictive back). iPhone Home Screen apps have no back gesture.
+- **Animations never hold up a game (owner, Nov 13).** Check every effect (dice tumble, versus intro, attack effects, hit messages) can be tapped through or cut short by the next tap, at full speed and with Reduce Motion.
 - **KTDash comparison (Nov 2, 2026): decisions for the owner.** Things ktdash.app does that KillSheet doesn't. Each is the owner's call; Claude's view in brackets.
   1. **Decision: accounts and cloud sync**, so rosters follow you to any device. (Already foundation 1 below; KTDash's biggest edge.)
   2. **Decision: a community roster board** with browsing and import, like KTDash's Roster Spotlight and player pages. (Already planned as Community board v1, decided Nov 1; waits on the owner's go-ahead to build.)
@@ -383,6 +386,11 @@ Estimated 2-3 hours. Should be its own focused session with its own QA pass (mix
 - **Legion of the Damned**: previewed in the Big Autumn Preview; add once its rules are published.
 
 ### Lower-priority backlog
+- **Maybe list (owner, Nov 13): UI ideas that might be worth it, and why each is only a maybe.**
+  - Skeleton loaders (gray outline of the tabs while the page loads): content loads all at once, so the only wait is a first visit on a slow phone (about 2 s). Nicer than a blank screen, but small.
+  - Pre-rendering (build the first screen ahead of time so it shows before the code runs): faster first visit and better for Google, but a real project; goes with the per-team pages decision.
+  - Swipe-to-dismiss sheets (pull Settings, What's new or Account down to close): feels native on iPhone, but can fight with scrolling inside those panels.
+  - View transitions (the browser animates between screens): KillSheet already fades screens in; cosmetic only.
 - More factions: see convention 11. Add `tools/teams/<team>.py`, list it in `ORDER.txt`, run the build, then `python3 tools/check.py` and build a full roster in the preview.
 - Tac op conditions in the scoring panel, if a free source ever covers them (they're on the paid Approved Ops cards).
 - Killzone terrain rules: the Game settings Killzone choice was removed (owner, Nov 2) because it did nothing; the setting's value (`setupKZ`, `gameConfig.killzone`) is still filled in from missions. Bring a choice back only with something it does, e.g. Tomb World's free terrain rules (walls, doors), which also cover Gallowdark; the others are in paid books.

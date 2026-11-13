@@ -42,6 +42,17 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body, #root { min-height: 100vh; }
     body { background: var(--bg); }
+    /* Numbers keep their width as they change (wounds, CP, VP, dice), so nothing beside them shifts. */
+    body { font-variant-numeric: tabular-nums; }
+    /* Titles wrap evenly; other text avoids a single word on its last line (browsers without these just wrap as before). */
+    body { text-wrap: pretty; }
+    h1, h2, h3, h4, [style*="Rajdhani"] { text-wrap: balance; } /* titles are set in Rajdhani */
+    /* Small controls that are small on purpose (wound buttons, use pips, links like Name it) take taps a little
+       outside their edges on touch screens. A button placed with an inline position keeps it; the extra area is ::after. */
+    @media (pointer: coarse) {
+      .compact-btn, .link-btn { position: relative; }
+      .compact-btn::after, .link-btn::after { content: ""; position: absolute; inset: -6px; }
+    }
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: var(--bg); }
     ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
@@ -18714,6 +18725,11 @@ function FeaturesPage({ onClose, focus, onNews, onFeedback, account, onAccount }
 // The change log players see (Settings > What's new). Newest first, one entry per day something a player would
 // notice changed, in plain words. kind: "new", "better" or "fixed". Add an entry with every such change.
 const CHANGELOG = [
+  { date: "2026-11-13", items: [
+    ["better", "Numbers that change during a game, like wounds, CP and VP, no longer make the text beside them shift."],
+    ["better", "Small buttons, like the wound buttons on datacards, are easier to tap on a phone."],
+    ["better", "Titles and longer text wrap more evenly on narrow screens."],
+  ] },
   { date: "2026-11-02", items: [
     ["new", "Name your operatives. Tap Name it on a datacard before the game. The name shows on the card, when shooting and fighting, in the battle log and the recap, and it's saved with the roster. Online, your opponent sees it too."],
     ["new", "Send feedback, in Settings: report a bug or a rules mistake, or suggest an idea. If something crashes, Report this problem sends the details for you."],
@@ -19362,6 +19378,7 @@ async function runSelfTest(hooks) {
   await step("Every tab opens", async () => {
     for (const t of ["Rules", "Missions", "Battle", ...(COMMUNITY_LIVE ? ["Community"] : [])]) { await nav(t); if (!all("h1,h2,div").length) throw new Error(t + " is empty"); }
     if (!COMMUNITY_LIVE && [...document.querySelectorAll("nav button")].some(b => b.textContent.trim() === "Community")) throw new Error("the Community tab shows before the board is live");
+    if (!/tabular-nums/.test(getComputedStyle(document.body).fontVariantNumeric)) throw new Error("numbers aren't set to keep their width");
     if (document.documentElement.scrollWidth > window.innerWidth + 1) throw new Error("the page scrolls sideways (" + document.documentElement.scrollWidth + "px wide in a " + window.innerWidth + "px window)");
     // The tabs and the online banner are pinned together, so the banner can't slide over the tabs.
     const bar = document.querySelector("nav");

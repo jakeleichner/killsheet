@@ -2,6 +2,11 @@
 // The change log players see (Settings > What's new). Newest first, one entry per day something a player would
 // notice changed, in plain words. kind: "new", "better" or "fixed". Add an entry with every such change.
 const CHANGELOG = [
+  { date: "2026-11-13", items: [
+    ["better", "Numbers that change during a game, like wounds, CP and VP, no longer make the text beside them shift."],
+    ["better", "Small buttons, like the wound buttons on datacards, are easier to tap on a phone."],
+    ["better", "Titles and longer text wrap more evenly on narrow screens."],
+  ] },
   { date: "2026-11-02", items: [
     ["new", "Name your operatives. Tap Name it on a datacard before the game. The name shows on the card, when shooting and fighting, in the battle log and the recap, and it's saved with the roster. Online, your opponent sees it too."],
     ["new", "Send feedback, in Settings: report a bug or a rules mistake, or suggest an idea. If something crashes, Report this problem sends the details for you."],

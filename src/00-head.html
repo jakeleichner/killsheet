@@ -42,6 +42,17 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body, #root { min-height: 100vh; }
     body { background: var(--bg); }
+    /* Numbers keep their width as they change (wounds, CP, VP, dice), so nothing beside them shifts. */
+    body { font-variant-numeric: tabular-nums; }
+    /* Titles wrap evenly; other text avoids a single word on its last line (browsers without these just wrap as before). */
+    body { text-wrap: pretty; }
+    h1, h2, h3, h4, [style*="Rajdhani"] { text-wrap: balance; } /* titles are set in Rajdhani */
+    /* Small controls that are small on purpose (wound buttons, use pips, links like Name it) take taps a little
+       outside their edges on touch screens. A button placed with an inline position keeps it; the extra area is ::after. */
+    @media (pointer: coarse) {
+      .compact-btn, .link-btn { position: relative; }
+      .compact-btn::after, .link-btn::after { content: ""; position: absolute; inset: -6px; }
+    }
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: var(--bg); }
     ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }

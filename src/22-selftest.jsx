@@ -84,6 +84,7 @@ async function runSelfTest(hooks) {
   await step("Every tab opens", async () => {
     for (const t of ["Rules", "Missions", "Battle", ...(COMMUNITY_LIVE ? ["Community"] : [])]) { await nav(t); if (!all("h1,h2,div").length) throw new Error(t + " is empty"); }
     if (!COMMUNITY_LIVE && [...document.querySelectorAll("nav button")].some(b => b.textContent.trim() === "Community")) throw new Error("the Community tab shows before the board is live");
+    if (!/tabular-nums/.test(getComputedStyle(document.body).fontVariantNumeric)) throw new Error("numbers aren't set to keep their width");
     if (document.documentElement.scrollWidth > window.innerWidth + 1) throw new Error("the page scrolls sideways (" + document.documentElement.scrollWidth + "px wide in a " + window.innerWidth + "px window)");
     // The tabs and the online banner are pinned together, so the banner can't slide over the tabs.
     const bar = document.querySelector("nav");
