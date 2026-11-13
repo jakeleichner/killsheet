@@ -1,9 +1,9 @@
 /* ═══ ACCOUNTS AND CLOUD BACKUP ═══ */
 // Optional sign-in (a code sent by email, or Google; server/account.js) backs up saved rosters, game history and settings,
 // and brings them to any device signed in to the same account. The game in progress stays on its device.
-// Signing in is an extra: without an account nothing here runs. Until ACCOUNTS_LIVE is true, only a device that has opened
+// Signing in is an extra: without an account nothing here runs. Live for everyone since Nov 14 (owner: "go live"). Before that, only a device that had opened
 // killsheet.app/?accounts sees it, so the owner can try it and read the Privacy and Terms pages first.
-const ACCOUNTS_LIVE = false;
+const ACCOUNTS_LIVE = true;
 const accountsOn = () => !onOldAddress() && (ACCOUNTS_LIVE || !!window.__ksAccountsOn || !!readStored("accountsBeta", false));
 const SYNC_LISTS = { savedRosters: (r) => r.savedAt || 0, gameHistory: (g) => g.id || 0 }; // each list's item, and when it last changed
 const SYNC_SETTINGS = ["features", "appearance", "validate", "tutorialSeen"];
