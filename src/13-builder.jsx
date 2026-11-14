@@ -788,6 +788,10 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
       survivors: roster.filter(o => getWounds(o.id, o.wounds) > 0).length, size: roster.length,
       recap: gameRecap(battleLog, vpByTp),
     };
+    // The saved roster this game was played with, so its card shows its record: the one on screen, or (after small
+    // changes such as renaming an operative mid-game) the one last loaded or saved. The name is kept in case it's deleted.
+    const playedWith = savedMatch || (lastSaved && lastSaved.f === fid && savedRosters.find(r => r.id === lastSaved.id));
+    if (playedWith) { rec.rosterId = playedWith.id; rec.rosterName = playedWith.name; }
     if (campaign && campaign.phase === "battle") { rec.campaign = true; setCampaign(cc => cteBattle(cc, rec.result, e.incap || 0)); }
     setGameHistory(h => [rec, ...h]);
     setEndGame(null);
@@ -965,7 +969,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
     } else {
       setSavedRosters([entry, ...savedRosters]);
     }
-    setLastSaved({ f: fid, name });
+    setLastSaved({ f: fid, name, id: same ? same.id : entry.id });
     showToast("Saved: " + name);
   };
   // Edit loads a saved roster to change it; Play loads it and starts the game, the same as tapping Start game.
@@ -981,7 +985,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
     setChapterPrimary(entry.cp || ""); setChapterSecondary(entry.cs || ""); setChapterVeteran(entry.cv || {}); setCarried(entry.cw || {});
     if (play) { const c = {}; ops.forEach(op => { c[op.id] = true; }); setCardCollapsed(c); setRosterLocked(true); setMobilePanel("cards"); }
     });
-    setLastSaved({ f: entry.f, name: entry.name });
+    setLastSaved({ f: entry.f, name: entry.name, id: entry.id });
     setPickerOpen(false); setPickerSearch(""); setSavedMenu(null); setPeek(null);
     if (play) { if (showBattle) showBattle(); } else if (showRosters) showRosters();
     window.scrollTo(0, 0);
@@ -1887,11 +1891,11 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
 
       {view === "battle" && !rosterLocked ? (
         <NoGameScreen team={f} rosterSize={roster.length} hasSaved={savedRosters.length > 0} onStart={startGame} onBuild={() => { if (showRosters) showRosters(); window.scrollTo(0, 0); }}>
-          <SavedRosterLibrary rosters={savedRosters} menuId={savedMenu} setMenuId={setSavedMenu} onPlay={(r) => loadSaved(r, true)} onEdit={(r) => loadSaved(r)} onRename={renameSaved} onCopy={copySavedCode} onDelete={deleteSaved} />
+          <SavedRosterLibrary rosters={savedRosters} games={gameHistory} menuId={savedMenu} setMenuId={setSavedMenu} onPlay={(r) => loadSaved(r, true)} onEdit={(r) => loadSaved(r)} onRename={renameSaved} onCopy={copySavedCode} onDelete={deleteSaved} />
         </NoGameScreen>
       ) : view === "rosters" && rosterLocked ? (
         <GameOnScreen team={f} onBack={() => { if (showBattle) showBattle(); window.scrollTo(0, 0); }} onEnd={() => { if (showBattle) showBattle(); openEndGame(); }}>
-          <SavedRosterLibrary rosters={savedRosters} menuId={savedMenu} setMenuId={setSavedMenu} locked onView={setViewing} onPlay={(r) => loadSaved(r, true)} onEdit={(r) => loadSaved(r)} onRename={renameSaved} onCopy={copySavedCode} onDelete={deleteSaved} />
+          <SavedRosterLibrary rosters={savedRosters} games={gameHistory} menuId={savedMenu} setMenuId={setSavedMenu} locked onView={setViewing} onPlay={(r) => loadSaved(r, true)} onEdit={(r) => loadSaved(r)} onRename={renameSaved} onCopy={copySavedCode} onDelete={deleteSaved} />
         </GameOnScreen>
       ) : (<>
       {/* Faction select: collapses to one bar once a team is picked */}
@@ -1977,8 +1981,8 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                 <span style={{ color: f.color, display: "inline-flex" }}><Fwd size={20} /></span>
               </button>
             )}
-            {!onTeams && <SavedRosterLibrary rosters={savedRosters} menuId={savedMenu} setMenuId={setSavedMenu} onPlay={(r) => loadSaved(r, true)} onEdit={(r) => loadSaved(r)} onRename={renameSaved} onCopy={copySavedCode} onDelete={deleteSaved} />}
-            {!onTeams && <GameHistoryCard games={gameHistory} open={showGames} setOpen={setShowGames} openGame={openGame} setOpenGame={setOpenGame} onRemove={(g) => withUndo("Game removed from history", () => { noteSyncDeleted(g.id); setGameHistory(h => h.filter(x => x.id !== g.id)); })} />}
+            {!onTeams && <SavedRosterLibrary rosters={savedRosters} games={gameHistory} menuId={savedMenu} setMenuId={setSavedMenu} onPlay={(r) => loadSaved(r, true)} onEdit={(r) => loadSaved(r)} onRename={renameSaved} onCopy={copySavedCode} onDelete={deleteSaved} />}
+            {!onTeams && <GameHistoryCard games={gameHistory} rosters={savedRosters} open={showGames} setOpen={setShowGames} openGame={openGame} setOpenGame={setOpenGame} onRemove={(g) => withUndo("Game removed from history", () => { noteSyncDeleted(g.id); setGameHistory(h => h.filter(x => x.id !== g.id)); })} />}
             {onTeams && <>
             <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 8, flexWrap: "wrap" }}>
               {FACTION_GROUPS.map(g => {

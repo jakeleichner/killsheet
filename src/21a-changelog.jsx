@@ -3,6 +3,7 @@
 // notice changed, in plain words. kind: "new", "better" or "fixed". Add an entry with every such change.
 const CHANGELOG = [
   { date: "2026-11-14", items: [
+    ["new", "Each saved roster shows its record from the games you've finished with it. Tap the record to see those games."],
     ["better", "The Rosters tab is easier to find your way around: Your rosters, then New roster to pick a team, then building, with a Back button at the top of each step."],
     ["better", "While building, Save sits at the top right and Start game stays at the bottom of the screen."],
     ["better", "During a game, the Rosters tab still shows your rosters: View cards opens any saved roster's datacards, and a bar at the top takes you back to the game or ends it."],

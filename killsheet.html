@@ -9759,6 +9759,10 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
       survivors: roster.filter(o => getWounds(o.id, o.wounds) > 0).length, size: roster.length,
       recap: gameRecap(battleLog, vpByTp),
     };
+    // The saved roster this game was played with, so its card shows its record: the one on screen, or (after small
+    // changes such as renaming an operative mid-game) the one last loaded or saved. The name is kept in case it's deleted.
+    const playedWith = savedMatch || (lastSaved && lastSaved.f === fid && savedRosters.find(r => r.id === lastSaved.id));
+    if (playedWith) { rec.rosterId = playedWith.id; rec.rosterName = playedWith.name; }
     if (campaign && campaign.phase === "battle") { rec.campaign = true; setCampaign(cc => cteBattle(cc, rec.result, e.incap || 0)); }
     setGameHistory(h => [rec, ...h]);
     setEndGame(null);
@@ -9936,7 +9940,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
     } else {
       setSavedRosters([entry, ...savedRosters]);
     }
-    setLastSaved({ f: fid, name });
+    setLastSaved({ f: fid, name, id: same ? same.id : entry.id });
     showToast("Saved: " + name);
   };
   // Edit loads a saved roster to change it; Play loads it and starts the game, the same as tapping Start game.
@@ -9952,7 +9956,7 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
     setChapterPrimary(entry.cp || ""); setChapterSecondary(entry.cs || ""); setChapterVeteran(entry.cv || {}); setCarried(entry.cw || {});
     if (play) { const c = {}; ops.forEach(op => { c[op.id] = true; }); setCardCollapsed(c); setRosterLocked(true); setMobilePanel("cards"); }
     });
-    setLastSaved({ f: entry.f, name: entry.name });
+    setLastSaved({ f: entry.f, name: entry.name, id: entry.id });
     setPickerOpen(false); setPickerSearch(""); setSavedMenu(null); setPeek(null);
     if (play) { if (showBattle) showBattle(); } else if (showRosters) showRosters();
     window.scrollTo(0, 0);
@@ -10858,11 +10862,11 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
 
       {view === "battle" && !rosterLocked ? (
         <NoGameScreen team={f} rosterSize={roster.length} hasSaved={savedRosters.length > 0} onStart={startGame} onBuild={() => { if (showRosters) showRosters(); window.scrollTo(0, 0); }}>
-          <SavedRosterLibrary rosters={savedRosters} menuId={savedMenu} setMenuId={setSavedMenu} onPlay={(r) => loadSaved(r, true)} onEdit={(r) => loadSaved(r)} onRename={renameSaved} onCopy={copySavedCode} onDelete={deleteSaved} />
+          <SavedRosterLibrary rosters={savedRosters} games={gameHistory} menuId={savedMenu} setMenuId={setSavedMenu} onPlay={(r) => loadSaved(r, true)} onEdit={(r) => loadSaved(r)} onRename={renameSaved} onCopy={copySavedCode} onDelete={deleteSaved} />
         </NoGameScreen>
       ) : view === "rosters" && rosterLocked ? (
         <GameOnScreen team={f} onBack={() => { if (showBattle) showBattle(); window.scrollTo(0, 0); }} onEnd={() => { if (showBattle) showBattle(); openEndGame(); }}>
-          <SavedRosterLibrary rosters={savedRosters} menuId={savedMenu} setMenuId={setSavedMenu} locked onView={setViewing} onPlay={(r) => loadSaved(r, true)} onEdit={(r) => loadSaved(r)} onRename={renameSaved} onCopy={copySavedCode} onDelete={deleteSaved} />
+          <SavedRosterLibrary rosters={savedRosters} games={gameHistory} menuId={savedMenu} setMenuId={setSavedMenu} locked onView={setViewing} onPlay={(r) => loadSaved(r, true)} onEdit={(r) => loadSaved(r)} onRename={renameSaved} onCopy={copySavedCode} onDelete={deleteSaved} />
         </GameOnScreen>
       ) : (<>
       {/* Faction select: collapses to one bar once a team is picked */}
@@ -10948,8 +10952,8 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
                 <span style={{ color: f.color, display: "inline-flex" }}><Fwd size={20} /></span>
               </button>
             )}
-            {!onTeams && <SavedRosterLibrary rosters={savedRosters} menuId={savedMenu} setMenuId={setSavedMenu} onPlay={(r) => loadSaved(r, true)} onEdit={(r) => loadSaved(r)} onRename={renameSaved} onCopy={copySavedCode} onDelete={deleteSaved} />}
-            {!onTeams && <GameHistoryCard games={gameHistory} open={showGames} setOpen={setShowGames} openGame={openGame} setOpenGame={setOpenGame} onRemove={(g) => withUndo("Game removed from history", () => { noteSyncDeleted(g.id); setGameHistory(h => h.filter(x => x.id !== g.id)); })} />}
+            {!onTeams && <SavedRosterLibrary rosters={savedRosters} games={gameHistory} menuId={savedMenu} setMenuId={setSavedMenu} onPlay={(r) => loadSaved(r, true)} onEdit={(r) => loadSaved(r)} onRename={renameSaved} onCopy={copySavedCode} onDelete={deleteSaved} />}
+            {!onTeams && <GameHistoryCard games={gameHistory} rosters={savedRosters} open={showGames} setOpen={setShowGames} openGame={openGame} setOpenGame={setOpenGame} onRemove={(g) => withUndo("Game removed from history", () => { noteSyncDeleted(g.id); setGameHistory(h => h.filter(x => x.id !== g.id)); })} />}
             {onTeams && <>
             <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 8, flexWrap: "wrap" }}>
               {FACTION_GROUPS.map(g => {
@@ -11646,8 +11650,11 @@ function Builder({ tp, setTp, mp, mpHandlerRef, showMP, setShowMP, tutorialSeen,
 // The roster library: the rosters saved on this device, each with Play, Edit and a menu (Rename, Copy code, Delete).
 // The first piece moved out of the Battle tab's Builder (owner, Nov 13: the middle path). It holds no data itself: the
 // Builder passes the list and what each button does. locked: a game is in progress, so Play and Edit wait for it to end.
-function SavedRosterLibrary({ rosters, menuId, setMenuId, onPlay, onEdit, onRename, onCopy, onDelete, locked, onView }) {
+// Each card shows that roster's record from the games played with it (games carry rosterId), and opens to list them.
+function SavedRosterLibrary({ rosters, games, menuId, setMenuId, onPlay, onEdit, onRename, onCopy, onDelete, locked, onView }) {
+  const [gamesOf, setGamesOf] = useState(null);
   if (!rosters.length) return null;
+  const resColor = { win: "#5A9C3A", loss: "#E0664A", draw: "var(--gold)" };
   const small = { ...bs("var(--muted)"), padding: "5px 10px", fontSize: 11 };
   return (
     <div id="ks-saved-rosters" style={{ marginBottom: 12 }}>
@@ -11655,12 +11662,18 @@ function SavedRosterLibrary({ rosters, menuId, setMenuId, onPlay, onEdit, onRena
       {rosters.map(r => {
         const fc = FACTIONS[r.f];
         const menu = menuId === r.id;
+        const played = (games || []).filter(g => g.rosterId === r.id);
+        const rec = played.reduce((t, g) => ({ ...t, [g.result]: (t[g.result] || 0) + 1 }), { win: 0, loss: 0, draw: 0 });
+        const open = gamesOf === r.id;
         return (
           <div key={r.id} data-saved-roster={r.id} style={{ ...cd, padding: "8px 10px", marginBottom: 6, borderLeft: "3px solid " + (fc ? fc.color : "var(--line)") }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif", overflowWrap: "anywhere" }}>{r.name}</div>
                 <div style={{ fontSize: 12, color: "var(--muted)" }}>{fc ? fc.name : "Unknown team"} {"\u00b7"} {r.o.length} operative{r.o.length === 1 ? "" : "s"} {"\u00b7"} {new Date(r.savedAt).toLocaleDateString()}</div>
+                {played.length > 0 && <button data-roster-record={r.id} onClick={() => setGamesOf(open ? null : r.id)} aria-expanded={open} className="link-btn" style={{ background: "none", border: "none", padding: 0, marginTop: 2, cursor: "pointer", fontSize: 12, color: "var(--text2)", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                  {played.length} game{played.length === 1 ? "" : "s"}: <strong style={{ color: "var(--text)" }}>{rec.win}W {rec.loss}L {rec.draw}D</strong> <Arrow open={open} />
+                </button>}
               </div>
               {locked
                 ? onView && <button onClick={() => onView(r)} title="Read its datacards" style={{ ...bs("var(--muted)"), padding: "6px 10px", fontSize: 12 }}>View cards</button>
@@ -11670,6 +11683,18 @@ function SavedRosterLibrary({ rosters, menuId, setMenuId, onPlay, onEdit, onRena
                 </>}
               <button onClick={() => setMenuId(menu ? null : r.id)} aria-label="More options" style={{ ...bs("var(--muted)"), padding: "6px 10px", fontSize: 12 }}>{"\u22EF"}</button>
             </div>
+            {open && (
+              <div data-roster-games={r.id} style={{ marginTop: 6 }}>
+                {played.slice(0, 10).map(g => (
+                  <div key={g.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0", borderTop: "1px solid var(--raised)" }}>
+                    <span style={{ ...bg(resColor[g.result]), flexShrink: 0 }}>{g.result === "win" ? "W" : g.result === "loss" ? "L" : "D"}</span>
+                    <div style={{ flex: 1, minWidth: 0, fontSize: 13, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.opp ? "vs " + g.opp : g.mission} <span style={{ color: "var(--muted)", fontSize: 12 }}>{"\u00b7"} {new Date(g.date).toLocaleDateString()}</span></div>
+                    <span style={{ flexShrink: 0, fontSize: 14, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif" }}>{g.you}{"\u2013"}{g.them}</span>
+                  </div>
+                ))}
+                {played.length > 10 && <div style={{ ...mu, fontSize: 12, paddingTop: 4 }}>The rest are in Game history.</div>}
+              </div>
+            )}
             {menu && (
               <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
                 <button onClick={() => onRename(r)} style={small}>Rename</button>
@@ -11686,7 +11711,8 @@ function SavedRosterLibrary({ rosters, menuId, setMenuId, onPlay, onEdit, onRena
 
 // Game history: wins, losses and draws overall, by your team and against each team, average score, the current streak,
 // and the last ten games with their recaps. Moved out of the Builder (middle path); remove asks the Builder (Undo).
-function GameHistoryCard({ games, open, setOpen, openGame, setOpenGame, onRemove }) {
+function GameHistoryCard({ games, rosters, open, setOpen, openGame, setOpenGame, onRemove }) {
+  const rosterName = (g) => { const r = g.rosterId && (rosters || []).find(x => x.id === g.rosterId); return r ? r.name : g.rosterName || ""; };
   if (!games.length) return null;
   const tally = (games) => games.reduce((t, g) => ({ ...t, [g.result]: t[g.result] + 1 }), { win: 0, loss: 0, draw: 0 });
   const all = tally(games);
@@ -11735,7 +11761,7 @@ function GameHistoryCard({ games, open, setOpen, openGame, setOpenGame, onRemove
               <span style={{ ...bg(resColor[g.result]), flexShrink: 0 }}>{g.result === "win" ? "W" : g.result === "loss" ? "L" : "D"}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.team}{g.opp ? " vs " + g.opp : ""}</div>
-                <div style={{ fontSize: 12, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{new Date(g.date).toLocaleDateString()} {"\u00b7"} {g.mission}</div>
+                <div style={{ fontSize: 12, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{new Date(g.date).toLocaleDateString()} {"\u00b7"} {g.mission}{rosterName(g) ? " \u00b7 " + rosterName(g) : ""}</div>
               </div>
               <span style={{ flexShrink: 0, fontSize: 15, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif" }}>{g.you}{"\u2013"}{g.them}</span>
               {g.recap && <Arrow open={openGame === g.id} />}
@@ -19176,6 +19202,7 @@ function FeaturesPage({ onClose, focus, onNews, onFeedback, account, onAccount }
 // notice changed, in plain words. kind: "new", "better" or "fixed". Add an entry with every such change.
 const CHANGELOG = [
   { date: "2026-11-14", items: [
+    ["new", "Each saved roster shows its record from the games you've finished with it. Tap the record to see those games."],
     ["better", "The Rosters tab is easier to find your way around: Your rosters, then New roster to pick a team, then building, with a Back button at the top of each step."],
     ["better", "While building, Save sits at the top right and Start game stays at the bottom of the screen."],
     ["better", "During a game, the Rosters tab still shows your rosters: View cards opens any saved roster's datacards, and a bar at the top takes you back to the game or ends it."],
@@ -20861,10 +20888,24 @@ async function runSelfTest(hooks) {
     if (!store("rosterLocked")) throw new Error("Play didn't start a game");
     if (store("fid") !== r.f || (store("roster") || []).length !== r.o.length) throw new Error("Play loaded the wrong roster");
     if (!document.querySelector("[data-logbtn]")) throw new Error("no game screen after Play");
-    // Edit: loaded, not started, with Save roster beside Start game and My rosters beside Change team.
+    // Finishing that game counts toward the roster: its card shows the record and opens to list the game.
+    const before = (store("gameHistory") || []).length;
     await click(document.querySelector("[aria-label='Game menu']"), "game menu");
     await click(btn("End game"), "End game");
-    await click(btn("Discard game", true), "Discard game");
+    await click(btn("Save result", true), "Save result");
+    const g = (store("gameHistory") || [])[0];
+    if ((store("gameHistory") || []).length !== before + 1 || !g || g.rosterId !== r.id || g.rosterName !== r.name) throw new Error("the finished game wasn't linked to the saved roster: " + JSON.stringify(g && { rosterId: g.rosterId, rosterName: g.rosterName }));
+    await click(btn("Edit roster") || btn("Ploys & rules"), "back to roster"); // phones show one panel: Edit roster is beside Ploys & rules
+    const editRoster = btn("Edit roster"); if (editRoster) await click(editRoster, "Edit roster");
+    if (store("rosterLocked")) throw new Error("Edit roster didn't end the locked game");
+    await nav("Rosters"); await toRosterHome();
+    const record = card() && card().querySelector("[data-roster-record]");
+    if (!record || !/1 game: \d+W \d+L \d+D/.test(record.textContent)) throw new Error("the saved roster's card doesn't show its record: " + (record ? record.textContent : "no record line"));
+    await click(record, "the roster's record");
+    if (!card().querySelector("[data-roster-games]") || card().querySelectorAll("[data-roster-games] > div").length !== 1) throw new Error("the record didn't open to list the game");
+    await click(record, "the roster's record");
+    // Edit: loaded, not started, with Save roster beside Start game and My rosters beside Change team.
+    await nav("Battle");
     await click(cardBtn("Edit"), "Edit");
     if (store("rosterLocked")) throw new Error("Edit started a game");
     if (store("fid") !== r.f || (store("roster") || []).length !== r.o.length) throw new Error("Edit loaded the wrong roster");
@@ -20876,7 +20917,7 @@ async function runSelfTest(hooks) {
     if (!document.querySelector("[data-start-bar]") || !all("[data-start-bar] button").some(b => /Start game/.test(b.textContent))) throw new Error("no Start game bar while building");
     await toRosterHome();
     if (!card()) throw new Error("Back didn't go to Your rosters with the saved rosters");
-    return "Play starts a game, Edit loads it, saving again replaces it";
+    return "Play starts a game, its result shows on the roster card, Edit loads it";
   });
   await step("Name your operatives", async () => {
     await nav("Battle");

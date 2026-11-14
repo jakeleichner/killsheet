@@ -1065,10 +1065,24 @@ async function runSelfTest(hooks) {
     if (!store("rosterLocked")) throw new Error("Play didn't start a game");
     if (store("fid") !== r.f || (store("roster") || []).length !== r.o.length) throw new Error("Play loaded the wrong roster");
     if (!document.querySelector("[data-logbtn]")) throw new Error("no game screen after Play");
-    // Edit: loaded, not started, with Save roster beside Start game and My rosters beside Change team.
+    // Finishing that game counts toward the roster: its card shows the record and opens to list the game.
+    const before = (store("gameHistory") || []).length;
     await click(document.querySelector("[aria-label='Game menu']"), "game menu");
     await click(btn("End game"), "End game");
-    await click(btn("Discard game", true), "Discard game");
+    await click(btn("Save result", true), "Save result");
+    const g = (store("gameHistory") || [])[0];
+    if ((store("gameHistory") || []).length !== before + 1 || !g || g.rosterId !== r.id || g.rosterName !== r.name) throw new Error("the finished game wasn't linked to the saved roster: " + JSON.stringify(g && { rosterId: g.rosterId, rosterName: g.rosterName }));
+    await click(btn("Edit roster") || btn("Ploys & rules"), "back to roster"); // phones show one panel: Edit roster is beside Ploys & rules
+    const editRoster = btn("Edit roster"); if (editRoster) await click(editRoster, "Edit roster");
+    if (store("rosterLocked")) throw new Error("Edit roster didn't end the locked game");
+    await nav("Rosters"); await toRosterHome();
+    const record = card() && card().querySelector("[data-roster-record]");
+    if (!record || !/1 game: \d+W \d+L \d+D/.test(record.textContent)) throw new Error("the saved roster's card doesn't show its record: " + (record ? record.textContent : "no record line"));
+    await click(record, "the roster's record");
+    if (!card().querySelector("[data-roster-games]") || card().querySelectorAll("[data-roster-games] > div").length !== 1) throw new Error("the record didn't open to list the game");
+    await click(record, "the roster's record");
+    // Edit: loaded, not started, with Save roster beside Start game and My rosters beside Change team.
+    await nav("Battle");
     await click(cardBtn("Edit"), "Edit");
     if (store("rosterLocked")) throw new Error("Edit started a game");
     if (store("fid") !== r.f || (store("roster") || []).length !== r.o.length) throw new Error("Edit loaded the wrong roster");
@@ -1080,7 +1094,7 @@ async function runSelfTest(hooks) {
     if (!document.querySelector("[data-start-bar]") || !all("[data-start-bar] button").some(b => /Start game/.test(b.textContent))) throw new Error("no Start game bar while building");
     await toRosterHome();
     if (!card()) throw new Error("Back didn't go to Your rosters with the saved rosters");
-    return "Play starts a game, Edit loads it, saving again replaces it";
+    return "Play starts a game, its result shows on the roster card, Edit loads it";
   });
   await step("Name your operatives", async () => {
     await nav("Battle");

@@ -2,8 +2,11 @@
 // The roster library: the rosters saved on this device, each with Play, Edit and a menu (Rename, Copy code, Delete).
 // The first piece moved out of the Battle tab's Builder (owner, Nov 13: the middle path). It holds no data itself: the
 // Builder passes the list and what each button does. locked: a game is in progress, so Play and Edit wait for it to end.
-function SavedRosterLibrary({ rosters, menuId, setMenuId, onPlay, onEdit, onRename, onCopy, onDelete, locked, onView }) {
+// Each card shows that roster's record from the games played with it (games carry rosterId), and opens to list them.
+function SavedRosterLibrary({ rosters, games, menuId, setMenuId, onPlay, onEdit, onRename, onCopy, onDelete, locked, onView }) {
+  const [gamesOf, setGamesOf] = useState(null);
   if (!rosters.length) return null;
+  const resColor = { win: "#5A9C3A", loss: "#E0664A", draw: "var(--gold)" };
   const small = { ...bs("var(--muted)"), padding: "5px 10px", fontSize: 11 };
   return (
     <div id="ks-saved-rosters" style={{ marginBottom: 12 }}>
@@ -11,12 +14,18 @@ function SavedRosterLibrary({ rosters, menuId, setMenuId, onPlay, onEdit, onRena
       {rosters.map(r => {
         const fc = FACTIONS[r.f];
         const menu = menuId === r.id;
+        const played = (games || []).filter(g => g.rosterId === r.id);
+        const rec = played.reduce((t, g) => ({ ...t, [g.result]: (t[g.result] || 0) + 1 }), { win: 0, loss: 0, draw: 0 });
+        const open = gamesOf === r.id;
         return (
           <div key={r.id} data-saved-roster={r.id} style={{ ...cd, padding: "8px 10px", marginBottom: 6, borderLeft: "3px solid " + (fc ? fc.color : "var(--line)") }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif", overflowWrap: "anywhere" }}>{r.name}</div>
                 <div style={{ fontSize: 12, color: "var(--muted)" }}>{fc ? fc.name : "Unknown team"} {"\u00b7"} {r.o.length} operative{r.o.length === 1 ? "" : "s"} {"\u00b7"} {new Date(r.savedAt).toLocaleDateString()}</div>
+                {played.length > 0 && <button data-roster-record={r.id} onClick={() => setGamesOf(open ? null : r.id)} aria-expanded={open} className="link-btn" style={{ background: "none", border: "none", padding: 0, marginTop: 2, cursor: "pointer", fontSize: 12, color: "var(--text2)", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                  {played.length} game{played.length === 1 ? "" : "s"}: <strong style={{ color: "var(--text)" }}>{rec.win}W {rec.loss}L {rec.draw}D</strong> <Arrow open={open} />
+                </button>}
               </div>
               {locked
                 ? onView && <button onClick={() => onView(r)} title="Read its datacards" style={{ ...bs("var(--muted)"), padding: "6px 10px", fontSize: 12 }}>View cards</button>
@@ -26,6 +35,18 @@ function SavedRosterLibrary({ rosters, menuId, setMenuId, onPlay, onEdit, onRena
                 </>}
               <button onClick={() => setMenuId(menu ? null : r.id)} aria-label="More options" style={{ ...bs("var(--muted)"), padding: "6px 10px", fontSize: 12 }}>{"\u22EF"}</button>
             </div>
+            {open && (
+              <div data-roster-games={r.id} style={{ marginTop: 6 }}>
+                {played.slice(0, 10).map(g => (
+                  <div key={g.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0", borderTop: "1px solid var(--raised)" }}>
+                    <span style={{ ...bg(resColor[g.result]), flexShrink: 0 }}>{g.result === "win" ? "W" : g.result === "loss" ? "L" : "D"}</span>
+                    <div style={{ flex: 1, minWidth: 0, fontSize: 13, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.opp ? "vs " + g.opp : g.mission} <span style={{ color: "var(--muted)", fontSize: 12 }}>{"\u00b7"} {new Date(g.date).toLocaleDateString()}</span></div>
+                    <span style={{ flexShrink: 0, fontSize: 14, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif" }}>{g.you}{"\u2013"}{g.them}</span>
+                  </div>
+                ))}
+                {played.length > 10 && <div style={{ ...mu, fontSize: 12, paddingTop: 4 }}>The rest are in Game history.</div>}
+              </div>
+            )}
             {menu && (
               <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
                 <button onClick={() => onRename(r)} style={small}>Rename</button>
@@ -42,7 +63,8 @@ function SavedRosterLibrary({ rosters, menuId, setMenuId, onPlay, onEdit, onRena
 
 // Game history: wins, losses and draws overall, by your team and against each team, average score, the current streak,
 // and the last ten games with their recaps. Moved out of the Builder (middle path); remove asks the Builder (Undo).
-function GameHistoryCard({ games, open, setOpen, openGame, setOpenGame, onRemove }) {
+function GameHistoryCard({ games, rosters, open, setOpen, openGame, setOpenGame, onRemove }) {
+  const rosterName = (g) => { const r = g.rosterId && (rosters || []).find(x => x.id === g.rosterId); return r ? r.name : g.rosterName || ""; };
   if (!games.length) return null;
   const tally = (games) => games.reduce((t, g) => ({ ...t, [g.result]: t[g.result] + 1 }), { win: 0, loss: 0, draw: 0 });
   const all = tally(games);
@@ -91,7 +113,7 @@ function GameHistoryCard({ games, open, setOpen, openGame, setOpenGame, onRemove
               <span style={{ ...bg(resColor[g.result]), flexShrink: 0 }}>{g.result === "win" ? "W" : g.result === "loss" ? "L" : "D"}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.team}{g.opp ? " vs " + g.opp : ""}</div>
-                <div style={{ fontSize: 12, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{new Date(g.date).toLocaleDateString()} {"\u00b7"} {g.mission}</div>
+                <div style={{ fontSize: 12, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{new Date(g.date).toLocaleDateString()} {"\u00b7"} {g.mission}{rosterName(g) ? " \u00b7 " + rosterName(g) : ""}</div>
               </div>
               <span style={{ flexShrink: 0, fontSize: 15, fontWeight: 700, color: "var(--text)", fontFamily: "'Rajdhani', sans-serif" }}>{g.you}{"\u2013"}{g.them}</span>
               {g.recap && <Arrow open={openGame === g.id} />}
