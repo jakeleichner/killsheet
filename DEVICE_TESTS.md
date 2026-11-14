@@ -68,3 +68,10 @@ These need your real email and Google account, so Claude can't do them. While ac
 | 2 | On Android, open the ⋯ game menu and swipe back. Then open Shoot on a datacard and swipe back. | Each closes, and you stay on the Battle tab. |
 | 3 | Online on two phones: turn on Airplane Mode on phone B for 20 seconds while phone A shoots one of B's operatives. Turn it off. | When B reconnects, the hit lands once, not twice, and A's "changes to send" count goes back to none. |
 
+
+## 7. Operative photos (passed Nov 14)
+
+| Step | What to do | What should happen |
+|---|---|---|
+| 1 | On a phone, Rosters tab, open a datacard, Add photo, take a picture with the camera. | The photo shows beside the operative's name. |
+| 2 | Same again, choosing a picture from the photo library. | The photo shows beside the name. |
