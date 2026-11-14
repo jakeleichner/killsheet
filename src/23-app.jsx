@@ -32,6 +32,7 @@ function App() {
   const { account, setAccount, panelNote, setPanelNote } = useAccount();
   const [showAccount, setShowAccount] = useState(false);
   const [showAdmin, setShowAdmin] = useState(() => /[?&]admin\b/.test(window.location.search));
+  const [showSounds, setShowSounds] = useState(() => /[?&]sounds\b/.test(window.location.search)); // the sound sample page
   const [moveNoteHidden, setMoveNoteHidden] = useLocalStorage("moveNoteHidden", false);
   // Appearance: the theme, and whether the accent follows your team's color (Builder reports the team).
   const [appearance, setAppearance] = useLocalStorage("appearance", { theme: "default", matchTeam: false });
@@ -112,11 +113,12 @@ function App() {
   return (
     <FeatureCtx.Provider value={featureCtx}>
     <div style={{ background: "var(--bg)", color: "var(--text)", fontFamily: "'Inter', 'Segoe UI', sans-serif", fontSize: 14 }}>
-      {features === null && !returning && <Welcome />}
+      {features === null && !returning && !showAdmin && !showSounds && <Welcome />}
       {showFeatures && <FeaturesPage focus={showFeatures} onClose={() => setShowFeatures(false)} onNews={openNews} onFeedback={() => setShowFeedback(true)} account={account} onAccount={accountsOn() ? () => setShowAccount(true) : null} />}
       {(showAccount || panelNote) && <AccountPanel account={account} setAccount={setAccount} note={panelNote} onClose={() => { setShowAccount(false); setPanelNote(null); }} />}
       {showFeedback && <FeedbackForm tab={tab} onClose={() => setShowFeedback(false)} />}
       {showAdmin && <AdminPage onClose={() => setShowAdmin(false)} />}
+      {showSounds && <SoundLab onClose={() => setShowSounds(false)} />}
       {showNews && <WhatsNew onClose={() => setShowNews(false)} />}
       <PhotoPreview />
       {showMove && <MovePanel onClose={() => setShowMove(false)} />}

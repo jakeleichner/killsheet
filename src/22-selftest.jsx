@@ -1584,6 +1584,23 @@ async function runSelfTest(hooks) {
     if (JSON.stringify(freshOps(pm, today)) !== JSON.stringify(today)) throw new Error("a current roster changed when refreshed");
     return "old names and stats replaced, ids kept, repeats numbered";
   });
+  await step("Sounds", async () => {
+    // Every sound on the sample page draws (silently, offline), has sound in it and doesn't distort; every weapon in
+    // the app maps to one of them.
+    const levels = [], bad = [];
+    for (const s of SOUND_LIST) {
+      let peak = 0, loud = 0;
+      for (let i = 0; i < 3; i++) { const m = await measureSound(s.id, s.o); if (!m) return "no offline audio in this browser, skipped"; if (m.bad) bad.push("#" + s.n + " has broken samples"); peak = Math.max(peak, m.peak); loud = Math.max(loud, m.loud); }
+      levels.push("#" + s.n + " " + loud.toFixed(2));
+      if (loud < 0.03) bad.push("#" + s.n + " " + s.name + " is nearly silent (" + loud.toFixed(3) + ")");
+      if (peak > SOUND_MAX_PEAK) bad.push("#" + s.n + " " + s.name + " is too loud (" + peak.toFixed(2) + ")");
+    }
+    const weapons = Object.values(FACTIONS).flatMap(f => f.operatives.flatMap(o => [...o.ranged.map(w => ({ ...w, type: "ranged" })), ...o.melee.map(w => ({ ...w, type: "melee" }))]));
+    const unmapped = weapons.filter(w => !SOUND_RECIPES[soundOfWeapon(w).id]).map(w => w.name);
+    if (unmapped.length) bad.push("weapons with no sound: " + [...new Set(unmapped)].slice(0, 5).join(", "));
+    if (bad.length) throw new Error(bad.join("; ") + ". Levels: " + levels.join(", "));
+    return SOUND_LIST.length + " sounds, " + weapons.length + " weapons mapped; loudness: " + levels.join(", ");
+  });
 
   // Put everything back the way it was, and stop the app saving its test state over it until reload.
   window.__ksFrozen = true;

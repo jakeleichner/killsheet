@@ -13,6 +13,8 @@ from measure_speed import Page, CHROME
 PORT = 9337
 URL = os.environ.get("KS_URL", "http://localhost:3456/") + "?selftest&v=" + str(int(time.time()))
 sizes = [(1280, 900, False), (375, 812, True), (320, 640, True)] if len(sys.argv) < 3 else [tuple(json.loads(x)) for x in sys.argv[2:]]
+try: urllib.request.urlopen(URL.split("?")[0], timeout=5)
+except Exception: sys.exit("The preview server isn't answering at " + URL.split("?")[0] + ". Start it first (CLAUDE.md, Previewing changes).")
 prof = tempfile.mkdtemp(prefix="ks-st-")
 chrome = subprocess.Popen([CHROME, "--headless=new", "--remote-debugging-port=%d" % PORT, "--no-first-run", "--user-data-dir=" + prof, "about:blank"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 ok_all = True
@@ -40,7 +42,7 @@ try:
         t = json.loads(res)
         fails = [r for r in t["results"] if not r["ok"]]
         print("%dpx: %d of %d passed in %ds" % (w, t["passed"], t["passed"] + t["failed"], time.time() - start))
-        for r in fails: print("   FAIL %s: %s" % (r["name"], r["note"][:300]))
+        for r in fails: print("   FAIL %s: %s" % (r["name"], r["note"][:1500]))
         ok_all = ok_all and not fails
 finally:
     chrome.kill()
