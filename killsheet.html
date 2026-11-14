@@ -8396,11 +8396,13 @@ function playHotFx(card, fromEl) {
 
 
 /* ═══ SOUNDS ═══ */
-// Attack sounds (owner, Oct 29; sample page Nov 14). Every sound is made here with the browser's Web Audio engine
-// (noise, tones and volume shapes, like a small synthesizer): no sound files, nothing to license, nothing to download,
-// and it works offline. One recipe per weapon kind that fxProfile sorts, plus the game's moments (hit, save, block...).
+// Attack sounds (owner, Oct 29; sample page Nov 14). Every sound is made here with the browser's Web Audio engine: no
+// sound files, nothing to license or download, and it works offline. One recipe per weapon kind that fxProfile sorts,
+// plus the game's moments (hit, save, block...). Not in the game yet: the sample page (?sounds) is for tuning them.
+// Owner, Nov 14, on the first round: "Warhammer is grim dark... make this cool as hell", not arcade. So every sound
+// now plays through a bus (soundBus) that dirties it (distortion), gives it a sub-bass channel and puts it in a big
+// ruined space (a long dark echo); recipes use noise for anything bright, never clean high tones or beeps.
 // Each recipe draws into any audio context, so the self-test can render it silently (OfflineAudioContext) and check it.
-// Not in the game yet: the sample page (?sounds) is for tuning them first.
 
 // Shared building blocks. t is the start time in the context's clock (seconds).
 function sndNoise(ctx) {
@@ -8417,7 +8419,8 @@ function sndEnv(param, t, peak, a, d) {
   param.exponentialRampToValueAtTime(Math.max(peak, 0.0002), t + a);
   param.exponentialRampToValueAtTime(0.0001, t + a + d);
 }
-// A burst of filtered noise (cracks, whooshes, explosions, hiss). o: dur, type, f, f1 (filter sweeps to it), q, gain, a.
+// A burst of filtered noise (cracks, roars, hiss, metal). o: dur, type, f, f1 (filter sweeps to it), q, gain, a,
+// chop (times a second the sound stutters, for engine teeth).
 function sndBurst(ctx, dest, t, o) {
   const a = o.a || 0.003, src = ctx.createBufferSource(), fl = ctx.createBiquadFilter(), g = ctx.createGain();
   src.buffer = sndNoise(ctx); src.loop = true;
@@ -8425,10 +8428,18 @@ function sndBurst(ctx, dest, t, o) {
   fl.frequency.setValueAtTime(o.f, t);
   if (o.f1) fl.frequency.exponentialRampToValueAtTime(o.f1, t + a + o.dur);
   sndEnv(g.gain, t, o.gain || 0.5, a, o.dur);
-  src.connect(fl); fl.connect(g); g.connect(dest);
+  let last = g;
+  if (o.chop) {
+    const am = ctx.createGain(), lfo = ctx.createOscillator(), depth = ctx.createGain();
+    am.gain.value = 0.55; lfo.type = "square"; lfo.frequency.value = o.chop; depth.gain.value = 0.45;
+    lfo.connect(depth); depth.connect(am.gain); g.connect(am); last = am;
+    lfo.start(t); lfo.stop(t + a + o.dur + 0.05);
+  }
+  src.connect(fl); fl.connect(g); last.connect(dest);
   src.start(t, Math.random() * 2); src.stop(t + a + o.dur + 0.05);
 }
-// A tone that can slide in pitch (thumps, zaps, rings). o: wave, f, f1, sweep (seconds to reach f1), dur, gain, a, lp, lp1.
+// A tone that can slide in pitch (thumps, sub drops, drones). o: wave, f, f1, sweep (seconds to reach f1), dur, gain,
+// a, lp, lp1 (a low-pass filter that can open or close over the sound).
 function sndTone(ctx, dest, t, o) {
   const a = o.a || 0.004, osc = ctx.createOscillator(), g = ctx.createGain();
   osc.type = o.wave || "sine";
@@ -8444,188 +8455,322 @@ function sndTone(ctx, dest, t, o) {
   node.connect(g); g.connect(dest);
   osc.start(t); osc.stop(t + a + o.dur + 0.05);
 }
-// A tone chopped on and off quickly (chainsword teeth, electric buzz).
+// A tone chopped on and off quickly: the chainsword's two-stroke engine.
 function sndChopped(ctx, dest, t, o) {
   const osc = ctx.createOscillator(), fl = ctx.createBiquadFilter(), am = ctx.createGain(), lfo = ctx.createOscillator(), depth = ctx.createGain(), g = ctx.createGain();
   osc.type = o.wave || "sawtooth";
   osc.frequency.setValueAtTime(o.f, t);
   if (o.f1) osc.frequency.exponentialRampToValueAtTime(o.f1, t + (o.sweep || o.dur));
   fl.type = "lowpass"; fl.frequency.value = o.lp || 1400;
-  am.gain.value = 0.5; lfo.type = "square"; lfo.frequency.value = o.rate || 36; depth.gain.value = 0.45;
+  am.gain.value = 0.5; lfo.type = "square"; lfo.frequency.setValueAtTime(o.rate || 36, t); depth.gain.value = 0.45;
+  if (o.rate1) lfo.frequency.exponentialRampToValueAtTime(o.rate1, t + (o.sweep || o.dur));
   lfo.connect(depth); depth.connect(am.gain);
   sndEnv(g.gain, t, o.gain || 0.4, o.a || 0.04, o.dur);
   osc.connect(fl); fl.connect(am); am.connect(g); g.connect(dest);
   osc.start(t); lfo.start(t); osc.stop(t + o.dur + 0.15); lfo.stop(t + o.dur + 0.15);
 }
 const sndVary = () => 0.93 + Math.random() * 0.14; // a little different every time, so repeats don't sound robotic
+const sndRand = (lo, hi) => lo + Math.random() * (hi - lo);
 
-// Pieces several sounds share.
-function sndShot(ctx, d, t, s) { // a plain gunshot: crack and thump
-  const v = sndVary();
-  sndBurst(ctx, d, t, { type: "bandpass", f: 3000 * v, f1: 1100, q: 1, gain: 0.75 * s, dur: 0.05 });
-  sndTone(ctx, d, t, { f: 180 * v, f1: 60, dur: 0.09, gain: 0.55 * s });
+// The bus every sound plays through. Layers go to b.main (dirtied by distortion, which also adds overtones a phone
+// speaker can play, so the bass comes through as weight) or b.sub (clean deep bass). Then a long, dark echo, like
+// firing in a ruined hab-block. SOUND_FX sets each sound's dirt (drive), echo level (verb) and echo length (size).
+const SOUND_FX = {
+  bolt: { drive: 4, verb: 0.5, size: 2.2 }, auto: { drive: 5, verb: 0.45, size: 2 }, slug: { drive: 4, verb: 0.5, size: 2.2 },
+  shotgun: { drive: 4, verb: 0.45, size: 2 }, sniper: { drive: 3, verb: 0.6, size: 3 }, las: { drive: 6, verb: 0.45, size: 1.8 },
+  plasma: { drive: 5, verb: 0.5, size: 2.4 }, melta: { drive: 5, verb: 0.45, size: 2 }, flame: { drive: 4, verb: 0.4, size: 2 },
+  grenade: { drive: 4, verb: 0.55, size: 3 }, blast: { drive: 4, verb: 0.6, size: 3.2 }, electric: { drive: 6, verb: 0.45, size: 2 },
+  psychic: { drive: 3, verb: 0.7, size: 3.5 }, blade: { drive: 4, verb: 0.35, size: 1.6 }, chain: { drive: 7, verb: 0.35, size: 1.6 },
+  heavy: { drive: 5, verb: 0.4, size: 2 }, hit: { drive: 4, verb: 0.35, size: 1.5 }, crit: { drive: 5, verb: 0.5, size: 2.2 },
+  save: { drive: 2, verb: 0.4, size: 1.6 }, block: { drive: 3, verb: 0.45, size: 1.8 }, hot: { drive: 4, verb: 0.4, size: 1.8 },
+  down: { drive: 4, verb: 0.5, size: 2.5 }, versus: { drive: 3, verb: 0.55, size: 3 },
+};
+function sndCurve(drive) { // soft clipping: loud parts get rounded and gritty instead of cracking
+  const n = 2048, c = new Float32Array(n), k = Math.tanh(drive);
+  for (let i = 0; i < n; i++) { const x = (i / (n - 1)) * 2 - 1; c[i] = Math.tanh(drive * x) / k; }
+  return c;
 }
-function sndBoom(ctx, d, t, big, krak) { // an explosion
-  sndBurst(ctx, d, t, { type: "highpass", f: 2500, gain: 0.4, dur: 0.06 });
-  sndBurst(ctx, d, t, { type: "lowpass", f: 1800, f1: 120, gain: 1, dur: krak ? 0.5 : big ? 1.2 : 0.95 });
-  sndTone(ctx, d, t, { f: 90 * sndVary(), f1: 28, dur: big ? 0.8 : 0.65, gain: 1 });
-  if (krak) sndTone(ctx, d, t, { wave: "square", f: 700, f1: 300, dur: 0.25, gain: 0.15, lp: 2000 });
-}
-function sndZap(ctx, d, t) { // the crackle of a power field
-  sndTone(ctx, d, t, { wave: "sawtooth", f: 85, dur: 0.45, gain: 0.09, lp: 900 });
-  sndBurst(ctx, d, t, { type: "highpass", f: 4000, a: 0.01, dur: 0.1, gain: 0.15 });
-}
-
-// The recipes. Each draws one sound starting at t and returns how long it lasts (seconds). o: { shots, power, light, krak }.
-const SOUND_RECIPES = {
-  bolt(ctx, d, t) {
-    const v = sndVary();
-    sndBurst(ctx, d, t, { type: "bandpass", f: 2400 * v, f1: 700, q: 0.8, gain: 0.9, dur: 0.09 });
-    sndTone(ctx, d, t, { f: 140 * v, f1: 45, dur: 0.16, gain: 0.8 });
-    sndBurst(ctx, d, t + 0.07, { type: "lowpass", f: 1500, f1: 200, gain: 0.6, dur: 0.18 }); // the bolt round going off
-    sndTone(ctx, d, t + 0.07, { f: 90, f1: 40, dur: 0.15, gain: 0.5 });
-    return 0.32;
-  },
-  slug(ctx, d, t) { sndShot(ctx, d, t, 1); return 0.15; },
-  auto(ctx, d, t, o) {
-    const n = Math.max(2, Math.min(6, (o && o.shots) || 4));
-    for (let i = 0; i < n; i++) sndShot(ctx, d, t + i * 0.075 + Math.random() * 0.01, 0.8);
-    return n * 0.075 + 0.15;
-  },
-  shotgun(ctx, d, t) {
-    sndBurst(ctx, d, t, { type: "lowpass", f: 4000, f1: 600, gain: 1, dur: 0.28 });
-    sndTone(ctx, d, t, { f: 110 * sndVary(), f1: 40, dur: 0.22, gain: 0.9 });
-    [0.45, 0.58].forEach(k => { // racking the next shell
-      sndBurst(ctx, d, t + k, { type: "bandpass", f: 1800, q: 3, dur: 0.03, gain: 0.35 });
-      sndTone(ctx, d, t + k, { wave: "square", f: 600, dur: 0.02, gain: 0.06, lp: 3000 });
-    });
-    return 0.7;
-  },
-  sniper(ctx, d, t) {
-    sndBurst(ctx, d, t, { type: "highpass", f: 2500, dur: 0.035, gain: 1 });
-    sndTone(ctx, d, t, { f: 220 * sndVary(), f1: 50, dur: 0.12, gain: 0.6 });
-    sndBurst(ctx, d, t + 0.02, { type: "bandpass", f: 900, f1: 300, q: 0.7, a: 0.02, dur: 0.9, gain: 0.18 }); // the echo
-    return 1;
-  },
-  las(ctx, d, t) {
-    const v = sndVary();
-    sndTone(ctx, d, t, { wave: "sawtooth", f: 2200 * v, f1: 500, dur: 0.14, gain: 0.25, lp: 5000 });
-    sndTone(ctx, d, t, { f: 1200 * v, f1: 300, dur: 0.12, gain: 0.3 });
-    sndBurst(ctx, d, t, { type: "highpass", f: 3000, dur: 0.04, gain: 0.3 });
-    return 0.2;
-  },
-  plasma(ctx, d, t) {
-    sndTone(ctx, d, t, { wave: "sawtooth", f: 180, f1: 900, sweep: 0.28, a: 0.26, dur: 0.05, gain: 0.12, lp: 1500 }); // charging
-    const f = t + 0.3;
-    sndBurst(ctx, d, f, { type: "lowpass", f: 2500, f1: 300, gain: 0.9, dur: 0.45 });
-    sndTone(ctx, d, f, { f: 420 * sndVary(), f1: 55, dur: 0.4, gain: 0.7 });
-    sndTone(ctx, d, f, { wave: "square", f: 880, f1: 110, dur: 0.15, gain: 0.1, lp: 3000 });
-    return 0.8;
-  },
-  melta(ctx, d, t) {
-    sndBurst(ctx, d, t, { type: "bandpass", f: 300, f1: 2500, q: 1.2, a: 0.05, dur: 0.35, gain: 0.8 });
-    sndTone(ctx, d, t, { f: 70, f1: 40, a: 0.03, dur: 0.5, gain: 0.7 });
-    sndBurst(ctx, d, t + 0.15, { type: "highpass", f: 5000, a: 0.1, dur: 0.6, gain: 0.2 }); // sizzle
-    return 0.85;
-  },
-  flame(ctx, d, t) {
-    sndBurst(ctx, d, t, { type: "lowpass", f: 500, f1: 2200, a: 0.12, dur: 0.7, gain: 0.8 });
-    sndTone(ctx, d, t, { f: 55, a: 0.1, dur: 0.8, gain: 0.35 });
-    for (let i = 0; i < 10; i++) sndBurst(ctx, d, t + 0.1 + Math.random() * 0.7, { type: "highpass", f: 3000, dur: 0.015, gain: 0.25 }); // crackle
-    return 0.95;
-  },
-  electric(ctx, d, t) {
-    sndTone(ctx, d, t, { wave: "sawtooth", f: 100, dur: 0.45, gain: 0.1, lp: 1200 });
-    for (let i = 0; i < 6; i++) {
-      const k = t + i * 0.06 + Math.random() * 0.03;
-      sndTone(ctx, d, k, { wave: "square", f: 300 + Math.random() * 1100, f1: 80 + Math.random() * 220, dur: 0.05, gain: 0.12, lp: 4000 });
-      sndBurst(ctx, d, k, { type: "highpass", f: 2000, dur: 0.04, gain: 0.4 });
+// The echo: dark noise that fades over secs, brighter at first and duller as it dies (like a big stone space), with a
+// few early slaps off nearby walls. Made once per length and kept.
+function sndImpulse(ctx, secs) {
+  const key = "__ksVerb" + secs;
+  if (ctx[key]) return ctx[key];
+  const rate = ctx.sampleRate, len = Math.floor(rate * secs), buf = ctx.createBuffer(2, len, rate);
+  for (let c = 0; c < 2; c++) {
+    const d = buf.getChannelData(c);
+    let lp = 0;
+    for (let i = 0; i < len; i++) {
+      const p = i / len, k = 0.45 - 0.4 * p;
+      lp += k * ((Math.random() * 2 - 1) - lp);
+      d[i] = lp * Math.pow(1 - p, 2.5) * Math.min(1, i / (rate * 0.012));
     }
+    [0.045, 0.09, 0.15, 0.23].forEach((s, j) => { const i = Math.floor(rate * (s + c * 0.011)); if (i < len) d[i] += 0.5 / (j + 1); });
+  }
+  ctx[key] = buf;
+  return buf;
+}
+function soundBus(ctx, out, id, o) {
+  const fx = SOUND_FX[id] || { drive: 3, verb: 0.4, size: 2 };
+  const main = ctx.createGain(), sub = ctx.createGain(), shaper = ctx.createWaveShaper(), post = ctx.createGain(), subLevel = ctx.createGain(), send = ctx.createGain(), verb = ctx.createConvolver();
+  shaper.curve = sndCurve(fx.drive); shaper.oversample = "4x";
+  post.gain.value = subLevel.gain.value = soundTrim(id, o); // after the distortion, so the level doesn't change the grit
+  send.gain.value = fx.verb;
+  verb.buffer = sndImpulse(ctx, fx.size);
+  main.connect(shaper); shaper.connect(post); post.connect(out);
+  sub.connect(subLevel); subLevel.connect(out);
+  post.connect(send); send.connect(verb); verb.connect(out);
+  return { main, sub, tail: fx.size };
+}
+
+// Pieces several sounds share. b is the bus; s scales how big.
+function sndClunk(ctx, b, t, s) { // a heavy mechanical action
+  sndBurst(ctx, b.main, t, { type: "bandpass", f: 650, q: 4, dur: 0.05, gain: 0.6 * s });
+  sndTone(ctx, b.main, t, { wave: "square", f: 140, dur: 0.04, gain: 0.25 * s, lp: 700 });
+}
+function sndGun(ctx, b, t, s) { // a deep gun report: crack, body and a bass hit; the bus adds the echo
+  const v = sndVary();
+  sndBurst(ctx, b.main, t, { type: "bandpass", f: 1800 * v, q: 0.9, dur: 0.03, gain: 1 * s });
+  sndBurst(ctx, b.main, t, { type: "lowpass", f: 1300 * v, f1: 180, dur: 0.28, gain: 0.9 * s });
+  sndTone(ctx, b.main, t, { wave: "triangle", f: 95 * v, f1: 42, dur: 0.22, gain: 0.6 * s });
+  sndTone(ctx, b.sub, t, { f: 110 * v, f1: 38, dur: 0.4, gain: 1 * s });
+}
+function sndDebris(ctx, b, t, n, span, s) { // bits falling and rattling after a blast or a fall
+  for (let i = 0; i < n; i++) {
+    const k = Math.pow(Math.random(), 1.6);
+    sndBurst(ctx, b.main, t + k * span, { type: "bandpass", f: sndRand(900, 3500), q: sndRand(2, 6), dur: sndRand(0.02, 0.07), gain: (0.06 + 0.12 * (1 - k)) * s });
+  }
+}
+function sndCrackle(ctx, b, t, n, span, s) { // fire, sparks, power fields
+  for (let i = 0; i < n; i++) sndBurst(ctx, b.main, t + Math.random() * span, { type: "highpass", f: sndRand(2500, 5000), dur: sndRand(0.008, 0.025), gain: sndRand(0.12, 0.3) * s });
+}
+function sndBoom(ctx, b, t, s, krak) { // an explosion: crack, deep boom, bass drop, roar, debris
+  sndBurst(ctx, b.main, t, { type: "highpass", f: 1500, dur: 0.05, gain: 0.8 * s });
+  sndBurst(ctx, b.main, t, { type: "lowpass", f: 2000, f1: 150, dur: krak ? 0.7 : 1.6, gain: 1 * s });
+  sndBurst(ctx, b.main, t, { type: "lowpass", f: 400, f1: 60, a: 0.02, dur: krak ? 1.2 : 2.2, gain: 0.9 * s });
+  sndTone(ctx, b.sub, t, { f: 70 * sndVary(), f1: 25, dur: 1.5, gain: 1 * s });
+  sndTone(ctx, b.sub, t, { f: 40, a: 0.1, dur: 2, gain: 0.4 * s });
+  sndDebris(ctx, b, t + 0.25, krak ? 12 : 25, krak ? 0.9 : 1.6, s);
+  if (krak) sndBurst(ctx, b.main, t, { type: "bandpass", f: 2500, f1: 900, q: 6, a: 0.01, dur: 0.35, gain: 0.35 * s }); // armor tearing
+}
+function sndPowerField(ctx, b, t, len) { // a power weapon's deep crackling hum
+  sndTone(ctx, b.main, t, { wave: "sawtooth", f: 50, a: 0.15, dur: len, gain: 0.25, lp: 600 });
+  sndTone(ctx, b.main, t, { wave: "sawtooth", f: 53, a: 0.15, dur: len, gain: 0.2, lp: 600 });
+  sndCrackle(ctx, b, t, 6, len, 1);
+}
+function sndDischarge(ctx, b, t) { // the snap when a power field strikes
+  sndBurst(ctx, b.main, t, { type: "highpass", f: 1500, dur: 0.04, gain: 0.9 });
+  sndBurst(ctx, b.main, t, { type: "bandpass", f: 3000, q: 2, a: 0.01, dur: 0.3, gain: 0.3 });
+}
+function sndImpact(ctx, b, t, s) { // a meaty hit
+  sndTone(ctx, b.main, t, { wave: "triangle", f: 110, f1: 45, dur: 0.2, gain: 0.9 * s });
+  sndTone(ctx, b.sub, t, { f: 70, f1: 30, dur: 0.3, gain: 0.9 * s });
+  sndBurst(ctx, b.main, t, { type: "lowpass", f: 1800, f1: 250, dur: 0.15, gain: 0.8 * s });
+}
+function sndDrum(ctx, b, t, s) { // a war drum
+  sndTone(ctx, b.sub, t, { f: 75, f1: 32, dur: 0.5, gain: 1 * s });
+  sndTone(ctx, b.main, t, { wave: "triangle", f: 110, f1: 45, dur: 0.3, gain: 0.7 * s });
+  sndBurst(ctx, b.main, t, { type: "lowpass", f: 700, f1: 100, dur: 0.3, gain: 0.6 * s });
+}
+
+// The recipes. Each draws one sound starting at t into the bus b and returns how long it lasts before its echo
+// (seconds). o: { shots, power, light, krak }.
+const SOUND_RECIPES = {
+  bolt(ctx, b, t) {
+    sndClunk(ctx, b, t, 1);
+    sndGun(ctx, b, t, 1);
+    sndBurst(ctx, b.main, t + 0.03, { type: "bandpass", f: 3000, f1: 1500, q: 1, a: 0.02, dur: 0.25, gain: 0.25 }); // the bolt's rocket
+    const k = t + 0.28; // the bolt detonating
+    sndBurst(ctx, b.main, k, { type: "highpass", f: 1200, dur: 0.04, gain: 0.7 });
+    sndBurst(ctx, b.main, k, { type: "lowpass", f: 1800, f1: 150, dur: 0.5, gain: 0.9 });
+    sndTone(ctx, b.main, k, { wave: "triangle", f: 100, f1: 45, dur: 0.3, gain: 0.5 });
+    sndTone(ctx, b.sub, k, { f: 80, f1: 30, dur: 0.6, gain: 1 });
+    return 0.9;
+  },
+  auto(ctx, b, t, o) {
+    const n = Math.max(2, Math.min(6, (o && o.shots) || 4)), gap = 0.085;
+    for (let i = 0; i < n; i++) sndGun(ctx, b, t + i * gap + Math.random() * 0.012, 0.8);
+    sndBurst(ctx, b.main, t, { type: "lowpass", f: 300, a: 0.02, dur: n * gap + 0.3, gain: 0.4 }); // the burst's rumble
+    return n * gap + 0.4;
+  },
+  slug(ctx, b, t) { sndGun(ctx, b, t, 1); return 0.5; },
+  shotgun(ctx, b, t) {
+    sndGun(ctx, b, t, 1.1);
+    sndBurst(ctx, b.main, t, { type: "lowpass", f: 900, f1: 100, dur: 0.6, gain: 1 });
+    sndTone(ctx, b.sub, t, { f: 60, f1: 25, dur: 0.7, gain: 1 });
+    [0.55, 0.72].forEach(k => sndClunk(ctx, b, t + k, 1.1)); // racking the next shell: back, then forward
+    sndBurst(ctx, b.main, t + 0.6, { type: "bandpass", f: 2000, q: 2, a: 0.02, dur: 0.1, gain: 0.15 });
+    return 0.9;
+  },
+  sniper(ctx, b, t) {
+    sndBurst(ctx, b.main, t, { type: "highpass", f: 2000, dur: 0.02, gain: 1 }); // the round breaking the sound barrier
+    sndGun(ctx, b, t + 0.01, 0.9);
+    sndBurst(ctx, b.main, t + 0.12, { type: "lowpass", f: 500, f1: 120, a: 0.15, dur: 1.8, gain: 0.5 }); // rolling across the battlefield
+    sndTone(ctx, b.sub, t + 0.1, { f: 45, a: 0.2, dur: 1.6, gain: 0.4 });
+    return 2;
+  },
+  las(ctx, b, t) {
+    sndBurst(ctx, b.main, t, { type: "highpass", f: 1500, dur: 0.02, gain: 1 });
+    sndBurst(ctx, b.main, t, { type: "bandpass", f: 2500 * sndVary(), f1: 900, q: 1.5, dur: 0.12, gain: 0.8 }); // the crack
+    sndBurst(ctx, b.main, t + 0.02, { type: "highpass", f: 5000, a: 0.01, dur: 0.35, gain: 0.2 }); // ozone sizzle
+    sndTone(ctx, b.main, t, { wave: "triangle", f: 120, f1: 50, dur: 0.15, gain: 0.6 });
+    sndTone(ctx, b.sub, t, { f: 90, f1: 40, dur: 0.2, gain: 0.7 });
     return 0.5;
   },
-  psychic(ctx, d, t) {
-    [330, 349].forEach(f => sndTone(ctx, d, t, { f, f1: f * 1.6, sweep: 0.5, a: 0.2, dur: 0.3, gain: 0.2 }));
-    sndBurst(ctx, d, t, { type: "bandpass", f: 300, f1: 3000, q: 1, a: 0.45, dur: 0.05, gain: 0.5 }); // rushing in
-    sndTone(ctx, d, t + 0.5, { f: 160, f1: 40, dur: 0.5, gain: 0.7 });
-    sndBurst(ctx, d, t + 0.5, { type: "lowpass", f: 800, f1: 100, dur: 0.4, gain: 0.5 });
-    return 1;
-  },
-  grenade(ctx, d, t, o) {
-    sndTone(ctx, d, t, { f: 2600, dur: 0.08, gain: 0.15 }); // lands
-    sndTone(ctx, d, t + 0.12, { f: 2500, dur: 0.06, gain: 0.1 }); // bounces
-    sndBoom(ctx, d, t + 0.4, false, o && o.krak);
+  plasma(ctx, b, t) {
+    sndTone(ctx, b.main, t, { wave: "sawtooth", f: 60, f1: 220, sweep: 0.45, a: 0.4, dur: 0.06, gain: 0.25, lp: 500, lp1: 2500 }); // charging
+    sndTone(ctx, b.sub, t, { f: 40, f1: 80, sweep: 0.45, a: 0.4, dur: 0.1, gain: 0.5 });
+    sndBurst(ctx, b.main, t, { type: "bandpass", f: 400, f1: 3000, q: 3, a: 0.4, dur: 0.05, gain: 0.25 });
+    const k = t + 0.48; // the discharge
+    sndBurst(ctx, b.main, k, { type: "lowpass", f: 3000, f1: 150, dur: 0.9, gain: 1 });
+    sndTone(ctx, b.main, k, { wave: "triangle", f: 160, f1: 40, dur: 0.6, gain: 0.7 });
+    sndTone(ctx, b.sub, k, { f: 70, f1: 25, dur: 0.9, gain: 1 });
+    sndBurst(ctx, b.main, k + 0.07, { type: "highpass", f: 4000, a: 0.05, dur: 0.9, gain: 0.18 }); // sizzle
     return 1.5;
   },
-  blast(ctx, d, t) {
-    sndBurst(ctx, d, t, { type: "bandpass", f: 600, f1: 2200, q: 1.5, a: 0.03, dur: 0.3, gain: 0.45 }); // launch
-    sndTone(ctx, d, t, { f: 120, f1: 50, dur: 0.1, gain: 0.5 });
-    sndBoom(ctx, d, t + 0.38, true);
-    return 1.7;
+  melta(ctx, b, t) {
+    sndBurst(ctx, b.main, t, { type: "lowpass", f: 200, f1: 1200, a: 0.04, dur: 0.3, gain: 1 }); // the whump
+    sndBurst(ctx, b.main, t + 0.05, { type: "bandpass", f: 500, f1: 1800, q: 0.8, a: 0.1, dur: 0.9, gain: 0.7 }); // the roar
+    sndTone(ctx, b.sub, t, { f: 55, f1: 30, a: 0.03, dur: 1.2, gain: 1 });
+    sndBurst(ctx, b.main, t + 0.3, { type: "highpass", f: 4500, a: 0.2, dur: 1, gain: 0.25 }); // metal melting
+    sndCrackle(ctx, b, t + 0.3, 8, 0.9, 0.8);
+    return 1.5;
   },
-  blade(ctx, d, t, o) {
-    sndBurst(ctx, d, t, { type: "bandpass", f: 1200, f1: 4500, q: 2, a: 0.06, dur: 0.12, gain: 0.6 }); // swing
-    const k = t + 0.17;
-    sndBurst(ctx, d, k, { type: "highpass", f: 1800, dur: 0.07, gain: 0.5 });
-    sndTone(ctx, d, k, { wave: "triangle", f: 1400, f1: 900, dur: 0.1, gain: 0.08 });
-    if (o && o.power) sndZap(ctx, d, k);
-    return 0.5;
+  flame(ctx, b, t) {
+    sndBurst(ctx, b.main, t, { type: "highpass", f: 3000, a: 0.02, dur: 0.2, gain: 0.3 }); // gas
+    sndBurst(ctx, b.main, t + 0.05, { type: "lowpass", f: 300, f1: 1400, a: 0.15, dur: 1.3, gain: 1 }); // the roar
+    sndBurst(ctx, b.main, t + 0.1, { type: "bandpass", f: 700, q: 0.7, a: 0.2, dur: 1.2, gain: 0.5 });
+    sndTone(ctx, b.sub, t, { f: 45, a: 0.2, dur: 1.2, gain: 0.6 });
+    sndCrackle(ctx, b, t + 0.15, 18, 1.3, 1);
+    return 1.6;
   },
-  chain(ctx, d, t, o) {
-    sndChopped(ctx, d, t, { f: 70, f1: 130, sweep: 0.35, dur: 0.7, gain: 0.4, rate: 36, lp: 1400 }); // the motor revving
-    sndBurst(ctx, d, t + 0.2, { type: "bandpass", f: 2500, q: 1.5, a: 0.1, dur: 0.45, gain: 0.35 }); // teeth biting
-    if (o && o.power) sndZap(ctx, d, t + 0.2);
-    return 0.85;
+  grenade(ctx, b, t, o) {
+    sndTone(ctx, b.main, t, { wave: "triangle", f: 90, f1: 60, dur: 0.08, gain: 0.5 }); // lands with a thud
+    sndBurst(ctx, b.main, t, { type: "lowpass", f: 600, dur: 0.05, gain: 0.4 });
+    sndBoom(ctx, b, t + 0.35, 1, o && o.krak);
+    return 2.2;
   },
-  heavy(ctx, d, t, o) {
-    const light = o && o.light, k = t + (light ? 0.12 : 0.2);
-    sndBurst(ctx, d, t, { type: "lowpass", f: 300, f1: 900, a: light ? 0.05 : 0.1, dur: 0.12, gain: light ? 0.3 : 0.45 }); // swing
-    sndTone(ctx, d, k, { f: light ? 150 : 110, f1: light ? 60 : 35, dur: light ? 0.12 : 0.3, gain: light ? 0.7 : 1 });
-    sndBurst(ctx, d, k, { type: "lowpass", f: light ? 900 : 1200, f1: 150, dur: light ? 0.06 : 0.25, gain: light ? 0.5 : 0.8 });
-    if (o && o.power) sndZap(ctx, d, k);
-    return light ? 0.3 : 0.6;
+  blast(ctx, b, t) {
+    sndTone(ctx, b.main, t, { wave: "triangle", f: 80, f1: 40, dur: 0.15, gain: 0.8 }); // launch
+    sndBurst(ctx, b.main, t, { type: "lowpass", f: 1500, dur: 0.1, gain: 0.8 });
+    sndBurst(ctx, b.main, t + 0.02, { type: "bandpass", f: 800, f1: 1600, q: 0.8, a: 0.03, dur: 0.4, gain: 0.6 }); // the rocket
+    sndBoom(ctx, b, t + 0.45, 1.2);
+    return 2.4;
   },
-  // The game's moments.
-  hit(ctx, d, t) {
-    sndTone(ctx, d, t, { f: 130, f1: 50, dur: 0.14, gain: 0.8 });
-    sndBurst(ctx, d, t, { type: "lowpass", f: 1600, f1: 300, dur: 0.1, gain: 0.6 });
-    return 0.2;
+  electric(ctx, b, t) {
+    sndTone(ctx, b.main, t, { wave: "sawtooth", f: 55, a: 0.05, dur: 0.7, gain: 0.35, lp: 800 }); // the air being torn
+    sndTone(ctx, b.main, t, { wave: "sawtooth", f: 58, a: 0.05, dur: 0.7, gain: 0.3, lp: 800 });
+    sndTone(ctx, b.sub, t, { f: 45, a: 0.05, dur: 0.7, gain: 0.6 });
+    for (let i = 0; i < 8; i++) sndBurst(ctx, b.main, t + Math.random() * 0.6, { type: "bandpass", f: sndRand(1500, 3500), q: 2, dur: sndRand(0.03, 0.08), gain: 0.5 }); // arcs
+    sndBurst(ctx, b.main, t + 0.1, { type: "bandpass", f: 300, f1: 2500, q: 1, a: 0.5, dur: 0.1, gain: 0.5 });
+    const k = t + 0.62;
+    sndBurst(ctx, b.main, k, { type: "highpass", f: 1200, dur: 0.05, gain: 0.9 });
+    sndTone(ctx, b.sub, k, { f: 90, f1: 30, dur: 0.5, gain: 0.8 });
+    return 1.2;
   },
-  crit(ctx, d, t) {
-    sndTone(ctx, d, t, { f: 110, f1: 35, dur: 0.3, gain: 1 });
-    sndBurst(ctx, d, t, { type: "lowpass", f: 2500, f1: 200, dur: 0.2, gain: 0.9 });
-    sndTone(ctx, d, t, { wave: "triangle", f: 1650, dur: 0.4, gain: 0.12 });
-    sndTone(ctx, d, t, { wave: "triangle", f: 2470, dur: 0.3, gain: 0.07 });
-    return 0.5;
+  psychic(ctx, b, t) {
+    [[73.4, 0.1], [77.8, 0.09], [110, 0.08], [116.5, 0.07]].forEach(([f, g]) => sndTone(ctx, b.main, t, { wave: "sawtooth", f, a: 0.6, dur: 0.5, gain: g, lp: 900 })); // a dissonant choir
+    for (let i = 0; i < 6; i++) sndBurst(ctx, b.main, t + Math.random() * 0.9, { type: "bandpass", f: sndRand(1500, 3500), q: 8, a: 0.05, dur: 0.15, gain: 0.15 }); // whispers
+    sndBurst(ctx, b.main, t, { type: "lowpass", f: 200, f1: 4000, a: 1, dur: 0.03, gain: 0.6 }); // rushing in
+    const k = t + 1.05; // the warp tearing open
+    sndBurst(ctx, b.main, k, { type: "highpass", f: 1500, dur: 0.05, gain: 0.8 });
+    sndBurst(ctx, b.main, k, { type: "lowpass", f: 1200, f1: 80, dur: 1, gain: 0.9 });
+    sndTone(ctx, b.sub, k, { f: 70, f1: 25, dur: 1.2, gain: 1 });
+    return 2.2;
   },
-  save(ctx, d, t) {
-    sndBurst(ctx, d, t, { type: "highpass", f: 4000, dur: 0.03, gain: 0.3 });
-    sndTone(ctx, d, t, { f: 2100, dur: 0.25, gain: 0.15 });
-    sndTone(ctx, d, t, { f: 3150, dur: 0.18, gain: 0.08 });
-    sndTone(ctx, d, t + 0.05, { f: 3200, f1: 1400, dur: 0.22, gain: 0.08 }); // ricochet
-    return 0.35;
-  },
-  block(ctx, d, t) {
-    sndBurst(ctx, d, t, { type: "bandpass", f: 3000, q: 1, dur: 0.06, gain: 0.7 });
-    [[820, 0.2], [1230, 0.14], [1960, 0.1], [2730, 0.06]].forEach(([f, g]) => sndTone(ctx, d, t, { wave: "triangle", f: f * sndVary(), dur: 0.5, gain: g }));
-    return 0.6;
-  },
-  hot(ctx, d, t) {
-    sndBurst(ctx, d, t, { type: "highpass", f: 2500, f1: 6000, a: 0.05, dur: 0.7, gain: 0.3 }); // venting steam
-    [0.05, 0.22].forEach(k => sndTone(ctx, d, t + k, { wave: "square", f: 880, dur: 0.08, gain: 0.07, lp: 3000 })); // warning beeps
-    sndTone(ctx, d, t, { wave: "sawtooth", f: 60, dur: 0.6, gain: 0.08, lp: 400 });
-    return 0.8;
-  },
-  down(ctx, d, t) {
-    sndTone(ctx, d, t, { f: 90, f1: 30, dur: 0.5, gain: 0.9 });
-    sndBurst(ctx, d, t, { type: "lowpass", f: 600, f1: 100, dur: 0.4, gain: 0.5 });
-    sndTone(ctx, d, t + 0.05, { wave: "triangle", f: 440, f1: 110, dur: 0.6, gain: 0.1 });
+  blade(ctx, b, t, o) {
+    const power = o && o.power, k = t + 0.25;
+    if (power) sndPowerField(ctx, b, t, 0.45);
+    sndBurst(ctx, b.main, t, { type: "bandpass", f: 400, f1: 1800, q: 1.2, a: 0.1, dur: 0.15, gain: 0.7 }); // the swing
+    sndBurst(ctx, b.main, k, { type: "lowpass", f: 2500, f1: 300, dur: 0.12, gain: 1 }); // the hit
+    sndTone(ctx, b.main, k, { wave: "triangle", f: 140, f1: 60, dur: 0.15, gain: 0.6 });
+    sndTone(ctx, b.sub, k, { f: 80, f1: 40, dur: 0.2, gain: 0.7 });
+    for (let i = 0; i < 4; i++) sndBurst(ctx, b.main, k + Math.random() * 0.06, { type: "bandpass", f: sndRand(800, 1600), q: 3, dur: 0.03, gain: 0.4 }); // crunch
+    if (power) sndDischarge(ctx, b, k);
     return 0.7;
   },
-  versus(ctx, d, t) {
-    [55, 82.4].forEach(f => sndTone(ctx, d, t, { wave: "sawtooth", f, a: 0.3, dur: 0.6, gain: 0.18, lp: 200, lp1: 1800 }));
-    sndTone(ctx, d, t + 0.75, { f: 70, f1: 35, dur: 0.5, gain: 1 });
-    sndBurst(ctx, d, t + 0.75, { type: "lowpass", f: 900, f1: 100, dur: 0.35, gain: 0.6 });
+  chain(ctx, b, t, o) {
+    sndChopped(ctx, b.main, t, { f: 45, f1: 70, sweep: 0.35, rate: 22, rate1: 38, dur: 1.2, gain: 0.6, lp: 1200 }); // the engine revving
+    sndChopped(ctx, b.main, t, { f: 90, f1: 140, sweep: 0.35, rate: 44, rate1: 76, dur: 1.2, gain: 0.35, lp: 1800 });
+    sndTone(ctx, b.sub, t, { f: 45, f1: 70, sweep: 0.35, a: 0.05, dur: 1.2, gain: 0.5 });
+    const k = t + 0.35; // the teeth biting
+    sndBurst(ctx, b.main, k, { type: "bandpass", f: 1800, q: 1.2, a: 0.05, dur: 0.7, gain: 0.6, chop: 60 });
+    sndBurst(ctx, b.main, k, { type: "lowpass", f: 1500, f1: 200, dur: 0.2, gain: 0.8 });
+    sndTone(ctx, b.sub, k, { f: 70, f1: 35, dur: 0.3, gain: 0.7 });
+    if (o && o.power) { sndPowerField(ctx, b, t, 0.9); sndDischarge(ctx, b, k); }
     return 1.4;
+  },
+  heavy(ctx, b, t, o) {
+    if (o && o.light) { // a punch
+      sndBurst(ctx, b.main, t, { type: "lowpass", f: 200, f1: 600, a: 0.08, dur: 0.1, gain: 0.5 });
+      sndImpact(ctx, b, t + 0.15, 1);
+      return 0.5;
+    }
+    const k = t + 0.32;
+    if (o && o.power) sndPowerField(ctx, b, t, 0.5);
+    sndBurst(ctx, b.main, t, { type: "lowpass", f: 200, f1: 700, a: 0.18, dur: 0.15, gain: 0.8 }); // the swing
+    sndTone(ctx, b.main, k, { wave: "triangle", f: 100, f1: 35, dur: 0.4, gain: 1 });
+    sndTone(ctx, b.sub, k, { f: 65, f1: 25, dur: 0.6, gain: 1 });
+    sndBurst(ctx, b.main, k, { type: "lowpass", f: 2000, f1: 150, dur: 0.35, gain: 1 }); // bone and armor
+    for (let i = 0; i < 6; i++) sndBurst(ctx, b.main, k + Math.random() * 0.2, { type: "bandpass", f: sndRand(600, 1400), q: 4, dur: sndRand(0.03, 0.06), gain: 0.3 }); // armor crumpling
+    if (o && o.power) { // a thunderclap
+      sndBurst(ctx, b.main, k, { type: "highpass", f: 800, dur: 0.05, gain: 1 });
+      sndBurst(ctx, b.main, k, { type: "lowpass", f: 3000, f1: 200, dur: 0.8, gain: 0.7 });
+      sndCrackle(ctx, b, k + 0.1, 10, 0.8, 1);
+    }
+    return 1.2;
+  },
+  // The game's moments.
+  hit(ctx, b, t) {
+    sndImpact(ctx, b, t, 1);
+    sndBurst(ctx, b.main, t, { type: "bandpass", f: 450, q: 8, dur: 0.25, gain: 0.25 }); // a low armor clang
+    return 0.4;
+  },
+  crit(ctx, b, t) {
+    sndImpact(ctx, b, t, 1.1);
+    sndTone(ctx, b.sub, t, { f: 90, f1: 22, dur: 0.9, gain: 1 }); // bass drop
+    sndBurst(ctx, b.main, t, { type: "lowpass", f: 2500, f1: 100, dur: 0.5, gain: 1 });
+    sndBurst(ctx, b.main, t + 0.02, { type: "bandpass", f: 1800, f1: 700, q: 5, a: 0.01, dur: 0.4, gain: 0.35 }); // armor tearing open
+    return 1;
+  },
+  save(ctx, b, t) {
+    sndBurst(ctx, b.main, t, { type: "bandpass", f: 600, q: 12, dur: 0.35, gain: 0.5 }); // ceramite
+    sndBurst(ctx, b.main, t, { type: "bandpass", f: 950, q: 12, dur: 0.3, gain: 0.3 });
+    sndBurst(ctx, b.main, t, { type: "highpass", f: 4000, dur: 0.04, gain: 0.3 });
+    sndCrackle(ctx, b, t, 6, 0.15, 0.5); // sparks
+    sndBurst(ctx, b.main, t + 0.04, { type: "bandpass", f: 1600, f1: 700, q: 10, a: 0.02, dur: 0.3, gain: 0.25 }); // ricochet
+    return 0.5;
+  },
+  block(ctx, b, t) {
+    sndBurst(ctx, b.main, t, { type: "highpass", f: 1500, dur: 0.03, gain: 0.9 });
+    [[700, 0.6, 0.5], [1100, 0.5, 0.35], [1650, 0.4, 0.2]].forEach(([f, dur, g]) => sndBurst(ctx, b.main, t, { type: "bandpass", f: f * sndVary(), q: 15, dur, gain: g })); // the clash
+    sndBurst(ctx, b.main, t + 0.05, { type: "bandpass", f: 2200, q: 2, a: 0.03, dur: 0.25, gain: 0.3 }); // grinding
+    sndTone(ctx, b.main, t, { wave: "triangle", f: 100, f1: 50, dur: 0.1, gain: 0.5 });
+    return 0.7;
+  },
+  hot(ctx, b, t) {
+    sndBurst(ctx, b.main, t, { type: "highpass", f: 1200, f1: 3500, a: 0.04, dur: 1, gain: 0.6 }); // venting
+    sndBurst(ctx, b.main, t, { type: "lowpass", f: 400, a: 0.05, dur: 0.8, gain: 0.5 });
+    sndTone(ctx, b.main, t, { wave: "sawtooth", f: 70, f1: 55, a: 0.1, dur: 0.8, gain: 0.2, lp: 500 }); // metal groaning
+    sndBurst(ctx, b.main, t, { type: "bandpass", f: 300, q: 10, a: 0.1, dur: 0.8, gain: 0.3 });
+    sndTone(ctx, b.sub, t, { f: 45, a: 0.05, dur: 0.8, gain: 0.5 });
+    sndCrackle(ctx, b, t + 0.1, 10, 0.8, 1);
+    return 1.1;
+  },
+  down(ctx, b, t) {
+    sndBurst(ctx, b.main, t, { type: "lowpass", f: 900, f1: 150, dur: 0.25, gain: 1 }); // the body hitting the ground
+    sndTone(ctx, b.main, t, { wave: "triangle", f: 90, f1: 40, dur: 0.25, gain: 0.8 });
+    sndTone(ctx, b.sub, t, { f: 60, f1: 25, dur: 0.8, gain: 1 });
+    sndDebris(ctx, b, t + 0.08, 8, 0.5, 1.5); // armor clattering
+    sndTone(ctx, b.sub, t + 0.3, { f: 45, f1: 22, a: 0.02, dur: 1.4, gain: 0.8 }); // the closing boom
+    sndBurst(ctx, b.main, t + 0.3, { type: "lowpass", f: 300, f1: 60, a: 0.05, dur: 1.2, gain: 0.5 });
+    return 1.7;
+  },
+  versus(ctx, b, t) {
+    [[36.7, 0.2], [55, 0.2], [73.4, 0.15]].forEach(([f, g]) => sndTone(ctx, b.main, t, { wave: "sawtooth", f, a: 0.5, dur: 1.9, gain: g, lp: 150, lp1: 1200 })); // the deep drone
+    [73.4, 110].forEach(f => sndTone(ctx, b.main, t + 0.3, { wave: "sawtooth", f, a: 0.6, dur: 1.2, gain: 0.12, lp: 300, lp1: 900 })); // a war horn swelling
+    [[0.3, 0.6], [0.7, 0.7], [1.0, 0.8], [1.12, 0.7], [1.45, 1.3]].forEach(([k, s]) => sndDrum(ctx, b, t + k, s)); // boom, boom, ba-BOOM
+    sndBurst(ctx, b.main, t + 1.45, { type: "highpass", f: 3000, a: 0.01, dur: 1.2, gain: 0.2 }); // the crash on the last hit
+    return 2.4;
   },
 };
 
@@ -8660,13 +8805,13 @@ const SOUND_LIST = [
   { group: "Game moments", n: 26, id: "down", name: "Operative down", eg: "An operative is incapacitated" },
   { group: "Game moments", n: 27, id: "versus", name: "Versus", eg: "The attack screen opens" },
 ];
-// How loud each sound plays, so they come out about even (measured peaks, Nov 14: explosions came out six times
-// louder than the chainsword). Keyed by recipe and variant.
+// How loud each sound plays, so they come out about even (set from the self-test's loudness readings). Keyed by
+// recipe and variant.
 const SOUND_TRIM = {
-  bolt: 0.78, auto: 1.2, slug: 1.1, shotgun: 0.63, sniper: 0.6, las: 1, plasma: 0.68, melta: 1.2, flame: 1.25,
-  grenade: 0.47, "grenade:krak": 0.5, blast: 0.52, electric: 1.5, psychic: 1,
-  blade: 1.15, "blade:power": 0.87, chain: 2, "chain:power": 1.6, heavy: 0.65, "heavy:power": 0.67, "heavy:light": 0.85,
-  hit: 0.9, crit: 0.58, save: 1.5, block: 1, hot: 1.2, down: 0.8, versus: 0.75,
+  bolt: 0.41, auto: 0.53, slug: 0.56, shotgun: 0.4, sniper: 0.69, las: 0.45, plasma: 0.45, melta: 0.58, flame: 0.75,
+  grenade: 0.45, "grenade:krak": 0.45, blast: 0.41, electric: 0.59, psychic: 0.56,
+  blade: 0.53, "blade:power": 0.52, chain: 0.54, "chain:power": 0.5, heavy: 0.34, "heavy:power": 0.35, "heavy:light": 0.39,
+  hit: 0.36, crit: 0.35, save: 1.9, block: 0.82, hot: 0.58, down: 0.32, versus: 0.34,
 };
 const soundTrim = (id, o) => {
   const v = o && (o.krak ? "krak" : o.light ? "light" : o.power ? "power" : "");
@@ -8697,13 +8842,13 @@ function soundOutput() {
   if (soundOut.ctx.state === "suspended") soundOut.ctx.resume();
   return soundOut;
 }
-// Play one sound now (or after delay seconds) at volume 0-1. Returns how long it lasts, or 0 if sound can't play here.
+// Play one sound now (or after delay seconds) at volume 0-1. Returns how long it lasts with its echo, or 0 if sound
+// can't play here.
 function playSound(id, o, volume, delay) {
   const out = soundOutput(), recipe = SOUND_RECIPES[id];
   if (!out || !recipe) return 0;
   out.vol.gain.setValueAtTime(volume == null ? 0.7 : volume, out.ctx.currentTime);
-  const trim = out.ctx.createGain(); trim.gain.value = soundTrim(id, o); trim.connect(out.vol);
-  try { return recipe(out.ctx, trim, out.ctx.currentTime + 0.02 + (delay || 0), o || {}); } catch (e) { return 0; }
+  try { const b = soundBus(out.ctx, out.vol, id, o); return recipe(out.ctx, b, out.ctx.currentTime + 0.02 + (delay || 0), o || {}) + b.tail; } catch (e) { return 0; }
 }
 const SOUND_MAX_PEAK = 1.5; // a sample this loud is a brief spike the limiter (soundOutput) catches; louder would crackle
 // For the self-test: draws a sound silently and measures it: its loudest sample (peak), how loud it is over the
@@ -8711,9 +8856,9 @@ const SOUND_MAX_PEAK = 1.5; // a sample this loud is a brief spike the limiter (
 async function measureSound(id, o) {
   const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
   if (!OAC) return null;
-  const ctx = new OAC(1, 44100 * 2, 44100), g = ctx.createGain();
-  g.gain.value = soundTrim(id, o); g.connect(ctx.destination);
-  const len = SOUND_RECIPES[id](ctx, g, 0.01, o || {});
+  const ctx = new OAC(1, 44100 * 6, 44100);
+  const b = soundBus(ctx, ctx.destination, id, o);
+  const len = SOUND_RECIPES[id](ctx, b, 0.01, o || {});
   const d = (await ctx.startRendering()).getChannelData(0);
   let peak = 0, bad = false, loud = 0, sum = 0;
   const win = 441; // 10 ms
@@ -8755,14 +8900,15 @@ function SoundLab({ onClose }) {
     setPlaying(s.n);
     timers.current.push(setTimeout(() => setPlaying(null), Math.max(300, len * 1000)));
   };
-  const playAll = () => {
+  const playAll = () => { // one after another, each starting as the last one's echo fades
     stopAll();
-    let at = 0;
-    SOUND_LIST.forEach(s => {
-      timers.current.push(setTimeout(() => { playSound(s.id, s.o, volume); setPlaying(s.n); }, at));
-      at += 2200;
-    });
-    timers.current.push(setTimeout(() => setPlaying(null), at));
+    const next = (i) => {
+      if (i >= SOUND_LIST.length) { setPlaying(null); return; }
+      const s = SOUND_LIST[i], len = playSound(s.id, s.o, volume);
+      setPlaying(s.n);
+      timers.current.push(setTimeout(() => next(i + 1), Math.max(1500, len * 750)));
+    };
+    next(0);
   };
   const typed = weapon.trim().toLowerCase();
   const found = typed && (weapons[typed] || Object.values(weapons).find(w => w.name.toLowerCase().startsWith(typed)));

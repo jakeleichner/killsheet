@@ -3,6 +3,7 @@
 Usage: python3 tools/selftest_local.py tools                   (1280, 375 and 320 px)
        python3 tools/selftest_local.py tools "[375,812,true]"  (one size: width, height, phone)
        KS_URL=http://localhost:3456/live/ python3 tools/selftest_local.py tools   (the upload build)
+       KS_SHOW=Sounds python3 tools/selftest_local.py tools          (also print a passing step's note)
 
 Needs the preview server on port 3456 (CLAUDE.md, Previewing changes). Uses the DevTools client in tools/measure_speed.py,
 so no Node is needed on this Mac; GitHub's run (tools/run_selftest.mjs) stays the check before publishing.
@@ -43,6 +44,9 @@ try:
         fails = [r for r in t["results"] if not r["ok"]]
         print("%dpx: %d of %d passed in %ds" % (w, t["passed"], t["passed"] + t["failed"], time.time() - start))
         for r in fails: print("   FAIL %s: %s" % (r["name"], r["note"][:1500]))
+        show = os.environ.get("KS_SHOW")  # KS_SHOW=Sounds prints that step's note even when it passes
+        for r in t["results"]:
+            if show and r["ok"] and r["name"].startswith(show): print("   %s: %s" % (r["name"], r["note"][:1500]))
         ok_all = ok_all and not fails
 finally:
     chrome.kill()
